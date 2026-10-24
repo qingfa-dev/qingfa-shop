@@ -5,6 +5,9 @@
 
 # dotenv files
 .env
+.env.*
+!.env.example
+!.env.release.example
 
 # User-specific files
 *.rsuser
@@ -480,3 +483,8 @@ $RECYCLE.BIN/
 
 # Vim temporary swap files
 *.swp
+
+# Local design specs, implementation plans, and agent artifacts (never commit)
+docs/superpowers/
+docs/plans/
+.superpowers/

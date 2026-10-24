@@ -1,0 +1,239 @@
+<Project>
+
+  <!--
+    ======================================================================
+    QingFa.Shop · Directory.Build.targets
+    ======================================================================
+    Repository-wide build TARGETS and guard-rails. Imported AFTER each
+    project body, so every check here sees the final property values,
+    including anything a .csproj overrode.
+
+    Purpose:
+      Directory.Build.props sets the policy; this file fails the build
+      loudly when a project (or command line) drifts away from it.
+
+    Conventions:
+      * Do not put common properties here; they belong in
+        Directory.Build.props.
+      * Every error has a stable code (RESYS001...) so it is searchable,
+        and every message is prefixed with [$(QingFaProfile)] so CI logs can
+        be filtered by profile.
+      * Nothing runs for design-time builds (IDE IntelliSense), which would
+        otherwise flood the editor with errors.
+      * Both profiles (Production / Tests) share the same checks unless a
+        condition says otherwise.
+
+    Error codes:
+      RESYS001  Target framework          RESYS008  Source Link
+      RESYS002  Nullable                  RESYS009  Package metadata
+      RESYS003  Analyzers                 RESYS010  Test SDK reference
+      RESYS004  Warnings as errors        RESYS011  Test project packed
+      RESYS005  Deterministic build       RESYS012  Test project published
+      RESYS006  Debug symbols             RESYS013  Restore lock files
+      RESYS007  CI build switches         RESYS014  Central Package Management
+    ======================================================================
+  -->
+
+  <PropertyGroup>
+    <!-- Master switch: skip every validation during design-time builds. -->
+    <_QingFaValidate Condition="'$(DesignTimeBuild)' != 'true'">true</_QingFaValidate>
+  </PropertyGroup>
+
+
+  <!-- ====================================================================
+       1. Build configuration (all projects)
+       ==================================================================== -->
+
+  <Target Name="QingFaValidateBuildConfiguration"
+          BeforeTargets="CoreCompile"
+          Condition="'$(_QingFaValidate)' == 'true'">
+
+    <Error Code="RESYS001"
+           Condition="'$(TargetFramework)' != 'net10.0'"
+           Text="[$(QingFaProfile)] $(MSBuildProjectName) must target net10.0 (current: '$(TargetFramework)')." />
+
+    <Error Code="RESYS002"
+           Condition="'$(Nullable)' != 'enable'"
+           Text="[$(QingFaProfile)] $(MSBuildProjectName): nullable reference types must be enabled." />
+
+    <Error Code="RESYS003"
+           Condition="'$(EnableNETAnalyzers)' != 'true'"
+           Text="[$(QingFaProfile)] $(MSBuildProjectName): .NET analyzers must be enabled." />
+
+    <Error Code="RESYS004"
+           Condition="'$(TreatWarningsAsErrors)' != 'true'"
+           Text="[$(QingFaProfile)] $(MSBuildProjectName): TreatWarningsAsErrors must be enabled." />
+
+    <!--
+      Release and CI output must be reproducible. This single check covers
+      both the local Release case and the CI case; RESYS005 is intentionally
+      not duplicated in the CI-only target.
+    -->
+    <Error Code="RESYS005"
+           Condition="('$(Configuration)' == 'Release' OR '$(CI)' == 'true')
+                      AND '$(Deterministic)' != 'true'"
+           Text="[$(QingFaProfile)] $(MSBuildProjectName): Release and CI builds must be deterministic." />
+
+    <Error Code="RESYS006"
+           Condition="'$(Configuration)' == 'Release' AND ('$(DebugType)' == '' OR '$(DebugType)' == 'none')"
+           Text="[$(QingFaProfile)] $(MSBuildProjectName): Release builds must generate portable debug symbols." />
+
+  </Target>
+
+
+  <!-- ====================================================================
+       2. CI build configuration (all projects) + Source Link (production)
+       ==================================================================== -->
+
+  <Target Name="QingFaValidateCIConfiguration"
+          BeforeTargets="CoreCompile"
+          Condition="'$(_QingFaValidate)' == 'true' AND '$(CI)' == 'true'">
+
+    <Error Code="RESYS007"
+           Condition="'$(ContinuousIntegrationBuild)' != 'true'"
+           Text="[$(QingFaProfile)] $(MSBuildProjectName): CI builds require ContinuousIntegrationBuild=true." />
+
+    <!--
+      Source Link only matters for assemblies we ship. All three checks
+      (PublishRepositoryUrl, RepositoryUrl, RepositoryType) are collapsed
+      into a single error so the message reads as one coherent failure.
+    -->
+    <Error Code="RESYS008"
+           Condition="'$(IsTestProject)' != 'true'
+                      AND ('$(PublishRepositoryUrl)' != 'true'
+                           OR '$(RepositoryUrl)' == ''
+                           OR '$(RepositoryType)' != 'git')"
+           Text="[$(QingFaProfile)] $(MSBuildProjectName): CI builds require PublishRepositoryUrl=true, RepositoryUrl set, and RepositoryType=git." />
+
+  </Target>
+
+
+  <!-- ====================================================================
+       3. Central Package Management (all projects)
+       ====================================================================
+       Enforces that the CPM opt-in in Directory.Packages.props cannot be
+       silently turned off by a project. Runs before Restore so a drifting
+       project fails fast.
+       ==================================================================== -->
+
+  <Target Name="QingFaValidateCPM"
+          BeforeTargets="Restore"
+          Condition="'$(_QingFaValidate)' == 'true'">
+
+    <Error Code="RESYS014"
+           Condition="'$(ManagePackageVersionsCentrally)' != 'true'"
+           Text="[$(QingFaProfile)] $(MSBuildProjectName): Central Package Management must remain enabled (ManagePackageVersionsCentrally=true)." />
+
+    <Error Code="RESYS014"
+           Condition="'$(CentralPackageTransitivePinningEnabled)' != 'true'"
+           Text="[$(QingFaProfile)] $(MSBuildProjectName): Central Package Management requires CentralPackageTransitivePinningEnabled=true." />
+
+  </Target>
+
+
+  <!-- ====================================================================
+       4. Restore lock files (all projects, CI only)
+       ====================================================================
+       Defence in depth: RestorePackagesWithLockFile is set unconditionally
+       in Directory.Build.props, so this target only fires if a .csproj (or
+       a -p: override) has disabled lock files. It runs before the Restore
+       target so the failure is reported against the offending project.
+       ==================================================================== -->
+
+  <Target Name="QingFaValidateRestoreConfiguration"
+          BeforeTargets="Restore"
+          Condition="'$(_QingFaValidate)' == 'true' AND '$(CI)' == 'true'">
+
+    <Error Code="RESYS013"
+           Condition="'$(RestorePackagesWithLockFile)' != 'true'"
+           Text="[$(QingFaProfile)] $(MSBuildProjectName): CI builds require NuGet lock files (RestorePackagesWithLockFile=true)." />
+
+    <Error Code="RESYS013"
+           Condition="'$(RestoreLockedMode)' != 'true'"
+           Text="[$(QingFaProfile)] $(MSBuildProjectName): CI builds require RestoreLockedMode=true." />
+
+  </Target>
+
+
+  <!-- ====================================================================
+       5. Package validation (production projects that opt in to packing)
+       ==================================================================== -->
+
+  <Target Name="QingFaValidatePack"
+          BeforeTargets="Pack;GenerateNuspec"
+          Condition="'$(_QingFaValidate)' == 'true' AND '$(IsTestProject)' != 'true' AND '$(IsPackable)' == 'true'">
+
+    <Error Code="RESYS009"
+           Condition="'$(RepositoryUrl)' == ''"
+           Text="[$(QingFaProfile)] $(MSBuildProjectName): packable projects must define RepositoryUrl." />
+
+    <Error Code="RESYS009"
+           Condition="'$(PackageLicenseExpression)' == '' AND '$(PackageLicenseFile)' == ''"
+           Text="[$(QingFaProfile)] $(MSBuildProjectName): packable projects must define a package license." />
+
+  </Target>
+
+
+  <!-- ====================================================================
+       6. Test project requirements
+       ====================================================================
+       Version of Microsoft.NET.Test.Sdk is managed centrally in
+       Directory.Packages.props.
+
+       Runs BeforeTargets="Restore" so a missing Test.Sdk surfaces as
+       RESYS010 rather than as an opaque NU1101/NU1102 later in the build.
+
+       Helper projects under tests/ that contain no tests (shared fixtures,
+       builders, ...) can opt out in their .csproj with:
+         <QingFaRequireTestSdk>false</QingFaRequireTestSdk>
+       ==================================================================== -->
+
+  <Target Name="QingFaValidateTestSdk"
+          BeforeTargets="Restore"
+          Condition="'$(_QingFaValidate)' == 'true' AND '$(IsTestProject)' == 'true' AND '$(QingFaRequireTestSdk)' != 'false'">
+
+    <Error Code="RESYS010"
+           Condition="'@(PackageReference->AnyHaveMetadataValue('Identity', 'Microsoft.NET.Test.Sdk'))' != 'true'"
+           Text="[$(QingFaProfile)] Test project $(MSBuildProjectName) must reference Microsoft.NET.Test.Sdk (or set QingFaRequireTestSdk=false for a helper project)." />
+
+  </Target>
+
+
+  <!-- ====================================================================
+       7. Test packaging / publishing protection
+       ====================================================================
+       Test projects already default to IsPackable=false / IsPublishable=false,
+       so solution-wide `dotnet pack` / `dotnet publish` simply skip them.
+       These guards only fire when a test project has explicitly re-enabled
+       packing or publishing, and therefore never break solution-wide runs.
+       ==================================================================== -->
+
+  <Target Name="QingFaPreventTestPack"
+          BeforeTargets="Pack;GenerateNuspec"
+          Condition="'$(IsTestProject)' == 'true' AND '$(IsPackable)' == 'true'">
+    <Error Code="RESYS011"
+           Text="[$(QingFaProfile)] Test project $(MSBuildProjectName) cannot be packed (IsPackable must remain false)." />
+  </Target>
+
+  <Target Name="QingFaPreventTestPublish"
+          BeforeTargets="Publish"
+          Condition="'$(IsTestProject)' == 'true' AND '$(IsPublishable)' == 'true'">
+    <Error Code="RESYS012"
+           Text="[$(QingFaProfile)] Test project $(MSBuildProjectName) cannot be published (IsPublishable must remain false)." />
+  </Target>
+
+
+  <!-- ====================================================================
+       8. Build information (CI only)
+       ====================================================================
+       One summary line per project to make CI logs easy to scan.
+       ==================================================================== -->
+
+  <Target Name="QingFaBuildInformation"
+          AfterTargets="Build"
+          Condition="'$(_QingFaValidate)' == 'true' AND '$(CI)' == 'true'">
+    <Message Importance="High"
+             Text="QingFa.Shop [$(QingFaProfile)] | Project=$(MSBuildProjectName) | Target=$(TargetFramework) | Configuration=$(Configuration) | Version=$(Version) | Deterministic=$(Deterministic)" />
+  </Target>
+
+</Project>
