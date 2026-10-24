@@ -1,2 +1,20 @@
 <Solution>
+  <Folder Name="/app/">
+    <Project Path="app/AppHost/AppHost.csproj" />
+    <Project Path="app/Web.Api/Web.Api.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/ServiceDefaults/ServiceDefaults.csproj" />
+    <Project Path="src/Core/Core.csproj" />
+    <Project Path="src/Infrastructure/Infrastructure.csproj" />
+  </Folder>
+  <Folder Name="/tests/">
+    <Project Path="tests/Testing/Testing.csproj" />
+    <Project Path="tests/Unit/Core.Tests/Core.Tests.csproj" />
+    <Project Path="tests/Unit/Infrastructure.Unit.Tests/Infrastructure.Unit.Tests.csproj" />
+    <Project Path="tests/Integration/Api.Tests/Api.Tests.csproj" />
+    <Project Path="tests/Integration/Infrastructure.Integration.Tests/Infrastructure.Integration.Tests.csproj" />
+    <Project Path="tests/Integration/AppHost.Tests/AppHost.Tests.csproj" />
+    <Project Path="tests/Contract/Contract.Tests.csproj" />
+  </Folder>
 </Solution>

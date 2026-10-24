@@ -1,0 +1,23 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <IsPackable>false</IsPackable>
+    <!-- Helper library: no [Fact]s live here, so Microsoft.NET.Test.Sdk is not required. -->
+    <QingFaRequireTestSdk>false</QingFaRequireTestSdk>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" />
+    <PackageReference Include="Microsoft.Extensions.TimeProvider.Testing" />
+    <PackageReference Include="Npgsql" />
+    <PackageReference Include="Respawn" />
+    <PackageReference Include="Testcontainers.PostgreSql" />
+    <PackageReference Include="Testcontainers.Redis" />
+    <PackageReference Include="xunit.v3.extensibility.core" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <!-- Boots the real Api pipeline in-process (ShopApiFactory). -->
+    <ProjectReference Include="../../app/Web.Api/Web.Api.csproj" />
+  </ItemGroup>
+
+</Project>

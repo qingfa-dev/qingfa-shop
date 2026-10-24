@@ -275,6 +275,7 @@
     <PackageVersion Include="Aspire.Hosting.PostgreSQL" Version="$(AspireVersion)" />
     <PackageVersion Include="Aspire.Hosting.Python" Version="$(AspireVersion)" />
     <PackageVersion Include="Aspire.Hosting.Redis" Version="$(AspireVersion)" />
+    <PackageVersion Include="Aspire.Hosting.RabbitMQ" Version="$(AspireVersion)" />
     <PackageVersion Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="$(AspireVersion)" />
     <!--
       Community Toolkit packages ship on a slightly slower cadence than Aspire
@@ -312,6 +313,7 @@
     <!-- Assertions. AwesomeAssertions is the MIT-licensed continuation of the FluentAssertions 7.x line (8.x+ is commercially licensed). -->
     <PackageVersion Include="AwesomeAssertions" Version="9.6.0" />
     <PackageVersion Include="Moq" Version="4.21.0" />
+    <PackageVersion Include="PactNet" Version="3.0.0" />
   </ItemGroup>
   <!-- ====================================================================
        17. Integration testing
@@ -327,6 +329,7 @@
     <!-- Real PostgreSQL / Redis in containers, plus database reset between tests. -->
     <PackageVersion Include="Testcontainers.PostgreSql" Version="4.16.0" />
     <PackageVersion Include="Testcontainers.Redis" Version="4.16.0" />
+    <PackageVersion Include="Testcontainers.RabbitMq" Version="4.16.0" />
     <PackageVersion Include="Respawn" Version="7.0.0" />
     <!-- Distributed integration tests (PostgreSQL, Redis, APIs, workers). -->
     <PackageVersion Include="Aspire.Hosting.Testing" Version="$(AspireVersion)" />

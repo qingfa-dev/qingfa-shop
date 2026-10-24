@@ -1,0 +1,27 @@
+<Project Sdk="Aspire.AppHost.Sdk/13.6.2">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>net10.0</TargetFramework>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <Nullable>enable</Nullable>
+    <AspireUseCliBundle>true</AspireUseCliBundle>
+    <UserSecretsId>acb059c4-7e77-4d99-a743-b8dc74feedc6</UserSecretsId>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Aspire.Hosting.JavaScript" />
+    <PackageReference Include="Aspire.Hosting.PostgreSQL" />
+    <PackageReference Include="Aspire.Hosting.Redis" />
+    <PackageReference Include="Aspire.Hosting.RabbitMQ" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.PostgreSQL.Extensions" />
+    <PackageReference Include="CommunityToolkit.Aspire.Hosting.PapercutSmtp" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="../Web.Api/Web.Api.csproj" />
+    <ProjectReference Include="../Web.Storefront/Web.Storefront.csproj" Condition="Exists('../Web.Storefront/Web.Storefront.csproj')" />
+    <ProjectReference Include="../Web.Admin/Web.Admin.csproj" Condition="Exists('../Web.Admin/Web.Admin.csproj')" />
+  </ItemGroup>
+
+</Project>
