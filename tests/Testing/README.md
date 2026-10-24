@@ -1,82 +1,100 @@
 # Testing
 
-Shared test plumbing — fixtures, factories, and runtime probes, not a runnable
-suite. _test · shared_
+Shared test infrastructure — fixtures, factories, containers, utilities. _test · shared_
 
 ## Summary
 
-`Testing` gives every suite the same building blocks. `ShopApiFactory` boots the
-real `Api` pipeline in-process with time faked; `PostgresFixture` starts one
-PostgreSQL container and resets it with Respawn; `RedisFixture` starts one Redis
-container; `ContainerRuntime` detects Podman or Docker so container-backed tests
-can target it or skip cleanly; and `NodeToolchain` detects Node/pnpm so
-Vite-backed tests can skip. It contains no `[Fact]`s, and production projects
-must never reference it.
+Testing provides **reusable test infrastructure** for all integration tests. It contains the `ShopApiFactory` (WebApplicationFactory), Testcontainers fixtures for Postgres/Redis/RabbitMQ, Respawn for database reset, and container runtime utilities. Unit tests do **not** reference this project.
 
 ## Contains
 
 | Path | Role | Notes |
 |---|---|---|
-| `Fixtures/` | fixture | `ShopApi.Factory.cs` (in-process host), `Postgres.Fixture.cs` (container + Respawn), `Redis.Fixture.cs` (container) _(no README)_ |
-| `Extensions/` | util | `ContainerRuntime.Util.cs` (engine probe), `NodeToolchain.Util.cs` (toolchain probe) _(no README)_ |
-| `IntegrationTest.Base.cs` | fixture | Base class; takes the factory from the collection, owns the `HttpClient` |
-| `Testing.csproj` | package | References `Api` and the test packages; opts out of the test-SDK rule |
+| `Assembly.Marker.cs` | marker | Anchors assembly for scanning |
+| `Fixtures/PostgresFixture.cs` | fixture | Postgres container lifecycle (collection fixture) |
+| `Fixtures/RedisFixture.cs` | fixture | Redis container lifecycle (collection fixture) |
+| `Fixtures/ShopApiFactory.cs` | factory | `WebApplicationFactory<Program>` with test config |
+| `Extensions/ContainerRuntimeUtil.cs` | util | Docker/container runtime detection |
+| `Extensions/NodeToolchainUtil.cs` | util | Node.js/pnpm detection for Vue tests |
+| `IntegrationTestBase.cs` | base | Base class for integration tests |
 
 ## Boundaries
 
 In scope:
-- Test host bootstrapping and DI substitution.
-- Container and toolchain provisioning plus clean skipping.
-- Shared fixtures consumed by more than one suite.
+- `ShopApiFactory` — configures API for testing (test connection strings, fake time, auth).
+- `PostgresFixture` / `RedisFixture` — container start/stop, connection strings.
+- `Respawn` — fast database reset between tests (checkpoint tables).
+- Container runtime utilities — detect Docker, Podman, CI environment.
 
 Out of scope:
-- Assertions and scenarios for a specific feature → that feature's suite.
-- Domain schema → a consumer creates its own tables.
-- Production code → [`../../app/`](../../app/README.md) and [`../../src/`](../../src/README.md).
+- Test assertions/helpers → use `AwesomeAssertions` directly.
+- Test data builders → define in each test project.
+- Unit test infrastructure → unit tests use mocks, not containers.
+- Playwright/Vite config → frontend projects own their test setup.
 
 ## Assumptions
 
-- The folder name intentionally avoids a test-type suffix. It sits under
-  `tests/`, so it opts out of the `RESYS010` test-SDK requirement with
-  `QingFaRequireTestSdk=false`.
-- Tests run against the real host pipeline with time faked, not against ASP.NET
-  Core mocks.
-- `PostgresFixture` snapshots the schema the first time `ResetAsync` runs; create
-  tables before that call or they stay out of the reset plan.
-- `RedisFixture` starts `redis:7-alpine` with no persistence; it is a cache, not a
-  store, and the container is discarded when the collection ends.
-- `ShopApiFactory` publishes closed-port connection strings by default, so the
-  fast suites compose the real infrastructure without reaching a container.
-- `ShopApiFactory.Clock` is a `FakeTimeProvider`, which only moves forward.
+- Docker/Podman available for Testcontainers (CI provides).
+- Postgres 16, Redis 7, RabbitMQ 3.12 images used.
+- `ShopApiFactory` uses `Microsoft.AspNetCore.Mvc.Testing`.
+- Database reset via `Respawn` (checkpoint table `RespawnCheckpoint`).
+- xUnit collection fixtures manage container lifetime (one per test run).
 
 ## Invariants
 
-- No production (`app/**` or `src/**`) project may reference this assembly.
-- No `[Fact]` lives here.
-- `IntegrationTestBase` never disposes the shared factory; the collection does.
+- **Referenced only by integration tests** — never by unit tests or production code.
+- Container fixtures are **collection-scoped** (start once, stop after all tests).
+- `ShopApiFactory` creates **new HttpClient per test** (isolation).
+- Connection strings injected via `IConfiguration` (Aspire-compatible).
+- No test data seeding in fixtures; tests own their data via builders.
 
 ## Contracts
 
-- `ShopApiFactory` — consumed by [`../Api.IntegrationTests/`](../Api.IntegrationTests/README.md).
-- `IntegrationTestBase` — consumed by [`../Api.IntegrationTests/`](../Api.IntegrationTests/README.md).
-- `ContainerRuntime` — consumed by [`../AppHost.IntegrationTests/`](../AppHost.IntegrationTests/README.md) and [`../Infrastructure.IntegrationTests/`](../Infrastructure.IntegrationTests/README.md).
-- `NodeToolchain` — consumed by [`../AppHost.IntegrationTests/`](../AppHost.IntegrationTests/README.md).
-- `PostgresFixture` — consumed by [`../Infrastructure.IntegrationTests/`](../Infrastructure.IntegrationTests/README.md).
-- `RedisFixture` — consumed by [`../Infrastructure.IntegrationTests/`](../Infrastructure.IntegrationTests/README.md).
+- `PostgresFixture.ConnectionString` — async property, returns PG connection string.
+- `RedisFixture.ConnectionString` — async property, returns Redis connection string.
+- `ShopApiFactory.CreateClient()` — returns `HttpClient` for API calls.
+- `ShopApiFactory.Services` — `IServiceProvider` for DI access in tests.
+- `Respawn.Checkpoint.Reset(connectionString)` — truncates all tables except `RespawnCheckpoint`.
+
+## Flows
+
+### Integration Test Setup
+1. xUnit discovers `PostgresCollection` (uses `PostgresFixture`).
+2. `PostgresFixture` starts Postgres container, exposes port.
+3. Test runs, gets `ShopApiFactory` from fixture.
+4. Test sends HTTP request via `HttpClient`.
+5. After test, `Respawn.Reset()` truncates tables.
+6. After all tests, `PostgresFixture` disposes container.
 
 ## Conventions
 
-- Name files `<Concept>.<Role>.cs`: `.Fixture.cs`, `.Factory.cs`, `.Util.cs`, `.Base.cs`.
-- A probe exposes `IsAvailable` plus `SkipReason` so callers can skip with a reason
-  instead of failing.
+- Fixtures implement `IAsyncLifetime` (`InitializeAsync`/`DisposeAsync`).
+- Collection fixtures: `[CollectionDefinition("PostgresCollection", DisableParallelization = true)]`.
+- Test classes: `[Collection("PostgresCollection")]`.
+- Use `async Task` for all test methods.
+- `CancellationToken` passed through async chains.
+
+## Reading Order
+
+1. `Fixtures/PostgresFixture.cs` — container lifecycle.
+2. `Fixtures/RedisFixture.cs` — container lifecycle.
+3. `Fixtures/ShopApiFactory.cs` — API factory config.
+4. `Extensions/ContainerRuntimeUtil.cs` — runtime detection.
+5. `IntegrationTestBase.cs` — base class.
 
 ## Related
 
 - Parent: [`../README.md`](../README.md)
-- Consumers: [`../Api.IntegrationTests/`](../Api.IntegrationTests/README.md) · [`../AppHost.IntegrationTests/`](../AppHost.IntegrationTests/README.md) · [`../Infrastructure.IntegrationTests/`](../Infrastructure.IntegrationTests/README.md)
-- Code under test: [`../../app/services/Api/`](../../app/services/Api/)
+- Consumers: [`../Integration/Api.Tests/`](../Integration/Api.Tests/), [`../Integration/Infrastructure.Integration.Tests/`](../Integration/Infrastructure.Integration.Tests/), [`../Integration/AppHost.Tests/`](../Integration/AppHost.Tests/)
+- ADR: [`../../docs/adr/0007-testing-strategy.md`](../../docs/adr/0007-testing-strategy.md)
+
+## Ownership
+
+- Owning team: **Platform**.
+- Changes require Platform review; affects all integration tests.
 
 ## Notes
 
-- `ContainerRuntime` sets `TESTCONTAINERS_RYUK_DISABLED` only for rootless
-  Podman, where mounting its own socket into the Ryuk helper is not possible.
+- `TODO-2026Q3:` Add `RabbitMqFixture` for Wolverine integration tests.
+- `TEMP:` `NodeToolchainUtil` only used for Aspire JavaScript app detection; may remove.
+- `DEADLINE-2026-11-15:` Migrate to `Testcontainers.Modules` for PG/Redis when GA.

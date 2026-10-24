@@ -65,6 +65,8 @@
     <PackageVersion Include="Carter" Version="10.0.0" />
     <!-- Reverse proxy / gateway. Intended for future platform deployments. -->
     <PackageVersion Include="Yarp.ReverseProxy" Version="2.3.0" />
+    <!-- Core .NET packages used by Contract library -->
+    <PackageVersion Include="System.Text.Json" Version="$(DotNetVersion)" />
   </ItemGroup>
   <!-- ====================================================================
        3. Vertical-slice application
