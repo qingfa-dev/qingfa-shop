@@ -1,5 +1,5 @@
 // Assembly marker for Contract library
-namespace QingFa.Shop.Contract;
+namespace Contract;
 
 /// <summary>
 /// Marker type used to anchor the Contract assembly for scanning, testing, and DI registration.

@@ -1,5 +1,5 @@
 // Assembly marker for Infrastructure library
-namespace QingFa.Shop.Infrastructure;
+namespace Infrastructure;
 
 /// <summary>
 /// Marker type used to anchor the Infrastructure assembly for scanning, testing, and DI registration.

@@ -1,4 +1,5 @@
 using System.Reflection;
+
 using Xunit;
 
 namespace QingFa.Shop.Architecture.Tests;
@@ -16,11 +17,11 @@ namespace QingFa.Shop.Architecture.Tests;
 /// </remarks>
 public sealed class LayerArchitectureTests
 {
-    private static readonly Assembly CoreAssembly = typeof(QingFa.Shop.Core.AssemblyMarker).Assembly;
-    private static readonly Assembly ContractAssembly = typeof(QingFa.Shop.Contract.AssemblyMarker).Assembly;
-    private static readonly Assembly ApplicationAssembly = typeof(QingFa.Shop.Application.AssemblyMarker).Assembly;
-    private static readonly Assembly InfrastructureAssembly = typeof(QingFa.Shop.Infrastructure.AssemblyMarker).Assembly;
-    private static readonly Assembly ServiceDefaultsAssembly = typeof(QingFa.Shop.ServiceDefaults.AssemblyMarker).Assembly;
+    private static readonly Assembly CoreAssembly = typeof(Core.AssemblyMarker).Assembly;
+    private static readonly Assembly ContractAssembly = typeof(Contract.AssemblyMarker).Assembly;
+    private static readonly Assembly ApplicationAssembly = typeof(Application.AssemblyMarker).Assembly;
+    private static readonly Assembly InfrastructureAssembly = typeof(Infrastructure.AssemblyMarker).Assembly;
+    private static readonly Assembly ServiceDefaultsAssembly = typeof(ServiceDefaults.AssemblyMarker).Assembly;
     private static readonly Assembly WebApiAssembly = typeof(Web.Api.AssemblyMarker).Assembly;
 
     // Document layer dependency rules as tests

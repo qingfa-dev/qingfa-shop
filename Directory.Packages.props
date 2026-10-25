@@ -45,8 +45,8 @@
     <!-- Microsoft.Extensions.* "extra" libraries (Hybrid cache, resilience,
          service discovery) ship on their own version line. -->
     <ExtensionsVersion>10.11.0</ExtensionsVersion>
-    <!-- Must match Aspire.AppHost.Sdk in app/host/AppHost/AppHost.csproj. -->
-    <AspireVersion>13.6.2</AspireVersion>
+    <!-- Must match Aspire.AppHost.Sdk in app/AppHost/AppHost.csproj. -->
+    <AspireVersion>13.6.4</AspireVersion>
     <OpenTelemetryVersion>1.20.1</OpenTelemetryVersion>
   </PropertyGroup>
   <!-- ====================================================================
@@ -60,7 +60,7 @@
       release (2.13.0) is used instead of the absolute latest.
     -->
     <PackageVersion Include="Microsoft.OpenApi" Version="2.13.0" />
-    <PackageVersion Include="Scalar.AspNetCore" Version="2.18.2" />
+    <PackageVersion Include="Scalar.AspNetCore" Version="2.18.3" />
     <!-- Lightweight endpoint-routing abstraction. Only if the API adopts Carter. -->
     <PackageVersion Include="Carter" Version="10.0.0" />
     <!-- Reverse proxy / gateway. Intended for future platform deployments. -->
@@ -180,6 +180,13 @@
     <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.23.0" />
+    <!--
+      Security pin: MailKit -> MimeKit pulls this transitively. MimeKit 4.18.1
+      referenced 10.0.0, which carries GHSA-2fmv-rv2c-59x7 and
+      GHSA-846f-f764-76mx. MimeKit 4.18.2 references 10.0.13, and transitive
+      pinning keeps every graph on the patched servicing release.
+    -->
+    <PackageVersion Include="System.Security.Cryptography.Pkcs" Version="$(DotNetVersion)" />
     <!-- Google sign-in. -->
     <PackageVersion Include="Google.Apis.Auth" Version="1.77.0" />
     <!-- ECDSA implementation used by selected integrations. -->
@@ -206,7 +213,7 @@
     <PackageVersion Include="FluentEmail.SendGrid" Version="3.0.2" />
     <PackageVersion Include="FluentEmail.Smtp" Version="3.0.2" />
     <!-- Direct SMTP/MIME, when more control is needed than FluentEmail gives. -->
-    <PackageVersion Include="MailKit" Version="4.18.1" />
+    <PackageVersion Include="MailKit" Version="4.18.2" />
     <!-- SMS / communication provider. -->
     <PackageVersion Include="Sinch" Version="1.5.1" />
   </ItemGroup>
@@ -216,7 +223,7 @@
   <ItemGroup>
     <!-- S3-compatible object storage: member documents, receipts, exported
          reports, attachments, backups/artifacts. -->
-    <PackageVersion Include="AWSSDK.S3" Version="4.0.104.5" />
+    <PackageVersion Include="AWSSDK.S3" Version="4.0.104.6" />
     <!-- Subscription billing. Billing stays OUTSIDE the financial eShop ledger. -->
     <PackageVersion Include="Stripe.net" Version="53.0.0" />
     <!-- Image / document processing (the Linux native assets are needed for
@@ -255,13 +262,13 @@
       These instrumentation packages version independently of the core SDK,
       so they are pinned explicitly instead of using $(OpenTelemetryVersion).
     -->
-    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.20.0" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.20.0" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.20.0" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.AspNetCore" Version="1.20.1" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Http" Version="1.20.1" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.Runtime" Version="1.20.1" />
     <PackageVersion Include="Npgsql.OpenTelemetry" Version="10.0.3" />
     <!-- Pre-release only: no stable release exists yet. Revisit when stable ships. -->
-    <PackageVersion Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" Version="1.20.0-beta.1" />
-    <PackageVersion Include="OpenTelemetry.Instrumentation.StackExchangeRedis" Version="1.20.0-beta.1" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" Version="1.20.1-beta.1" />
+    <PackageVersion Include="OpenTelemetry.Instrumentation.StackExchangeRedis" Version="1.20.1-beta.1" />
   </ItemGroup>
   <!-- ====================================================================
        14. .NET Aspire
@@ -281,7 +288,7 @@
     <PackageVersion Include="Aspire.Npgsql.EntityFrameworkCore.PostgreSQL" Version="$(AspireVersion)" />
     <!--
       Community Toolkit packages ship on a slightly slower cadence than Aspire
-      itself (13.6.0 is the latest stable while Aspire is on 13.6.2).
+      itself (13.6.0 is the latest stable while Aspire is on 13.6.4).
     -->
     <PackageVersion Include="CommunityToolkit.Aspire.Hosting.PostgreSQL.Extensions" Version="13.6.0" />
     <PackageVersion Include="CommunityToolkit.Aspire.Hosting.PapercutSmtp" Version="13.6.0" />
@@ -315,7 +322,7 @@
     <!-- Assertions. AwesomeAssertions is the MIT-licensed continuation of the FluentAssertions 7.x line (8.x+ is commercially licensed). -->
     <PackageVersion Include="AwesomeAssertions" Version="9.6.0" />
     <PackageVersion Include="Moq" Version="4.21.0" />
-    <PackageVersion Include="PactNet" Version="3.0.0" />
+    <PackageVersion Include="PactNet" Version="3.0.2" />
   </ItemGroup>
   <!-- ====================================================================
        17. Integration testing
@@ -355,7 +362,7 @@
   <!-- ====================================================================
        19. Messaging / Wolverine (+ RabbitMQ transport)
        ====================================================================
-       Wolverine 6.51.2: latest stable on nuget.org, targets net10.0 + net9.0
+       Wolverine 6.52.0: latest stable on nuget.org, targets net10.0 + net9.0
        (verified via registration API dependencyGroups).
        EventDriven references WolverineFx (IMessageBus) + WolverineFx.RabbitMQ
        (host-side transport topology). SignalR server types (IHubContext<>)
@@ -365,7 +372,7 @@
        FrameworkReference instead of a package.
        ==================================================================== -->
   <ItemGroup>
-    <PackageVersion Include="WolverineFx" Version="6.51.2" />
-    <PackageVersion Include="WolverineFx.RabbitMQ" Version="6.51.2" />
+    <PackageVersion Include="WolverineFx" Version="6.52.0" />
+    <PackageVersion Include="WolverineFx.RabbitMQ" Version="6.52.0" />
   </ItemGroup>
 </Project>

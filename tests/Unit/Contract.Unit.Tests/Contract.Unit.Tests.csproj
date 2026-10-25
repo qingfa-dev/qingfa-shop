@@ -9,7 +9,7 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <ProjectReference Include="../../src/Contract/Contract.csproj" />
+    <ProjectReference Include="../../../src/Contract/Contract.csproj" />
   </ItemGroup>
 
   <ItemGroup>

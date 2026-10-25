@@ -1,4 +1,5 @@
 using System.Reflection;
+
 using Xunit;
 
 namespace QingFa.Shop.Architecture.Tests;
@@ -12,11 +13,11 @@ namespace QingFa.Shop.Architecture.Tests;
 /// </remarks>
 public sealed class NamingConventionTests
 {
-    private static readonly Assembly CoreAssembly = typeof(QingFa.Shop.Core.AssemblyMarker).Assembly;
-    private static readonly Assembly ContractAssembly = typeof(QingFa.Shop.Contract.AssemblyMarker).Assembly;
-    private static readonly Assembly ApplicationAssembly = typeof(QingFa.Shop.Application.AssemblyMarker).Assembly;
-    private static readonly Assembly InfrastructureAssembly = typeof(QingFa.Shop.Infrastructure.AssemblyMarker).Assembly;
-    private static readonly Assembly ServiceDefaultsAssembly = typeof(QingFa.Shop.ServiceDefaults.AssemblyMarker).Assembly;
+    private static readonly Assembly CoreAssembly = typeof(Core.AssemblyMarker).Assembly;
+    private static readonly Assembly ContractAssembly = typeof(Contract.AssemblyMarker).Assembly;
+    private static readonly Assembly ApplicationAssembly = typeof(Application.AssemblyMarker).Assembly;
+    private static readonly Assembly InfrastructureAssembly = typeof(Infrastructure.AssemblyMarker).Assembly;
+    private static readonly Assembly ServiceDefaultsAssembly = typeof(ServiceDefaults.AssemblyMarker).Assembly;
     private static readonly Assembly WebApiAssembly = typeof(Web.Api.AssemblyMarker).Assembly;
 
     private static readonly Assembly[] AllAssemblies =
@@ -29,11 +30,32 @@ public sealed class NamingConventionTests
         WebApiAssembly
     ];
 
+    // Enforce: naming rules apply to first-party types only. Source generators
+    // (Wolverine/JasperFx) emit types into the same assembly, and those are not
+    // authored under this convention.
+    private static readonly string[] FirstPartyNamespaces =
+    [
+        "Core",
+        "Contract",
+        "Application",
+        "Infrastructure",
+        "ServiceDefaults",
+        "Web.Api"
+    ];
+
+    private static readonly Type[] ProjectTypes = AllAssemblies
+        .SelectMany(a => a.GetTypes())
+        .Where(t => t.Namespace is not null
+                    && (FirstPartyNamespaces.Contains(t.Namespace)
+                        || t.Namespace.StartsWith("QingFa.Shop", StringComparison.Ordinal))
+                    && !t.IsDefined(typeof(System.Runtime.CompilerServices.CompilerGeneratedAttribute), inherit: false))
+        .ToArray();
+
     // --- C# types follow PascalCase ---
     [Fact]
     public void AllTypes_ShouldBePascalCase()
     {
-        var allTypes = AllAssemblies.SelectMany(a => a.GetTypes());
+        var allTypes = ProjectTypes;
         var nonPascalCase = allTypes
             .Where(t => t.IsPublic || t.IsNestedPublic)
             .Where(t => !IsPascalCase(t.Name))
@@ -46,8 +68,7 @@ public sealed class NamingConventionTests
     [Fact]
     public void Interfaces_ShouldUseInterfaceSuffix()
     {
-        var interfaces = AllAssemblies
-            .SelectMany(a => a.GetTypes())
+        var interfaces = ProjectTypes
             .Where(t => t.IsInterface)
             .Where(t => !IsBclInterface(t))
             .ToList();
@@ -63,9 +84,8 @@ public sealed class NamingConventionTests
     [Fact]
     public void AbstractClasses_ShouldUseBaseSuffix()
     {
-        var abstractClasses = AllAssemblies
-            .SelectMany(a => a.GetTypes())
-            .Where(t => t.IsAbstract && t.IsClass)
+        var abstractClasses = ProjectTypes
+            .Where(t => t.IsAbstract && t.IsClass && !t.IsSealed)
             .ToList();
 
         var nonCompliant = abstractClasses
@@ -79,8 +99,7 @@ public sealed class NamingConventionTests
     [Fact]
     public void Validators_ShouldUseValidatorSuffix()
     {
-        var validators = AllAssemblies
-            .SelectMany(a => a.GetTypes())
+        var validators = ProjectTypes
             .Where(t => t.Name.EndsWith("Validator"))
             .ToList();
 
@@ -95,8 +114,7 @@ public sealed class NamingConventionTests
     [Fact]
     public void Mappers_ShouldUseMapperSuffix()
     {
-        var mappers = AllAssemblies
-            .SelectMany(a => a.GetTypes())
+        var mappers = ProjectTypes
             .Where(t => t.Name.EndsWith("Mapper"))
             .ToList();
 
@@ -111,8 +129,7 @@ public sealed class NamingConventionTests
     [Fact]
     public void Policies_ShouldUsePolicySuffix()
     {
-        var policies = AllAssemblies
-            .SelectMany(a => a.GetTypes())
+        var policies = ProjectTypes
             .Where(t => t.Name.EndsWith("Policy"))
             .ToList();
 
@@ -127,8 +144,7 @@ public sealed class NamingConventionTests
     [Fact]
     public void Specifications_ShouldUseSpecificationSuffix()
     {
-        var specs = AllAssemblies
-            .SelectMany(a => a.GetTypes())
+        var specs = ProjectTypes
             .Where(t => t.Name.EndsWith("Specification"))
             .ToList();
 
@@ -143,8 +159,7 @@ public sealed class NamingConventionTests
     [Fact]
     public void Handlers_ShouldUseHandlerSuffix()
     {
-        var handlers = AllAssemblies
-            .SelectMany(a => a.GetTypes())
+        var handlers = ProjectTypes
             .Where(t => t.Name.EndsWith("Handler"))
             .ToList();
 
@@ -159,8 +174,7 @@ public sealed class NamingConventionTests
     [Fact]
     public void Factories_ShouldUseFactorySuffix()
     {
-        var factories = AllAssemblies
-            .SelectMany(a => a.GetTypes())
+        var factories = ProjectTypes
             .Where(t => t.Name.EndsWith("Factory"))
             .ToList();
 
@@ -175,8 +189,7 @@ public sealed class NamingConventionTests
     [Fact]
     public void Builders_ShouldUseBuilderSuffix()
     {
-        var builders = AllAssemblies
-            .SelectMany(a => a.GetTypes())
+        var builders = ProjectTypes
             .Where(t => t.Name.EndsWith("Builder"))
             .ToList();
 
@@ -191,8 +204,7 @@ public sealed class NamingConventionTests
     [Fact]
     public void Extensions_ShouldUseExtensionSuffix()
     {
-        var extensions = AllAssemblies
-            .SelectMany(a => a.GetTypes())
+        var extensions = ProjectTypes
             .Where(t => t.Name.EndsWith("Extension"))
             .ToList();
 
@@ -207,8 +219,7 @@ public sealed class NamingConventionTests
     [Fact]
     public void AssemblyMarkers_ShouldBeNamedAssemblyMarker()
     {
-        var markers = AllAssemblies
-            .SelectMany(a => a.GetTypes())
+        var markers = ProjectTypes
             .Where(t => t.Name == "AssemblyMarker")
             .ToList();
 
@@ -221,8 +232,7 @@ public sealed class NamingConventionTests
     {
         var vagueNames = new[] { "Helper", "Util", "Manager", "Service", "Provider", "Processor", "Handler" };
 
-        var allTypes = AllAssemblies
-            .SelectMany(a => a.GetTypes())
+        var allTypes = ProjectTypes
             .Where(t => t.IsClass && !t.IsAbstract)
             .ToList();
 
@@ -237,8 +247,7 @@ public sealed class NamingConventionTests
     [Fact]
     public void Implementations_ShouldNotUseImplSuffix()
     {
-        var allTypes = AllAssemblies
-            .SelectMany(a => a.GetTypes())
+        var allTypes = ProjectTypes
             .Where(t => t.Name.EndsWith("Impl"))
             .ToList();
 
