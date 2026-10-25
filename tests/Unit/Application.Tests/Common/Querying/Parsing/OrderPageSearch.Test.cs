@@ -5,6 +5,7 @@ using Application.Common.Querying.Sorting;
 
 namespace Application.Tests.Common.Querying.Parsing;
 
+
 public sealed class OrderPageSearchTest
 {
     private sealed class Target
@@ -36,7 +37,7 @@ public sealed class OrderPageSearchTest
         return map.Value;
     }
 
-    [Fact]
+    [Fact(DisplayName = "Order By Should Parse Direction And Defaults")]
     public void OrderBy_ShouldParseDirectionAndDefaults()
     {
         Result<Query<Target>> result = QueryParser.Parse(
@@ -48,7 +49,7 @@ public sealed class OrderPageSearchTest
         result.Value.OrderBy[1].Direction.Should().Be(SortDirection.Ascending);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Order By Should Parse Ascending Suffix")]
     public void OrderBy_ShouldParseAscendingSuffix()
     {
         Result<Query<Target>> result = QueryParser.Parse(
@@ -60,7 +61,7 @@ public sealed class OrderPageSearchTest
         result.Value.OrderBy[1].Direction.Should().Be(SortDirection.Ascending);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Order By Should Parse Descending Alias")]
     public void OrderBy_ShouldParseDescendingAlias()
     {
         Result<Query<Target>> result = QueryParser.Parse(
@@ -70,7 +71,7 @@ public sealed class OrderPageSearchTest
         result.Value.OrderBy.Single().Direction.Should().Be(SortDirection.Descending);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Order By Should Parse Null State")]
     public void OrderBy_ShouldParseNullState()
     {
         Result<Query<Target>> result = QueryParser.Parse(
@@ -82,7 +83,7 @@ public sealed class OrderPageSearchTest
         sort.Direction.Should().Be(SortDirection.Descending);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Order By Should Parse Not Has Value Null State")]
     public void OrderBy_ShouldParseNotHasValueNullState()
     {
         Result<Query<Target>> result = QueryParser.Parse(
@@ -94,7 +95,7 @@ public sealed class OrderPageSearchTest
         sort.Direction.Should().Be(SortDirection.Ascending);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Order By When Exceeding Max Sort Fields Should Fail")]
     public void OrderBy_WhenExceedingMaxSortFields_ShouldFail()
     {
         string orderBy = string.Join(',', Enumerable.Repeat("name", 9));
@@ -106,7 +107,7 @@ public sealed class OrderPageSearchTest
         result.Errors.Should().Contain(e => e.Code == "Query.Order.Syntax");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Order By When Direction Is Unknown Should Fail")]
     public void OrderBy_WhenDirectionIsUnknown_ShouldFail()
     {
         Result<Query<Target>> result = QueryParser.Parse(
@@ -116,7 +117,7 @@ public sealed class OrderPageSearchTest
         result.Errors.Should().Contain(e => e.Code == "Query.Order.Syntax");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Order By When Field Is Not Mapped Should Fail")]
     public void OrderBy_WhenFieldIsNotMapped_ShouldFail()
     {
         Result<Query<Target>> result = QueryParser.Parse(
@@ -126,7 +127,7 @@ public sealed class OrderPageSearchTest
         result.Errors.Should().Contain(e => e.Code == "Query.Field.NotMapped");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Order By When Field Is Not Sortable Should Fail")]
     public void OrderBy_WhenFieldIsNotSortable_ShouldFail()
     {
         Result<Query<Target>> result = QueryParser.Parse(
@@ -136,7 +137,7 @@ public sealed class OrderPageSearchTest
         result.Errors.Should().Contain(e => e.Code == "Query.Field.NotSortable");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Order By When Null State Is Invalid Should Fail")]
     public void OrderBy_WhenNullStateIsInvalid_ShouldFail()
     {
         Result<Query<Target>> result = QueryParser.Parse(
@@ -146,7 +147,7 @@ public sealed class OrderPageSearchTest
         result.Errors.Should().Contain(e => e.Code == "Query.Order.Syntax");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Page Should Use Defaults")]
     public void Page_ShouldUseDefaults()
     {
         Result<Query<Target>> result = QueryParser.Parse(new QueryParameters(), Map());
@@ -157,7 +158,7 @@ public sealed class OrderPageSearchTest
         result.Value.Page.PageSize.Should().Be(20);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Page When Out Of Range Should Fail")]
     [InlineData(0, 20, "Query.Page.Invalid")]
     [InlineData(1, 0, "Query.PageSize.Invalid")]
     [InlineData(1, 201, "Query.PageSize.Invalid")]
@@ -170,7 +171,7 @@ public sealed class OrderPageSearchTest
         result.Errors.Should().Contain(e => e.Code == expectedCode);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Order By When Exactly At The Field Limit Should Succeed")]
     public void OrderBy_WhenExactlyAtTheFieldLimit_ShouldSucceed()
     {
         // Boundary: the limit is inclusive.
@@ -183,7 +184,7 @@ public sealed class OrderPageSearchTest
         result.Value.OrderBy.Should().HaveCount(8);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Page When Exactly At The Max Size Should Succeed")]
     public void Page_WhenExactlyAtTheMaxSize_ShouldSucceed()
     {
         // Boundary: 200 is allowed, 201 is not.
@@ -195,7 +196,7 @@ public sealed class OrderPageSearchTest
         result.Value.Page!.PageSize.Should().Be(200);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Search When Exactly At The Length Limit Should Succeed")]
     public void Search_WhenExactlyAtTheLengthLimit_ShouldSucceed()
     {
         // Boundary: the limit is inclusive.
@@ -209,7 +210,7 @@ public sealed class OrderPageSearchTest
         result.Value.Search!.Query.Should().Be(search);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Search Should Be Trimmed")]
     public void Search_ShouldBeTrimmed()
     {
         Result<Query<Target>> result = QueryParser.Parse(
@@ -220,7 +221,7 @@ public sealed class OrderPageSearchTest
         result.Value.Search!.Query.Should().Be("hello");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Search When No Searchable Field Should Fail")]
     public void Search_WhenNoSearchableField_ShouldFail()
     {
         QueryMap<Target> map = Build(
@@ -233,7 +234,7 @@ public sealed class OrderPageSearchTest
         result.Errors.Should().Contain(e => e.Code == "Query.Search.NotConfigured");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Search When Too Long Should Fail")]
     public void Search_WhenTooLong_ShouldFail()
     {
         Result<Query<Target>> result = QueryParser.Parse(
@@ -243,7 +244,7 @@ public sealed class OrderPageSearchTest
         result.Errors.Should().Contain(e => e.Code == "Query.Search.TooLong");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Order By When Direction Is Unknown Suffix Should Fail")]
     public void OrderBy_WhenDirectionIsUnknownSuffix_ShouldFail()
     {
         Result<Query<Target>> result = QueryParser.Parse(
@@ -253,7 +254,7 @@ public sealed class OrderPageSearchTest
         result.Errors.Should().Contain(e => e.Code == "Query.Order.Syntax");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Order By When Null State On Non Nullable Should Fail")]
     public void OrderBy_WhenNullStateOnNonNullable_ShouldFail()
     {
         Result<Query<Target>> result = QueryParser.Parse(
@@ -263,7 +264,7 @@ public sealed class OrderPageSearchTest
         result.Errors.Should().Contain(e => e.Code == "Query.Order.Syntax");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Search When Empty String Should Return Null")]
     public void Search_WhenEmptyString_ShouldReturnNull()
     {
         Result<Query<Target>> result = QueryParser.Parse(
@@ -273,7 +274,7 @@ public sealed class OrderPageSearchTest
         result.Value.Search.Should().BeNull();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Search When Whitespace Should Return Null")]
     public void Search_WhenWhitespace_ShouldReturnNull()
     {
         Result<Query<Target>> result = QueryParser.Parse(
@@ -283,7 +284,7 @@ public sealed class OrderPageSearchTest
         result.Value.Search.Should().BeNull();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Search With Fields Should Parse Fields")]
     public void Search_WithFields_ShouldParseFields()
     {
         Result<Query<Target>> result = QueryParser.Parse(
@@ -294,7 +295,7 @@ public sealed class OrderPageSearchTest
         result.Value.Search!.Fields.Should().Equal("name");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Search With Multiple Fields Should Parse Fields")]
     public void Search_WithMultipleFields_ShouldParseFields()
     {
         // Create a map with multiple searchable fields
@@ -311,7 +312,7 @@ public sealed class OrderPageSearchTest
         result.Value.Search!.Fields.Should().Equal("name", "hidden");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Search With Fields Trims Whitespace")]
     public void Search_WithFields_TrimsWhitespace()
     {
         QueryMap<Target> map = Build(
@@ -327,7 +328,7 @@ public sealed class OrderPageSearchTest
         result.Value.Search!.Fields.Should().Equal("name", "hidden");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Search With Unknown Field Should Fail")]
     public void Search_WithUnknownField_ShouldFail()
     {
         Result<Query<Target>> result = QueryParser.Parse(
@@ -337,7 +338,7 @@ public sealed class OrderPageSearchTest
         result.Errors.Should().Contain(e => e.Code == "Query.Field.NotMapped");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Search With Non Searchable Field Should Fail")]
     public void Search_WithNonSearchableField_ShouldFail()
     {
         // score is not marked as Searchable
@@ -348,7 +349,7 @@ public sealed class OrderPageSearchTest
         result.Errors.Should().Contain(e => e.Code == "Query.Search.NotConfigured");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Search With Mode Should Parse Mode")]
     public void Search_WithMode_ShouldParseMode()
     {
         Result<Query<Target>> result = QueryParser.Parse(
@@ -358,7 +359,7 @@ public sealed class OrderPageSearchTest
         result.Value.Search!.Mode.Should().Be(SearchMode.Exact);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Search With Term Logic Should Parse Term Logic")]
     public void Search_WithTermLogic_ShouldParseTermLogic()
     {
         Result<Query<Target>> result = QueryParser.Parse(
@@ -368,7 +369,7 @@ public sealed class OrderPageSearchTest
         result.Value.Search!.TermLogic.Should().Be(SearchTermLogic.Or);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Search With Case Insensitive Should Parse Case Insensitive")]
     public void Search_WithCaseInsensitive_ShouldParseCaseInsensitive()
     {
         Result<Query<Target>> result = QueryParser.Parse(
@@ -378,7 +379,7 @@ public sealed class OrderPageSearchTest
         result.Value.Search!.CaseInsensitive.Should().BeFalse();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Search With Language Should Be Accepted But Not Stored In Base")]
     public void Search_WithLanguage_ShouldBeAcceptedButNotStoredInBase()
     {
         // Language is a full-text option; base SearchRequest doesn't store it.
@@ -390,7 +391,7 @@ public sealed class OrderPageSearchTest
         result.Value.Search.Should().NotBeNull();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Search With Include Rank Should Be Accepted But Not Stored In Base")]
     public void Search_WithIncludeRank_ShouldBeAcceptedButNotStoredInBase()
     {
         // IncludeRank is a full-text option; base SearchRequest doesn't store it.
@@ -401,7 +402,7 @@ public sealed class OrderPageSearchTest
         result.Value.Search.Should().NotBeNull();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Search With Min Score Should Be Accepted But Not Stored In Base")]
     public void Search_WithMinScore_ShouldBeAcceptedButNotStoredInBase()
     {
         // MinScore is a full-text option; base SearchRequest doesn't store it.
@@ -412,7 +413,7 @@ public sealed class OrderPageSearchTest
         result.Value.Search.Should().NotBeNull();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Search With Min Score Out Of Range Should Fail")]
     public void Search_WithMinScoreOutOfRange_ShouldFail()
     {
         Result<Query<Target>> result = QueryParser.Parse(
@@ -422,7 +423,7 @@ public sealed class OrderPageSearchTest
         result.Errors.Should().Contain(e => e.Code == "Query.Search.InvalidMinScore");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Search With Negative Min Score Should Fail")]
     public void Search_WithNegativeMinScore_ShouldFail()
     {
         Result<Query<Target>> result = QueryParser.Parse(
@@ -432,7 +433,7 @@ public sealed class OrderPageSearchTest
         result.Errors.Should().Contain(e => e.Code == "Query.Search.InvalidMinScore");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Search With Language Too Long Should Fail")]
     public void Search_WithLanguageTooLong_ShouldFail()
     {
         string longLanguage = new('a', 11); // Max is 10
@@ -443,7 +444,7 @@ public sealed class OrderPageSearchTest
         result.Errors.Should().Contain(e => e.Code == "Query.Search.LanguageTooLong");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Search With Too Many Fields Should Fail")]
     public void Search_WithTooManyFields_ShouldFail()
     {
         // Create map with many searchable fields (more than MaxFields=8)
@@ -468,7 +469,7 @@ public sealed class OrderPageSearchTest
         result.Errors.Should().Contain(e => e.Code == "Query.Search.TooManyFields");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Search With Duplicate Fields Should Deduplicate")]
     public void Search_WithDuplicateFields_ShouldDeduplicate()
     {
         QueryMap<Target> map = Build(
@@ -484,7 +485,7 @@ public sealed class OrderPageSearchTest
         result.Value.Search!.Fields.Should().Equal("name", "name", "hidden"); // Currently allows duplicates
     }
 
-    [Fact]
+    [Fact(DisplayName = "Search With Too Many Terms Should Fail")]
     public void Search_WithTooManyTerms_ShouldFail()
     {
         // Default MaxSearchTerms is 10

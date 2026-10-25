@@ -2,9 +2,10 @@ using Application.Common.Querying.Mapping;
 
 namespace Application.Tests.Common.Querying.Mapping;
 
+
 public sealed class QueryValueConverterTest
 {
-    [Fact]
+    [Fact(DisplayName = "Delegate Can Be Created From Lambda")]
     public void Delegate_CanBeCreatedFromLambda()
     {
         QueryValueConverter converter = raw =>
@@ -16,7 +17,7 @@ public sealed class QueryValueConverterTest
         result.Value.Value.Should().Be(42);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Delegate Can Return Failure")]
     public void Delegate_CanReturnFailure()
     {
         QueryValueConverter converter = raw =>
@@ -29,7 +30,7 @@ public sealed class QueryValueConverterTest
             .Which.Code.Should().Be("Test.Invalid");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Delegate With Complex Logic Works")]
     public void Delegate_WithComplexLogic_Works()
     {
         QueryValueConverter converter = raw =>
@@ -47,7 +48,7 @@ public sealed class QueryValueConverterTest
         failure.IsFailure.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Null Converter Throws When Invoked")]
     public void NullConverter_ThrowsWhenInvoked()
     {
         QueryValueConverter? converter = null;

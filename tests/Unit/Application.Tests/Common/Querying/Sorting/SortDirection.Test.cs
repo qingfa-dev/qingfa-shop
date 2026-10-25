@@ -2,9 +2,10 @@ using Application.Common.Querying.Sorting;
 
 namespace Application.Tests.Common.Querying.Sorting;
 
+
 public sealed class SortDirectionTest
 {
-    [Theory]
+    [Theory(DisplayName = "Enum Has Expected Values")]
     [InlineData(SortDirection.Ascending)]
     [InlineData(SortDirection.Descending)]
     public void Enum_HasExpectedValues(SortDirection direction)
@@ -12,26 +13,26 @@ public sealed class SortDirectionTest
         Enum.IsDefined(direction).Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Ascending Has Value Zero")]
     public void Ascending_HasValueZero()
     {
         ((int)SortDirection.Ascending).Should().Be(0);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Descending Has Value One")]
     public void Descending_HasValueOne()
     {
         ((int)SortDirection.Descending).Should().Be(1);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse Valid String Returns Correct Enum")]
     public void Parse_ValidString_ReturnsCorrectEnum()
     {
         Enum.Parse<SortDirection>("Ascending", ignoreCase: true).Should().Be(SortDirection.Ascending);
         Enum.Parse<SortDirection>("Descending", ignoreCase: true).Should().Be(SortDirection.Descending);
     }
 
-    [Fact]
+    [Fact(DisplayName = "To String Returns Expected Names")]
     public void ToString_ReturnsExpectedNames()
     {
         SortDirection.Ascending.ToString().Should().Be("Ascending");

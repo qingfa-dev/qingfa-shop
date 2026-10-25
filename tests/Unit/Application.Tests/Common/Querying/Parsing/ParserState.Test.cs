@@ -4,6 +4,7 @@ using Application.Common.Querying.Parsing;
 
 namespace Application.Tests.Common.Querying.Parsing;
 
+
 public sealed class ParserStateTest
 {
     private sealed class Target
@@ -24,7 +25,7 @@ public sealed class ParserStateTest
         return map.Value;
     }
 
-    [Fact]
+    [Fact(DisplayName = "Constructor Initializes Counters To Zero")]
     public void Constructor_InitializesCountersToZero()
     {
         var state = new ParserState<Target>(Map(), QueryParseLimits.Default);
@@ -33,7 +34,7 @@ public sealed class ParserStateTest
         state.Depth.Should().Be(0);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Field With Mapped Name Returns Field")]
     public void Field_WithMappedName_ReturnsField()
     {
         var state = new ParserState<Target>(Map(), QueryParseLimits.Default);
@@ -44,7 +45,7 @@ public sealed class ParserStateTest
         result.Value.Name.Should().Be("name");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Field With Unmapped Name Returns Failure")]
     public void Field_WithUnmappedName_ReturnsFailure()
     {
         var state = new ParserState<Target>(Map(), QueryParseLimits.Default);
@@ -55,7 +56,7 @@ public sealed class ParserStateTest
         result.Errors.Should().Contain(e => e.Code == "Query.Field.NotMapped");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Enter Depth Within Limit Returns Success")]
     public void EnterDepth_WithinLimit_ReturnsSuccess()
     {
         var state = new ParserState<Target>(Map(), QueryParseLimits.Default);
@@ -66,7 +67,7 @@ public sealed class ParserStateTest
         state.Depth.Should().Be(1);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Enter Depth At Limit Returns Success")]
     public void EnterDepth_AtLimit_ReturnsSuccess()
     {
         var limits = new QueryParseLimits { MaxFilterDepth = 3 };
@@ -80,7 +81,7 @@ public sealed class ParserStateTest
         state.Depth.Should().Be(3);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Enter Depth Exceeds Limit Returns Failure")]
     public void EnterDepth_ExceedsLimit_ReturnsFailure()
     {
         var limits = new QueryParseLimits { MaxFilterDepth = 2 };
@@ -94,7 +95,7 @@ public sealed class ParserStateTest
         result.Errors.Should().Contain(e => e.Code == "Query.Filter.DepthExceeded");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Exit Depth Decrements Counter")]
     public void ExitDepth_DecrementsCounter()
     {
         var state = new ParserState<Target>(Map(), QueryParseLimits.Default);
@@ -106,7 +107,7 @@ public sealed class ParserStateTest
         state.Depth.Should().Be(1);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Add Condition Within Limit Returns Success")]
     public void AddCondition_WithinLimit_ReturnsSuccess()
     {
         var state = new ParserState<Target>(Map(), QueryParseLimits.Default);
@@ -117,7 +118,7 @@ public sealed class ParserStateTest
         state.Conditions.Should().Be(1);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Add Condition At Limit Returns Success")]
     public void AddCondition_AtLimit_ReturnsSuccess()
     {
         var limits = new QueryParseLimits { MaxConditions = 3 };
@@ -131,7 +132,7 @@ public sealed class ParserStateTest
         state.Conditions.Should().Be(3);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Add Condition Exceeds Limit Returns Failure")]
     public void AddCondition_ExceedsLimit_ReturnsFailure()
     {
         var limits = new QueryParseLimits { MaxConditions = 2 };
@@ -145,7 +146,7 @@ public sealed class ParserStateTest
         result.Errors.Should().Contain(e => e.Code == "Query.Filter.TooManyConditions");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Options Are Accessible")]
     public void Options_AreAccessible()
     {
         var limits = new QueryParseLimits { MaxFilterLength = 100 };
@@ -154,7 +155,7 @@ public sealed class ParserStateTest
         state.Options.MaxFilterLength.Should().Be(100);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Map Is Accessible")]
     public void Map_IsAccessible()
     {
         var map = Map();

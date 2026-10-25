@@ -2,9 +2,10 @@ using Application.Common.Querying.Aggregation;
 
 namespace Application.Tests.Common.Querying.Aggregation;
 
+
 public sealed class AggregateSpecTest
 {
-    [Fact]
+    [Fact(DisplayName = "Constructor With All Parameters Sets Properties")]
     public void Constructor_WithAllParameters_SetsProperties()
     {
         var spec = new AggregateSpec(AggregateFunction.Sum, "score", "sum(score)");
@@ -14,7 +15,7 @@ public sealed class AggregateSpecTest
         spec.Alias.Should().Be("sum(score)");
     }
 
-    [Theory]
+    [Theory(DisplayName = "Constructor All Functions All Valid")]
     [InlineData(AggregateFunction.Sum, "score", "sum(score)")]
     [InlineData(AggregateFunction.Average, "score", "avg(score)")]
     [InlineData(AggregateFunction.Minimum, "score", "min(score)")]
@@ -30,7 +31,7 @@ public sealed class AggregateSpecTest
         spec.Alias.Should().Be(alias);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Record Equality Same Values Are Equal")]
     public void RecordEquality_SameValues_AreEqual()
     {
         var s1 = new AggregateSpec(AggregateFunction.Sum, "score", "sum(score)");
@@ -39,7 +40,7 @@ public sealed class AggregateSpecTest
         s1.Should().Be(s2);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Record Equality Different Values Are Not Equal")]
     [InlineData(AggregateFunction.Sum, "score", "sum(score)", AggregateFunction.Average, "score", "avg(score)")]
     [InlineData(AggregateFunction.Sum, "score", "sum(score)", AggregateFunction.Sum, "name", "sum(name)")]
     [InlineData(AggregateFunction.Sum, "score", "sum(score)", AggregateFunction.Sum, "score", "total")]
@@ -53,7 +54,7 @@ public sealed class AggregateSpecTest
         s1.Should().NotBe(s2);
     }
 
-    [Fact]
+    [Fact(DisplayName = "With Expression Creates New Record With Changes")]
     public void WithExpression_CreatesNewRecordWithChanges()
     {
         var original = new AggregateSpec(AggregateFunction.Sum, "score", "sum(score)");
@@ -63,7 +64,7 @@ public sealed class AggregateSpecTest
         original.Function.Should().Be(AggregateFunction.Sum);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Deconstruction Works Correctly")]
     public void Deconstruction_WorksCorrectly()
     {
         var spec = new AggregateSpec(AggregateFunction.Sum, "score", "sum(score)");
@@ -74,7 +75,7 @@ public sealed class AggregateSpecTest
         alias.Should().Be("sum(score)");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Property Getters All Accessible")]
     public void PropertyGetters_AllAccessible()
     {
         var spec = new AggregateSpec(AggregateFunction.Sum, "score", "sum(score)");

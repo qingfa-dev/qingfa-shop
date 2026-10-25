@@ -1,10 +1,11 @@
 using Application.Common.Querying.Mapping;
 
 namespace Application.Tests.Common.Querying.Mapping;
+using Xunit;
 
 public sealed class QueryValueTest
 {
-    [Fact]
+    [Fact(DisplayName = "Constructor With Null Value Creates Wrapper")]
     public void Constructor_WithNullValue_CreatesWrapper()
     {
         var value = new QueryValue(null);
@@ -12,7 +13,7 @@ public sealed class QueryValueTest
         value.Value.Should().BeNull();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Constructor With String Value Creates Wrapper")]
     public void Constructor_WithStringValue_CreatesWrapper()
     {
         var value = new QueryValue("hello");
@@ -20,7 +21,7 @@ public sealed class QueryValueTest
         value.Value.Should().Be("hello");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Constructor With Int Value Creates Wrapper")]
     public void Constructor_WithIntValue_CreatesWrapper()
     {
         var value = new QueryValue(42);
@@ -28,7 +29,7 @@ public sealed class QueryValueTest
         value.Value.Should().Be(42);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Constructor With Guid Value Creates Wrapper")]
     public void Constructor_WithGuidValue_CreatesWrapper()
     {
         var guid = Guid.NewGuid();
@@ -37,7 +38,7 @@ public sealed class QueryValueTest
         value.Value.Should().Be(guid);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Record Equality Same Null Values Are Equal")]
     public void RecordEquality_SameNullValues_AreEqual()
     {
         var v1 = new QueryValue((object?)null);
@@ -46,7 +47,7 @@ public sealed class QueryValueTest
         v1.Should().Be(v2);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Record Equality Same String Values Are Equal")]
     public void RecordEquality_SameStringValues_AreEqual()
     {
         var v1 = new QueryValue("hello");
@@ -55,7 +56,7 @@ public sealed class QueryValueTest
         v1.Should().Be(v2);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Record Equality Different Values Are Not Equal")]
     public void RecordEquality_DifferentValues_AreNotEqual()
     {
         var v1 = new QueryValue("hello");
@@ -64,7 +65,7 @@ public sealed class QueryValueTest
         v1.Should().NotBe(v2);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Record Equality Null Vs Non Null Are Not Equal")]
     public void RecordEquality_NullVsNonNull_AreNotEqual()
     {
         var v1 = new QueryValue((object?)null);
@@ -73,7 +74,7 @@ public sealed class QueryValueTest
         v1.Should().NotBe(v2);
     }
 
-    [Fact]
+    [Fact(DisplayName = "With Expression Creates New Record With Changes")]
     public void WithExpression_CreatesNewRecordWithChanges()
     {
         var original = new QueryValue("hello");
@@ -83,7 +84,7 @@ public sealed class QueryValueTest
         original.Value.Should().Be("hello");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Deconstruction Works Correctly")]
     public void Deconstruction_WorksCorrectly()
     {
         var value = new QueryValue(42);

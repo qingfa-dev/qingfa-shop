@@ -5,7 +5,7 @@ namespace Application.Tests.Common.Querying;
 
 public sealed class QueryParametersTest
 {
-    [Fact]
+    [Fact(DisplayName = "QueryParameters: default constructor sets all properties to null")]
     public void Default_AllPropertiesNull()
     {
         var parameters = new QueryParameters();
@@ -26,7 +26,7 @@ public sealed class QueryParametersTest
         parameters.Aggregate.Should().BeNull();
     }
 
-    [Theory]
+    [Theory(DisplayName = "Filter Accepts Valid String")]
     [InlineData("name=test")]
     [InlineData("name=test,score>10")]
     [InlineData("(name=a|name=b),score>5")]
@@ -37,7 +37,7 @@ public sealed class QueryParametersTest
         parameters.Filter.Should().Be(filter);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Order By Accepts Valid String")]
     [InlineData("name desc")]
     [InlineData("name asc,score desc")]
     [InlineData("-name")]
@@ -49,7 +49,7 @@ public sealed class QueryParametersTest
         parameters.OrderBy.Should().Be(orderBy);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Page Accepts Positive Integer")]
     [InlineData(1)]
     [InlineData(10)]
     [InlineData(100)]
@@ -60,7 +60,7 @@ public sealed class QueryParametersTest
         parameters.Page.Should().Be(page);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Page Size Accepts Positive Integer")]
     [InlineData(10)]
     [InlineData(50)]
     [InlineData(200)]
@@ -71,7 +71,7 @@ public sealed class QueryParametersTest
         parameters.PageSize.Should().Be(pageSize);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Search Accepts Valid String")]
     [InlineData("search term")]
     [InlineData("hello world")]
     [InlineData("exact")]
@@ -82,7 +82,7 @@ public sealed class QueryParametersTest
         parameters.Search.Should().Be(search);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Search Fields Accepts Comma Separated Fields")]
     [InlineData("name")]
     [InlineData("name,description")]
     [InlineData("name, description , other")]
@@ -93,7 +93,7 @@ public sealed class QueryParametersTest
         parameters.SearchFields.Should().Be(fields);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Search Mode Accepts All Enum Values")]
     [InlineData(SearchMode.Contains)]
     [InlineData(SearchMode.StartsWith)]
     [InlineData(SearchMode.Exact)]
@@ -106,7 +106,7 @@ public sealed class QueryParametersTest
         parameters.SearchMode.Should().Be(mode);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Search Term Logic Accepts All Enum Values")]
     [InlineData(SearchTermLogic.And)]
     [InlineData(SearchTermLogic.Or)]
     public void SearchTermLogic_AcceptsAllEnumValues(SearchTermLogic logic)
@@ -116,7 +116,7 @@ public sealed class QueryParametersTest
         parameters.SearchTermLogic.Should().Be(logic);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Search Case Insensitive Accepts Boolean")]
     [InlineData(true)]
     [InlineData(false)]
     public void SearchCaseInsensitive_AcceptsBoolean(bool value)
@@ -126,7 +126,7 @@ public sealed class QueryParametersTest
         parameters.SearchCaseInsensitive.Should().Be(value);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Search Language Accepts Valid String")]
     [InlineData("en")]
     [InlineData("de")]
     [InlineData("zh-CN")]
@@ -137,7 +137,7 @@ public sealed class QueryParametersTest
         parameters.SearchLanguage.Should().Be(language);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Search Min Score Accepts Valid Range")]
     [InlineData(0.0)]
     [InlineData(0.5)]
     [InlineData(1.0)]
@@ -148,7 +148,7 @@ public sealed class QueryParametersTest
         parameters.SearchMinScore.Should().Be(score);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Select Accepts Valid Projection")]
     [InlineData("name")]
     [InlineData("name as title")]
     [InlineData("name,score as points")]
@@ -159,7 +159,7 @@ public sealed class QueryParametersTest
         parameters.Select.Should().Be(select);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Group By Accepts Valid Fields")]
     [InlineData("name")]
     [InlineData("name,category")]
     public void GroupBy_AcceptsValidFields(string groupBy)
@@ -169,7 +169,7 @@ public sealed class QueryParametersTest
         parameters.GroupBy.Should().Be(groupBy);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Aggregate Accepts Valid Expressions")]
     [InlineData("sum(score)")]
     [InlineData("count(name)")]
     [InlineData("avg(score),max(score)")]
@@ -180,7 +180,7 @@ public sealed class QueryParametersTest
         parameters.Aggregate.Should().Be(aggregate);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Record Equality Same Values Are Equal")]
     public void RecordEquality_SameValues_AreEqual()
     {
         var p1 = new QueryParameters
@@ -221,7 +221,7 @@ public sealed class QueryParametersTest
         p1.Should().Be(p2);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Record Equality Different Values Are Not Equal")]
     public void RecordEquality_DifferentValues_AreNotEqual()
     {
         var p1 = new QueryParameters { Filter = "name=a" };

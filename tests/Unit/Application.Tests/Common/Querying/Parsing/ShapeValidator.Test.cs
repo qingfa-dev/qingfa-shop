@@ -5,9 +5,10 @@ using Application.Common.Querying.Parsing;
 
 namespace Application.Tests.Common.Querying.Parsing;
 
+
 public sealed class ShapeValidatorTest
 {
-    [Fact]
+    [Fact(DisplayName = "Validate Select And Aggregate Without Group Returns Mixed Shape Failure")]
     public void Validate_SelectAndAggregateWithoutGroup_ReturnsMixedShapeFailure()
     {
         var select = new List<SelectField> { new("name", "name") };
@@ -19,7 +20,7 @@ public sealed class ShapeValidatorTest
         result.Errors.Should().Contain(e => e.Code == "Query.Tabular.MixedShape");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Validate Select Only No Group Returns Success")]
     public void Validate_SelectOnly_NoGroup_ReturnsSuccess()
     {
         var select = new List<SelectField> { new("name", "name") };
@@ -29,7 +30,7 @@ public sealed class ShapeValidatorTest
         result.IsSuccess.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Validate Group Only No Select Returns Success")]
     public void Validate_GroupOnly_NoSelect_ReturnsSuccess()
     {
         var group = new List<GroupByField> { new("kind") };
@@ -39,7 +40,7 @@ public sealed class ShapeValidatorTest
         result.IsSuccess.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Validate Aggregate Only No Group Returns Success")]
     public void Validate_AggregateOnly_NoGroup_ReturnsSuccess()
     {
         var aggregate = new List<AggregateSpec> { new(AggregateFunction.Count, "name", "cnt") };
@@ -49,7 +50,7 @@ public sealed class ShapeValidatorTest
         result.IsSuccess.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Validate Select And Group All Selected Fields Grouped Returns Success")]
     public void Validate_SelectAndGroup_AllSelectedFieldsGrouped_ReturnsSuccess()
     {
         var select = new List<SelectField> { new("kind", "kind") };
@@ -60,7 +61,7 @@ public sealed class ShapeValidatorTest
         result.IsSuccess.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Validate Select And Group Selected Field Not Grouped Returns Failure")]
     public void Validate_SelectAndGroup_SelectedFieldNotGrouped_ReturnsFailure()
     {
         var select = new List<SelectField> { new("name", "name") };
@@ -73,7 +74,7 @@ public sealed class ShapeValidatorTest
             e.Code == "Query.Tabular.FieldNotGrouped" && e.Message.Contains("name"));
     }
 
-    [Fact]
+    [Fact(DisplayName = "Validate Select Subset Of Group Returns Success")]
     public void Validate_SelectSubsetOfGroup_ReturnsSuccess()
     {
         var select = new List<SelectField> { new("kind", "kind") };
@@ -84,7 +85,7 @@ public sealed class ShapeValidatorTest
         result.IsSuccess.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Validate Case Insensitive Field Matching Works")]
     public void Validate_CaseInsensitiveFieldMatching_Works()
     {
         var select = new List<SelectField> { new("NAME", "name") };
@@ -95,7 +96,7 @@ public sealed class ShapeValidatorTest
         result.IsSuccess.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Validate Empty Select With Group Returns Success")]
     public void Validate_EmptySelectWithGroup_ReturnsSuccess()
     {
         var select = new List<SelectField>();
@@ -106,7 +107,7 @@ public sealed class ShapeValidatorTest
         result.IsSuccess.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Validate Null Select With Group Returns Success")]
     public void Validate_NullSelectWithGroup_ReturnsSuccess()
     {
         var group = new List<GroupByField> { new("kind") };
@@ -116,7 +117,7 @@ public sealed class ShapeValidatorTest
         result.IsSuccess.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Validate Null Group With Select Returns Success")]
     public void Validate_NullGroupWithSelect_ReturnsSuccess()
     {
         var select = new List<SelectField> { new("name", "name") };
@@ -126,7 +127,7 @@ public sealed class ShapeValidatorTest
         result.IsSuccess.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Validate All Null Returns Success")]
     public void Validate_AllNull_ReturnsSuccess()
     {
         Result result = ShapeValidator.Validate(null, null, null);
@@ -134,7 +135,7 @@ public sealed class ShapeValidatorTest
         result.IsSuccess.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Validate Select Group And Aggregate Selected Field Not Grouped Returns Failure")]
     public void Validate_SelectGroupAndAggregate_SelectedFieldNotGrouped_ReturnsFailure()
     {
         var select = new List<SelectField> { new("name", "name") };
@@ -147,7 +148,7 @@ public sealed class ShapeValidatorTest
         result.Errors.Should().Contain(e => e.Code == "Query.Tabular.FieldNotGrouped");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Validate Select Group And Aggregate All Selected Grouped Returns Success")]
     public void Validate_SelectGroupAndAggregate_AllSelectedGrouped_ReturnsSuccess()
     {
         var select = new List<SelectField> { new("kind", "kind") };

@@ -2,8 +2,6 @@ using Application.Common.Querying;
 using Application.Common.Querying.Aggregation;
 using Application.Common.Querying.Mapping;
 
-using Core.Common.Monad.Results;
-
 namespace Application.Tests.Common.Querying.Parsing;
 
 public sealed class TabularParserTest
@@ -40,7 +38,7 @@ public sealed class TabularParserTest
             Aggregate = aggregate,
         }, Map());
 
-    [Fact]
+    [Fact(DisplayName = "Select Should Parse Alias")]
     public void Select_ShouldParseAlias()
     {
         Result<Query<Target>> result = Parse(select: "name as title");
@@ -49,7 +47,7 @@ public sealed class TabularParserTest
         result.Value.Select!.Single().Should().Be(new Application.Common.Querying.Projection.SelectField("name", "title"));
     }
 
-    [Fact]
+    [Fact(DisplayName = "Select When Field Is Not Selectable Should Fail")]
     public void Select_WhenFieldIsNotSelectable_ShouldFail()
     {
         Result<Query<Target>> result = Parse(select: "hidden");
@@ -58,7 +56,7 @@ public sealed class TabularParserTest
         result.Errors.Should().Contain(e => e.Code == "Query.Field.NotSelectable");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Group By Should Parse Fields")]
     public void GroupBy_ShouldParseFields()
     {
         Result<Query<Target>> result = Parse(groupBy: "kind,name");
@@ -67,7 +65,7 @@ public sealed class TabularParserTest
         result.Value.GroupBy!.Select(g => g.Field).Should().Equal("kind", "name");
     }
 
-    [Theory]
+    [Theory(DisplayName = "Aggregate Should Parse Functions")]
     [InlineData("sum(score)", AggregateFunction.Sum)]
     [InlineData("avg(score)", AggregateFunction.Average)]
     [InlineData("min(score)", AggregateFunction.Minimum)]
@@ -82,7 +80,7 @@ public sealed class TabularParserTest
         result.Value.Aggregate!.Single().Function.Should().Be(expected);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Aggregate When Sum Is Not Numeric Should Fail")]
     public void Aggregate_WhenSumIsNotNumeric_ShouldFail()
     {
         Result<Query<Target>> result = Parse(aggregate: "sum(name)");
@@ -91,7 +89,7 @@ public sealed class TabularParserTest
         result.Errors.Should().Contain(e => e.Code == "Query.Aggregate.Unsupported");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Aggregate When The Expression Is Malformed Should Fail")]
     public void Aggregate_WhenTheExpressionIsMalformed_ShouldFail()
     {
         Result<Query<Target>> result = Parse(aggregate: "median(score)");
@@ -100,7 +98,7 @@ public sealed class TabularParserTest
         result.Errors.Should().Contain(e => e.Code == "Query.Aggregate.Syntax");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Aggregate When There Are Too Many Should Fail")]
     public void Aggregate_WhenThereAreTooMany_ShouldFail()
     {
         Result<Query<Target>> result = Parse(
@@ -110,7 +108,7 @@ public sealed class TabularParserTest
         result.Errors.Should().Contain(e => e.Code == "Query.Aggregate.Syntax");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Select When There Are Too Many Columns Should Fail")]
     public void Select_WhenThereAreTooManyColumns_ShouldFail()
     {
         Result<Query<Target>> result = Parse(
@@ -120,7 +118,7 @@ public sealed class TabularParserTest
         result.Errors.Should().Contain(e => e.Code == "Query.Filter.Syntax");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Group By When There Are Too Many Keys Should Fail")]
     public void GroupBy_WhenThereAreTooManyKeys_ShouldFail()
     {
         Result<Query<Target>> result = Parse(
@@ -130,7 +128,7 @@ public sealed class TabularParserTest
         result.Errors.Should().Contain(e => e.Code == "Query.Filter.Syntax");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Select When The Alias Is Duplicated Should Fail")]
     public void Select_WhenTheAliasIsDuplicated_ShouldFail()
     {
         Result<Query<Target>> result = Parse(select: "name as title,score as title");
@@ -140,7 +138,7 @@ public sealed class TabularParserTest
             e.Code == "Query.Filter.Syntax" && e.Message.Contains("duplicate alias"));
     }
 
-    [Fact]
+    [Fact(DisplayName = "Select When Exactly At The Column Limit Should Succeed")]
     public void Select_WhenExactlyAtTheColumnLimit_ShouldSucceed()
     {
         // Boundary: the limit is inclusive. Each column needs its own alias,
@@ -154,7 +152,7 @@ public sealed class TabularParserTest
         result.Value.Select.Should().HaveCount(32);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Group By When Exactly At The Key Limit Should Succeed")]
     public void GroupBy_WhenExactlyAtTheKeyLimit_ShouldSucceed()
     {
         // Boundary: the limit is inclusive.
@@ -165,7 +163,7 @@ public sealed class TabularParserTest
         result.Value.GroupBy.Should().HaveCount(8);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Aggregate When Exactly At The Limit Should Succeed")]
     public void Aggregate_WhenExactlyAtTheLimit_ShouldSucceed()
     {
         // Boundary: the limit is inclusive.
@@ -176,7 +174,7 @@ public sealed class TabularParserTest
         result.Value.Aggregate.Should().HaveCount(16);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Shape When Select And Aggregate Without Group Should Fail")]
     public void Shape_WhenSelectAndAggregateWithoutGroup_ShouldFail()
     {
         Result<Query<Target>> result = Parse(select: "name", aggregate: "count(name)");
@@ -185,7 +183,7 @@ public sealed class TabularParserTest
         result.Errors.Should().Contain(e => e.Code == "Query.Tabular.MixedShape");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Shape When Selected Field Is Not Grouped Should Fail")]
     public void Shape_WhenSelectedFieldIsNotGrouped_ShouldFail()
     {
         Result<Query<Target>> result = Parse(select: "name", groupBy: "kind");
@@ -194,7 +192,7 @@ public sealed class TabularParserTest
         result.Errors.Should().Contain(e => e.Code == "Query.Tabular.FieldNotGrouped");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Shape When Select Is Subset Of Group Should Pass")]
     public void Shape_WhenSelectIsSubsetOfGroup_ShouldPass()
     {
         Result<Query<Target>> result = Parse(select: "kind", groupBy: "kind,name");
@@ -202,7 +200,7 @@ public sealed class TabularParserTest
         result.IsSuccess.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Select When Field Is Unknown Should Fail")]
     public void Select_WhenFieldIsUnknown_ShouldFail()
     {
         Result<Query<Target>> result = Parse(select: "unknown");
@@ -211,7 +209,7 @@ public sealed class TabularParserTest
         result.Errors.Should().Contain(e => e.Code == "Query.Field.NotMapped");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Group By When Field Is Unknown Should Fail")]
     public void GroupBy_WhenFieldIsUnknown_ShouldFail()
     {
         Result<Query<Target>> result = Parse(groupBy: "unknown");
@@ -220,7 +218,7 @@ public sealed class TabularParserTest
         result.Errors.Should().Contain(e => e.Code == "Query.Field.NotMapped");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Group By When Field Is Not Groupable Should Fail")]
     public void GroupBy_WhenFieldIsNotGroupable_ShouldFail()
     {
         Result<Query<Target>> result = Parse(groupBy: "hidden");
@@ -229,7 +227,7 @@ public sealed class TabularParserTest
         result.Errors.Should().Contain(e => e.Code == "Query.Field.NotGroupable");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Aggregate When Field Is Unknown Should Fail")]
     public void Aggregate_WhenFieldIsUnknown_ShouldFail()
     {
         Result<Query<Target>> result = Parse(aggregate: "count(unknown)");
@@ -238,7 +236,7 @@ public sealed class TabularParserTest
         result.Errors.Should().Contain(e => e.Code == "Query.Field.NotMapped");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Aggregate When Function Is Unknown Should Fail")]
     public void Aggregate_WhenFunctionIsUnknown_ShouldFail()
     {
         Result<Query<Target>> result = Parse(aggregate: "median(score)");

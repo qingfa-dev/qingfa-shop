@@ -4,6 +4,7 @@ using Application.Common.Querying.Parsing;
 using Application.Common.Querying;
 
 namespace Application.Tests.Common.Querying.Parsing;
+using Xunit;
 
 public sealed class SelectTextTest
 {
@@ -31,7 +32,7 @@ public sealed class SelectTextTest
     private static ParserState<Target> State(QueryMap<Target> map, QueryParseLimits? limits = null) =>
         new(map, limits ?? QueryParseLimits.Default);
 
-    [Fact]
+    [Fact(DisplayName = "Parse Empty String Returns Empty List")]
     public void Parse_EmptyString_ReturnsEmptyList()
     {
         Result<IReadOnlyList<SelectField>> result = SelectText.Parse("", State(Map()));
@@ -40,7 +41,7 @@ public sealed class SelectTextTest
         result.Value.Should().BeEmpty();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse Null Returns Empty List")]
     public void Parse_Null_ReturnsEmptyList()
     {
         Result<IReadOnlyList<SelectField>> result = SelectText.Parse(null, State(Map()));
@@ -49,7 +50,7 @@ public sealed class SelectTextTest
         result.Value.Should().BeEmpty();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse Whitespace Returns Empty List")]
     public void Parse_Whitespace_ReturnsEmptyList()
     {
         Result<IReadOnlyList<SelectField>> result = SelectText.Parse("   ", State(Map()));
@@ -58,7 +59,7 @@ public sealed class SelectTextTest
         result.Value.Should().BeEmpty();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse Single Field Returns Field With Same Alias")]
     public void Parse_SingleField_ReturnsFieldWithSameAlias()
     {
         Result<IReadOnlyList<SelectField>> result = SelectText.Parse("name", State(Map()));
@@ -68,7 +69,7 @@ public sealed class SelectTextTest
             .Which.Should().Be(new SelectField("name", "name"));
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse Field With Alias Returns Field With Alias")]
     public void Parse_FieldWithAlias_ReturnsFieldWithAlias()
     {
         Result<IReadOnlyList<SelectField>> result = SelectText.Parse("name as title", State(Map()));
@@ -78,7 +79,7 @@ public sealed class SelectTextTest
             .Which.Should().Be(new SelectField("name", "title"));
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse Multiple Fields Returns All Fields")]
     public void Parse_MultipleFields_ReturnsAllFields()
     {
         Result<IReadOnlyList<SelectField>> result = SelectText.Parse("name,score", State(Map()));
@@ -89,7 +90,7 @@ public sealed class SelectTextTest
         result.Value[1].Should().Be(new SelectField("score", "score"));
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse Multiple Fields With Aliases Returns All With Aliases")]
     public void Parse_MultipleFieldsWithAliases_ReturnsAllWithAliases()
     {
         Result<IReadOnlyList<SelectField>> result = SelectText.Parse("name as title,score as points", State(Map()));
@@ -100,7 +101,7 @@ public sealed class SelectTextTest
         result.Value[1].Should().Be(new SelectField("score", "points"));
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse Trims Whitespace Around Fields")]
     public void Parse_TrimsWhitespaceAroundFields()
     {
         Result<IReadOnlyList<SelectField>> result = SelectText.Parse(" name , score ", State(Map()));
@@ -111,7 +112,7 @@ public sealed class SelectTextTest
         result.Value[1].Field.Should().Be("score");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse Trims Whitespace Around Alias")]
     public void Parse_TrimsWhitespaceAroundAlias()
     {
         Result<IReadOnlyList<SelectField>> result = SelectText.Parse("name as  title  , score", State(Map()));
@@ -120,7 +121,7 @@ public sealed class SelectTextTest
         result.Value[0].Should().Be(new SelectField("name", "title"));
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse Unknown Field Returns Failure")]
     public void Parse_UnknownField_ReturnsFailure()
     {
         Result<IReadOnlyList<SelectField>> result = SelectText.Parse("unknown", State(Map()));
@@ -129,7 +130,7 @@ public sealed class SelectTextTest
         result.Errors.Should().Contain(e => e.Code == "Query.Field.NotMapped");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse Non Selectable Field Returns Failure")]
     public void Parse_NonSelectableField_ReturnsFailure()
     {
         Result<IReadOnlyList<SelectField>> result = SelectText.Parse("internal", State(Map()));
@@ -138,7 +139,7 @@ public sealed class SelectTextTest
         result.Errors.Should().Contain(e => e.Code == "Query.Field.NotSelectable");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse Duplicate Alias Returns Failure")]
     public void Parse_DuplicateAlias_ReturnsFailure()
     {
         Result<IReadOnlyList<SelectField>> result = SelectText.Parse("name as title,score as title", State(Map()));
@@ -148,7 +149,7 @@ public sealed class SelectTextTest
             e.Code == "Query.Filter.Syntax" && e.Message.Contains("duplicate alias"));
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse Duplicate Field Without Alias Returns Failure")]
     public void Parse_DuplicateFieldWithoutAlias_ReturnsFailure()
     {
         Result<IReadOnlyList<SelectField>> result = SelectText.Parse("name,name", State(Map()));
@@ -158,7 +159,7 @@ public sealed class SelectTextTest
             e.Code == "Query.Filter.Syntax" && e.Message.Contains("duplicate alias"));
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse Exceeds Max Columns Returns Failure")]
     public void Parse_ExceedsMaxColumns_ReturnsFailure()
     {
         var limits = new QueryParseLimits { MaxSelectFields = 2 };
@@ -168,7 +169,7 @@ public sealed class SelectTextTest
         result.Errors.Should().Contain(e => e.Code == "Query.Filter.Syntax");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse At Max Columns Succeeds")]
     public void Parse_AtMaxColumns_Succeeds()
     {
         var limits = new QueryParseLimits { MaxSelectFields = 3 };
@@ -178,7 +179,7 @@ public sealed class SelectTextTest
         result.Value.Should().HaveCount(3);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse Collects All Errors")]
     public void Parse_CollectsAllErrors()
     {
         Result<IReadOnlyList<SelectField>> result = SelectText.Parse("unknown,internal", State(Map()));

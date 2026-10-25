@@ -2,9 +2,10 @@ using Application.Common.Querying.Pagination;
 
 namespace Application.Tests.Common.Querying.Pagination;
 
+
 public sealed class QueryPageTest
 {
-    [Fact]
+    [Fact(DisplayName = "Constructor With Items Page Size Total Sets Properties")]
     public void Constructor_WithItemsPageSizeTotal_SetsProperties()
     {
         var items = new List<int> { 1, 2, 3 };
@@ -16,7 +17,7 @@ public sealed class QueryPageTest
         page.TotalCount.Should().Be(8);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Total Pages With Multiple Pages Returns Correct Count")]
     public void TotalPages_WithMultiplePages_ReturnsCorrectCount()
     {
         var page = new QueryPage<int>([1, 2, 3], Page: 2, PageSize: 3, TotalCount: 8);
@@ -24,7 +25,7 @@ public sealed class QueryPageTest
         page.TotalPages.Should().Be(3);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Total Pages With Exact Division Returns Correct Count")]
     public void TotalPages_WithExactDivision_ReturnsCorrectCount()
     {
         var page = new QueryPage<int>([1, 2, 3], Page: 3, PageSize: 3, TotalCount: 9);
@@ -32,7 +33,7 @@ public sealed class QueryPageTest
         page.TotalPages.Should().Be(3);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Total Pages With Single Page Returns One")]
     public void TotalPages_WithSinglePage_ReturnsOne()
     {
         var page = new QueryPage<int>([1, 2, 3], Page: 1, PageSize: 10, TotalCount: 3);
@@ -40,7 +41,7 @@ public sealed class QueryPageTest
         page.TotalPages.Should().Be(1);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Total Pages With Zero Total Count Returns Zero")]
     public void TotalPages_WithZeroTotalCount_ReturnsZero()
     {
         var page = new QueryPage<int>([], Page: 1, PageSize: 10, TotalCount: 0);
@@ -48,7 +49,7 @@ public sealed class QueryPageTest
         page.TotalPages.Should().Be(0);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Total Pages With Zero Page Size Returns Zero")]
     public void TotalPages_WithZeroPageSize_ReturnsZero()
     {
         var page = new QueryPage<int>([1, 2, 3], Page: 1, PageSize: 0, TotalCount: 3);
@@ -56,7 +57,7 @@ public sealed class QueryPageTest
         page.TotalPages.Should().Be(0);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Has Previous On First Page Returns False")]
     public void HasPrevious_OnFirstPage_ReturnsFalse()
     {
         var page = new QueryPage<int>([1, 2, 3], Page: 1, PageSize: 3, TotalCount: 8);
@@ -64,7 +65,7 @@ public sealed class QueryPageTest
         page.HasPrevious.Should().BeFalse();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Has Previous On Middle Page Returns True")]
     public void HasPrevious_OnMiddlePage_ReturnsTrue()
     {
         var page = new QueryPage<int>([4, 5, 6], Page: 2, PageSize: 3, TotalCount: 8);
@@ -72,7 +73,7 @@ public sealed class QueryPageTest
         page.HasPrevious.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Has Previous On Last Page Returns True")]
     public void HasPrevious_OnLastPage_ReturnsTrue()
     {
         var page = new QueryPage<int>([7, 8], Page: 3, PageSize: 3, TotalCount: 8);
@@ -80,7 +81,7 @@ public sealed class QueryPageTest
         page.HasPrevious.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Has Next On Last Page Returns False")]
     public void HasNext_OnLastPage_ReturnsFalse()
     {
         var page = new QueryPage<int>([], Page: 3, PageSize: 3, TotalCount: 8);
@@ -88,7 +89,7 @@ public sealed class QueryPageTest
         page.HasNext.Should().BeFalse();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Has Next On Middle Page Returns True")]
     public void HasNext_OnMiddlePage_ReturnsTrue()
     {
         var page = new QueryPage<int>([4, 5, 6], Page: 2, PageSize: 3, TotalCount: 8);
@@ -96,7 +97,7 @@ public sealed class QueryPageTest
         page.HasNext.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Has Next On First Page Returns True")]
     public void HasNext_OnFirstPage_ReturnsTrue()
     {
         var page = new QueryPage<int>([1, 2, 3], Page: 1, PageSize: 3, TotalCount: 8);
@@ -104,7 +105,7 @@ public sealed class QueryPageTest
         page.HasNext.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Has Next On Single Page Returns False")]
     public void HasNext_OnSinglePage_ReturnsFalse()
     {
         var page = new QueryPage<int>([1, 2, 3], Page: 1, PageSize: 10, TotalCount: 3);
@@ -112,7 +113,7 @@ public sealed class QueryPageTest
         page.HasNext.Should().BeFalse();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Has Previous On Single Page Returns False")]
     public void HasPrevious_OnSinglePage_ReturnsFalse()
     {
         var page = new QueryPage<int>([1, 2, 3], Page: 1, PageSize: 10, TotalCount: 3);
@@ -120,7 +121,7 @@ public sealed class QueryPageTest
         page.HasPrevious.Should().BeFalse();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Record Equality Same Values Are Equal")]
     public void RecordEquality_SameValues_AreEqual()
     {
         var items = new[] { 1, 2 };
@@ -131,7 +132,7 @@ public sealed class QueryPageTest
         p1.Equals(p2).Should().BeTrue();
     }
 
-    [Theory]
+    [Theory(DisplayName = "Record Equality Different Values Are Not Equal")]
     [InlineData(1, 2, 5, 2, 2, 5)]
     [InlineData(1, 2, 5, 1, 2, 6)]
     [InlineData(1, 2, 5, 1, 3, 5)]
@@ -144,7 +145,7 @@ public sealed class QueryPageTest
         p1.Should().NotBe(p2);
     }
 
-    [Fact]
+    [Fact(DisplayName = "With Expression Creates New Record With Changes")]
     public void WithExpression_CreatesNewRecordWithChanges()
     {
         var original = new QueryPage<int>([1, 2], Page: 1, PageSize: 2, TotalCount: 5);
@@ -156,7 +157,7 @@ public sealed class QueryPageTest
         original.Page.Should().Be(1);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Deconstruction Works Correctly")]
     public void Deconstruction_WorksCorrectly()
     {
         var page = new QueryPage<int>([1, 2], Page: 3, PageSize: 2, TotalCount: 5);
@@ -168,7 +169,7 @@ public sealed class QueryPageTest
         total.Should().Be(5);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Property Getters All Accessible")]
     public void PropertyGetters_AllAccessible()
     {
         var page = new QueryPage<int>([1, 2], Page: 3, PageSize: 2, TotalCount: 5);

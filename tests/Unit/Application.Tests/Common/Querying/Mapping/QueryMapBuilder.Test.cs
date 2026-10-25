@@ -2,6 +2,7 @@ using Application.Common.Querying.Mapping;
 
 namespace Application.Tests.Common.Querying.Mapping;
 
+
 public sealed class QueryMapBuilderTest
 {
     private sealed class Target
@@ -20,7 +21,7 @@ public sealed class QueryMapBuilderTest
         return map.Value;
     }
 
-    [Fact]
+    [Fact(DisplayName = "Map When Name Is Whitespace Should Report A Failure")]
     public void Map_WhenNameIsWhitespace_ShouldReportAFailure()
     {
         Result<QueryMap<Target>> map = QueryMapBuilder<Target>.Create()
@@ -31,7 +32,7 @@ public sealed class QueryMapBuilderTest
         map.Errors.Should().Contain(e => e.Code == "Query.Map.NameRequired");
     }
 
-    [Theory]
+    [Theory(DisplayName = "Map When Name Exceeds Max Length Should Report Failure")]
     [InlineData(65)]
     [InlineData(100)]
     [InlineData(200)]
@@ -47,7 +48,7 @@ public sealed class QueryMapBuilderTest
         map.Errors.Should().Contain(e => e.Code == "Query.Map.NameTooLong");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Map When Name Differs Only By Case Should Report A Failure")]
     public void Map_WhenNameDiffersOnlyByCase_ShouldReportAFailure()
     {
         Result<QueryMap<Target>> map = QueryMapBuilder<Target>.Create()
@@ -59,7 +60,7 @@ public sealed class QueryMapBuilderTest
         map.Errors.Should().Contain(e => e.Code == "Query.Map.Duplicate");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Map When Searchable Field Is Not String Should Report A Failure")]
     public void Map_WhenSearchableFieldIsNotString_ShouldReportAFailure()
     {
         Result<QueryMap<Target>> map = QueryMapBuilder<Target>.Create()
@@ -70,7 +71,7 @@ public sealed class QueryMapBuilderTest
         map.Errors.Should().Contain(e => e.Code == "Query.Map.SearchableNotString");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Map Composite When Members Differ In Type Should Report A Failure")]
     public void MapComposite_WhenMembersDifferInType_ShouldReportAFailure()
     {
         Result<QueryMap<Target>> map = QueryMapBuilder<Target>.Create()
@@ -81,7 +82,7 @@ public sealed class QueryMapBuilderTest
         map.Errors.Should().Contain(e => e.Code == "Query.Map.CompositeTypeMismatch");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Map Composite When There Are No Members Should Report A Failure")]
     public void MapComposite_WhenThereAreNoMembers_ShouldReportAFailure()
     {
         Result<QueryMap<Target>> map = QueryMapBuilder<Target>.Create()
@@ -92,7 +93,7 @@ public sealed class QueryMapBuilderTest
         map.Errors.Should().Contain(e => e.Code == "Query.Map.CompositeEmpty");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Map Composite When Name Is Whitespace Should Report Failure")]
     public void MapComposite_WhenNameIsWhitespace_ShouldReportFailure()
     {
         Result<QueryMap<Target>> map = QueryMapBuilder<Target>.Create()
@@ -103,7 +104,7 @@ public sealed class QueryMapBuilderTest
         map.Errors.Should().Contain(e => e.Code == "Query.Map.NameRequired");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Build When Several Declarations Are Broken Should Report Every Failure")]
     public void Build_WhenSeveralDeclarationsAreBroken_ShouldReportEveryFailure()
     {
         // The builder keeps going, so one build reports every problem instead of
@@ -124,7 +125,7 @@ public sealed class QueryMapBuilderTest
         ]);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Generate Mappings When Depth Is Zero Should Map Top Level Only")]
     public void GenerateMappings_WhenDepthIsZero_ShouldMapTopLevelOnly()
     {
         QueryMap<Target> map = Build(
@@ -134,7 +135,7 @@ public sealed class QueryMapBuilderTest
         map.TryGet("Child.Name", out _).Should().BeFalse();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Generate Mappings When Depth Is One Should Map Nested Properties")]
     public void GenerateMappings_WhenDepthIsOne_ShouldMapNestedProperties()
     {
         QueryMap<Target> map = Build(
@@ -143,7 +144,7 @@ public sealed class QueryMapBuilderTest
         map.TryGet("Child.Name", out _).Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Map Indexed When Name Is Whitespace Should Report Failure")]
     public void MapIndexed_WhenNameIsWhitespace_ShouldReportFailure()
     {
         Result<QueryMap<Target>> map = QueryMapBuilder<Target>.Create()
@@ -154,7 +155,7 @@ public sealed class QueryMapBuilderTest
         map.Errors.Should().Contain(e => e.Code == "Query.Map.NameRequired");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Field Builder Convert With When Converter Is Null Should Throw")]
     public void FieldBuilder_ConvertWith_WhenConverterIsNull_ShouldThrow()
     {
         var builder = QueryMapBuilder<Target>.Create();
@@ -164,7 +165,7 @@ public sealed class QueryMapBuilderTest
         act.Should().Throw<ArgumentNullException>();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Generate Mappings With Indexer Property Should Skip Indexer")]
     public void GenerateMappings_WithIndexerProperty_ShouldSkipIndexer()
     {
         var map = Build(QueryMapBuilder<TypeWithIndexer>.Create().GenerateMappings());
@@ -174,7 +175,7 @@ public sealed class QueryMapBuilderTest
         map.TryGet("Item", out _).Should().BeFalse();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Generate Mappings With Duplicate Names Should Skip Duplicate")]
     public void GenerateMappings_WithDuplicateNames_ShouldSkipDuplicate()
     {
         // Create a type with two properties that would generate the same field name

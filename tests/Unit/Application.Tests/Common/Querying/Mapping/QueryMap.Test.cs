@@ -1,6 +1,6 @@
 using System.Globalization;
 using System.Reflection;
-using Xunit;
+
 
 using Application.Common.Querying.Mapping;
 
@@ -24,7 +24,7 @@ public sealed class QueryMapTest
         return map.Value;
     }
 
-    [Fact]
+    [Fact(DisplayName = "Map Should Record Name Path And Defaults")]
     public void Map_ShouldRecordNamePathAndDefaults()
     {
         QueryMap<Target> map = Build(
@@ -40,7 +40,7 @@ public sealed class QueryMapTest
         field.Groupable.Should().BeFalse();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Map Should Capture Nested Member Path")]
     public void Map_ShouldCaptureNestedMemberPath()
     {
         QueryMap<Target> map = Build(
@@ -50,7 +50,7 @@ public sealed class QueryMapTest
         field!.MemberPath.Should().Be("Child.Name");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Map When Collection Should Capture Element Type")]
     public void Map_WhenCollection_ShouldCaptureElementType()
     {
         QueryMap<Target> map = Build(
@@ -61,7 +61,7 @@ public sealed class QueryMapTest
         field.IsCollection.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Map Indexed Should Capture Index Type")]
     public void MapIndexed_ShouldCaptureIndexType()
     {
         QueryMap<Target> map = Build(
@@ -72,7 +72,7 @@ public sealed class QueryMapTest
         field!.IndexType.Should().Be(typeof(int));
     }
 
-    [Fact]
+    [Fact(DisplayName = "Map Indexed Should Report Is Indexed")]
     public void MapIndexed_ShouldReportIsIndexed()
     {
         QueryMap<Target> map = Build(
@@ -83,7 +83,7 @@ public sealed class QueryMapTest
         field!.IsIndexed.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Map When Not Indexed Should Not Report Is Indexed")]
     public void Map_WhenNotIndexed_ShouldNotReportIsIndexed()
     {
         QueryMap<Target> map = Build(
@@ -93,7 +93,7 @@ public sealed class QueryMapTest
         field!.IsIndexed.Should().BeFalse();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Get When The Field Is Not Mapped Should Return A Failure")]
     public void Get_WhenTheFieldIsNotMapped_ShouldReturnAFailure()
     {
         QueryMap<Target> map = Build(
@@ -110,7 +110,7 @@ public sealed class QueryMapTest
         missing.Errors.Should().Contain(e => e.Code == "Query.Field.NotMapped");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Converter When It Fails Should Return Failure")]
     public void Converter_WhenItFails_ShouldReturnFailure()
     {
         QueryMap<Target> map = Build(
@@ -125,7 +125,7 @@ public sealed class QueryMapTest
         field.Converter!("low").IsFailure.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Value Converter When Target Type Is Unsupported Should Return Value Invalid Failure")]
     public void ValueConverter_WhenTargetTypeIsUnsupported_ShouldReturnValueInvalidFailure()
     {
         // ValueConverter is internal and the test assembly has no InternalsVisibleTo,
@@ -147,7 +147,7 @@ public sealed class QueryMapTest
             .Which.Code.Should().Be("Query.Filter.ValueInvalid");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Field Builder Case Insensitive Should Be Recorded")]
     public void FieldBuilder_CaseInsensitive_ShouldBeRecorded()
     {
         QueryMap<Target> map = Build(
@@ -157,7 +157,7 @@ public sealed class QueryMapTest
         field!.CaseInsensitive.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Field Builder Allow Null Search Should Be Recorded")]
     public void FieldBuilder_AllowNullSearch_ShouldBeRecorded()
     {
         QueryMap<Target> map = Build(
@@ -167,7 +167,7 @@ public sealed class QueryMapTest
         field!.AllowNullSearch.Should().BeFalse();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Map Composite With Valid Members Should Disable Sort Select Group")]
     public void MapComposite_WithValidMembers_ShouldDisableSortSelectGroup()
     {
         QueryMap<Target> map = Build(
@@ -179,7 +179,7 @@ public sealed class QueryMapTest
         field.Groupable.Should().BeFalse();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Value Converter Null For Non Nullable Value Type Should Fail")]
     public void ValueConverter_NullForNonNullableValueType_ShouldFail()
     {
         // ValueConverter is internal, so exercise the real conversion path through reflection.
@@ -217,7 +217,7 @@ public sealed class QueryMapTest
             { "550e8400-e29b-41d4-a716-446655440000", typeof(Guid), Guid.Parse("550e8400-e29b-41d4-a716-446655440000") },
         };
 
-    [Theory]
+    [Theory(DisplayName = "Value Converter Supported Types Should Convert")]
     [MemberData(nameof(ValueConverterTestData))]
     public void ValueConverter_SupportedTypes_ShouldConvert(string input, Type type, object expected)
     {
@@ -236,7 +236,7 @@ public sealed class QueryMapTest
         success.Value.Value.Should().Be(expected);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Value Converter Enum Should Convert By Name")]
     public void ValueConverter_Enum_ShouldConvertByName()
     {
         Type converterType = typeof(QueryValue).Assembly.GetType(
@@ -254,7 +254,7 @@ public sealed class QueryMapTest
         success.Value.Value.Should().Be(Kind.High);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Value Converter Empty String For Nullable Type Returns Null")]
     public void ValueConverter_EmptyString_ForNullableType_ReturnsNull()
     {
         Type converterType = typeof(QueryValue).Assembly.GetType(
@@ -272,7 +272,7 @@ public sealed class QueryMapTest
         success.Value.Value.Should().BeNull();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Value Converter Empty String For Non Nullable Value Type Returns Default")]
     public void ValueConverter_EmptyString_ForNonNullableValueType_ReturnsDefault()
     {
         Type converterType = typeof(QueryValue).Assembly.GetType(

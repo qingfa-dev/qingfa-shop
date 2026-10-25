@@ -3,6 +3,7 @@ using Application.Common.Querying.Mapping;
 
 namespace Application.Tests.Common.Querying.Mapping;
 
+
 public sealed class QueryFieldTest
 {
     private sealed class Target
@@ -13,7 +14,7 @@ public sealed class QueryFieldTest
         public Target? Child { get; set; }
     }
 
-    [Fact]
+    [Fact(DisplayName = "Properties When Built Via Builder All Accessible")]
     public void Properties_WhenBuiltViaBuilder_AllAccessible()
     {
         var map = Build(QueryMapBuilder<Target>.Create()
@@ -39,7 +40,7 @@ public sealed class QueryFieldTest
         field.AllowNullSearch.Should().BeFalse();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Is Collection When Field Is List Returns True")]
     public void IsCollection_WhenFieldIsList_ReturnsTrue()
     {
         var map = Build(QueryMapBuilder<Target>.Create()
@@ -51,7 +52,7 @@ public sealed class QueryFieldTest
         field.ElementType.Should().Be(typeof(string));
     }
 
-    [Fact]
+    [Fact(DisplayName = "Is Collection When Field Is Not Collection Returns False")]
     public void IsCollection_WhenFieldIsNotCollection_ReturnsFalse()
     {
         var map = Build(QueryMapBuilder<Target>.Create()
@@ -63,7 +64,7 @@ public sealed class QueryFieldTest
         field.ElementType.Should().BeNull();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Comparison Type When Collection Returns Element Type")]
     public void ComparisonType_WhenCollection_ReturnsElementType()
     {
         var map = Build(QueryMapBuilder<Target>.Create()
@@ -74,7 +75,7 @@ public sealed class QueryFieldTest
         field!.ComparisonType.Should().Be(typeof(string));
     }
 
-    [Fact]
+    [Fact(DisplayName = "Comparison Type When Not Collection Returns Value Type")]
     public void ComparisonType_WhenNotCollection_ReturnsValueType()
     {
         var map = Build(QueryMapBuilder<Target>.Create()
@@ -85,7 +86,7 @@ public sealed class QueryFieldTest
         field!.ComparisonType.Should().Be(typeof(int));
     }
 
-    [Fact]
+    [Fact(DisplayName = "Is Indexed When Indexed Field Returns True")]
     public void IsIndexed_WhenIndexedField_ReturnsTrue()
     {
         var map = Build(QueryMapBuilder<Target>.Create()
@@ -97,7 +98,7 @@ public sealed class QueryFieldTest
         field.IndexType.Should().Be(typeof(int));
     }
 
-    [Fact]
+    [Fact(DisplayName = "Is Indexed When Not Indexed Field Returns False")]
     public void IsIndexed_WhenNotIndexedField_ReturnsFalse()
     {
         var map = Build(QueryMapBuilder<Target>.Create()
@@ -109,7 +110,7 @@ public sealed class QueryFieldTest
         field.IndexType.Should().BeNull();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Member Path For Nested Property Captures Path")]
     public void MemberPath_ForNestedProperty_CapturesPath()
     {
         var map = Build(QueryMapBuilder<Target>.Create()
@@ -120,7 +121,7 @@ public sealed class QueryFieldTest
         field!.MemberPath.Should().Be("Child.Name");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Member Path For Top Level Property Is Property Name")]
     public void MemberPath_ForTopLevelProperty_IsPropertyName()
     {
         var map = Build(QueryMapBuilder<Target>.Create()
@@ -131,7 +132,7 @@ public sealed class QueryFieldTest
         field!.MemberPath.Should().Be("Name");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Expression Is Captured For Simple Property")]
     public void Expression_IsCapturedForSimpleProperty()
     {
         var map = Build(QueryMapBuilder<Target>.Create()
@@ -144,7 +145,7 @@ public sealed class QueryFieldTest
             .Which.Member.Name.Should().Be("Name");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Expression Is Captured For Indexed Field")]
     public void Expression_IsCapturedForIndexedField()
     {
         var map = Build(QueryMapBuilder<Target>.Create()
@@ -155,7 +156,7 @@ public sealed class QueryFieldTest
         field!.Expression.Should().NotBeNull();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Expression Is Null For Composite Field")]
     public void Expression_IsNullForCompositeField()
     {
         var map = Build(QueryMapBuilder<Target>.Create()
@@ -167,7 +168,7 @@ public sealed class QueryFieldTest
         field.Composite.Should().HaveCount(2);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Composite When Composite Field Has Members")]
     public void Composite_WhenCompositeField_HasMembers()
     {
         var map = Build(QueryMapBuilder<Target>.Create()
@@ -178,7 +179,7 @@ public sealed class QueryFieldTest
         field!.Composite.Should().HaveCount(2);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Converter When Configured Is Stored")]
     public void Converter_WhenConfigured_IsStored()
     {
         var map = Build(QueryMapBuilder<Target>.Create()
@@ -191,7 +192,7 @@ public sealed class QueryFieldTest
         field.Converter!("5").Value.Value.Should().Be(10);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Converter When Not Configured Is Null")]
     public void Converter_WhenNotConfigured_IsNull()
     {
         var map = Build(QueryMapBuilder<Target>.Create()

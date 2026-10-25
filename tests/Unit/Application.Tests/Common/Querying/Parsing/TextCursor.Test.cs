@@ -2,9 +2,10 @@ using Application.Common.Querying.Parsing;
 
 namespace Application.Tests.Common.Querying.Parsing;
 
+
 public sealed class TextCursorTest
 {
-    [Fact]
+    [Fact(DisplayName = "Constructor With Text Initializes At Start")]
     public void Constructor_WithText_InitializesAtStart()
     {
         var cursor = new TextCursor("hello");
@@ -13,7 +14,7 @@ public sealed class TextCursorTest
         cursor.Peek().Should().Be('h');
     }
 
-    [Fact]
+    [Fact(DisplayName = "Constructor With Empty Text Is At End")]
     public void Constructor_WithEmptyText_IsAtEnd()
     {
         var cursor = new TextCursor("");
@@ -22,7 +23,7 @@ public sealed class TextCursorTest
         cursor.Peek().Should().Be('\0');
     }
 
-    [Fact]
+    [Fact(DisplayName = "Read Returns Current Char And Advances")]
     public void Read_ReturnsCurrentCharAndAdvances()
     {
         var cursor = new TextCursor("hello");
@@ -32,7 +33,7 @@ public sealed class TextCursorTest
         cursor.Read().Should().Be('e');
     }
 
-    [Fact]
+    [Fact(DisplayName = "Read At End Returns Null Char")]
     public void Read_AtEnd_ReturnsNullChar()
     {
         var cursor = new TextCursor("a");
@@ -42,7 +43,7 @@ public sealed class TextCursorTest
         cursor.AtEnd.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Skip Whitespace Advances Past Spaces")]
     public void SkipWhitespace_AdvancesPastSpaces()
     {
         var cursor = new TextCursor("  hello");
@@ -51,7 +52,7 @@ public sealed class TextCursorTest
         cursor.Peek().Should().Be('h');
     }
 
-    [Fact]
+    [Fact(DisplayName = "Skip Whitespace Advances Past Tabs")]
     public void SkipWhitespace_AdvancesPastTabs()
     {
         var cursor = new TextCursor("\t\thello");
@@ -60,7 +61,7 @@ public sealed class TextCursorTest
         cursor.Peek().Should().Be('h');
     }
 
-    [Fact]
+    [Fact(DisplayName = "Skip Whitespace Advances Past Newlines")]
     public void SkipWhitespace_AdvancesPastNewlines()
     {
         var cursor = new TextCursor("\n\r hello");
@@ -69,7 +70,7 @@ public sealed class TextCursorTest
         cursor.Peek().Should().Be('h');
     }
 
-    [Fact]
+    [Fact(DisplayName = "Skip Whitespace At End Does Nothing")]
     public void SkipWhitespace_AtEnd_DoesNothing()
     {
         var cursor = new TextCursor("");
@@ -78,7 +79,7 @@ public sealed class TextCursorTest
         cursor.AtEnd.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Read Field Reads Until Terminator")]
     public void ReadField_ReadsUntilTerminator()
     {
         var cursor = new TextCursor("field=value");
@@ -89,7 +90,7 @@ public sealed class TextCursorTest
         cursor.Peek().Should().Be('=');
     }
 
-    [Fact]
+    [Fact(DisplayName = "Read Field With Nested Path Reads Full Path")]
     public void ReadField_WithNestedPath_ReadsFullPath()
     {
         var cursor = new TextCursor("user.name=value");
@@ -100,7 +101,7 @@ public sealed class TextCursorTest
         cursor.Peek().Should().Be('=');
     }
 
-    [Fact]
+    [Fact(DisplayName = "Read Field Skips Leading Whitespace")]
     public void ReadField_SkipsLeadingWhitespace()
     {
         var cursor = new TextCursor("  field=value");
@@ -110,7 +111,7 @@ public sealed class TextCursorTest
         field.Should().Be("field");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Read Field At End Returns Empty")]
     public void ReadField_AtEnd_ReturnsEmpty()
     {
         var cursor = new TextCursor("");
@@ -120,7 +121,7 @@ public sealed class TextCursorTest
         field.Should().BeEmpty();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Read Operator Reads Two Char Operators")]
     public void ReadOperator_ReadsTwoCharOperators()
     {
         var cursor = new TextCursor("field>=value");
@@ -131,7 +132,7 @@ public sealed class TextCursorTest
         op.Should().Be(">=");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Read Operator Reads Single Char Operators")]
     public void ReadOperator_ReadsSingleCharOperators()
     {
         var cursor = new TextCursor("field=value");
@@ -142,7 +143,7 @@ public sealed class TextCursorTest
         op.Should().Be("=");
     }
 
-    [Theory]
+    [Theory(DisplayName = "Read Operator All Known Operators Recognized")]
     [InlineData("=")]
     [InlineData("!=")]
     [InlineData("<")]
@@ -165,7 +166,7 @@ public sealed class TextCursorTest
         readOp.Should().Be(op);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Read Operator Custom Operator Reads Prefix And Name")]
     public void ReadOperator_CustomOperator_ReadsPrefixAndName()
     {
         var cursor = new TextCursor("field#In value");
@@ -176,7 +177,7 @@ public sealed class TextCursorTest
         op.Should().Be("#In");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Read Operator Unknown Single Char Returns Empty")]
     public void ReadOperator_UnknownSingleChar_ReturnsEmpty()
     {
         var cursor = new TextCursor("field~value");
@@ -187,7 +188,7 @@ public sealed class TextCursorTest
         op.Should().BeEmpty();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Read Value Reads Simple Value")]
     public void ReadValue_ReadsSimpleValue()
     {
         var cursor = new TextCursor("field=hello");
@@ -200,7 +201,7 @@ public sealed class TextCursorTest
         ci.Should().BeFalse();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Read Value With Escaped Comma Unescapes")]
     public void ReadValue_WithEscapedComma_Unescapes()
     {
         var cursor = new TextCursor(@"field=hello\,world");
@@ -212,7 +213,7 @@ public sealed class TextCursorTest
         value.Should().Be("hello,world");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Read Value With Escaped Operator Unescapes")]
     public void ReadValue_WithEscapedOperator_Unescapes()
     {
         var cursor = new TextCursor(@"field=hello\=world");
@@ -224,7 +225,7 @@ public sealed class TextCursorTest
         value.Should().Be("hello=world");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Read Value With Escaped Paren Unescapes")]
     public void ReadValue_WithEscapedParen_Unescapes()
     {
         var cursor = new TextCursor(@"field=hello\)world");
@@ -236,7 +237,7 @@ public sealed class TextCursorTest
         value.Should().Be("hello)world");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Read Value With Case Insensitive Marker Sets Flag")]
     public void ReadValue_WithCaseInsensitiveMarker_SetsFlag()
     {
         var cursor = new TextCursor("field=HELLO/i");
@@ -249,7 +250,7 @@ public sealed class TextCursorTest
         ci.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Read Value Case Insensitive At End Stops At Boundary")]
     public void ReadValue_CaseInsensitiveAtEnd_StopsAtBoundary()
     {
         var cursor = new TextCursor("field=HELLO/i,other=value");
@@ -263,7 +264,7 @@ public sealed class TextCursorTest
         cursor.Peek().Should().Be(',');
     }
 
-    [Fact]
+    [Fact(DisplayName = "Read Value Stops At And")]
     public void ReadValue_StopsAtAnd()
     {
         var cursor = new TextCursor("field=hello,other=world");
@@ -276,7 +277,7 @@ public sealed class TextCursorTest
         cursor.Peek().Should().Be(',');
     }
 
-    [Fact]
+    [Fact(DisplayName = "Read Value Stops At Or")]
     public void ReadValue_StopsAtOr()
     {
         var cursor = new TextCursor("field=hello|other=world");
@@ -289,7 +290,7 @@ public sealed class TextCursorTest
         cursor.Peek().Should().Be('|');
     }
 
-    [Fact]
+    [Fact(DisplayName = "Read Value Stops At Close Paren")]
     public void ReadValue_StopsAtCloseParen()
     {
         var cursor = new TextCursor("field=hello)");
@@ -302,7 +303,7 @@ public sealed class TextCursorTest
         cursor.Peek().Should().Be(')');
     }
 
-    [Fact]
+    [Fact(DisplayName = "Read Value Empty Value Returns Empty")]
     public void ReadValue_EmptyValue_ReturnsEmpty()
     {
         var cursor = new TextCursor("field=");
@@ -314,7 +315,7 @@ public sealed class TextCursorTest
         value.Should().BeEmpty();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Read Value Trims Whitespace")]
     public void ReadValue_TrimsWhitespace()
     {
         var cursor = new TextCursor("field=  hello  ");

@@ -2,9 +2,10 @@ using Application.Common.Querying.Grouping;
 
 namespace Application.Tests.Common.Querying.Grouping;
 
+
 public sealed class GroupByFieldTest
 {
-    [Fact]
+    [Fact(DisplayName = "Constructor With Field Sets Property")]
     public void Constructor_WithField_SetsProperty()
     {
         var field = new GroupByField("kind");
@@ -12,7 +13,7 @@ public sealed class GroupByFieldTest
         field.Field.Should().Be("kind");
     }
 
-    [Theory]
+    [Theory(DisplayName = "Constructor Various Fields All Valid")]
     [InlineData("kind")]
     [InlineData("category")]
     [InlineData("nested.field")]
@@ -23,7 +24,7 @@ public sealed class GroupByFieldTest
         field.Field.Should().Be(fieldName);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Record Equality Same Values Are Equal")]
     public void RecordEquality_SameValues_AreEqual()
     {
         var f1 = new GroupByField("kind");
@@ -32,7 +33,7 @@ public sealed class GroupByFieldTest
         f1.Should().Be(f2);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Record Equality Different Values Are Not Equal")]
     public void RecordEquality_DifferentValues_AreNotEqual()
     {
         var f1 = new GroupByField("kind");
@@ -41,7 +42,7 @@ public sealed class GroupByFieldTest
         f1.Should().NotBe(f2);
     }
 
-    [Fact]
+    [Fact(DisplayName = "With Expression Creates New Record With Changes")]
     public void WithExpression_CreatesNewRecordWithChanges()
     {
         var original = new GroupByField("kind");
@@ -51,7 +52,7 @@ public sealed class GroupByFieldTest
         original.Field.Should().Be("kind");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Deconstruction Works Correctly")]
     public void Deconstruction_WorksCorrectly()
     {
         var field = new GroupByField("kind");

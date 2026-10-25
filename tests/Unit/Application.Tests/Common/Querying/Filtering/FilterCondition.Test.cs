@@ -2,9 +2,10 @@ using Application.Common.Querying.Filtering;
 
 namespace Application.Tests.Common.Querying.Filtering;
 
+
 public sealed class FilterConditionTest
 {
-    [Fact]
+    [Fact(DisplayName = "Constructor With All Parameters Sets Properties")]
     public void Constructor_WithAllParameters_SetsProperties()
     {
         var condition = new FilterCondition(
@@ -27,7 +28,7 @@ public sealed class FilterConditionTest
         condition.CustomOperator.Should().BeNull();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Constructor With Case Insensitive Sets Flag")]
     public void Constructor_WithCaseInsensitive_SetsFlag()
     {
         var condition = new FilterCondition(
@@ -43,7 +44,7 @@ public sealed class FilterConditionTest
         condition.CaseInsensitive.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Constructor With Index Value Sets Index Value")]
     public void Constructor_WithIndexValue_SetsIndexValue()
     {
         var condition = new FilterCondition(
@@ -59,7 +60,7 @@ public sealed class FilterConditionTest
         condition.IndexValue.Should().Be(0);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Constructor With Custom Operator Sets Custom Operator")]
     public void Constructor_WithCustomOperator_SetsCustomOperator()
     {
         var condition = new FilterCondition(
@@ -76,7 +77,7 @@ public sealed class FilterConditionTest
         condition.CustomOperator.Should().Be("In");
     }
 
-    [Theory]
+    [Theory(DisplayName = "Constructor Various Operators All Valid")]
     [InlineData(FilterOperator.Equal, "value", "value")]
     [InlineData(FilterOperator.NotEqual, "value", "value")]
     [InlineData(FilterOperator.Contains, "val", "val")]
@@ -98,7 +99,7 @@ public sealed class FilterConditionTest
         condition.Value.Should().Be(expectedValue);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Record Equality Same Values Are Equal")]
     public void RecordEquality_SameValues_AreEqual()
     {
         var c1 = new FilterCondition("name", FilterOperator.Equal, "John", "John", typeof(string), false, null, null);
@@ -107,7 +108,7 @@ public sealed class FilterConditionTest
         c1.Should().Be(c2);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Record Equality Different Fields Are Not Equal")]
     public void RecordEquality_DifferentFields_AreNotEqual()
     {
         var c1 = new FilterCondition("name", FilterOperator.Equal, "a", "a", typeof(string), false, null, null);
@@ -116,7 +117,7 @@ public sealed class FilterConditionTest
         c1.Should().NotBe(c2);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Record Equality Different Operators Are Not Equal")]
     public void RecordEquality_DifferentOperators_AreNotEqual()
     {
         var c1 = new FilterCondition("name", FilterOperator.Equal, "a", "a", typeof(string), false, null, null);
@@ -125,7 +126,7 @@ public sealed class FilterConditionTest
         c1.Should().NotBe(c2);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Record Equality Different Values Are Not Equal")]
     public void RecordEquality_DifferentValues_AreNotEqual()
     {
         var c1 = new FilterCondition("name", FilterOperator.Equal, "a", "a", typeof(string), false, null, null);
@@ -134,7 +135,7 @@ public sealed class FilterConditionTest
         c1.Should().NotBe(c2);
     }
 
-    [Fact]
+    [Fact(DisplayName = "With Expression Creates New Record With Changes")]
     public void WithExpression_CreatesNewRecordWithChanges()
     {
         var original = new FilterCondition("name", FilterOperator.Equal, "John", "John", typeof(string), false, null, null);
@@ -144,7 +145,7 @@ public sealed class FilterConditionTest
         original.Operator.Should().Be(FilterOperator.Equal);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Deconstruction Works Correctly")]
     public void Deconstruction_WorksCorrectly()
     {
         var condition = new FilterCondition("name", FilterOperator.Equal, "John", "John", typeof(string), true, 0, "In");
@@ -160,7 +161,7 @@ public sealed class FilterConditionTest
         custom.Should().Be("In");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Inherits From Filter Node")]
     public void InheritsFromFilterNode()
     {
         var condition = new FilterCondition("name", FilterOperator.Equal, "John", "John", typeof(string), false, null, null);
@@ -168,7 +169,7 @@ public sealed class FilterConditionTest
         condition.Should().BeAssignableTo<FilterNode>();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Property Getters All Accessible")]
     public void PropertyGetters_AllAccessible()
     {
         var condition = new FilterCondition("name", FilterOperator.Equal, "John", "John", typeof(string), true, 0, "In");

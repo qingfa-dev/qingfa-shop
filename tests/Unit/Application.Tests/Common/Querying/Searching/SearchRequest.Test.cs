@@ -3,12 +3,13 @@ using Application.Common.Querying.Searching;
 
 namespace Application.Tests.Common.Querying.Searching;
 
+
 public sealed class SearchRequestTest
 {
     // SearchRequest is abstract, so we test through BasicSearchRequest
     // but verify the base class behavior
 
-    [Fact]
+    [Fact(DisplayName = "Constructor With Valid Query And Mode Sets Properties")]
     public void Constructor_WithValidQueryAndMode_SetsProperties()
     {
         var request = new BasicSearchRequest("hello world", SearchMode.Contains);
@@ -20,7 +21,7 @@ public sealed class SearchRequestTest
         request.Fields.Should().BeNull(); // default
     }
 
-    [Theory]
+    [Theory(DisplayName = "Constructor With Empty Or Whitespace Query Throws")]
     [InlineData("")]
     [InlineData("   ")]
     [InlineData("\t")]
@@ -35,7 +36,7 @@ public sealed class SearchRequestTest
             .And.ParamName.Should().Be("query");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Constructor With Query Exceeding Max Length Throws")]
     public void Constructor_WithQueryExceedingMaxLength_Throws()
     {
         string longQuery = new('a', QueryConstant.Limits.Search.MaxLength + 1);
@@ -47,7 +48,7 @@ public sealed class SearchRequestTest
             .And.ParamName.Should().Be("query");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Constructor With Query At Max Length Succeeds")]
     public void Constructor_WithQueryAtMaxLength_Succeeds()
     {
         string maxQuery = new('a', QueryConstant.Limits.Search.MaxLength);
@@ -58,7 +59,7 @@ public sealed class SearchRequestTest
         request.Query.Length.Should().Be(QueryConstant.Limits.Search.MaxLength);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Constructor With Non Full Text Mode Accepts All")]
     [InlineData(SearchMode.Contains)]
     [InlineData(SearchMode.StartsWith)]
     [InlineData(SearchMode.Exact)]
@@ -70,7 +71,7 @@ public sealed class SearchRequestTest
         request.Mode.Should().Be(mode);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Constructor With Full Text Mode Throws")]
     public void Constructor_WithFullTextMode_Throws()
     {
         Action act = () => new BasicSearchRequest("test", SearchMode.FullText);
@@ -80,7 +81,7 @@ public sealed class SearchRequestTest
             .And.ParamName.Should().Be("mode");
     }
 
-    [Theory]
+    [Theory(DisplayName = "Get Terms With Multiple Terms Returns All Terms")]
     [InlineData("hello", new[] { "hello" })]
     [InlineData("hello world", new[] { "hello", "world" })]
     [InlineData("hello world test", new[] { "hello", "world", "test" })]
@@ -95,7 +96,7 @@ public sealed class SearchRequestTest
         terms.Should().HaveCount(expected.Length);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Get Terms With Whitespace Variations Trims Terms")]
     [InlineData("  hello  ", new[] { "hello" })]
     [InlineData("hello   world", new[] { "hello", "world" })]
     [InlineData("  hello   world  test  ", new[] { "hello", "world", "test" })]
@@ -109,7 +110,7 @@ public sealed class SearchRequestTest
         terms.Should().Equal(expected);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Properties With All Set Should Persist Values")]
     [InlineData(SearchMode.Contains, "name", SearchTermLogic.And, true)]
     [InlineData(SearchMode.StartsWith, "name,description", SearchTermLogic.Or, false)]
     [InlineData(SearchMode.Exact, "name", SearchTermLogic.And, false)]
@@ -133,7 +134,7 @@ public sealed class SearchRequestTest
         request.CaseInsensitive.Should().Be(caseInsensitive);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Fields With Csv String Should Trim And Set Fields")]
     [InlineData("name")]
     [InlineData("name,description")]
     [InlineData("name, description , other")]
@@ -150,7 +151,7 @@ public sealed class SearchRequestTest
         request.Fields.Should().AllSatisfy(f => f.Should().NotContain(" "));
     }
 
-    [Fact]
+    [Fact(DisplayName = "Record Equality Same Values Are Equal")]
     public void RecordEquality_SameValues_AreEqual()
     {
         var fields = new[] { "name" };
@@ -160,7 +161,7 @@ public sealed class SearchRequestTest
         r1.Should().Be(r2);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Record Equality Different Values Are Not Equal")]
     [InlineData("hello", SearchMode.Contains, "world", SearchMode.Contains)]
     [InlineData("hello", SearchMode.Contains, "hello", SearchMode.StartsWith)]
     [InlineData("hello", SearchMode.Contains, "hello", SearchMode.Exact)]
@@ -174,7 +175,7 @@ public sealed class SearchRequestTest
         r1.Should().NotBe(r2);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Record Equality With Different Fields Are Not Equal")]
     public void RecordEquality_WithDifferentFields_AreNotEqual()
     {
         var r1 = new BasicSearchRequest("hello", SearchMode.Contains) { Fields = new[] { "name" } };
@@ -183,7 +184,7 @@ public sealed class SearchRequestTest
         r1.Should().NotBe(r2);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Record Equality With Different Term Logic Are Not Equal")]
     public void RecordEquality_WithDifferentTermLogic_AreNotEqual()
     {
         var r1 = new BasicSearchRequest("hello", SearchMode.Contains) { TermLogic = SearchTermLogic.And };
@@ -192,7 +193,7 @@ public sealed class SearchRequestTest
         r1.Should().NotBe(r2);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Record Equality With Different Case Insensitive Are Not Equal")]
     public void RecordEquality_WithDifferentCaseInsensitive_AreNotEqual()
     {
         var r1 = new BasicSearchRequest("hello", SearchMode.Contains) { CaseInsensitive = true };
@@ -201,7 +202,7 @@ public sealed class SearchRequestTest
         r1.Should().NotBe(r2);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Base Type Assignability Should Be Assignable To Search Request")]
     [InlineData(SearchMode.Contains)]
     [InlineData(SearchMode.StartsWith)]
     [InlineData(SearchMode.Exact)]

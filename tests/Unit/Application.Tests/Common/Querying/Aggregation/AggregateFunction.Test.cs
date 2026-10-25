@@ -3,9 +3,10 @@ using Application.Common.Querying.Aggregation;
 
 namespace Application.Tests.Common.Querying.Aggregation;
 
+
 public sealed class AggregateFunctionTest
 {
-    [Theory]
+    [Theory(DisplayName = "Enum Has Expected Values")]
     [InlineData(AggregateFunction.Sum)]
     [InlineData(AggregateFunction.Average)]
     [InlineData(AggregateFunction.Minimum)]
@@ -17,7 +18,7 @@ public sealed class AggregateFunctionTest
         Enum.IsDefined(fn).Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Values Are Sequential")]
     public void Values_AreSequential()
     {
         ((int)AggregateFunction.Sum).Should().Be(0);
@@ -28,7 +29,7 @@ public sealed class AggregateFunctionTest
         ((int)AggregateFunction.DistinctCount).Should().Be(5);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse Valid String Returns Correct Enum")]
     public void Parse_ValidString_ReturnsCorrectEnum()
     {
         Enum.Parse<AggregateFunction>("Sum", ignoreCase: true).Should().Be(AggregateFunction.Sum);
@@ -39,7 +40,7 @@ public sealed class AggregateFunctionTest
         Enum.Parse<AggregateFunction>("DistinctCount", ignoreCase: true).Should().Be(AggregateFunction.DistinctCount);
     }
 
-    [Fact]
+    [Fact(DisplayName = "To String Returns Expected Names")]
     public void ToString_ReturnsExpectedNames()
     {
         AggregateFunction.Sum.ToString().Should().Be("Sum");
@@ -50,7 +51,7 @@ public sealed class AggregateFunctionTest
         AggregateFunction.DistinctCount.ToString().Should().Be("DistinctCount");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Constant Names Match Enum")]
     public void ConstantNames_MatchEnum()
     {
         // Validate: parser constants match enum for consistency

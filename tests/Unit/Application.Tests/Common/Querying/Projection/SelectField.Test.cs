@@ -2,9 +2,10 @@ using Application.Common.Querying.Projection;
 
 namespace Application.Tests.Common.Querying.Projection;
 
+
 public sealed class SelectFieldTest
 {
-    [Fact]
+    [Fact(DisplayName = "Constructor With Field And Alias Sets Properties")]
     public void Constructor_WithFieldAndAlias_SetsProperties()
     {
         var field = new SelectField("name", "title");
@@ -13,7 +14,7 @@ public sealed class SelectFieldTest
         field.Alias.Should().Be("title");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Constructor With Same Field And Alias Sets Both")]
     public void Constructor_WithSameFieldAndAlias_SetsBoth()
     {
         var field = new SelectField("name", "name");
@@ -22,7 +23,7 @@ public sealed class SelectFieldTest
         field.Alias.Should().Be("name");
     }
 
-    [Theory]
+    [Theory(DisplayName = "Constructor Various Combinations All Valid")]
     [InlineData("name", "title")]
     [InlineData("score", "points")]
     [InlineData("nested.field", "nested")]
@@ -35,7 +36,7 @@ public sealed class SelectFieldTest
         field.Alias.Should().Be(alias);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Record Equality Same Values Are Equal")]
     public void RecordEquality_SameValues_AreEqual()
     {
         var f1 = new SelectField("name", "title");
@@ -44,7 +45,7 @@ public sealed class SelectFieldTest
         f1.Should().Be(f2);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Record Equality Different Values Are Not Equal")]
     [InlineData("name", "title", "score", "title")]
     [InlineData("name", "title", "name", "points")]
     public void RecordEquality_DifferentValues_AreNotEqual(
@@ -56,7 +57,7 @@ public sealed class SelectFieldTest
         f1.Should().NotBe(f2);
     }
 
-    [Fact]
+    [Fact(DisplayName = "With Expression Creates New Record With Changes")]
     public void WithExpression_CreatesNewRecordWithChanges()
     {
         var original = new SelectField("name", "title");
@@ -67,7 +68,7 @@ public sealed class SelectFieldTest
         original.Alias.Should().Be("title");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Deconstruction Works Correctly")]
     public void Deconstruction_WorksCorrectly()
     {
         var field = new SelectField("name", "title");

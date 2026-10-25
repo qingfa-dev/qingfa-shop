@@ -3,9 +3,10 @@ using Application.Common.Querying.Searching;
 
 namespace Application.Tests.Common.Querying.Searching;
 
+
 public sealed class SearchModeTest
 {
-    [Theory]
+    [Theory(DisplayName = "Enum Has Expected Values")]
     [InlineData(SearchMode.Contains)]
     [InlineData(SearchMode.StartsWith)]
     [InlineData(SearchMode.Exact)]
@@ -16,37 +17,37 @@ public sealed class SearchModeTest
         Enum.IsDefined(mode).Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Contains Has Value Zero")]
     public void Contains_HasValueZero()
     {
         ((int)SearchMode.Contains).Should().Be(0);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Starts With Has Value One")]
     public void StartsWith_HasValueOne()
     {
         ((int)SearchMode.StartsWith).Should().Be(1);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Exact Has Value Two")]
     public void Exact_HasValueTwo()
     {
         ((int)SearchMode.Exact).Should().Be(2);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Full Text Has Value Three")]
     public void FullText_HasValueThree()
     {
         ((int)SearchMode.FullText).Should().Be(3);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Fuzzy Has Value Four")]
     public void Fuzzy_HasValueFour()
     {
         ((int)SearchMode.Fuzzy).Should().Be(4);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse Valid String Returns Correct Enum")]
     public void Parse_ValidString_ReturnsCorrectEnum()
     {
         Enum.Parse<SearchMode>("Contains", ignoreCase: true).Should().Be(SearchMode.Contains);
@@ -56,7 +57,7 @@ public sealed class SearchModeTest
         Enum.Parse<SearchMode>("Fuzzy", ignoreCase: true).Should().Be(SearchMode.Fuzzy);
     }
 
-    [Fact]
+    [Fact(DisplayName = "To String Returns Expected Names")]
     public void ToString_ReturnsExpectedNames()
     {
         SearchMode.Contains.ToString().Should().Be("Contains");
@@ -66,7 +67,7 @@ public sealed class SearchModeTest
         SearchMode.Fuzzy.ToString().Should().Be("Fuzzy");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Constant Tokens Match Enum Names")]
     public void ConstantTokens_MatchEnumNames()
     {
         // Validate: the grammar tokens match the enum for parser consistency

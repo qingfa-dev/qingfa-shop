@@ -3,6 +3,7 @@ using Application.Common.Querying.Mapping;
 
 namespace Application.Tests.Common.Querying.Parsing;
 
+
 public sealed class FilterLimitTest
 {
     private sealed class Target
@@ -31,7 +32,7 @@ public sealed class FilterLimitTest
     private static Result<Query<Target>> Parse(string filter, QueryParseLimits? options = null) =>
         QueryParser.Parse(new QueryParameters { Filter = filter }, Map(), options);
 
-    [Fact]
+    [Fact(DisplayName = "Filter When Depth Is At Limit Should Succeed")]
     public void Filter_WhenDepthIsAtLimit_ShouldSucceed()
     {
         string filter = string.Concat(Enumerable.Repeat("(", 32)) + "name=a" +
@@ -44,7 +45,7 @@ public sealed class FilterLimitTest
             .Which.Value.Should().Be("a");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filter When Depth Exceeds Limit Should Fail")]
     public void Filter_WhenDepthExceedsLimit_ShouldFail()
     {
         string filter = string.Concat(Enumerable.Repeat("(", 33)) + "name=a" +
@@ -56,7 +57,7 @@ public sealed class FilterLimitTest
         result.Errors.Should().Contain(e => e.Code == "Query.Filter.DepthExceeded");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filter When Too Deep Should Fail")]
     public void Filter_WhenTooDeep_ShouldFail()
     {
         string filter = string.Concat(Enumerable.Repeat("(", 40)) + "name=a" +
@@ -68,7 +69,7 @@ public sealed class FilterLimitTest
         result.Errors.Should().Contain(e => e.Code == "Query.Filter.DepthExceeded");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filter When Too Many Conditions Should Fail")]
     public void Filter_WhenTooManyConditions_ShouldFail()
     {
         string filter = string.Join(',', Enumerable.Repeat("name=a", 101));
@@ -79,7 +80,7 @@ public sealed class FilterLimitTest
         result.Errors.Should().Contain(e => e.Code == "Query.Filter.TooManyConditions");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filter When Longer Than The Limit Should Fail")]
     public void Filter_WhenLongerThanTheLimit_ShouldFail()
     {
         string filter = new('a', 2049);
@@ -90,7 +91,7 @@ public sealed class FilterLimitTest
         result.Errors.Should().Contain(e => e.Code == "Query.Filter.TooLong");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filter When Exactly At The Length Limit Should Succeed")]
     public void Filter_WhenExactlyAtTheLengthLimit_ShouldSucceed()
     {
         // Boundary: the limit is inclusive. An off-by-one here would reject a
@@ -103,7 +104,7 @@ public sealed class FilterLimitTest
         result.IsSuccess.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filter When Exactly At The Condition Limit Should Succeed")]
     public void Filter_WhenExactlyAtTheConditionLimit_ShouldSucceed()
     {
         string filter = string.Join(',', Enumerable.Repeat("name=a", 100));

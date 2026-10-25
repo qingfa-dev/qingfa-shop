@@ -2,9 +2,10 @@ using Application.Common.Querying;
 
 namespace Core.Tests.Common.Querying;
 
+
 public sealed class QueryOutcomeTest
 {
-    [Fact]
+    [Fact(DisplayName = "Not Groupable Should Create Error")]
     public void NotGroupable_ShouldCreateError()
     {
         Error error = QueryOutcome.Failure.NotGroupable("field");
@@ -13,7 +14,7 @@ public sealed class QueryOutcomeTest
         error.Message.Should().Contain("field");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Operator Unsupported Should Create Error")]
     public void OperatorUnsupported_ShouldCreateError()
     {
         Error error = QueryOutcome.Failure.OperatorUnsupported("customOp");
@@ -22,7 +23,7 @@ public sealed class QueryOutcomeTest
         error.Message.Should().Contain("customOp");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Page Size Invalid Should Create Error")]
     public void PageSizeInvalid_ShouldCreateError()
     {
         Error error = QueryOutcome.Failure.PageSizeInvalid(200);
@@ -31,7 +32,7 @@ public sealed class QueryOutcomeTest
         error.Message.Should().Contain("200");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Search Not Configured Should Create Error")]
     public void SearchNotConfigured_ShouldCreateError()
     {
         Error error = QueryOutcome.Failure.SearchNotConfigured;
@@ -39,7 +40,7 @@ public sealed class QueryOutcomeTest
         error.Code.Should().Be("Query.Search.NotConfigured");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Search Too Long Should Create Error")]
     public void SearchTooLong_ShouldCreateError()
     {
         Error error = QueryOutcome.Failure.SearchTooLong(256);
@@ -48,7 +49,7 @@ public sealed class QueryOutcomeTest
         error.Message.Should().Contain("256");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Mixed Shape Should Create Error")]
     public void MixedShape_ShouldCreateError()
     {
         Error error = QueryOutcome.Failure.MixedShape;
@@ -56,7 +57,7 @@ public sealed class QueryOutcomeTest
         error.Code.Should().Be("Query.Tabular.MixedShape");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Field Not Grouped Should Create Error")]
     public void FieldNotGrouped_ShouldCreateError()
     {
         Error error = QueryOutcome.Failure.FieldNotGrouped("field");
@@ -65,7 +66,7 @@ public sealed class QueryOutcomeTest
         error.Message.Should().Contain("field");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Aggregate Syntax Should Create Error")]
     public void AggregateSyntax_ShouldCreateError()
     {
         Error error = QueryOutcome.Failure.AggregateSyntax("bad expression");
@@ -74,7 +75,7 @@ public sealed class QueryOutcomeTest
         error.Message.Should().Contain("bad expression");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Aggregate Unsupported Should Create Error")]
     public void AggregateUnsupported_ShouldCreateError()
     {
         Error error = QueryOutcome.Failure.AggregateUnsupported("field");
@@ -83,7 +84,7 @@ public sealed class QueryOutcomeTest
         error.Message.Should().Contain("field");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Unsupported Should Create Error")]
     public void Unsupported_ShouldCreateError()
     {
         Error error = QueryOutcome.Failure.Unsupported("feature");

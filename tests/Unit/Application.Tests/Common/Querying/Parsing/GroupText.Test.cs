@@ -4,6 +4,7 @@ using Application.Common.Querying.Mapping;
 using Application.Common.Querying.Parsing;
 
 namespace Application.Tests.Common.Querying.Parsing;
+using Xunit;
 
 public sealed class GroupTextTest
 {
@@ -32,7 +33,7 @@ public sealed class GroupTextTest
     private static ParserState<Target> State(QueryMap<Target> map, QueryParseLimits? limits = null) =>
         new(map, limits ?? QueryParseLimits.Default);
 
-    [Fact]
+    [Fact(DisplayName = "Parse Empty String Returns Empty List")]
     public void Parse_EmptyString_ReturnsEmptyList()
     {
         Result<IReadOnlyList<GroupByField>> result = GroupText.Parse("", State(Map()));
@@ -41,7 +42,7 @@ public sealed class GroupTextTest
         result.Value.Should().BeEmpty();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse Null Returns Empty List")]
     public void Parse_Null_ReturnsEmptyList()
     {
         Result<IReadOnlyList<GroupByField>> result = GroupText.Parse(null, State(Map()));
@@ -50,7 +51,7 @@ public sealed class GroupTextTest
         result.Value.Should().BeEmpty();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse Whitespace Returns Empty List")]
     public void Parse_Whitespace_ReturnsEmptyList()
     {
         Result<IReadOnlyList<GroupByField>> result = GroupText.Parse("   ", State(Map()));
@@ -59,7 +60,7 @@ public sealed class GroupTextTest
         result.Value.Should().BeEmpty();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse Single Field Returns Field")]
     public void Parse_SingleField_ReturnsField()
     {
         Result<IReadOnlyList<GroupByField>> result = GroupText.Parse("kind", State(Map()));
@@ -69,7 +70,7 @@ public sealed class GroupTextTest
             .Which.Should().Be(new GroupByField("kind"));
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse Multiple Fields Returns All Fields")]
     public void Parse_MultipleFields_ReturnsAllFields()
     {
         Result<IReadOnlyList<GroupByField>> result = GroupText.Parse("kind,name", State(Map()));
@@ -80,7 +81,7 @@ public sealed class GroupTextTest
         result.Value[1].Field.Should().Be("name");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse Trims Whitespace Around Fields")]
     public void Parse_TrimsWhitespaceAroundFields()
     {
         Result<IReadOnlyList<GroupByField>> result = GroupText.Parse(" kind , name ", State(Map()));
@@ -91,7 +92,7 @@ public sealed class GroupTextTest
         result.Value[1].Field.Should().Be("name");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse Unknown Field Returns Failure")]
     public void Parse_UnknownField_ReturnsFailure()
     {
         Result<IReadOnlyList<GroupByField>> result = GroupText.Parse("unknown", State(Map()));
@@ -100,7 +101,7 @@ public sealed class GroupTextTest
         result.Errors.Should().Contain(e => e.Code == "Query.Field.NotMapped");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse Non Groupable Field Returns Failure")]
     public void Parse_NonGroupableField_ReturnsFailure()
     {
         Result<IReadOnlyList<GroupByField>> result = GroupText.Parse("hidden", State(Map()));
@@ -109,7 +110,7 @@ public sealed class GroupTextTest
         result.Errors.Should().Contain(e => e.Code == "Query.Field.NotGroupable");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse Exceeds Max Group Fields Returns Failure")]
     public void Parse_ExceedsMaxGroupFields_ReturnsFailure()
     {
         var limits = new QueryParseLimits { MaxGroupFields = 2 };
@@ -119,7 +120,7 @@ public sealed class GroupTextTest
         result.Errors.Should().Contain(e => e.Code == "Query.Filter.Syntax");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse At Max Group Fields Succeeds")]
     public void Parse_AtMaxGroupFields_Succeeds()
     {
         var limits = new QueryParseLimits { MaxGroupFields = 3 };
@@ -129,7 +130,7 @@ public sealed class GroupTextTest
         result.Value.Should().HaveCount(3);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse Collects All Errors")]
     public void Parse_CollectsAllErrors()
     {
         Result<IReadOnlyList<GroupByField>> result = GroupText.Parse("unknown,hidden", State(Map()));

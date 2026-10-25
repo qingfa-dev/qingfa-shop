@@ -3,6 +3,7 @@ using Application.Common.Querying.Mapping;
 
 namespace Application.Tests.Common.Querying.Mapping;
 
+
 public sealed class QueryFieldBuilderTest
 {
     private sealed class Target
@@ -11,7 +12,7 @@ public sealed class QueryFieldBuilderTest
         public int Score { get; set; }
     }
 
-    [Fact]
+    [Fact(DisplayName = "Defaults All Capabilities Enabled Except Searchable")]
     public void Defaults_AllCapabilitiesEnabledExceptSearchable()
     {
         var builder = new QueryFieldBuilder();
@@ -27,7 +28,7 @@ public sealed class QueryFieldBuilderTest
         field.AllowNullSearch.Should().BeTrue(); // default is true
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filterable Can Disable")]
     public void Filterable_CanDisable()
     {
         var builder = new QueryFieldBuilder().Filterable(false);
@@ -37,7 +38,7 @@ public sealed class QueryFieldBuilderTest
         field.Filterable.Should().BeFalse();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Sortable Can Disable")]
     public void Sortable_CanDisable()
     {
         var builder = new QueryFieldBuilder().Sortable(false);
@@ -47,7 +48,7 @@ public sealed class QueryFieldBuilderTest
         field.Sortable.Should().BeFalse();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Selectable Can Disable")]
     public void Selectable_CanDisable()
     {
         var builder = new QueryFieldBuilder().Selectable(false);
@@ -57,7 +58,7 @@ public sealed class QueryFieldBuilderTest
         field.Selectable.Should().BeFalse();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Searchable Can Enable")]
     public void Searchable_CanEnable()
     {
         var builder = new QueryFieldBuilder().Searchable(true);
@@ -67,7 +68,7 @@ public sealed class QueryFieldBuilderTest
         field.Searchable.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Groupable Can Enable")]
     public void Groupable_CanEnable()
     {
         var builder = new QueryFieldBuilder().Groupable(true);
@@ -77,7 +78,7 @@ public sealed class QueryFieldBuilderTest
         field.Groupable.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Case Insensitive Can Enable")]
     public void CaseInsensitive_CanEnable()
     {
         var builder = new QueryFieldBuilder().CaseInsensitive(true);
@@ -87,7 +88,7 @@ public sealed class QueryFieldBuilderTest
         field.CaseInsensitive.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Allow Null Search Can Disable")]
     public void AllowNullSearch_CanDisable()
     {
         var builder = new QueryFieldBuilder().AllowNullSearch(false);
@@ -97,7 +98,7 @@ public sealed class QueryFieldBuilderTest
         field.AllowNullSearch.Should().BeFalse();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Convert With Stores Converter")]
     public void ConvertWith_StoresConverter()
     {
         var builder = new QueryFieldBuilder().ConvertWith(raw =>
@@ -109,7 +110,7 @@ public sealed class QueryFieldBuilderTest
         field.Converter!("hello").Value.Value.Should().Be("HELLO");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Convert With Null Converter Throws")]
     public void ConvertWith_NullConverter_Throws()
     {
         var builder = new QueryFieldBuilder();
@@ -119,7 +120,7 @@ public sealed class QueryFieldBuilderTest
         act.Should().Throw<ArgumentNullException>();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Chaining Returns Same Builder")]
     public void Chaining_ReturnsSameBuilder()
     {
         var builder = new QueryFieldBuilder();
@@ -129,7 +130,7 @@ public sealed class QueryFieldBuilderTest
         result.Should().BeSameAs(builder);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Build Composite Creates Field With Composite Members")]
     public void BuildComposite_CreatesFieldWithCompositeMembers()
     {
         var builder = new QueryFieldBuilder();
@@ -142,7 +143,7 @@ public sealed class QueryFieldBuilderTest
         field.IsIndexed.Should().BeFalse();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Build Composite Uses Builder Settings")]
     public void BuildComposite_UsesBuilderSettings()
     {
         var builder = new QueryFieldBuilder().Sortable(true).Selectable(true).Groupable(true);
@@ -154,7 +155,7 @@ public sealed class QueryFieldBuilderTest
         field.Groupable.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Build Composite When Builder Disables Returns Disabled")]
     public void BuildComposite_WhenBuilderDisables_ReturnsDisabled()
     {
         var builder = new QueryFieldBuilder().Sortable(false).Selectable(false).Groupable(false);

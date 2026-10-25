@@ -2,9 +2,10 @@ using Application.Common.Querying.Filtering;
 
 namespace Application.Tests.Common.Querying.Filtering;
 
+
 public sealed class FilterGroupTest
 {
-    [Fact]
+    [Fact(DisplayName = "Constructor With And Logic And Children Sets Properties")]
     public void Constructor_WithAndLogicAndChildren_SetsProperties()
     {
         var children = new List<FilterNode>
@@ -18,7 +19,7 @@ public sealed class FilterGroupTest
         group.Children.Should().Equal(children);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Constructor With Or Logic And Children Sets Properties")]
     public void Constructor_WithOrLogicAndChildren_SetsProperties()
     {
         var children = new List<FilterNode>
@@ -31,7 +32,7 @@ public sealed class FilterGroupTest
         group.Children.Should().Equal(children);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Constructor With Empty Children Sets Empty List")]
     public void Constructor_WithEmptyChildren_SetsEmptyList()
     {
         var group = new FilterGroup(FilterLogic.And, []);
@@ -39,7 +40,7 @@ public sealed class FilterGroupTest
         group.Children.Should().BeEmpty();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Constructor With Nested Groups Works")]
     public void Constructor_WithNestedGroups_Works()
     {
         var inner = new FilterGroup(FilterLogic.Or, new List<FilterNode>
@@ -58,7 +59,7 @@ public sealed class FilterGroupTest
         outer.Children[0].Should().BeSameAs(inner);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Record Equality Same Values Are Equal")]
     public void RecordEquality_SameValues_AreEqual()
     {
         var children = new List<FilterNode>
@@ -71,7 +72,7 @@ public sealed class FilterGroupTest
         g1.Should().Be(g2);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Record Equality Different Logic Are Not Equal")]
     public void RecordEquality_DifferentLogic_AreNotEqual()
     {
         var children = new List<FilterNode>
@@ -84,7 +85,7 @@ public sealed class FilterGroupTest
         g1.Should().NotBe(g2);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Record Equality Different Children Are Not Equal")]
     public void RecordEquality_DifferentChildren_AreNotEqual()
     {
         var g1 = new FilterGroup(FilterLogic.And, new List<FilterNode>
@@ -99,7 +100,7 @@ public sealed class FilterGroupTest
         g1.Should().NotBe(g2);
     }
 
-    [Fact]
+    [Fact(DisplayName = "With Expression Creates New Record With Changes")]
     public void WithExpression_CreatesNewRecordWithChanges()
     {
         var original = new FilterGroup(FilterLogic.And, []);
@@ -109,7 +110,7 @@ public sealed class FilterGroupTest
         original.Logic.Should().Be(FilterLogic.And);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Deconstruction Works Correctly")]
     public void Deconstruction_WorksCorrectly()
     {
         var children = new List<FilterNode>
@@ -123,7 +124,7 @@ public sealed class FilterGroupTest
         ch.Should().Equal(children);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Inherits From Filter Node")]
     public void InheritsFromFilterNode()
     {
         var group = new FilterGroup(FilterLogic.And, []);

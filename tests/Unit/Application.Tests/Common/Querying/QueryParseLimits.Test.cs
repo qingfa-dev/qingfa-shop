@@ -2,9 +2,10 @@ using Application.Common.Querying;
 
 namespace Application.Tests.Common.Querying;
 
+
 public sealed class QueryParseLimitsTest
 {
-    [Fact]
+    [Fact(DisplayName = "Default Should Have Expected Values")]
     public void Default_ShouldHaveExpectedValues()
     {
         var limits = QueryParseLimits.Default;
@@ -24,7 +25,7 @@ public sealed class QueryParseLimitsTest
         limits.MaxSearchLanguage.Should().Be(QueryConstant.Limits.Search.MaxLanguageLength);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Default Page Size Can Be Customized")]
     [InlineData(5)]
     [InlineData(10)]
     [InlineData(100)]
@@ -35,7 +36,7 @@ public sealed class QueryParseLimitsTest
         limits.DefaultPageSize.Should().Be(size);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Max Page Size Can Be Customized")]
     [InlineData(50)]
     [InlineData(100)]
     [InlineData(500)]
@@ -46,7 +47,7 @@ public sealed class QueryParseLimitsTest
         limits.MaxPageSize.Should().Be(size);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Max Filter Length Can Be Customized")]
     [InlineData(100)]
     [InlineData(1000)]
     [InlineData(5000)]
@@ -57,7 +58,7 @@ public sealed class QueryParseLimitsTest
         limits.MaxFilterLength.Should().Be(length);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Max Filter Depth Can Be Customized")]
     [InlineData(10)]
     [InlineData(20)]
     [InlineData(50)]
@@ -68,7 +69,7 @@ public sealed class QueryParseLimitsTest
         limits.MaxFilterDepth.Should().Be(depth);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Max Conditions Can Be Customized")]
     [InlineData(10)]
     [InlineData(50)]
     [InlineData(200)]
@@ -79,7 +80,7 @@ public sealed class QueryParseLimitsTest
         limits.MaxConditions.Should().Be(count);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Max Sort Fields Can Be Customized")]
     [InlineData(4)]
     [InlineData(16)]
     [InlineData(32)]
@@ -90,7 +91,7 @@ public sealed class QueryParseLimitsTest
         limits.MaxSortFields.Should().Be(fields);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Max Select Fields Can Be Customized")]
     [InlineData(16)]
     [InlineData(64)]
     [InlineData(128)]
@@ -101,7 +102,7 @@ public sealed class QueryParseLimitsTest
         limits.MaxSelectFields.Should().Be(fields);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Max Group Fields Can Be Customized")]
     [InlineData(4)]
     [InlineData(16)]
     [InlineData(32)]
@@ -112,7 +113,7 @@ public sealed class QueryParseLimitsTest
         limits.MaxGroupFields.Should().Be(fields);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Max Aggregates Can Be Customized")]
     [InlineData(8)]
     [InlineData(32)]
     [InlineData(64)]
@@ -123,7 +124,7 @@ public sealed class QueryParseLimitsTest
         limits.MaxAggregates.Should().Be(count);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Max Search Length Can Be Customized")]
     [InlineData(100)]
     [InlineData(500)]
     [InlineData(1000)]
@@ -134,7 +135,7 @@ public sealed class QueryParseLimitsTest
         limits.MaxSearchLength.Should().Be(length);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Max Search Terms Can Be Customized")]
     [InlineData(4)]
     [InlineData(16)]
     [InlineData(32)]
@@ -145,7 +146,7 @@ public sealed class QueryParseLimitsTest
         limits.MaxSearchTerms.Should().Be(terms);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Max Search Fields Can Be Customized")]
     [InlineData(4)]
     [InlineData(16)]
     [InlineData(32)]
@@ -156,7 +157,7 @@ public sealed class QueryParseLimitsTest
         limits.MaxSearchFields.Should().Be(fields);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Max Search Language Can Be Customized")]
     [InlineData(4)]
     [InlineData(16)]
     [InlineData(32)]
@@ -167,7 +168,7 @@ public sealed class QueryParseLimitsTest
         limits.MaxSearchLanguage.Should().Be(length);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Default Instance Is Shared")]
     public void DefaultInstance_IsShared()
     {
         var limits1 = QueryParseLimits.Default;
@@ -176,7 +177,7 @@ public sealed class QueryParseLimitsTest
         limits1.Should().BeSameAs(limits2);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Record Equality Same Values Are Equal")]
     public void RecordEquality_SameValues_AreEqual()
     {
         var l1 = new QueryParseLimits
@@ -215,7 +216,7 @@ public sealed class QueryParseLimitsTest
         l1.Should().Be(l2);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Record Equality Different Values Are Not Equal")]
     public void RecordEquality_DifferentValues_AreNotEqual()
     {
         var l1 = new QueryParseLimits { DefaultPageSize = 10 };

@@ -1,10 +1,11 @@
 using Application.Common.Querying.Projection;
 
 namespace Application.Tests.Common.Querying.Projection;
+using Xunit;
 
 public sealed class TabularModelTest
 {
-    [Fact]
+    [Fact(DisplayName = "Tabular Column Should Record Name And Type")]
     public void TabularColumn_ShouldRecordNameAndType()
     {
         var column = new TabularColumn("name", typeof(string));
@@ -13,7 +14,7 @@ public sealed class TabularModelTest
         column.ValueType.Should().Be(typeof(string));
     }
 
-    [Fact]
+    [Fact(DisplayName = "Tabular Column With Int Type Should Record Correctly")]
     public void TabularColumn_WithIntType_ShouldRecordCorrectly()
     {
         var column = new TabularColumn("score", typeof(int));
@@ -22,7 +23,7 @@ public sealed class TabularModelTest
         column.ValueType.Should().Be(typeof(int));
     }
 
-    [Fact]
+    [Fact(DisplayName = "Tabular Row Should Hold Values")]
     public void TabularRow_ShouldHoldValues()
     {
         var row = new TabularRow(new object?[] { "John", 25 });
@@ -32,7 +33,7 @@ public sealed class TabularModelTest
         row.Values[1].Should().Be(25);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Tabular Row With Null Value Should Hold Null")]
     public void TabularRow_WithNullValue_ShouldHoldNull()
     {
         var row = new TabularRow(new object?[] { "John", null });
@@ -40,7 +41,7 @@ public sealed class TabularModelTest
         row.Values[1].Should().BeNull();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Tabular Result Should Hold Columns And Rows")]
     public void TabularResult_ShouldHoldColumnsAndRows()
     {
         var columns = new[]
@@ -61,7 +62,7 @@ public sealed class TabularModelTest
         result.Rows[0].Values[0].Should().Be("John");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Tabular Result With Empty Rows Should Be Valid")]
     public void TabularResult_WithEmptyRows_ShouldBeValid()
     {
         var columns = new[] { new TabularColumn("name", typeof(string)) };

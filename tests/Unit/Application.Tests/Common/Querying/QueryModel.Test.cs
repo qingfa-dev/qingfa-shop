@@ -6,9 +6,10 @@ using Application.Common.Querying.Projection;
 
 namespace Core.Tests.Common.Querying;
 
+
 public sealed class QueryModelTest
 {
-    [Fact]
+    [Fact(DisplayName = "Query When Tabular Members Are Set Should Report Tabular")]
     public void Query_WhenTabularMembersAreSet_ShouldReportTabular()
     {
         var query = new Query<object>
@@ -25,7 +26,7 @@ public sealed class QueryModelTest
         query.IsTabular.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Query When Only Filter Is Set Should Not Be Tabular")]
     public void Query_WhenOnlyFilterIsSet_ShouldNotBeTabular()
     {
         var query = new Query<object>
@@ -42,7 +43,7 @@ public sealed class QueryModelTest
         query.IsTabular.Should().BeFalse();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Shape When Select Only Should Be Tabular")]
     public void Shape_WhenSelectOnly_ShouldBeTabular()
     {
         var query = new Query<object>
@@ -56,7 +57,7 @@ public sealed class QueryModelTest
         query.IsTabular.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Shape When Group By Only Should Be Tabular")]
     public void Shape_WhenGroupByOnly_ShouldBeTabular()
     {
         var query = new Query<object>
@@ -70,7 +71,7 @@ public sealed class QueryModelTest
         query.IsTabular.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Shape When Aggregate Only Should Be Scalar Aggregate")]
     public void Shape_WhenAggregateOnly_ShouldBeScalarAggregate()
     {
         var query = new Query<object>
@@ -84,7 +85,7 @@ public sealed class QueryModelTest
         query.IsTabular.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Shape When Select And Group By Should Be Tabular")]
     public void Shape_WhenSelectAndGroupBy_ShouldBeTabular()
     {
         var query = new Query<object>
@@ -98,7 +99,7 @@ public sealed class QueryModelTest
         query.IsTabular.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Shape When Aggregate And Group By Should Be Tabular")]
     public void Shape_WhenAggregateAndGroupBy_ShouldBeTabular()
     {
         var query = new Query<object>
@@ -112,7 +113,7 @@ public sealed class QueryModelTest
         query.IsTabular.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Shape When All Null Should Be Entity")]
     public void Shape_WhenAllNull_ShouldBeEntity()
     {
         var query = new Query<object>
@@ -126,7 +127,7 @@ public sealed class QueryModelTest
         query.IsTabular.Should().BeFalse();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Query Page Should Compute Totals")]
     public void QueryPage_ShouldComputeTotals()
     {
         var page = new QueryPage<int>([1, 2, 3], Page: 2, PageSize: 3, TotalCount: 8);
@@ -136,7 +137,7 @@ public sealed class QueryModelTest
         page.HasNext.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Query Page When Last Page Should Not Have Next")]
     public void QueryPage_WhenLastPage_ShouldNotHaveNext()
     {
         var page = new QueryPage<int>([], Page: 3, PageSize: 3, TotalCount: 8);
@@ -144,7 +145,7 @@ public sealed class QueryModelTest
         page.HasNext.Should().BeFalse();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Query Page When First Page Should Not Have Previous")]
     public void QueryPage_WhenFirstPage_ShouldNotHavePrevious()
     {
         var page = new QueryPage<int>([1, 2, 3], Page: 1, PageSize: 3, TotalCount: 8);
@@ -152,7 +153,7 @@ public sealed class QueryModelTest
         page.HasPrevious.Should().BeFalse();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Query Page When Single Page Should Have No Previous Or Next")]
     public void QueryPage_WhenSinglePage_ShouldHaveNoPreviousOrNext()
     {
         var page = new QueryPage<int>([1, 2, 3], Page: 1, PageSize: 10, TotalCount: 3);
@@ -162,7 +163,7 @@ public sealed class QueryModelTest
         page.HasNext.Should().BeFalse();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Query Page When Page Size Is Zero Should Return Zero Total Pages")]
     public void QueryPage_WhenPageSizeIsZero_ShouldReturnZeroTotalPages()
     {
         var page = new QueryPage<int>([1, 2, 3], Page: 1, PageSize: 0, TotalCount: 3);
@@ -171,7 +172,7 @@ public sealed class QueryModelTest
         page.HasNext.Should().BeFalse();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Query Page When Total Count Is Zero Should Have No Pages")]
     public void QueryPage_WhenTotalCountIsZero_ShouldHaveNoPages()
     {
         var page = new QueryPage<int>([], Page: 1, PageSize: 10, TotalCount: 0);
@@ -181,7 +182,7 @@ public sealed class QueryModelTest
         page.HasNext.Should().BeFalse();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Query Page When Middle Page Should Have Both Previous And Next")]
     public void QueryPage_WhenMiddlePage_ShouldHaveBothPreviousAndNext()
     {
         var page = new QueryPage<int>([4, 5, 6], Page: 2, PageSize: 3, TotalCount: 9);

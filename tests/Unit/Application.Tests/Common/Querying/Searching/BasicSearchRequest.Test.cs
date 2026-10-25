@@ -4,6 +4,7 @@ using Application.Common.Querying.Searching;
 
 namespace Application.Tests.Common.Querying.Searching;
 
+
 public sealed class BasicSearchRequestTest
 {
     private sealed class Target
@@ -27,7 +28,7 @@ public sealed class BasicSearchRequestTest
 
     // ===== Constructor Tests (Parametrized) =====
 
-    [Theory]
+    [Theory(DisplayName = "Basic Search Request With Valid Mode Should Create With Defaults")]
     [InlineData(SearchMode.Contains)]
     [InlineData(SearchMode.StartsWith)]
     [InlineData(SearchMode.Exact)]
@@ -43,7 +44,7 @@ public sealed class BasicSearchRequestTest
         request.Fields.Should().BeNull("default Fields is null");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Basic Search Request With Full Text Mode Should Throw")]
     public void BasicSearchRequest_WithFullTextMode_ShouldThrow()
     {
         Action act = () => new BasicSearchRequest("hello", SearchMode.FullText);
@@ -53,7 +54,7 @@ public sealed class BasicSearchRequestTest
             .And.ParamName.Should().Be("mode");
     }
 
-    [Theory]
+    [Theory(DisplayName = "Basic Search Request With Empty Or Whitespace Query Should Throw")]
     [InlineData("")]
     [InlineData("   ")]
     [InlineData("\t")]
@@ -68,7 +69,7 @@ public sealed class BasicSearchRequestTest
             .And.ParamName.Should().Be("query");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Basic Search Request With Query Exceeding Max Length Should Throw")]
     public void BasicSearchRequest_WithQueryExceedingMaxLength_ShouldThrow()
     {
         string longQuery = new('a', QueryConstant.Limits.Search.MaxLength + 1);
@@ -80,7 +81,7 @@ public sealed class BasicSearchRequestTest
             .And.ParamName.Should().Be("query");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Basic Search Request With Query At Max Length Should Succeed")]
     public void BasicSearchRequest_WithQueryAtMaxLength_ShouldSucceed()
     {
         string maxQuery = new('a', QueryConstant.Limits.Search.MaxLength);
@@ -93,7 +94,7 @@ public sealed class BasicSearchRequestTest
 
     // ===== Property Initialization Tests (Parametrized) =====
 
-    [Theory]
+    [Theory(DisplayName = "Basic Search Request With All Properties Should Set All Values")]
     [InlineData(SearchMode.Contains, "name", SearchTermLogic.And, true)]
     [InlineData(SearchMode.StartsWith, "name,description", SearchTermLogic.Or, false)]
     [InlineData(SearchMode.Exact, "name", SearchTermLogic.And, false)]
@@ -117,7 +118,7 @@ public sealed class BasicSearchRequestTest
         request.CaseInsensitive.Should().Be(caseInsensitive);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Basic Search Request With Fields Should Trim And Set Fields")]
     [InlineData("name")]
     [InlineData("name,description")]
     [InlineData("name, description , other")]
@@ -136,7 +137,7 @@ public sealed class BasicSearchRequestTest
 
     // ===== GetTerms Tests (Parametrized) =====
 
-    [Theory]
+    [Theory(DisplayName = "Get Terms With Multiple Terms Should Return All Terms")]
     [InlineData("hello", new[] { "hello" })]
     [InlineData("hello world", new[] { "hello", "world" })]
     [InlineData("hello world test", new[] { "hello", "world", "test" })]
@@ -151,7 +152,7 @@ public sealed class BasicSearchRequestTest
         terms.Should().HaveCount(expected.Length);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Get Terms With Whitespace Variations Should Trim Terms")]
     [InlineData("  hello  ", new[] { "hello" })]
     [InlineData("hello   world", new[] { "hello", "world" })]
     [InlineData("  hello   world  test  ", new[] { "hello", "world", "test" })]
@@ -165,7 +166,7 @@ public sealed class BasicSearchRequestTest
         terms.Should().Equal(expected);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Get Terms With Empty Query Should Return Empty")]
     public void GetTerms_WithEmptyQuery_ShouldReturnEmpty()
     {
         // Note: empty query throws in constructor, but testing the method directly
@@ -177,7 +178,7 @@ public sealed class BasicSearchRequestTest
 
     // ===== Record Equality Tests =====
 
-    [Theory]
+    [Theory(DisplayName = "Basic Search Request Record Equality Different Values Should Not Be Equal")]
     [InlineData("hello", SearchMode.Contains, "world", SearchMode.Contains)]
     [InlineData("hello", SearchMode.Contains, "hello", SearchMode.StartsWith)]
     [InlineData("hello", SearchMode.Contains, "hello", SearchMode.Exact)]
@@ -191,7 +192,7 @@ public sealed class BasicSearchRequestTest
         r1.Should().NotBe(r2);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Basic Search Request Record Equality Same Values Should Be Equal")]
     public void BasicSearchRequest_RecordEquality_SameValues_ShouldBeEqual()
     {
         var fields = new[] { "name" };
@@ -201,7 +202,7 @@ public sealed class BasicSearchRequestTest
         r1.Should().Be(r2);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Basic Search Request Record Equality With Different Fields Should Not Be Equal")]
     public void BasicSearchRequest_RecordEquality_WithDifferentFields_ShouldNotBeEqual()
     {
         var r1 = new BasicSearchRequest("hello", SearchMode.Contains) { Fields = new[] { "name" } };
@@ -210,7 +211,7 @@ public sealed class BasicSearchRequestTest
         r1.Should().NotBe(r2);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Basic Search Request Record Equality With Different Term Logic Should Not Be Equal")]
     public void BasicSearchRequest_RecordEquality_WithDifferentTermLogic_ShouldNotBeEqual()
     {
         var r1 = new BasicSearchRequest("hello", SearchMode.Contains) { TermLogic = SearchTermLogic.And };
@@ -219,7 +220,7 @@ public sealed class BasicSearchRequestTest
         r1.Should().NotBe(r2);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Basic Search Request Record Equality With Different Case Insensitive Should Not Be Equal")]
     public void BasicSearchRequest_RecordEquality_WithDifferentCaseInsensitive_ShouldNotBeEqual()
     {
         var r1 = new BasicSearchRequest("hello", SearchMode.Contains) { CaseInsensitive = true };
@@ -230,7 +231,7 @@ public sealed class BasicSearchRequestTest
 
     // ===== Base Type Assignability =====
 
-    [Theory]
+    [Theory(DisplayName = "Basic Search Request Should Be Assignable To Search Request")]
     [InlineData(SearchMode.Contains)]
     [InlineData(SearchMode.StartsWith)]
     [InlineData(SearchMode.Exact)]
@@ -247,7 +248,7 @@ public sealed class BasicSearchRequestTest
 
     // ===== Parser Integration Tests (Parametrized) =====
 
-    [Theory]
+    [Theory(DisplayName = "Parse With Mode Should Return Basic Search Request With Correct Mode")]
     [InlineData(SearchMode.Contains)]
     [InlineData(SearchMode.StartsWith)]
     [InlineData(SearchMode.Exact)]
@@ -265,7 +266,7 @@ public sealed class BasicSearchRequestTest
         search.CaseInsensitive.Should().BeTrue();
     }
 
-    [Theory]
+    [Theory(DisplayName = "Parse With Search Fields Should Set Fields On Basic Search Request")]
     [InlineData("name", new[] { "name" })]
     [InlineData("name,description", new[] { "name", "description" })]
     [InlineData(" name , description ", new[] { "name", "description" })]
@@ -279,7 +280,7 @@ public sealed class BasicSearchRequestTest
         search.Fields.Should().Equal(expected);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Parse With Term Logic Should Set Term Logic On Basic Search Request")]
     [InlineData(SearchTermLogic.And)]
     [InlineData(SearchTermLogic.Or)]
     public void Parse_WithTermLogic_ShouldSetTermLogicOnBasicSearchRequest(SearchTermLogic termLogic)
@@ -292,7 +293,7 @@ public sealed class BasicSearchRequestTest
         search.TermLogic.Should().Be(termLogic);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Parse With Case Insensitive Should Set Case Insensitive On Basic Search Request")]
     [InlineData(true)]
     [InlineData(false)]
     public void Parse_WithCaseInsensitive_ShouldSetCaseInsensitiveOnBasicSearchRequest(bool caseInsensitive)
@@ -305,7 +306,7 @@ public sealed class BasicSearchRequestTest
         search.CaseInsensitive.Should().Be(caseInsensitive);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse With All Options Should Set All Properties On Basic Search Request")]
     public void Parse_WithAllOptions_ShouldSetAllPropertiesOnBasicSearchRequest()
     {
         Result<Query<Target>> result = QueryParser.Parse(
@@ -331,7 +332,7 @@ public sealed class BasicSearchRequestTest
 
     // ===== Parser Validation Tests =====
 
-    [Fact]
+    [Fact(DisplayName = "Parse With Unknown Search Field Should Fail")]
     public void Parse_WithUnknownSearchField_ShouldFail()
     {
         Result<Query<Target>> result = QueryParser.Parse(
@@ -341,7 +342,7 @@ public sealed class BasicSearchRequestTest
         result.Errors.Should().Contain(e => e.Code == "Query.Field.NotMapped");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse With Non Searchable Field Should Fail")]
     public void Parse_WithNonSearchableField_ShouldFail()
     {
         Result<Query<Target>> result = QueryParser.Parse(
@@ -351,7 +352,7 @@ public sealed class BasicSearchRequestTest
         result.Errors.Should().Contain(e => e.Code == "Query.Search.NotConfigured");
     }
 
-    [Theory]
+    [Theory(DisplayName = "Parse With Full Text Options But Non Full Text Mode Should Accept But Ignore Full Text Options")]
     [InlineData(SearchMode.Contains)]
     [InlineData(SearchMode.StartsWith)]
     [InlineData(SearchMode.Exact)]
@@ -375,7 +376,7 @@ public sealed class BasicSearchRequestTest
         search.Mode.Should().Be(mode);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Parse With Valid Language Should Accept")]
     [InlineData("en")]
     [InlineData("de")]
     [InlineData("fr")]
@@ -388,7 +389,7 @@ public sealed class BasicSearchRequestTest
         result.IsSuccess.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse With Language Exceeding Max Length Should Fail")]
     public void Parse_WithLanguageExceedingMaxLength_ShouldFail()
     {
         string longLang = new('a', QueryConstant.Limits.Search.MaxLanguageLength + 1);
@@ -400,7 +401,7 @@ public sealed class BasicSearchRequestTest
         result.Errors.Should().Contain(e => e.Code == "Query.Search.LanguageTooLong");
     }
 
-    [Theory]
+    [Theory(DisplayName = "Parse With Min Score Out Of Range Should Fail")]
     [InlineData(-0.1)]
     [InlineData(1.1)]
     [InlineData(-1.0)]
@@ -414,7 +415,7 @@ public sealed class BasicSearchRequestTest
         result.Errors.Should().Contain(e => e.Code == "Query.Search.InvalidMinScore");
     }
 
-    [Theory]
+    [Theory(DisplayName = "Parse With Min Score In Range Should Succeed")]
     [InlineData(0.0)]
     [InlineData(0.5)]
     [InlineData(1.0)]
@@ -426,7 +427,7 @@ public sealed class BasicSearchRequestTest
         result.IsSuccess.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse With Too Many Search Terms Should Fail")]
     public void Parse_WithTooManySearchTerms_ShouldFail()
     {
         string manyTerms = string.Join(' ', Enumerable.Repeat("term", QueryConstant.Limits.Search.MaxTerms + 1));
@@ -438,7 +439,7 @@ public sealed class BasicSearchRequestTest
         result.Errors.Should().Contain(e => e.Code == "Query.Search.TooManyTerms");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse With Terms At Limit Should Succeed")]
     public void Parse_WithTermsAtLimit_ShouldSucceed()
     {
         string maxTerms = string.Join(' ', Enumerable.Repeat("term", QueryConstant.Limits.Search.MaxTerms));
@@ -449,7 +450,7 @@ public sealed class BasicSearchRequestTest
         result.IsSuccess.Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse With Too Many Search Fields Should Fail")]
     public void Parse_WithTooManySearchFields_ShouldFail()
     {
         QueryMap<Target> map = QueryMapBuilder<Target>.Create()
@@ -472,7 +473,7 @@ public sealed class BasicSearchRequestTest
         result.Errors.Should().Contain(e => e.Code == "Query.Search.TooManyFields");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse With Search Fields At Limit Should Succeed")]
     public void Parse_WithSearchFieldsAtLimit_ShouldSucceed()
     {
         QueryMap<Target> map = QueryMapBuilder<Target>.Create()

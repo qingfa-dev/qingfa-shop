@@ -2,9 +2,10 @@ using Application.Common.Querying;
 
 namespace Application.Tests.Common.Querying;
 
+
 public sealed class QueryExecutionOptionsTest
 {
-    [Fact]
+    [Fact(DisplayName = "Default Should Have Expected Values")]
     public void Default_ShouldHaveExpectedValues()
     {
         var options = QueryExecutionOptions.Default;
@@ -19,7 +20,7 @@ public sealed class QueryExecutionOptionsTest
         options.CommandTimeout.Should().BeNull();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Default All Property Getters Are Accessible")]
     public void Default_AllPropertyGetters_AreAccessible()
     {
         // This test explicitly accesses all property getters on the default instance
@@ -34,7 +35,7 @@ public sealed class QueryExecutionOptionsTest
         _ = options.CommandTimeout;
     }
 
-    [Theory]
+    [Theory(DisplayName = "Include Soft Deleted Can Be Set")]
     [InlineData(true)]
     [InlineData(false)]
     public void IncludeSoftDeleted_CanBeSet(bool value)
@@ -44,7 +45,7 @@ public sealed class QueryExecutionOptionsTest
         options.IncludeSoftDeleted.Should().Be(value);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Distinct Can Be Set")]
     [InlineData(true)]
     [InlineData(false)]
     public void Distinct_CanBeSet(bool value)
@@ -54,7 +55,7 @@ public sealed class QueryExecutionOptionsTest
         options.Distinct.Should().Be(value);
     }
 
-    [Theory]
+    [Theory(DisplayName = "As No Tracking Can Be Set")]
     [InlineData(true)]
     [InlineData(false)]
     public void AsNoTracking_CanBeSet(bool value)
@@ -64,7 +65,7 @@ public sealed class QueryExecutionOptionsTest
         options.AsNoTracking.Should().Be(value);
     }
 
-    [Theory]
+    [Theory(DisplayName = "As Split Query Can Be Set")]
     [InlineData(true)]
     [InlineData(false)]
     public void AsSplitQuery_CanBeSet(bool value)
@@ -74,7 +75,7 @@ public sealed class QueryExecutionOptionsTest
         options.AsSplitQuery.Should().Be(value);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Includes Can Be Set")]
     public void Includes_CanBeSet()
     {
         var includes = new[] { "Orders", "Orders.Items" };
@@ -83,7 +84,7 @@ public sealed class QueryExecutionOptionsTest
         options.Includes.Should().Equal(includes);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Includes Default Is Empty Array")]
     public void Includes_DefaultIsEmptyArray()
     {
         var options = new QueryExecutionOptions();
@@ -91,7 +92,7 @@ public sealed class QueryExecutionOptionsTest
         options.Includes.Should().BeEmpty();
     }
 
-    [Theory]
+    [Theory(DisplayName = "Max Rows Can Be Set")]
     [InlineData(1)]
     [InlineData(100)]
     [InlineData(1000)]
@@ -102,7 +103,7 @@ public sealed class QueryExecutionOptionsTest
         options.MaxRows.Should().Be(maxRows);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Max Rows Default Is Null")]
     public void MaxRows_DefaultIsNull()
     {
         var options = new QueryExecutionOptions();
@@ -110,7 +111,7 @@ public sealed class QueryExecutionOptionsTest
         options.MaxRows.Should().BeNull();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Command Timeout Can Be Set")]
     public void CommandTimeout_CanBeSet()
     {
         var timeout = TimeSpan.FromSeconds(30);
@@ -119,7 +120,7 @@ public sealed class QueryExecutionOptionsTest
         options.CommandTimeout.Should().Be(timeout);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Command Timeout Default Is Null")]
     public void CommandTimeout_DefaultIsNull()
     {
         var options = new QueryExecutionOptions();
@@ -127,7 +128,7 @@ public sealed class QueryExecutionOptionsTest
         options.CommandTimeout.Should().BeNull();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Default Instance Is Shared")]
     public void DefaultInstance_IsShared()
     {
         var options1 = QueryExecutionOptions.Default;
@@ -136,7 +137,7 @@ public sealed class QueryExecutionOptionsTest
         options1.Should().BeSameAs(options2);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Record Equality Same Values Are Equal")]
     public void RecordEquality_SameValues_AreEqual()
     {
         var includes = new[] { "Orders", "Items" };
@@ -165,7 +166,7 @@ public sealed class QueryExecutionOptionsTest
         o1.Equals(o2).Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Record Equality Different Values Are Not Equal")]
     public void RecordEquality_DifferentValues_AreNotEqual()
     {
         var o1 = new QueryExecutionOptions { IncludeSoftDeleted = true };
@@ -174,7 +175,7 @@ public sealed class QueryExecutionOptionsTest
         o1.Should().NotBe(o2);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Includes With Empty Array Should Be Empty")]
     public void Includes_WithEmptyArray_ShouldBeEmpty()
     {
         var options = new QueryExecutionOptions { Includes = Array.Empty<string>() };

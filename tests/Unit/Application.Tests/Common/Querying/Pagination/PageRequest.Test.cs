@@ -2,9 +2,10 @@ using Application.Common.Querying.Pagination;
 
 namespace Application.Tests.Common.Querying.Pagination;
 
+
 public sealed class PageRequestTest
 {
-    [Fact]
+    [Fact(DisplayName = "Constructor With Valid Values Sets Properties")]
     public void Constructor_WithValidValues_SetsProperties()
     {
         var request = new PageRequest(3, 50);
@@ -13,7 +14,7 @@ public sealed class PageRequestTest
         request.PageSize.Should().Be(50);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Constructor Various Valid Combinations All Valid")]
     [InlineData(1, 1)]
     [InlineData(1, 20)]
     [InlineData(1, 200)]
@@ -27,7 +28,7 @@ public sealed class PageRequestTest
         request.PageSize.Should().Be(pageSize);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Record Equality Same Values Are Equal")]
     public void RecordEquality_SameValues_AreEqual()
     {
         var r1 = new PageRequest(5, 25);
@@ -36,7 +37,7 @@ public sealed class PageRequestTest
         r1.Should().Be(r2);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Record Equality Different Values Are Not Equal")]
     [InlineData(1, 20, 2, 20)]
     [InlineData(1, 20, 1, 50)]
     public void RecordEquality_DifferentValues_AreNotEqual(
@@ -48,7 +49,7 @@ public sealed class PageRequestTest
         r1.Should().NotBe(r2);
     }
 
-    [Fact]
+    [Fact(DisplayName = "With Expression Creates New Record With Changes")]
     public void WithExpression_CreatesNewRecordWithChanges()
     {
         var original = new PageRequest(1, 20);
@@ -59,7 +60,7 @@ public sealed class PageRequestTest
         original.Page.Should().Be(1);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Deconstruction Works Correctly")]
     public void Deconstruction_WorksCorrectly()
     {
         var request = new PageRequest(7, 30);
@@ -69,7 +70,7 @@ public sealed class PageRequestTest
         pageSize.Should().Be(30);
     }
 
-    [Fact]
+    [Fact(DisplayName = "To String Contains Values")]
     public void ToString_ContainsValues()
     {
         var request = new PageRequest(3, 50);

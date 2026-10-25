@@ -4,6 +4,7 @@ using Application.Common.Querying.Mapping;
 
 namespace Application.Tests.Common.Querying.Parsing;
 
+
 public sealed class FilterParserTest
 {
     private enum Kind { Low, High }
@@ -46,7 +47,7 @@ public sealed class FilterParserTest
         return map.Value;
     }
 
-    [Theory]
+    [Theory(DisplayName = "Filter Should Parse String Operators")]
     [InlineData("name=John", FilterOperator.Equal, "John")]
     [InlineData("name!=John", FilterOperator.NotEqual, "John")]
     [InlineData("name=*ohn", FilterOperator.Contains, "ohn")]
@@ -65,7 +66,7 @@ public sealed class FilterParserTest
         condition.Value.Should().Be(value);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Filter Should Parse Comparison Operators")]
     [InlineData("score>10", FilterOperator.GreaterThan, 10)]
     [InlineData("score<10", FilterOperator.LessThan, 10)]
     [InlineData("score>=10", FilterOperator.GreaterThanOrEqual, 10)]
@@ -80,7 +81,7 @@ public sealed class FilterParserTest
         condition.Value.Should().Be(value);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filter Should Apply And Before Or")]
     public void Filter_ShouldApplyAndBeforeOr()
     {
         Result<Query<Target>> result = Parse("name=*a|name=*b,score>1");
@@ -93,7 +94,7 @@ public sealed class FilterParserTest
             .Which.Logic.Should().Be(FilterLogic.And);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filter Should Respect Parentheses")]
     public void Filter_ShouldRespectParentheses()
     {
         Result<Query<Target>> result = Parse("(name=*a|name=*b),score>1");
@@ -105,7 +106,7 @@ public sealed class FilterParserTest
             .Which.Logic.Should().Be(FilterLogic.Or);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filter Should Unescape Reserved Characters")]
     public void Filter_ShouldUnescapeReservedCharacters()
     {
         Result<Query<Target>> result = Parse(@"name=*John\,Doe");
@@ -115,7 +116,7 @@ public sealed class FilterParserTest
             .Which.Value.Should().Be("John,Doe");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filter Should Parse Case Insensitive Suffix")]
     public void Filter_ShouldParseCaseInsensitiveSuffix()
     {
         Result<Query<Target>> result = Parse("name=*JOHN/i");
@@ -126,7 +127,7 @@ public sealed class FilterParserTest
         condition.Value.Should().Be("JOHN");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filter Should Treat Empty Value As Null Or Default")]
     public void Filter_ShouldTreatEmptyValueAsNullOrDefault()
     {
         Result<Query<Target>> result = Parse("description=");
@@ -137,7 +138,7 @@ public sealed class FilterParserTest
         condition.Value.Should().BeNull();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filter Should Convert Empty Numeric Value To Default")]
     public void Filter_ShouldConvertEmptyNumericValueToDefault()
     {
         Result<Query<Target>> result = Parse("score=");
@@ -148,7 +149,7 @@ public sealed class FilterParserTest
         condition.Value.Should().Be(0);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filter Should Convert Empty Enum Value To Default")]
     public void Filter_ShouldConvertEmptyEnumValueToDefault()
     {
         Result<Query<Target>> result = Parse("kind=");
@@ -158,7 +159,7 @@ public sealed class FilterParserTest
             .Which.Value.Should().Be(Kind.Low);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filter When Value Is Empty Should Invoke Custom Converter")]
     public void Filter_WhenValueIsEmpty_ShouldInvokeCustomConverter()
     {
         bool invoked = false;
@@ -182,7 +183,7 @@ public sealed class FilterParserTest
             .Which.Value.Should().Be(7);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filter Should Parse Explicit Null")]
     public void Filter_ShouldParseExplicitNull()
     {
         Result<Query<Target>> result = Parse("description=null");
@@ -192,7 +193,7 @@ public sealed class FilterParserTest
             .Which.Value.Should().BeNull();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filter Should Convert Enum By Name")]
     public void Filter_ShouldConvertEnumByName()
     {
         Result<Query<Target>> result = Parse("kind=high");
@@ -202,7 +203,7 @@ public sealed class FilterParserTest
             .Which.Value.Should().Be(Kind.High);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filter Should Parse Indexer")]
     public void Filter_ShouldParseIndexer()
     {
         Result<Query<Target>> result = Parse("tag[0]=urgent");
@@ -213,7 +214,7 @@ public sealed class FilterParserTest
         condition.Value.Should().Be("urgent");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filter Should Parse Composite Field")]
     public void Filter_ShouldParseCompositeField()
     {
         Result<Query<Target>> result = Parse("any=*foo");
@@ -223,7 +224,7 @@ public sealed class FilterParserTest
             .Which.Field.Should().Be("any");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filter Should Parse Custom Operator")]
     public void Filter_ShouldParseCustomOperator()
     {
         Result<Query<Target>> result = Parse("name#In John;David");
@@ -235,7 +236,7 @@ public sealed class FilterParserTest
         condition.Value.Should().Be("John;David");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filter When Field Is Unknown Should Fail")]
     public void Filter_WhenFieldIsUnknown_ShouldFail()
     {
         Result<Query<Target>> result = Parse("unknown=1");
@@ -244,7 +245,7 @@ public sealed class FilterParserTest
         result.Errors.Should().Contain(e => e.Code == "Query.Field.NotMapped");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filter When Value Cannot Convert Should Fail")]
     public void Filter_WhenValueCannotConvert_ShouldFail()
     {
         Result<Query<Target>> result = Parse("kind=wrong");
@@ -253,7 +254,7 @@ public sealed class FilterParserTest
         result.Errors.Should().Contain(e => e.Code == "Query.Filter.ValueInvalid");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filter When Operator Does Not Fit Type Should Fail")]
     public void Filter_WhenOperatorDoesNotFitType_ShouldFail()
     {
         Result<Query<Target>> result = Parse("score=*text");
@@ -262,7 +263,7 @@ public sealed class FilterParserTest
         result.Errors.Should().Contain(e => e.Code == "Query.Operator.TypeMismatch");
     }
 
-    [Theory]
+    [Theory(DisplayName = "Filter When The Syntax Is Malformed Should Fail")]
     [InlineData("(name=a", "missing ')'")]
     [InlineData("=a", "field is missing")]
     [InlineData("name", "operator is missing")]
@@ -277,7 +278,7 @@ public sealed class FilterParserTest
             e.Code == "Query.Filter.Syntax" && e.Message.Contains(expectedDetail));
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filter When The Field Is Not Filterable Should Fail")]
     public void Filter_WhenTheFieldIsNotFilterable_ShouldFail()
     {
         QueryMap<Target> map = Build(
@@ -291,7 +292,7 @@ public sealed class FilterParserTest
         result.Errors.Should().Contain(e => e.Code == "Query.Field.NotFilterable");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filter When Several Parts Are Wrong Should Report Every Problem")]
     public void Filter_WhenSeveralPartsAreWrong_ShouldReportEveryProblem()
     {
         // The parser parses every part independently, so a caller learns about all
@@ -307,7 +308,7 @@ public sealed class FilterParserTest
         result.Errors.Count(e => e.Code == "Query.Field.NotMapped").Should().Be(2);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filter When Several Tabular Parts Are Wrong Should Report Every Problem")]
     public void Filter_WhenSeveralTabularPartsAreWrong_ShouldReportEveryProblem()
     {
         Result<Query<Target>> result = QueryParser.Parse(
@@ -321,7 +322,7 @@ public sealed class FilterParserTest
         result.Errors.Count(e => e.Code == "Query.Field.NotMapped").Should().Be(2);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filter When Empty String Should Return Null")]
     public void Filter_WhenEmptyString_ShouldReturnNull()
     {
         Result<Query<Target>> result = Parse("");
@@ -330,7 +331,7 @@ public sealed class FilterParserTest
         result.Value.Filter.Should().BeNull();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filter When Whitespace Should Return Null")]
     public void Filter_WhenWhitespace_ShouldReturnNull()
     {
         Result<Query<Target>> result = Parse("   ");
@@ -339,7 +340,7 @@ public sealed class FilterParserTest
         result.Value.Filter.Should().BeNull();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filter Text When Empty Should Return Empty Group")]
     public void FilterText_WhenEmpty_ShouldReturnEmptyGroup()
     {
         // Direct call to FilterText.Parse to cover the empty filter branch
@@ -353,7 +354,7 @@ public sealed class FilterParserTest
             .Which.Children.Should().BeEmpty();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filter Text When Whitespace Should Return Empty Group")]
     public void FilterText_WhenWhitespace_ShouldReturnEmptyGroup()
     {
         var map = Map();
@@ -365,7 +366,7 @@ public sealed class FilterParserTest
             .Which.Children.Should().BeEmpty();
     }
 
-    [Theory]
+    [Theory(DisplayName = "Filter When Indexer Used On Non Indexed Field Should Fail")]
     [InlineData("tags[0]=urgent")]
     [InlineData("name[0]=test")]
     public void Filter_WhenIndexerUsedOnNonIndexedField_ShouldFail(string filter)
@@ -385,7 +386,7 @@ public sealed class FilterParserTest
         result.Errors.Should().Contain(e => e.Code == "Query.Field.NotFilterable");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filter With Case Insensitive On String Should Set Flag")]
     public void Filter_WithCaseInsensitiveOnString_ShouldSetFlag()
     {
         Result<Query<Target>> result = Parse("name=*JOHN/i");
@@ -396,7 +397,7 @@ public sealed class FilterParserTest
         condition.Value.Should().Be("JOHN");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filter With Case Insensitive On Non String Should Fail")]
     public void Filter_WithCaseInsensitiveOnNonString_ShouldFail()
     {
         Result<Query<Target>> result = Parse("score=*10/i");
@@ -405,7 +406,7 @@ public sealed class FilterParserTest
         result.Errors.Should().Contain(e => e.Code == "Query.Operator.TypeMismatch");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filter With Allow Null Search Disabled Should Fail On Null")]
     public void Filter_WithAllowNullSearchDisabled_ShouldFailOnNull()
     {
         var map = Build(
@@ -419,7 +420,7 @@ public sealed class FilterParserTest
         result.Errors.Should().Contain(e => e.Code == "Query.Filter.ValueInvalid");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filter With Escaped Value Should Unescape")]
     public void Filter_WithEscapedValue_ShouldUnescape()
     {
         Result<Query<Target>> result = Parse(@"name=hello\,world");
@@ -429,7 +430,7 @@ public sealed class FilterParserTest
         condition.Value.Should().Be("hello,world");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filter With Multiple Or Groups Should Parse Correctly")]
     public void Filter_WithMultipleOrGroups_ShouldParseCorrectly()
     {
         Result<Query<Target>> result = Parse("name=a|name=b|name=c");
@@ -440,7 +441,7 @@ public sealed class FilterParserTest
         root.Children.Should().HaveCount(3);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Filter With Nested Parentheses Should Parse Correctly")]
     public void Filter_WithNestedParentheses_ShouldParseCorrectly()
     {
         Result<Query<Target>> result = Parse("((name=a))");

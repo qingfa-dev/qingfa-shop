@@ -3,9 +3,10 @@ using Application.Common.Querying.Filtering;
 
 namespace Application.Tests.Common.Querying.Filtering;
 
+
 public sealed class FilterOperatorTest
 {
-    [Theory]
+    [Theory(DisplayName = "Enum Has Expected Values")]
     [InlineData(FilterOperator.Equal)]
     [InlineData(FilterOperator.NotEqual)]
     [InlineData(FilterOperator.LessThan)]
@@ -24,7 +25,7 @@ public sealed class FilterOperatorTest
         Enum.IsDefined(op).Should().BeTrue();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Values Are Sequential")]
     public void Values_AreSequential()
     {
         ((int)FilterOperator.Equal).Should().Be(0);
@@ -42,7 +43,7 @@ public sealed class FilterOperatorTest
         ((int)FilterOperator.Custom).Should().Be(12);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse Valid String Returns Correct Enum")]
     public void Parse_ValidString_ReturnsCorrectEnum()
     {
         Enum.Parse<FilterOperator>("Equal", ignoreCase: true).Should().Be(FilterOperator.Equal);
@@ -50,7 +51,7 @@ public sealed class FilterOperatorTest
         Enum.Parse<FilterOperator>("Custom", ignoreCase: true).Should().Be(FilterOperator.Custom);
     }
 
-    [Fact]
+    [Fact(DisplayName = "To String Returns Expected Names")]
     public void ToString_ReturnsExpectedNames()
     {
         FilterOperator.Equal.ToString().Should().Be("Equal");
@@ -59,7 +60,7 @@ public sealed class FilterOperatorTest
         FilterOperator.Custom.ToString().Should().Be("Custom");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Constant Tokens Match Operators")]
     public void ConstantTokens_MatchOperators()
     {
         // Validate: parser tokens match enum for consistency

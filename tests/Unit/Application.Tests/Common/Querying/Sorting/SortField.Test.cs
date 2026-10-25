@@ -2,9 +2,10 @@ using Application.Common.Querying.Sorting;
 
 namespace Application.Tests.Common.Querying.Sorting;
 
+
 public sealed class SortFieldTest
 {
-    [Fact]
+    [Fact(DisplayName = "Constructor With All Parameters Sets Properties")]
     public void Constructor_WithAllParameters_SetsProperties()
     {
         var field = new SortField("name", SortDirection.Descending, SortNulls.HasValue);
@@ -14,7 +15,7 @@ public sealed class SortFieldTest
         field.Nulls.Should().Be(SortNulls.HasValue);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Constructor With Nulls Default Defaults To None")]
     public void Constructor_WithNullsDefault_DefaultsToNone()
     {
         var field = new SortField("name", SortDirection.Ascending, SortNulls.None);
@@ -22,7 +23,7 @@ public sealed class SortFieldTest
         field.Nulls.Should().Be(SortNulls.None);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Constructor Various Combinations All Valid")]
     [InlineData("name", SortDirection.Ascending, SortNulls.None)]
     [InlineData("score", SortDirection.Descending, SortNulls.HasValue)]
     [InlineData("dueAtUtc", SortDirection.Ascending, SortNulls.NotHasValue)]
@@ -36,7 +37,7 @@ public sealed class SortFieldTest
         field.Nulls.Should().Be(nulls);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Record Equality Same Values Are Equal")]
     public void RecordEquality_SameValues_AreEqual()
     {
         var f1 = new SortField("name", SortDirection.Descending, SortNulls.HasValue);
@@ -45,7 +46,7 @@ public sealed class SortFieldTest
         f1.Should().Be(f2);
     }
 
-    [Theory]
+    [Theory(DisplayName = "Record Equality Different Values Are Not Equal")]
     [InlineData("name", SortDirection.Ascending, SortNulls.None, "score", SortDirection.Ascending, SortNulls.None)]
     [InlineData("name", SortDirection.Descending, SortNulls.None, "name", SortDirection.Ascending, SortNulls.None)]
     [InlineData("name", SortDirection.Ascending, SortNulls.HasValue, "name", SortDirection.Ascending, SortNulls.None)]
@@ -60,7 +61,7 @@ public sealed class SortFieldTest
         f1.Should().NotBe(f2);
     }
 
-    [Fact]
+    [Fact(DisplayName = "With Expression Creates New Record With Changes")]
     public void WithExpression_CreatesNewRecordWithChanges()
     {
         var original = new SortField("name", SortDirection.Ascending, SortNulls.None);
@@ -72,7 +73,7 @@ public sealed class SortFieldTest
         original.Direction.Should().Be(SortDirection.Ascending);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Deconstruction Works Correctly")]
     public void Deconstruction_WorksCorrectly()
     {
         var field = new SortField("name", SortDirection.Descending, SortNulls.HasValue);
@@ -83,7 +84,7 @@ public sealed class SortFieldTest
         nulls.Should().Be(SortNulls.HasValue);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Property Getters All Accessible")]
     public void PropertyGetters_AllAccessible()
     {
         var field = new SortField("name", SortDirection.Descending, SortNulls.HasValue);

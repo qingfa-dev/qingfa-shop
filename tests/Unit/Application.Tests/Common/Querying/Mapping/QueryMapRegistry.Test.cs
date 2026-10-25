@@ -4,6 +4,7 @@ using Application.Common.Querying.Sorting;
 
 namespace Application.Tests.Common.Querying.Mapping;
 
+
 public sealed class QueryMapRegistryTest
 {
     private sealed class Target
@@ -34,7 +35,7 @@ public sealed class QueryMapRegistryTest
         return map.Value;
     }
 
-    [Fact]
+    [Fact(DisplayName = "Register Should Resolve The Same Map")]
     public void Register_ShouldResolveTheSameMap()
     {
         var registry = new QueryMapRegistry();
@@ -46,7 +47,7 @@ public sealed class QueryMapRegistryTest
         resolved.Should().BeSameAs(map);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Register When Type Already Has A Map Should Report Conflict")]
     public void Register_WhenTypeAlreadyHasAMap_ShouldReportConflict()
     {
         var registry = new QueryMapRegistry();
@@ -60,7 +61,7 @@ public sealed class QueryMapRegistryTest
         duplicate.StatusCode.Should().Be(409);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Register When Map Is Null Should Throw")]
     public void Register_WhenMapIsNull_ShouldThrow()
     {
         var registry = new QueryMapRegistry();
@@ -70,7 +71,7 @@ public sealed class QueryMapRegistryTest
         act.Should().Throw<ArgumentNullException>();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Try Get When Type Is Not Registered Should Return False")]
     public void TryGet_WhenTypeIsNotRegistered_ShouldReturnFalse()
     {
         var registry = new QueryMapRegistry();
@@ -79,7 +80,7 @@ public sealed class QueryMapRegistryTest
         map.Should().BeNull();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Get When Type Is Not Registered Should Fail")]
     public void Get_WhenTypeIsNotRegistered_ShouldFail()
     {
         var registry = new QueryMapRegistry();
@@ -91,7 +92,7 @@ public sealed class QueryMapRegistryTest
             .Which.Code.Should().Be("Query.Map.NotRegistered");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Contains Should Track Registration")]
     public void Contains_ShouldTrackRegistration()
     {
         var registry = new QueryMapRegistry();
@@ -104,7 +105,7 @@ public sealed class QueryMapRegistryTest
         registry.Contains<OtherTarget>().Should().BeFalse();
     }
 
-    [Fact]
+    [Fact(DisplayName = "Registered Types Should List Every Registered Map")]
     public void RegisteredTypes_ShouldListEveryRegisteredMap()
     {
         var registry = new QueryMapRegistry();
@@ -115,7 +116,7 @@ public sealed class QueryMapRegistryTest
         registry.RegisteredTypes.Should().BeEquivalentTo([typeof(Target), typeof(OtherTarget)]);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Registry Should Keep Maps Separate By Type")]
     public void Registry_ShouldKeepMapsSeparateByType()
     {
         var registry = new QueryMapRegistry();
@@ -129,7 +130,7 @@ public sealed class QueryMapRegistryTest
         registry.Get<OtherTarget>().Value.Should().BeSameAs(second);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse When Map Is Registered Should Use Registered Map")]
     public void Parse_WhenMapIsRegistered_ShouldUseRegisteredMap()
     {
         var registry = new QueryMapRegistry();
@@ -144,7 +145,7 @@ public sealed class QueryMapRegistryTest
             .Which.Direction.Should().Be(SortDirection.Descending);
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse When Map Is Not Registered Should Fail Before Parsing")]
     public void Parse_WhenMapIsNotRegistered_ShouldFailBeforeParsing()
     {
         var registry = new QueryMapRegistry();
@@ -158,7 +159,7 @@ public sealed class QueryMapRegistryTest
             .Which.Code.Should().Be("Query.Map.NotRegistered");
     }
 
-    [Fact]
+    [Fact(DisplayName = "Parse When Registry Is Null Should Throw")]
     public void Parse_WhenRegistryIsNull_ShouldThrow()
     {
         Action act = () => QueryParser.Parse<Target>(
