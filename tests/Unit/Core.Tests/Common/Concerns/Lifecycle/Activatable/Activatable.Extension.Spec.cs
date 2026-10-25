@@ -1,7 +1,7 @@
 using Core.Common.Concerns.Lifecycle;
 using Core.Common.Concerns.Lifecycle.Activatable;
 
-namespace Core.UnitTests.Common.Concerns.Lifecycle.Activatable;
+namespace Core.Tests.Common.Concerns.Lifecycle.Activatable;
 
 /// <summary>Specification tests for <see cref="ActivatableExtensions"/>.</summary>
 public class ActivatableExtensionSpec

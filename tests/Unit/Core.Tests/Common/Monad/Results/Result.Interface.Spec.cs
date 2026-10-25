@@ -1,4 +1,4 @@
-namespace Core.UnitTests.Common.Monad.Results;
+namespace Core.Tests.Common.Monad.Results;
 
 /// <summary>Tests for <see cref="IResult{TError}"/> and <see cref="IResult{TValue,TError}"/> contracts.</summary>
 [Trait("Category", "Unit")]

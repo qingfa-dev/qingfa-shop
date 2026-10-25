@@ -1,6 +1,6 @@
 using Core.Common.Concerns.Organization.Collectionable;
 
-namespace Core.UnitTests.Common.Concerns.Organization.Collectionable;
+namespace Core.Tests.Common.Concerns.Organization.Collectionable;
 
 /// <summary>Specification for <see cref="CollectionableExtensions"/>.</summary>
 public class CollectionableExtensionSpec

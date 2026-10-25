@@ -1,6 +1,6 @@
 using Core.Common.Concerns.Content.MediaAttachable;
 
-namespace Core.UnitTests.Common.Concerns.Content.MediaAttachable;
+namespace Core.Tests.Common.Concerns.Content.MediaAttachable;
 
 /// <summary>Spec for <see cref="MediaAttachableExtensions"/> covering extension behavior,
 /// <see cref="MediaAttachableValidator"/> branches and <see cref="MediaAttachableConstant"/> values.</summary>

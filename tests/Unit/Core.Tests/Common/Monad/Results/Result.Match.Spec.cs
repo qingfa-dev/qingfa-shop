@@ -1,4 +1,4 @@
-namespace Core.UnitTests.Common.Monad.Results;
+namespace Core.Tests.Common.Monad.Results;
 
 /// <summary>Tests for Match and Fold extensions in <see cref="ResultExtension"/>.</summary>
 [Trait("Category", "Unit")]

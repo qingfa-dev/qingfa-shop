@@ -1,4 +1,4 @@
-namespace Core.UnitTests.Common.Monad.Metadata;
+namespace Core.Tests.Common.Monad.Metadata;
 
 /// <summary>
 /// Tests for <see cref="HasMetadataBase"/>: every carrier owns its own metadata

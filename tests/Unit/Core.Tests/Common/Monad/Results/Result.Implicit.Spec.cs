@@ -1,4 +1,4 @@
-namespace Core.UnitTests.Common.Monad.Results;
+namespace Core.Tests.Common.Monad.Results;
 
 /// <summary>Tests for implicit conversion operators on <see cref="Result"/>.</summary>
 [Trait("Category", "Unit")]

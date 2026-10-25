@@ -1,6 +1,6 @@
 using Core.Common.Concerns.Foundation.StoreScoped;
 
-namespace Core.UnitTests.Common.Concerns.Foundation.StoreScoped;
+namespace Core.Tests.Common.Concerns.Foundation.StoreScoped;
 
 /// <summary>Specifications for <see cref="StoreScopedExtensions"/> and <see cref="StoreScopedValidator"/>.</summary>
 public class StoreScopedExtensionSpec

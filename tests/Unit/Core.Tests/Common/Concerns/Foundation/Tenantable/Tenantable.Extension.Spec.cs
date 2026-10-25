@@ -1,6 +1,6 @@
 using Core.Common.Concerns.Foundation.Tenantable;
 
-namespace Core.UnitTests.Common.Concerns.Foundation.Tenantable;
+namespace Core.Tests.Common.Concerns.Foundation.Tenantable;
 
 /// <summary>Specifications for <see cref="TenantableExtensions"/> and <see cref="TenantableValidator"/>.</summary>
 public class TenantableExtensionSpec

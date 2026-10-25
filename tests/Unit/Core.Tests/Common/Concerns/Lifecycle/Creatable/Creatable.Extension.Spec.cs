@@ -1,7 +1,7 @@
 using Core.Common.Concerns.Lifecycle;
 using Core.Common.Concerns.Lifecycle.Creatable;
 
-namespace Core.UnitTests.Common.Concerns.Lifecycle.Creatable;
+namespace Core.Tests.Common.Concerns.Lifecycle.Creatable;
 
 /// <summary>Specification tests for <see cref="CreatableExtensions"/>.</summary>
 public class CreatableExtensionSpec

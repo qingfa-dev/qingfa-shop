@@ -1,6 +1,6 @@
 using Core.Common.Concerns.Foundation.Identifiable;
 
-namespace Core.UnitTests.Common.Concerns.Foundation.Identifiable;
+namespace Core.Tests.Common.Concerns.Foundation.Identifiable;
 
 /// <summary>
 /// Specifications for <see cref="IdentifiableExtensions"/> and

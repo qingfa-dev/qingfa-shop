@@ -1,6 +1,6 @@
 using Core.Common.Concerns.Organization.Positionable;
 
-namespace Core.UnitTests.Common.Concerns.Organization.Positionable;
+namespace Core.Tests.Common.Concerns.Organization.Positionable;
 
 /// <summary>Specification for <see cref="PositionableExtensions"/>.</summary>
 public class PositionableExtensionSpec

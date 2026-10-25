@@ -1,4 +1,4 @@
-namespace Core.UnitTests.Common.Monad.Results;
+namespace Core.Tests.Common.Monad.Results;
 
 /// <summary>Tests for Try, MapTry, and BindTry extensions in <see cref="ResultExtension"/>.</summary>
 [Trait("Category", "Unit")]

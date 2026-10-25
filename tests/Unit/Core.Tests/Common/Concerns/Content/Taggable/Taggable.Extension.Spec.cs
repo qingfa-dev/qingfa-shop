@@ -1,6 +1,6 @@
 using Core.Common.Concerns.Content.Taggable;
 
-namespace Core.UnitTests.Common.Concerns.Content.Taggable;
+namespace Core.Tests.Common.Concerns.Content.Taggable;
 
 /// <summary>
 /// Specifications for tag operations, validation, normalization, and constants.

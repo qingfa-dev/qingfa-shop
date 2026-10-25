@@ -1,4 +1,4 @@
-namespace Core.UnitTests.Common.Monad.Results;
+namespace Core.Tests.Common.Monad.Results;
 
 /// <summary>Tests for <see cref="Result"/> factory methods.</summary>
 [Trait("Category", "Unit")]

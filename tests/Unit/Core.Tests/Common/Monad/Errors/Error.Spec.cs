@@ -1,4 +1,4 @@
-namespace Core.UnitTests.Common.Monad.Errors;
+namespace Core.Tests.Common.Monad.Errors;
 
 /// <summary>
 /// Tests for <see cref="Error"/> construction, validation, rendering, and value equality.

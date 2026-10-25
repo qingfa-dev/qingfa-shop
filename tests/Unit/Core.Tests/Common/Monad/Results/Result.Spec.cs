@@ -1,4 +1,4 @@
-namespace Core.UnitTests.Common.Monad.Results;
+namespace Core.Tests.Common.Monad.Results;
 
 /// <summary>Tests for the non-generic <see cref="Result"/> record.</summary>
 [Trait("Category", "Unit")]

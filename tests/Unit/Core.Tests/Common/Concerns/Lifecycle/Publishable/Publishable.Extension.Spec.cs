@@ -1,7 +1,7 @@
 using Core.Common.Concerns.Lifecycle;
 using Core.Common.Concerns.Lifecycle.Publishable;
 
-namespace Core.UnitTests.Common.Concerns.Lifecycle.Publishable;
+namespace Core.Tests.Common.Concerns.Lifecycle.Publishable;
 
 /// <summary>Specification tests for <see cref="PublishableExtensions"/>.</summary>
 public class PublishableExtensionSpec

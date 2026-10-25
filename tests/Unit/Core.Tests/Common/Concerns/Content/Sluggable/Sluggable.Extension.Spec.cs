@@ -1,6 +1,6 @@
 using Core.Common.Concerns.Content.Sluggable;
 
-namespace Core.UnitTests.Common.Concerns.Content.Sluggable;
+namespace Core.Tests.Common.Concerns.Content.Sluggable;
 
 /// <summary>Spec for <see cref="SluggableExtensions"/> covering extension behavior,
 /// <see cref="SluggableValidator"/> branches and <see cref="SluggableConstant"/> values.</summary>

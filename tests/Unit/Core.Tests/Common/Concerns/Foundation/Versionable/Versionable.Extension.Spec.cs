@@ -1,6 +1,6 @@
 using Core.Common.Concerns.Foundation.Versionable;
 
-namespace Core.UnitTests.Common.Concerns.Foundation.Versionable;
+namespace Core.Tests.Common.Concerns.Foundation.Versionable;
 
 /// <summary>Specifications for <see cref="VersionableExtensions"/> and <see cref="VersionableValidator"/>.</summary>
 public class VersionableExtensionSpec
