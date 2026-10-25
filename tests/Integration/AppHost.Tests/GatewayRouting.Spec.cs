@@ -2,7 +2,7 @@ using System.Net.Http.Json;
 
 using AwesomeAssertions;
 
-namespace AppHost.IntegrationTests;
+namespace AppHost.Tests;
 
 [Collection(AppHostCollection.Name)]
 public class GatewayRoutingSpec
@@ -62,7 +62,7 @@ public class GatewayRoutingSpec
         // Validate: the storefront title proves the ShopFront app was served, not
         // the Admin app.
         var html = await response.Content.ReadAsStringAsync().WaitAsync(Timeout);
-        html.Should().Contain("<title>Resys.Shop · Storefront</title>");
+        html.Should().Contain("<title>QingFa.Shop · Storefront</title>");
     }
 
     [Fact]
@@ -87,7 +87,7 @@ public class GatewayRoutingSpec
         // Validate: the Admin title proves the Admin app was served under /admin,
         // with the prefix preserved rather than stripped.
         var html = await response.Content.ReadAsStringAsync().WaitAsync(Timeout);
-        html.Should().Contain("<title>Resys.Shop · Admin</title>");
+        html.Should().Contain("<title>QingFa.Shop · Admin</title>");
     }
 
     [Fact]

@@ -26,7 +26,7 @@ public sealed class VerticalSliceArchitectureTests
         // Validators live in Application.Features.{Feature}.Validators
         // No direct dependencies between feature slices
         // Cross-slice communication via Application.Services or Domain Events
-        
+
         true.Should().BeTrue(because: "Vertical slice rules are documented; NetArchTest implementation pending API compatibility");
     }
 

@@ -1,13 +1,13 @@
-# AppHost.IntegrationTests
+# AppHost.Tests
 
 End-to-end tests over a real Aspire orchestration. _test · orchestrator_
 
 ## Summary
 
-This suite starts the whole system — DCP, the API, the gateway, and both Vite dev
-servers — and asserts what a browser would see through the gateway. It is the
-most expensive suite, so all six tests share one orchestration through
-`AppHostFixture` and run sequentially in a single collection.
+This suite starts the whole system — DCP, the API, the gateway, and both Vite
+dev servers — and asserts what a browser would see through the gateway. It is the
+most expensive suite, so every test shares one orchestration through
+`AppHostFixture` and runs sequentially in a single collection.
 
 ## Contains
 
@@ -19,7 +19,7 @@ most expensive suite, so all six tests share one orchestration through
 | `ApiResource.Spec.cs` | spec | `api` health endpoint responds 200 |
 | `WebResource.Spec.cs` | spec | Every declared resource reaches a runnable state |
 | `JavaScriptResources.Util.cs` | util | `SkipUnlessToolchainAvailable()` guard for Node/pnpm |
-| `AppHost.IntegrationTests.csproj` | package | Aspire.Hosting.Testing; references `AppHost` and `Testing` |
+| `AppHost.Tests.csproj` | package | Aspire.Hosting.Testing; references `AppHost` and `Testing` |
 
 ## Boundaries
 
@@ -30,7 +30,7 @@ In scope:
 
 Out of scope:
 - Edge policy internals (JWT, rate limiting) beyond reachability.
-- Business behaviour of the API → [`../Api.IntegrationTests/`](../Api.IntegrationTests/README.md).
+- Business behaviour of the API → [`../Api.Tests/`](../Api.Tests/README.md).
 
 ## Assumptions
 
@@ -51,7 +51,6 @@ Out of scope:
 ## Contracts
 
 - `AppHostFixture.GetAppAsync()` → the shared `DistributedApplication`.
-- `X-Correlation-ID` is not asserted here; the gateway suite owns routing only.
 
 ## Flows
 
@@ -71,11 +70,10 @@ Out of scope:
 ## Related
 
 - Parent: [`../README.md`](../README.md)
-- Fixtures: [`../Testing/`](../Testing/README.md)
-- Topology: [`../../app/host/`](../../app/host/README.md)
-- Edge: [`../../app/gateway/`](../../app/gateway/README.md)
+- Fixtures: [`../../Testing/`](../../Testing/README.md)
+- Topology: [`../../../app/AppHost/`](../../../app/AppHost/)
 
 ## Notes
 
-- 6 tests, all passing; a full run takes roughly 20 s once the shared app is up.
+- Six tests; a full run takes roughly 20 s once the shared app is up.
 - `TODO-2026Q4:` add an auth spec once token issuance exists.

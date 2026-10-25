@@ -73,7 +73,7 @@ public sealed class LayerArchitectureTests
         // Web.Api: Depends on all layers (composition root)
         // No circular dependencies between any layers
         // Production code never references test assemblies
-        
+
         true.Should().BeTrue(because: "Layer dependency rules are documented; NetArchTest implementation pending API compatibility");
     }
 

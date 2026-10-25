@@ -1,6 +1,6 @@
 using Testing;
 
-namespace Api.IntegrationTests;
+namespace Api.Tests;
 
 /// <summary>One PostgreSQL container shared by every test that needs real SQL.</summary>
 [CollectionDefinition(Name)]

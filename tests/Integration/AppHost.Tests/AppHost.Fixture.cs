@@ -1,11 +1,12 @@
-using Aspire.Hosting;
-using Aspire.Hosting.Testing;
 using System.IO;
 using System.Reflection;
 
+using Aspire.Hosting;
+using Aspire.Hosting.Testing;
+
 using Testing;
 
-namespace AppHost.IntegrationTests;
+namespace AppHost.Tests;
 
 /// <summary>
 /// Starts the AppHost once and shares it with every test in the collection.

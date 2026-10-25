@@ -35,7 +35,7 @@ In scope:
 
 Out of scope:
 - Production code → [`../src/`](../src/), [`../app/`](../app/).
-- Manual/e2e tests (Playwright) → [`../app/Web.Storefront/`](../app/Web.Storefront/), [`../app/Web.Admin/`](../app/Web.Admin/).
+- Web unit tests (Vitest) → [`../app/Web.Storefront/src/__tests__/`](../app/Web.Storefront/src/__tests__/), [`../app/Web.Admin/src/__tests__/`](../app/Web.Admin/src/__tests__/).
 - Performance/load tests (separate repo/tooling).
 
 ## Assumptions

@@ -1,6 +1,6 @@
 using AwesomeAssertions;
 
-namespace AppHost.IntegrationTests;
+namespace AppHost.Tests;
 
 [Collection(AppHostCollection.Name)]
 public class ApiResourceSpec

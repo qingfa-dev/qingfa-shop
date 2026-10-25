@@ -60,7 +60,7 @@ Out of scope:
 
 - Parent: [`../README.md`](../README.md)
 - Fixtures: [`../Testing/`](../Testing/README.md)
-- Code under test: [`../../app/services/Api/`](../../app/services/Api/)
+- Code under test: [`../../../app/Web.Api/`](../../../app/Web.Api/)
 - Layer suites: [`../Application.UnitTests/`](../Application.UnitTests/README.md)
 
 ## Notes

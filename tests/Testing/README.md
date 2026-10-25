@@ -30,7 +30,7 @@ Out of scope:
 - Test assertions/helpers → use `AwesomeAssertions` directly.
 - Test data builders → define in each test project.
 - Unit test infrastructure → unit tests use mocks, not containers.
-- Playwright/Vite config → frontend projects own their test setup.
+- Vitest/Vite config → frontend projects own their test setup.
 
 ## Assumptions
 
