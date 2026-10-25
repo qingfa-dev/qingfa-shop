@@ -1,6 +1,7 @@
 <Solution>
   <Folder Name="/app/">
     <Project Path="app/AppHost/AppHost.csproj" />
+    <Project Path="app/Gateway/Gateway.csproj" />
     <Project Path="app/Web.Api/Web.Api.csproj" />
   </Folder>
   <Folder Name="/src/">

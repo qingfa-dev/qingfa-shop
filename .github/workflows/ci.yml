@@ -1,0 +1,176 @@
+name: ci
+
+on:
+  pull_request:
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/PULL_REQUEST_TEMPLATE/**"
+      - ".github/dependabot.yml"
+      - "LICENSE"
+  push:
+    branches: [main]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - ".github/ISSUE_TEMPLATE/**"
+      - ".github/PULL_REQUEST_TEMPLATE/**"
+      - ".github/dependabot.yml"
+      - "LICENSE"
+  schedule:
+    # Weekly full suite, including the expensive Compose smoke job.
+    - cron: "0 4 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CI: "true"
+  DOTNET_NOLOGO: "1"
+  DOTNET_CLI_TELEMETRY_OPTOUT: "1"
+
+jobs:
+  changes:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      compose: ${{ steps.filter.outputs.compose }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect Compose-related changes
+        id: filter
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+          HEAD_SHA: ${{ github.sha }}
+        run: |
+          if [[ "$EVENT_NAME" == "schedule" || "$EVENT_NAME" == "workflow_dispatch" ]]; then
+            echo "compose=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          if [[ "$EVENT_NAME" == "pull_request" ]]; then
+            base="origin/${{ github.base_ref }}"
+            git fetch --no-tags origin "${{ github.base_ref }}"
+            range="$base...$HEAD_SHA"
+          else
+            range="$BEFORE_SHA...$HEAD_SHA"
+          fi
+
+          if git diff --quiet "$range" -- \
+            compose.yaml compose.deploy.yaml .dockerignore \
+            app/Infrastructure \
+            app/package.json app/pnpm-workspace.yaml app/pnpm-lock.yaml \
+            app/Web.Api/Dockerfile \
+            app/Gateway/Dockerfile \
+            app/Web.Storefront/Dockerfile \
+            app/Web.Admin/Dockerfile; then
+            echo "compose=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "compose=true" >> "$GITHUB_OUTPUT"
+          fi
+
+  backend:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
+      - run: make lib.install
+      - run: make lib.lint api.lint gate.lint host.lint
+      - run: make lib.build api.build gate.build host.build
+      - run: make lib.test api.test
+
+  web:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.8.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: app/pnpm-lock.yaml
+      - run: make store.install
+      - run: make store.format.check admin.format.check
+      - run: make store.lint admin.lint
+      - run: make store.test admin.test
+      - run: make store.build admin.build
+
+  apphost:
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 12.8.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: pnpm
+          cache-dependency-path: app/pnpm-lock.yaml
+      - run: make store.install
+      - run: make host.install host.test
+
+  compose:
+    needs: changes
+    if: needs.changes.outputs.compose == 'true' && (github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - run: make infra.config
+      - run: make infra.up
+      - run: make infra.smoke
+      - if: always()
+        run: make infra.down
+
+  infra:
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
+      - run: make infra.test
+
+  gate:
+    if: always()
+    needs: [changes, backend, web, apphost, compose, infra]
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - name: Require every job to succeed or be skipped
+        run: |
+          results='${{ needs.changes.result }} ${{ needs.backend.result }} ${{ needs.web.result }} ${{ needs.apphost.result }} ${{ needs.compose.result }} ${{ needs.infra.result }}'
+          echo "$results"
+          case "$results" in
+            *failure*|*cancelled*) exit 1 ;;
+          esac

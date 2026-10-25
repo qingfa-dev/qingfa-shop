@@ -1,0 +1,13 @@
+# Keep the build context small and platform-correct: host build output and
+# dependencies must never be copied into Linux image layers.
+.git
+.gitignore
+**/bin/
+**/obj/
+**/node_modules/
+**/dist/
+artifacts/
+TestResults/
+.vs/
+.vscode/
+*.user

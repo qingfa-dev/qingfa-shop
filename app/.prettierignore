@@ -1,0 +1,10 @@
+node_modules
+dist
+coverage
+pnpm-lock.yaml
+
+# The .NET projects share app/ but are formatted by dotnet format.
+Web.Api
+Gateway
+AppHost
+Infrastructure

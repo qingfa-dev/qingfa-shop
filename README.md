@@ -23,110 +23,141 @@ QingFa.Shop is a cloud-native e-commerce solution leveraging .NET Aspire for ser
 
 ```
 QingFa.Shop/
+├── app/
+│   ├── package.json           # pnpm workspace root (shared Prettier)
+│   ├── pnpm-workspace.yaml    # Web.Storefront + Web.Admin members
+│   ├── AppHost/               # Aspire orchestration (api, gateway, Vite apps)
+│   ├── Gateway/               # YARP edge: routing, JWT validation, rate limiting
+│   ├── Infrastructure/        # Postgres + Redis image definitions
+│   ├── Web.Api/               # Backend API (ASP.NET Core)
+│   ├── Web.Admin/             # Admin SPA (Vite, served under /admin/)
+│   └── Web.Storefront/        # Storefront SPA (Vite)
 ├── src/
-│   ├── QingFa.Shop.AppHost/           # Aspire AppHost (orchestration)
-│   ├── QingFa.Shop.ServiceDefaults/   # Shared Aspire service config
-│   ├── QingFa.Shop.Api/               # Backend API (ASP.NET Core)
-│   ├── QingFa.Shop.Web/               # Frontend (Vue 3 + TS + Vite)
-│   ├── QingFa.Shop.Core/              # Domain models, interfaces
-│   ├── QingFa.Shop.Infrastructure/    # EF Core, Redis, external services
-│   └── QingFa.Shop.Tests/             # Unit & integration tests
-├── docker-compose.yml                 # Production compose
-├── docker-compose.override.yml        # Local dev override
-├── Directory.Build.props              # Shared MSBuild props
-├── Directory.Packages.props           # Central package management
-├── global.json                        # .NET SDK version
-├── nuget.config                       # NuGet sources
-├── .editorconfig                      # Code style
-└── README.md
+│   ├── Core/                  # Domain models, interfaces
+│   ├── Contract/              # Public request/response contracts
+│   ├── Application/           # Use cases and handlers
+│   ├── Infrastructure/        # EF Core, Redis, external services
+│   └── ServiceDefaults/       # Shared Aspire service config
+├── tests/                     # Unit, integration, contract, architecture suites
+├── make/                      # Make fragments (public command surface)
+├── scripts/                   # Shell implementations behind every target
+├── compose.yaml               # Local Compose stack
+├── compose.deploy.yaml        # Pull-only deployment overlay
+└── Makefile                   # Facade: `make help`
 ```
 
 ## Prerequisites
 
-- **.NET SDK 9.0+** (`global.json` pins version)
-- **Node.js 20+** (for Vue frontend)
-- **Docker Desktop** (for PostgreSQL, Redis, RabbitMQ, Aspire Dashboard)
-- **pnpm 9+** (frontend package manager)
+- **.NET SDK 10.0.401** (`global.json` pins the exact version)
+- **Node.js 24+** and **pnpm 12.8.1** (frontend package managers)
+- **Docker** with Compose v2 (backing services and container smoke tests)
 
 ## Getting Started
 
-### 1. Clone & Configure
+### 1. Clone
 
 ```bash
 git clone <repo-url>
 cd QingFa.Shop
-
-# Copy environment template
-cp src/QingFa.Shop.Api/.env.example src/QingFa.Shop.Api/.env
-cp src/QingFa.Shop.Web/.env.example src/QingFa.Shop.Web/.env
+make doctor          # confirm dotnet, node, pnpm, and Docker versions
 ```
 
-### 2. Start Infrastructure (Aspire)
+### 2. Start the full stack (Aspire)
 
 ```bash
-# From repository root
-dotnet run --project src/QingFa.Shop.AppHost
+dotnet run --project app/AppHost
 ```
 
 This starts:
-- **Aspire Dashboard** → `http://localhost:15888` (observability, service graph, logs)
-- **PostgreSQL** → `localhost:5432`
-- **Redis** → `localhost:6379`
-- **RabbitMQ** → `localhost:5672` (management UI: `localhost:15672`)
-- **API** → `https://localhost:7000` / `http://localhost:5000`
-- **Web** → `http://localhost:5173` (Vite dev server)
+- **Aspire Dashboard** → the URL printed in the console (observability, service graph, logs)
+- **PostgreSQL** and **Redis** containers
+- **API** → `api` resource
+- **Gateway** → `gateway` resource (the browser entry point)
+- **Storefront** and **Admin** → Vite dev servers behind the gateway
 
 ### 3. Database Migrations
 
 ```bash
-# Apply EF Core migrations
-dotnet ef database update --project src/QingFa.Shop.Infrastructure --startup-project src/QingFa.Shop.Api
+dotnet ef database update --project src/Infrastructure --startup-project app/Web.Api
 ```
 
-### 4. Frontend Development (Alternative)
+### 4. Frontend only
 
 ```bash
-cd src/QingFa.Shop.Web
-pnpm install
-pnpm dev
+make store.install                       # installs the app/ pnpm workspace once
+cd app
+pnpm --filter @qingfa/storefront dev     # or @qingfa/admin
 ```
 
 ## Available Scripts
 
-### Root Level (Makefile / `just` / `Taskfile.yml`)
+The Makefile is the command surface; `make help` prints every target. Each run
+prints `==> <target>` and then the exact CLI it executes (`$ dotnet ...`,
+`$ pnpm ...`) before the command starts.
 
 ```bash
-# Start full Aspire stack (recommended)
-task up              # dotnet run --project src/QingFa.Shop.AppHost
+# Workspace
+make install         # restore .NET + install the web workspace
+make build           # .NET solution + both SPA bundles
+make lint            # formatting, structure, and vue-tsc checks
+make format          # write C# and Prettier fixes
+make test            # unit, Api, and web tests
+make test.all        # every suite, including AppHost and infra
 
-# Stop all
-task down
+# Libraries
+make lib.install
+make lib.format
+make lib.lint
+make lib.build
+make lib.test
 
-# Build all projects
-task build
+# Api
+make api.install
+make api.format
+make api.lint
+make api.build
+make api.test
+make api.publish
 
-# Run all tests
-task test
+# Gateway
+make gate.install
+make gate.format
+make gate.lint
+make gate.build
+make gate.test
+make gate.publish
 
-# Lint & format
-task lint            # dotnet format + eslint + stylelint
-task format          # dotnet format --fix + eslint --fix
+# AppHost
+make host.install
+make host.format
+make host.lint
+make host.build
+make host.test
 
-# Database
-task db:migrate      # EF Core migrate
-task db:reset        # Drop + migrate + seed
-task db:studio       # Not available for PG; use pgAdmin / DBeaver
+# Storefront
+make store.install
+make store.format
+make store.lint
+make store.test
+make store.build
+make store.publish
 
-# Frontend only
-task web:install     # pnpm install
-task web:dev         # Vite dev server
-task web:build       # Production build
-task web:preview     # Preview production build
+# Admin
+make admin.install
+make admin.format
+make admin.lint
+make admin.test
+make admin.build
+make admin.publish
 
-# Docker
-task docker:build    # Build all images
-task docker:up       # Production compose up
-task docker:down     # Production compose down
+# Infra
+make infra.config
+make infra.build     # gateway, api, shopfront, admin, postgres, redis
+make infra.test
+make infra.up        # docker compose up -d --build
+make infra.smoke     # assert the gateway edge and both SPA titles
+make infra.logs SERVICE=gateway
+make infra.down
 ```
 
 ### .NET Commands (Direct)
@@ -137,36 +168,44 @@ dotnet restore
 dotnet build
 
 # Run API standalone (without Aspire)
-dotnet run --project src/QingFa.Shop.Api
+dotnet run --project app/Web.Api
 
-# Run tests
-dotnet test --filter "FullyQualifiedName~Integration"   # Integration only
-dotnet test --filter "FullyQualifiedName~Unit"          # Unit only
+# Run tests through the Make surface
+make lib.test
+make api.test
+make gate.test
+make host.test
 
 # EF Core tools
 dotnet tool install --global dotnet-ef
-dotnet ef migrations add <Name> -p src/QingFa.Shop.Infrastructure -s src/QingFa.Shop.Api
-dotnet ef database update -p src/QingFa.Shop.Infrastructure -s src/QingFa.Shop.Api
+dotnet ef migrations add <Name> -p src/Infrastructure -s app/Web.Api
+dotnet ef database update -p src/Infrastructure -s app/Web.Api
 ```
 
 ### Frontend Commands
 
-```bash
-cd src/QingFa.Shop.Web
+Both apps are members of the `app/` pnpm workspace.
 
-pnpm install          # Install deps
-pnpm dev              # Dev server (HMR)
-pnpm build            # Type-check + production build
-pnpm preview          # Preview build
-pnpm lint             # ESLint + Stylelint
-pnpm format           # Prettier + ESLint --fix
-pnpm test:unit        # Vitest
-pnpm test:e2e         # Playwright
+```bash
+# From the repository root
+make store.install
+cd app
+
+pnpm --filter @qingfa/storefront dev
+pnpm --filter @qingfa/admin dev
+
+# Or from app/ directly
+pnpm install
+pnpm --filter @qingfa/storefront type-check
+pnpm --filter @qingfa/storefront exec vitest run
+pnpm --filter @qingfa/storefront build
+pnpm format          # Prettier across both apps
+pnpm format:check
 ```
 
 ## Environment Variables
 
-### API (`src/QingFa.Shop.Api/.env`)
+### API (`app/Web.Api/.env`)
 
 ```env
 # Database
@@ -190,11 +229,14 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL=http://localhost:4317
 ```
 
-### Web (`src/QingFa.Shop.Web/.env`)
+### Web
 
-```env
-VITE_API_BASE_URL=https://localhost:7000
-VITE_STRIPE_PUBLISHABLE_KEY=pk_test_...
+The apps read `API_BASE_URL` from the process environment. AppHost injects the
+gateway endpoint; for a standalone Vite server, export it first:
+
+```bash
+cd app
+API_BASE_URL=http://localhost:5050 pnpm --filter @qingfa/storefront dev
 ```
 
 ## Aspire Dashboard
@@ -218,21 +260,31 @@ Features:
 ### Docker (Production)
 
 ```bash
-# Build images
-docker compose -f docker-compose.yml build
+# Build images through Make
+make infra.build
 
-# Start stack
-docker compose -f docker-compose.yml up -d
+# Start the stack (gateway on :5050)
+make infra.up
 
 # View logs
-docker compose logs -f api
+make infra.logs SERVICE=gateway
+
+# Stop
+make infra.down
+```
+
+A pull-only host uses the deploy overlay:
+
+```bash
+DOCKER_REGISTRY=ghcr.io/<owner>/<repo> IMAGE_TAG=latest \
+  docker compose -f compose.yaml -f compose.deploy.yaml up -d --no-build
 ```
 
 ### Kubernetes (Aspire Manifest)
 
 ```bash
 # Generate K8s manifests from AppHost
-dotnet run --project src/QingFa.Shop.AppHost -- --publisher manifest
+dotnet run --project app/AppHost -- --publisher manifest
 
 # Output: ./manifests/ — apply with kubectl
 kubectl apply -f ./manifests/
@@ -243,26 +295,25 @@ kubectl apply -f ./manifests/
 | Tool | Purpose |
 |------|---------|
 | `dotnet format` | C# formatting (EditorConfig) |
-| `ESLint` + `Prettier` | TS/Vue linting & formatting |
-| `Stylelint` | CSS/SCSS linting |
-| `SonarCloud` | Static analysis (CI) |
-| `Husky` + `lint-staged` | Pre-commit hooks |
+| `Prettier` | TS/Vue/CSS/Markdown formatting |
+| `vue-tsc` | Vue SFC type-checking |
+| `Vitest` | Web unit tests |
 
 ## Testing Strategy
 
 | Layer | Framework | Location |
 |-------|-----------|----------|
-| Unit (C#) | xUnit + Moq | `src/QingFa.Shop.Tests/Unit` |
-| Integration (C#) | xUnit + Testcontainers | `src/QingFa.Shop.Tests/Integration` |
-| Unit (Vue) | Vitest + Vue Test Utils | `src/QingFa.Shop.Web/tests/unit` |
-| E2E | Playwright | `src/QingFa.Shop.Web/tests/e2e` |
+| Unit (C#) | xUnit | `tests/Unit` |
+| Architecture (C#) | xUnit | `tests/Architecture.Tests` |
+| Integration (C#) | xUnit + Testcontainers | `tests/Integration` |
+| Web | Vitest + `@vue/test-utils` | `app/Web.*/src/__tests__` |
 
 ## Contributing
 
 1. Fork the repository
 2. Create a feature branch: `git checkout -b feat/your-feature`
-3. Run `task format` and `task lint` before committing
-4. Ensure `task test` passes
+3. Run `make format` and `make lint` before committing
+4. Ensure `make test` passes
 5. Open a Pull Request with description and screenshots (if UI)
 
 ## License
