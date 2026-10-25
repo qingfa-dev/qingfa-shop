@@ -1,5 +1,4 @@
 using Core.Common.Domain.Entities;
-using Core.Common.Monad.Results;
 
 namespace Application.Common.Persistence.Repositories;
 

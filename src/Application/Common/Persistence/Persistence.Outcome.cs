@@ -1,5 +1,3 @@
-using Core.Common.Monad.Errors;
-
 namespace Application.Common.Persistence;
 
 /// <summary>Neutral persistence failures. No provider exception type appears here —

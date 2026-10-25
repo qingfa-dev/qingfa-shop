@@ -1,7 +1,5 @@
 using System.Data;
 
-using Core.Common.Monad.Results;
-
 namespace Application.Common.Persistence.UnitOfWorks;
 
 /// <summary>A unit-of-work transaction.</summary>
