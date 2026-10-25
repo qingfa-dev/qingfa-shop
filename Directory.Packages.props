@@ -372,7 +372,7 @@
        FrameworkReference instead of a package.
        ==================================================================== -->
   <ItemGroup>
-    <PackageVersion Include="WolverineFx" Version="6.52.0" />
-    <PackageVersion Include="WolverineFx.RabbitMQ" Version="6.52.0" />
+    <PackageVersion Include="WolverineFx" Version="6.53.0" />
+    <PackageVersion Include="WolverineFx.RabbitMQ" Version="6.53.0" />
   </ItemGroup>
 </Project>
