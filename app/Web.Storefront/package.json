@@ -1,15 +1,39 @@
 {
-  "name": "web-storefront",
-  "private": true,
+  "name": "@qingfa/storefront",
   "version": "0.0.0",
+  "private": true,
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
-    "preview": "vite preview"
+    "build": "run-p type-check \"build-only {@}\" --",
+    "preview": "vite preview",
+    "test:unit": "vitest",
+    "build-only": "vite build",
+    "type-check": "vue-tsc --build"
+  },
+  "dependencies": {
+    "@stylexjs/stylex": "^0.19.1",
+    "vue": "^3.5.42",
+    "vue-router": "^5.3.1"
   },
   "devDependencies": {
-    "typescript": "~6.0.3",
-    "vite": "^8.3.4"
+    "@stylexjs/unplugin": "^0.19.1",
+    "@tsconfig/node24": "^24.0.5",
+    "@types/jsdom": "^30.0.0",
+    "@types/node": "^24.13.4",
+    "@vitejs/plugin-vue": "^6.0.8",
+    "@vue/test-utils": "^2.5.0",
+    "@vue/tsconfig": "^0.9.1",
+    "jsdom": "^30.0.1",
+    "npm-run-all2": "^9.0.3",
+    "typescript": "~6.0.0",
+    "unplugin": "^2.3.11",
+    "vite": "^8.2.2",
+    "vite-plugin-vue-devtools": "^8.2.1",
+    "vitest": "^4.1.11",
+    "vue-tsc": "^3.3.11"
+  },
+  "engines": {
+    "node": "^22.18.0 || >=24.12.0"
   }
 }
