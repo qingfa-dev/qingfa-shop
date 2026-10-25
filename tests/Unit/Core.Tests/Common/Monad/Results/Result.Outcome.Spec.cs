@@ -2,7 +2,7 @@ namespace Core.UnitTests.Common.Monad.Results;
 
 /// <summary>Tests for <see cref="ResultOutcome.Failure"/> factory methods.</summary>
 [Trait("Category", "Unit")]
-public class ResultFailureSpec
+public class ResultOutcomeSpec
 {
     #region Status
 
