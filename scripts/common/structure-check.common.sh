@@ -56,7 +56,7 @@ constant config options event message result error util helper extension decorat
 adapter client gateway proxy listener scheduler worker job spec test tests mock stub fake
 fixture e2e-spec base
 outcome marker composition collection behavior logger operator severity default exception
-generic design tabular request querymap queryconstant configuration flow double"
+generic design tabular request querymap queryconstant configuration flow double registry"
 
 SUBROLES="async sync"
 

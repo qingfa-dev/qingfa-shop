@@ -199,6 +199,7 @@ by extending §2, not by maintaining a parallel list.
 | `configuration` | The long form of `config`, used for EF entity configurations | `Todo.Configuration.cs` |
 | `flow` | The control-flow shape of a result | `Result.Extension.Flow.Async.cs` |
 | `double` | Test double standing in for a production implementation | `SqliteErrorClassifier.Double.cs` |
+| `registry` | Compose-time lookup of a concept by the type it describes | `QueryMap.Registry.cs` |
 
 `enum` and `schema` are already in §2.4 and §2.3; this repository uses them
 for an enumerated kind and for a database model respectively.

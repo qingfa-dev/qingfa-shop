@@ -88,6 +88,33 @@ public static partial class QueryParser
             Aggregate: aggregated));
     }
 
+    /// <summary>Parses query parameters against the map registered for <typeparamref name="T"/>.</summary>
+    /// <typeparam name="T">The type the query addresses.</typeparam>
+    /// <param name="parameters">The raw query parameters.</param>
+    /// <param name="registry">The maps composed for the application.</param>
+    /// <param name="options">The parser limits; the defaults apply when omitted.</param>
+    /// <returns>
+    /// The parsed query, or a failure carrying every problem found. A missing map
+    /// fails the parse rather than falling back to an unmapped query.
+    /// </returns>
+    /// <exception cref="ArgumentNullException">
+    /// <paramref name="parameters"/> or <paramref name="registry"/> is <c>null</c>.
+    /// </exception>
+    public static Result<Query<T>> Parse<T>(
+        QueryParameters parameters,
+        QueryMapRegistry registry,
+        QueryOptions? options = null)
+    {
+        ArgumentNullException.ThrowIfNull(parameters);
+        ArgumentNullException.ThrowIfNull(registry);
+
+        Result<QueryMap<T>> map = registry.Get<T>();
+
+        return map.IsFailure
+            ? Result<Query<T>>.Fail(map.Errors)
+            : Parse(parameters, map.Value, options);
+    }
+
     /// <summary>Reads a part's value only when it succeeded and the request asked for it.</summary>
     /// <typeparam name="TItem">The item type the part produces.</typeparam>
     /// <param name="part">The parsed part.</param>

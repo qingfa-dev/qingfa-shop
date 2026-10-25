@@ -44,5 +44,19 @@ public static class QueryMapOutcome
             message: "Composite members must share one value type.");
 
         #endregion
+
+        #region Registry
+
+        /// <summary>Error when a type already has a registered map.</summary>
+        public static Error AlreadyRegistered(Type type) => Error.Conflict(
+            code: "Query.Map.AlreadyRegistered",
+            message: $"A query map for '{type.Name}' is already registered.");
+
+        /// <summary>Error when a type has no registered map.</summary>
+        public static Error NotRegistered(Type type) => Error.InternalServerError(
+            code: "Query.Map.NotRegistered",
+            message: $"No query map is registered for '{type.Name}'.");
+
+        #endregion
     }
 }
