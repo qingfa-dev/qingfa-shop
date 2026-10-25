@@ -1,5 +1,3 @@
-using Aspire.Hosting;
-using Aspire.Hosting.ApplicationModel;
 using Aspire.Hosting.JavaScript;
 
 IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
