@@ -1,7 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 
-using Core.Common.Monad.Results;
-
 namespace Core.Common.Querying.Mapping;
 
 /// <summary>An explicit, immutable allowlist of fields a query may address.</summary>

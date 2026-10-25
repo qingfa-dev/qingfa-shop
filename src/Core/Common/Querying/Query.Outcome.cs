@@ -1,5 +1,3 @@
-using Core.Common.Monad.Errors;
-
 namespace Core.Common.Querying;
 
 /// <summary>Error codes for query parsing and validation.</summary>
