@@ -20,8 +20,7 @@
 
   <ItemGroup>
     <ProjectReference Include="../Web.Api/Web.Api.csproj" />
-    <ProjectReference Include="../Web.Storefront/Web.Storefront.csproj" Condition="Exists('../Web.Storefront/Web.Storefront.csproj')" />
-    <ProjectReference Include="../Web.Admin/Web.Admin.csproj" Condition="Exists('../Web.Admin/Web.Admin.csproj')" />
+    <ProjectReference Include="../Gateway/Gateway.csproj" />
   </ItemGroup>
 
 </Project>
