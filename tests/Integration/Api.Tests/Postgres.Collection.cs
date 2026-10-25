@@ -1,4 +1,4 @@
-using Testing;
+using Testing.Fixtures;
 
 namespace Api.Tests;
 

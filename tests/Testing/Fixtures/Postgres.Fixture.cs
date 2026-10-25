@@ -6,7 +6,7 @@ using Testcontainers.PostgreSql;
 
 using Xunit;
 
-namespace Testing;
+namespace Testing.Fixtures;
 
 /// <summary>
 /// Boots one real PostgreSQL container for a test collection and resets its

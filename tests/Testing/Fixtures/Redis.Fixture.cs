@@ -2,7 +2,7 @@ using Testcontainers.Redis;
 
 using Xunit;
 
-namespace Testing;
+namespace Testing.Fixtures;
 
 /// <summary>Boots one real Redis container for a test collection.</summary>
 public sealed class RedisFixture : IAsyncLifetime
