@@ -1,6 +1,6 @@
 using Core.Common.Domain.ValueObjects.Address;
 
-namespace Core.Tests.Domain.ValueObjects.Address;
+namespace Core.Tests.Common.Domain.ValueObjects.Address;
 
 public class PostalCodeOutcomeSpec
 {

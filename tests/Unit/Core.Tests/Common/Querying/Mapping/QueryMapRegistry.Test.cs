@@ -2,7 +2,7 @@ using Core.Common.Querying;
 using Core.Common.Querying.Mapping;
 using Core.Common.Querying.Sorting;
 
-namespace Core.Tests.Common.Querying;
+namespace Core.Tests.Common.Querying.Mapping;
 
 public sealed class QueryMapRegistryTest
 {

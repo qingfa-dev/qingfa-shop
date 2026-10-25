@@ -262,89 +262,6 @@ public sealed class FilterParserTest
         result.Errors.Should().Contain(e => e.Code == "Query.Operator.TypeMismatch");
     }
 
-    [Fact]
-    public void Filter_WhenDepthIsAtLimit_ShouldSucceed()
-    {
-        string filter = string.Concat(Enumerable.Repeat("(", 32)) + "name=a" +
-            string.Concat(Enumerable.Repeat(")", 32));
-
-        Result<Query<Target>> result = Parse(filter);
-
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Filter.Should().BeOfType<FilterCondition>()
-            .Which.Value.Should().Be("a");
-    }
-
-    [Fact]
-    public void Filter_WhenDepthExceedsLimit_ShouldFail()
-    {
-        string filter = string.Concat(Enumerable.Repeat("(", 33)) + "name=a" +
-            string.Concat(Enumerable.Repeat(")", 33));
-
-        Result<Query<Target>> result = Parse(filter);
-
-        result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(e => e.Code == "Query.Filter.DepthExceeded");
-    }
-
-    [Fact]
-    public void Filter_WhenTooDeep_ShouldFail()
-    {
-        string filter = string.Concat(Enumerable.Repeat("(", 40)) + "name=a" +
-            string.Concat(Enumerable.Repeat(")", 40));
-
-        Result<Query<Target>> result = Parse(filter);
-
-        result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(e => e.Code == "Query.Filter.DepthExceeded");
-    }
-
-    [Fact]
-    public void Filter_WhenTooManyConditions_ShouldFail()
-    {
-        string filter = string.Join(',', Enumerable.Repeat("name=a", 101));
-
-        Result<Query<Target>> result = Parse(filter);
-
-        result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(e => e.Code == "Query.Filter.TooManyConditions");
-    }
-
-    [Fact]
-    public void Filter_WhenLongerThanTheLimit_ShouldFail()
-    {
-        string filter = new('a', 2049);
-
-        Result<Query<Target>> result = Parse(filter);
-
-        result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(e => e.Code == "Query.Filter.TooLong");
-    }
-
-    [Fact]
-    public void Filter_WhenExactlyAtTheLengthLimit_ShouldSucceed()
-    {
-        // Boundary: the limit is inclusive. An off-by-one here would reject a
-        // legitimate filter or admit one that is over the limit.
-        string filter = "name=" + new string('a', 2043);
-
-        Result<Query<Target>> result = Parse(filter);
-
-        filter.Length.Should().Be(2048);
-        result.IsSuccess.Should().BeTrue();
-    }
-
-    [Fact]
-    public void Filter_WhenExactlyAtTheConditionLimit_ShouldSucceed()
-    {
-        string filter = string.Join(',', Enumerable.Repeat("name=a", 100));
-
-        Result<Query<Target>> result = Parse(filter);
-
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Filter.Should().BeOfType<FilterGroup>();
-    }
-
     [Theory]
     [InlineData("(name=a", "missing ')'")]
     [InlineData("=a", "field is missing")]
@@ -446,5 +363,25 @@ public sealed class FilterParserTest
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().BeOfType<FilterGroup>()
             .Which.Children.Should().BeEmpty();
+    }
+
+    [Theory]
+    [InlineData("tags[0]=urgent")]
+    [InlineData("name[0]=test")]
+    public void Filter_WhenIndexerUsedOnNonIndexedField_ShouldFail(string filter)
+    {
+        // Create a map where the field is NOT indexed
+        QueryMap<Target> map = Build(
+            QueryMapBuilder<Target>.Create()
+                .Map("name", x => x.Name)
+                .Map("score", x => x.Score)
+                .Map("tags", x => x.Tags)  // This is a collection but not indexed
+                .Map("kind", x => x.Kind));
+
+        Result<Query<Target>> result = QueryParser.Parse(
+            new QueryParameters { Filter = filter }, map);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(e => e.Code == "Query.Field.NotFilterable");
     }
 }

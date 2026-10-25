@@ -1,4 +1,4 @@
-namespace Core.Tests.Domain.ValueObjects.Percentage;
+namespace Core.Tests.Common.Domain.ValueObjects.Percentage;
 
 public class PercentageSpec
 {

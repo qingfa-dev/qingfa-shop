@@ -1,6 +1,6 @@
 using Core.Common.Domain.ValueObjects.Times;
 
-namespace Core.Tests.Domain.ValueObjects.Times;
+namespace Core.Tests.Common.Domain.ValueObjects.Times;
 
 public class TimeRangeExtensionSpec
 {

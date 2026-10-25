@@ -1,6 +1,6 @@
 using Core.Common.Domain.ValueObjects.Measurement;
 
-namespace Core.Tests.Domain.ValueObjects.Measurement;
+namespace Core.Tests.Common.Domain.ValueObjects.Measurement;
 
 public class WeightConstantSpec
 {

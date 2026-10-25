@@ -1,6 +1,6 @@
 using Core.Common.Domain.ValueObjects.Localization;
 
-namespace Core.Tests.Domain.ValueObjects.Localization;
+namespace Core.Tests.Common.Domain.ValueObjects.Localization;
 
 public class LanguageSpec
 {

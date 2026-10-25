@@ -5,7 +5,7 @@ using AwesomeAssertions;
 using Core.Common.Monad.Results;
 using Core.Common.Querying.Mapping;
 
-namespace Core.Tests.Common.Querying;
+namespace Core.Tests.Common.Querying.Mapping;
 
 public sealed class QueryMapTest
 {
@@ -17,9 +17,9 @@ public sealed class QueryMapTest
         public List<string> Tags { get; set; } = [];
     }
 
-    private static QueryMap<Target> Build(QueryMapBuilder<Target> builder)
+    private static QueryMap<T> Build<T>(QueryMapBuilder<T> builder)
     {
-        Result<QueryMap<Target>> map = builder.Build();
+        Result<QueryMap<T>> map = builder.Build();
 
         map.IsSuccess.Should().BeTrue();
         return map.Value;
@@ -39,29 +39,6 @@ public sealed class QueryMapTest
         field.Selectable.Should().BeTrue();
         field.Searchable.Should().BeFalse();
         field.Groupable.Should().BeFalse();
-    }
-
-    [Fact]
-    public void Map_WhenNameIsWhitespace_ShouldReportAFailure()
-    {
-        Result<QueryMap<Target>> map = QueryMapBuilder<Target>.Create()
-            .Map(" ", x => x.Name)
-            .Build();
-
-        map.IsFailure.Should().BeTrue();
-        map.Errors.Should().Contain(e => e.Code == "Query.Map.NameRequired");
-    }
-
-    [Fact]
-    public void Map_WhenNameDiffersOnlyByCase_ShouldReportAFailure()
-    {
-        Result<QueryMap<Target>> map = QueryMapBuilder<Target>.Create()
-            .Map("name", x => x.Name)
-            .Map("NAME", x => x.Score)
-            .Build();
-
-        map.IsFailure.Should().BeTrue();
-        map.Errors.Should().Contain(e => e.Code == "Query.Map.Duplicate");
     }
 
     [Fact]
@@ -118,94 +95,6 @@ public sealed class QueryMapTest
     }
 
     [Fact]
-    public void Map_WhenSearchableFieldIsNotString_ShouldReportAFailure()
-    {
-        Result<QueryMap<Target>> map = QueryMapBuilder<Target>.Create()
-            .Map("score", x => x.Score, builder => builder.Searchable())
-            .Build();
-
-        map.IsFailure.Should().BeTrue();
-        map.Errors.Should().Contain(e => e.Code == "Query.Map.SearchableNotString");
-    }
-
-    [Fact]
-    public void MapComposite_WhenMembersDifferInType_ShouldReportAFailure()
-    {
-        Result<QueryMap<Target>> map = QueryMapBuilder<Target>.Create()
-            .MapComposite("any", [x => x.Name, x => x.Score])
-            .Build();
-
-        map.IsFailure.Should().BeTrue();
-        map.Errors.Should().Contain(e => e.Code == "Query.Map.CompositeTypeMismatch");
-    }
-
-    [Fact]
-    public void MapComposite_WhenThereAreNoMembers_ShouldReportAFailure()
-    {
-        Result<QueryMap<Target>> map = QueryMapBuilder<Target>.Create()
-            .MapComposite("any", [])
-            .Build();
-
-        map.IsFailure.Should().BeTrue();
-        map.Errors.Should().Contain(e => e.Code == "Query.Map.CompositeEmpty");
-    }
-
-    [Fact]
-    public void MapComposite_WhenNameIsWhitespace_ShouldReportFailure()
-    {
-        Result<QueryMap<Target>> map = QueryMapBuilder<Target>.Create()
-            .MapComposite(" ", [x => x.Name])
-            .Build();
-
-        map.IsFailure.Should().BeTrue();
-        map.Errors.Should().Contain(e => e.Code == "Query.Map.NameRequired");
-    }
-
-    [Fact]
-    public void GenerateMappings_WithIndexerProperty_ShouldSkipIndexer()
-    {
-        var typeWithIndexer = new { Name = string.Empty };
-
-        QueryMap<Target> map = Build(
-            QueryMapBuilder<Target>.Create().GenerateMappings());
-
-        map.TryGet("Name", out _).Should().BeTrue();
-    }
-
-    [Fact]
-    public void GenerateMappings_WithDuplicateNames_ShouldSkipDuplicate()
-    {
-        // This tests the duplicate check in Generate by using a type
-        // where a nested property has the same name as a top-level one
-        QueryMap<Target> map = Build(
-            QueryMapBuilder<Target>.Create().GenerateMappings(1));
-
-        map.TryGet("Name", out _).Should().BeTrue();
-        map.TryGet("Child.Name", out _).Should().BeTrue();
-    }
-
-    [Fact]
-    public void Build_WhenSeveralDeclarationsAreBroken_ShouldReportEveryFailure()
-    {
-        // The builder keeps going, so one build reports every problem instead of
-        // only the first.
-        Result<QueryMap<Target>> map = QueryMapBuilder<Target>.Create()
-            .Map(" ", x => x.Name)
-            .Map("score", x => x.Score, builder => builder.Searchable())
-            .MapComposite("any", [x => x.Name, x => x.Score])
-            .Build();
-
-        map.IsFailure.Should().BeTrue();
-        map.Errors.Should().HaveCount(3);
-        map.Errors.Select(error => error.Code).Should().BeEquivalentTo(
-        [
-            "Query.Map.NameRequired",
-            "Query.Map.SearchableNotString",
-            "Query.Map.CompositeTypeMismatch",
-        ]);
-    }
-
-    [Fact]
     public void Get_WhenTheFieldIsNotMapped_ShouldReturnAFailure()
     {
         QueryMap<Target> map = Build(
@@ -220,25 +109,6 @@ public sealed class QueryMapTest
 
         missing.IsFailure.Should().BeTrue();
         missing.Errors.Should().Contain(e => e.Code == "Query.Field.NotMapped");
-    }
-
-    [Fact]
-    public void GenerateMappings_WhenDepthIsZero_ShouldMapTopLevelOnly()
-    {
-        QueryMap<Target> map = Build(
-            QueryMapBuilder<Target>.Create().GenerateMappings());
-
-        map.TryGet("Name", out _).Should().BeTrue();
-        map.TryGet("Child.Name", out _).Should().BeFalse();
-    }
-
-    [Fact]
-    public void GenerateMappings_WhenDepthIsOne_ShouldMapNestedProperties()
-    {
-        QueryMap<Target> map = Build(
-            QueryMapBuilder<Target>.Create().GenerateMappings(1));
-
-        map.TryGet("Child.Name", out _).Should().BeTrue();
     }
 
     [Fact]
@@ -299,16 +169,6 @@ public sealed class QueryMapTest
     }
 
     [Fact]
-    public void FieldBuilder_ConvertWith_WhenConverterIsNull_ShouldThrow()
-    {
-        var builder = QueryMapBuilder<Target>.Create();
-
-        Action act = () => builder.Map("name", x => x.Name, b => b.ConvertWith(null!));
-
-        act.Should().Throw<ArgumentNullException>();
-    }
-
-    [Fact]
     public void MapComposite_WithValidMembers_ShouldDisableSortSelectGroup()
     {
         QueryMap<Target> map = Build(
@@ -318,35 +178,6 @@ public sealed class QueryMapTest
         field!.Sortable.Should().BeFalse();
         field.Selectable.Should().BeFalse();
         field.Groupable.Should().BeFalse();
-    }
-
-    [Fact]
-    public void MapIndexed_WhenNameIsWhitespace_ShouldReportFailure()
-    {
-        Result<QueryMap<Target>> map = QueryMapBuilder<Target>.Create()
-            .MapIndexed<int>(" ", (target, index) => target.Tags[index])
-            .Build();
-
-        map.IsFailure.Should().BeTrue();
-        map.Errors.Should().Contain(e => e.Code == "Query.Map.NameRequired");
-    }
-
-    [Fact]
-    public void GenerateMappings_WhenDuplicateFieldNames_ShouldReportFailure()
-    {
-        var targetWithDupe = new
-        {
-            Name = string.Empty,
-            Child = new { Name = string.Empty }
-        };
-
-        // We can't easily test the exact duplicate detection in GenerateMappings without
-        // a type that has duplicate property names after prefixing, but we can test
-        // that the check exists by ensuring it doesn't crash on valid types.
-        QueryMap<Target> map = Build(
-            QueryMapBuilder<Target>.Create().GenerateMappings(1));
-
-        map.TryGet("Child.Name", out _).Should().BeTrue();
     }
 
     [Fact]

@@ -1,6 +1,6 @@
 using Core.Common.Domain.ValueObjects.Identity;
 
-namespace Core.Tests.Domain.ValueObjects.Identity;
+namespace Core.Tests.Common.Domain.ValueObjects.Identity;
 
 public class UrlResultSpec
 {

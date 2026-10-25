@@ -2,7 +2,7 @@ using Core.Common.Domain.ValueObjects.Measurement;
 
 using MeasurementUnit = Core.Common.Domain.ValueObjects.Measurement.Unit;
 
-namespace Core.Tests.Domain.ValueObjects.Measurement;
+namespace Core.Tests.Common.Domain.ValueObjects.Measurement;
 
 public class UnitValidatorSpec
 {

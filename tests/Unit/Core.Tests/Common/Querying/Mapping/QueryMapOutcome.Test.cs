@@ -1,9 +1,9 @@
 using AwesomeAssertions;
 
 using Core.Common.Monad.Errors;
-using Core.Common.Querying;
+using Core.Common.Querying.Mapping;
 
-namespace Core.Tests.Common.Querying;
+namespace Core.Tests.Common.Querying.Mapping;
 
 public sealed class QueryMapOutcomeTest
 {

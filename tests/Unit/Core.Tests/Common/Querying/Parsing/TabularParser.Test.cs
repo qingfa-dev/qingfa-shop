@@ -2,7 +2,7 @@ using Core.Common.Querying;
 using Core.Common.Querying.Aggregation;
 using Core.Common.Querying.Mapping;
 
-namespace Core.Tests.Common.Querying;
+namespace Core.Tests.Common.Querying.Parsing;
 
 public sealed class TabularParserTest
 {

@@ -1,6 +1,6 @@
 using Core.Common.Domain.ValueObjects.Money;
 
-namespace Core.Tests.Domain.ValueObjects.Money;
+namespace Core.Tests.Common.Domain.ValueObjects.Money;
 
 public class MoneySpec
 {

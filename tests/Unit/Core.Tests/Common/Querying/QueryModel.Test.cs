@@ -52,4 +52,51 @@ public sealed class QueryModelTest
 
         page.HasNext.Should().BeFalse();
     }
+
+    [Fact]
+    public void QueryPage_WhenFirstPage_ShouldNotHavePrevious()
+    {
+        var page = new QueryPage<int>([1, 2, 3], Page: 1, PageSize: 3, TotalCount: 8);
+
+        page.HasPrevious.Should().BeFalse();
+    }
+
+    [Fact]
+    public void QueryPage_WhenSinglePage_ShouldHaveNoPreviousOrNext()
+    {
+        var page = new QueryPage<int>([1, 2, 3], Page: 1, PageSize: 10, TotalCount: 3);
+
+        page.TotalPages.Should().Be(1);
+        page.HasPrevious.Should().BeFalse();
+        page.HasNext.Should().BeFalse();
+    }
+
+    [Fact]
+    public void QueryPage_WhenPageSizeIsZero_ShouldReturnZeroTotalPages()
+    {
+        var page = new QueryPage<int>([1, 2, 3], Page: 1, PageSize: 0, TotalCount: 3);
+
+        page.TotalPages.Should().Be(0);
+        page.HasNext.Should().BeFalse();
+    }
+
+    [Fact]
+    public void QueryPage_WhenTotalCountIsZero_ShouldHaveNoPages()
+    {
+        var page = new QueryPage<int>([], Page: 1, PageSize: 10, TotalCount: 0);
+
+        page.TotalPages.Should().Be(0);
+        page.HasPrevious.Should().BeFalse();
+        page.HasNext.Should().BeFalse();
+    }
+
+    [Fact]
+    public void QueryPage_WhenMiddlePage_ShouldHaveBothPreviousAndNext()
+    {
+        var page = new QueryPage<int>([4, 5, 6], Page: 2, PageSize: 3, TotalCount: 9);
+
+        page.TotalPages.Should().Be(3);
+        page.HasPrevious.Should().BeTrue();
+        page.HasNext.Should().BeTrue();
+    }
 }
