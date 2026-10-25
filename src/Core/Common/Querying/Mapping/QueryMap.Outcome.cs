@@ -1,4 +1,4 @@
-namespace Core.Common.Querying;
+namespace Core.Common.Querying.Mapping;
 
 /// <summary>Result constants for the query map.</summary>
 /// <remarks>
