@@ -1,5 +1,8 @@
 using Application.Common.Querying;
+using Application.Common.Querying.Aggregation;
+using Application.Common.Querying.Grouping;
 using Application.Common.Querying.Pagination;
+using Application.Common.Querying.Projection;
 
 namespace Core.Tests.Common.Querying;
 
@@ -14,7 +17,7 @@ public sealed class QueryModelTest
             OrderBy = [],
             Page = new PageRequest(1, 20),
             Search = null,
-            Select = [new Application.Common.Querying.Projection.SelectField("name", "name")],
+            Select = [new SelectField("name", "name")],
             GroupBy = null,
             Aggregate = null
         };
@@ -36,6 +39,90 @@ public sealed class QueryModelTest
             Aggregate = null
         };
 
+        query.IsTabular.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Shape_WhenSelectOnly_ShouldBeTabular()
+    {
+        var query = new Query<object>
+        {
+            Select = [new SelectField("name", "name")],
+            GroupBy = null,
+            Aggregate = null
+        };
+
+        query.Shape.Should().Be(QueryShape.Tabular);
+        query.IsTabular.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Shape_WhenGroupByOnly_ShouldBeTabular()
+    {
+        var query = new Query<object>
+        {
+            Select = null,
+            GroupBy = [new GroupByField("kind")],
+            Aggregate = null
+        };
+
+        query.Shape.Should().Be(QueryShape.Tabular);
+        query.IsTabular.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Shape_WhenAggregateOnly_ShouldBeScalarAggregate()
+    {
+        var query = new Query<object>
+        {
+            Select = null,
+            GroupBy = null,
+            Aggregate = [new AggregateSpec(AggregateFunction.Count, "name", "cnt")]
+        };
+
+        query.Shape.Should().Be(QueryShape.ScalarAggregate);
+        query.IsTabular.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Shape_WhenSelectAndGroupBy_ShouldBeTabular()
+    {
+        var query = new Query<object>
+        {
+            Select = [new SelectField("kind", "kind")],
+            GroupBy = [new GroupByField("kind")],
+            Aggregate = null
+        };
+
+        query.Shape.Should().Be(QueryShape.Tabular);
+        query.IsTabular.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Shape_WhenAggregateAndGroupBy_ShouldBeTabular()
+    {
+        var query = new Query<object>
+        {
+            Select = null,
+            GroupBy = [new GroupByField("kind")],
+            Aggregate = [new AggregateSpec(AggregateFunction.Count, "name", "cnt")]
+        };
+
+        query.Shape.Should().Be(QueryShape.Tabular);
+        query.IsTabular.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Shape_WhenAllNull_ShouldBeEntity()
+    {
+        var query = new Query<object>
+        {
+            Select = null,
+            GroupBy = null,
+            Aggregate = null
+        };
+
+        query.Shape.Should().Be(QueryShape.Entity);
         query.IsTabular.Should().BeFalse();
     }
 

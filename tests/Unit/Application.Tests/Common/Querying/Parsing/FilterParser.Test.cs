@@ -384,4 +384,69 @@ public sealed class FilterParserTest
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().Contain(e => e.Code == "Query.Field.NotFilterable");
     }
+
+    [Fact]
+    public void Filter_WithCaseInsensitiveOnString_ShouldSetFlag()
+    {
+        Result<Query<Target>> result = Parse("name=*JOHN/i");
+
+        result.IsSuccess.Should().BeTrue();
+        var condition = result.Value.Filter.Should().BeOfType<FilterCondition>().Subject;
+        condition.CaseInsensitive.Should().BeTrue();
+        condition.Value.Should().Be("JOHN");
+    }
+
+    [Fact]
+    public void Filter_WithCaseInsensitiveOnNonString_ShouldFail()
+    {
+        Result<Query<Target>> result = Parse("score=*10/i");
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(e => e.Code == "Query.Operator.TypeMismatch");
+    }
+
+    [Fact]
+    public void Filter_WithAllowNullSearchDisabled_ShouldFailOnNull()
+    {
+        var map = Build(
+            QueryMapBuilder<Target>.Create()
+                .Map("name", x => x.Name, b => b.AllowNullSearch(false)));
+
+        Result<Query<Target>> result = QueryParser.Parse(
+            new QueryParameters { Filter = "name=null" }, map);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(e => e.Code == "Query.Filter.ValueInvalid");
+    }
+
+    [Fact]
+    public void Filter_WithEscapedValue_ShouldUnescape()
+    {
+        Result<Query<Target>> result = Parse(@"name=hello\,world");
+
+        result.IsSuccess.Should().BeTrue();
+        var condition = result.Value.Filter.Should().BeOfType<FilterCondition>().Subject;
+        condition.Value.Should().Be("hello,world");
+    }
+
+    [Fact]
+    public void Filter_WithMultipleOrGroups_ShouldParseCorrectly()
+    {
+        Result<Query<Target>> result = Parse("name=a|name=b|name=c");
+
+        result.IsSuccess.Should().BeTrue();
+        var root = result.Value.Filter.Should().BeOfType<FilterGroup>().Subject;
+        root.Logic.Should().Be(FilterLogic.Or);
+        root.Children.Should().HaveCount(3);
+    }
+
+    [Fact]
+    public void Filter_WithNestedParentheses_ShouldParseCorrectly()
+    {
+        Result<Query<Target>> result = Parse("((name=a))");
+
+        result.IsSuccess.Should().BeTrue();
+        var condition = result.Value.Filter.Should().BeOfType<FilterCondition>().Subject;
+        condition.Value.Should().Be("a");
+    }
 }

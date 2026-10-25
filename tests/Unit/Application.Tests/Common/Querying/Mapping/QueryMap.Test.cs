@@ -1,4 +1,6 @@
+using System.Globalization;
 using System.Reflection;
+using Xunit;
 
 using Application.Common.Querying.Mapping;
 
@@ -197,4 +199,96 @@ public sealed class QueryMapTest
         failure.Errors.Should().ContainSingle()
             .Which.Code.Should().Be("Query.Filter.ValueInvalid");
     }
+
+    public static TheoryData<string, Type, object> ValueConverterTestData =>
+        new()
+        {
+            { "hello", typeof(string), "hello" },
+            { "123", typeof(int), 123 },
+            { "123", typeof(long), 123L },
+            { "123.45", typeof(double), 123.45 },
+            { "123.45", typeof(decimal), 123.45m },
+            { "true", typeof(bool), true },
+            { "false", typeof(bool), false },
+            { "2024-01-15", typeof(DateTime), DateTime.Parse("2024-01-15", CultureInfo.InvariantCulture) },
+            { "2024-01-15T10:30:00Z", typeof(DateTimeOffset), DateTimeOffset.Parse("2024-01-15T10:30:00Z", CultureInfo.InvariantCulture) },
+            { "2024-01-15", typeof(DateOnly), DateOnly.Parse("2024-01-15", CultureInfo.InvariantCulture) },
+            { "10:30:00", typeof(TimeOnly), TimeOnly.Parse("10:30:00", CultureInfo.InvariantCulture) },
+            { "550e8400-e29b-41d4-a716-446655440000", typeof(Guid), Guid.Parse("550e8400-e29b-41d4-a716-446655440000") },
+        };
+
+    [Theory]
+    [MemberData(nameof(ValueConverterTestData))]
+    public void ValueConverter_SupportedTypes_ShouldConvert(string input, Type type, object expected)
+    {
+        Type converterType = typeof(QueryValue).Assembly.GetType(
+            "Application.Common.Querying.Mapping.ValueConverter")!;
+        MethodInfo convert = converterType.GetMethod(
+            "Convert",
+            BindingFlags.Public | BindingFlags.Static)!;
+
+        object? result = convert.Invoke(
+            obj: null,
+            parameters: [input, type, null, "field"]);
+
+        var success = (Result<QueryValue>)result!;
+        success.IsSuccess.Should().BeTrue();
+        success.Value.Value.Should().Be(expected);
+    }
+
+    [Fact]
+    public void ValueConverter_Enum_ShouldConvertByName()
+    {
+        Type converterType = typeof(QueryValue).Assembly.GetType(
+            "Application.Common.Querying.Mapping.ValueConverter")!;
+        MethodInfo convert = converterType.GetMethod(
+            "Convert",
+            BindingFlags.Public | BindingFlags.Static)!;
+
+        object? result = convert.Invoke(
+            obj: null,
+            parameters: ["High", typeof(Kind), null, "kind"]);
+
+        var success = (Result<QueryValue>)result!;
+        success.IsSuccess.Should().BeTrue();
+        success.Value.Value.Should().Be(Kind.High);
+    }
+
+    [Fact]
+    public void ValueConverter_EmptyString_ForNullableType_ReturnsNull()
+    {
+        Type converterType = typeof(QueryValue).Assembly.GetType(
+            "Application.Common.Querying.Mapping.ValueConverter")!;
+        MethodInfo convert = converterType.GetMethod(
+            "Convert",
+            BindingFlags.Public | BindingFlags.Static)!;
+
+        object? result = convert.Invoke(
+            obj: null,
+            parameters: ["", typeof(string), null, "field"]);
+
+        var success = (Result<QueryValue>)result!;
+        success.IsSuccess.Should().BeTrue();
+        success.Value.Value.Should().BeNull();
+    }
+
+    [Fact]
+    public void ValueConverter_EmptyString_ForNonNullableValueType_ReturnsDefault()
+    {
+        Type converterType = typeof(QueryValue).Assembly.GetType(
+            "Application.Common.Querying.Mapping.ValueConverter")!;
+        MethodInfo convert = converterType.GetMethod(
+            "Convert",
+            BindingFlags.Public | BindingFlags.Static)!;
+
+        object? result = convert.Invoke(
+            obj: null,
+            parameters: ["", typeof(int), null, "field"]);
+
+        var success = (Result<QueryValue>)result!;
+        success.IsSuccess.Should().BeTrue();
+        success.Value.Value.Should().Be(0);
+    }
+
+    private enum Kind { Low, High }
 }
