@@ -1,8 +1,6 @@
-using System.IO;
 using System.Reflection;
 
 using Aspire.Hosting;
-using Aspire.Hosting.Testing;
 
 using Testing;
 

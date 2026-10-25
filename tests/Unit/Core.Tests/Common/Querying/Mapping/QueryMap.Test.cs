@@ -1,8 +1,5 @@
 using System.Reflection;
 
-using AwesomeAssertions;
-
-using Core.Common.Monad.Results;
 using Core.Common.Querying.Mapping;
 
 namespace Core.Tests.Common.Querying.Mapping;

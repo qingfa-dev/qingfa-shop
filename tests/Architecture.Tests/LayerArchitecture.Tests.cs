@@ -1,7 +1,5 @@
 using System.Reflection;
 
-using Xunit;
-
 namespace QingFa.Shop.Architecture.Tests;
 
 /// <summary>

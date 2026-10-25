@@ -1,5 +1,3 @@
-using AwesomeAssertions;
-
 using Core.Common.Querying.Projection;
 
 namespace Core.Tests.Common.Querying.Projection;

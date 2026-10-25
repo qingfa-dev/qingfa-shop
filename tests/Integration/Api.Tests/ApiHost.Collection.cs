@@ -1,7 +1,5 @@
 using Testing.Fixtures;
 
-using Xunit;
-
 namespace Api.Tests;
 
 /// <summary>

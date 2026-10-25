@@ -1,6 +1,3 @@
-using AwesomeAssertions;
-
-using Core.Common.Monad.Errors;
 using Core.Common.Querying;
 
 namespace Core.Tests.Common.Querying;

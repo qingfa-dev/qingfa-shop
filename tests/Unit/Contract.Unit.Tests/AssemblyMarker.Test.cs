@@ -1,5 +1,3 @@
-using Contract;
-
 namespace Contract.Unit.Tests;
 
 /// <summary>
