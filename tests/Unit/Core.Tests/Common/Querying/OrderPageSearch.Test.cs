@@ -48,6 +48,18 @@ public sealed class OrderPageSearchTest
     }
 
     [Fact]
+    public void OrderBy_ShouldParseAscendingSuffix()
+    {
+        Result<Query<Target>> result = QueryParser.Parse(
+            new QueryParameters { OrderBy = "name asc, score" }, Map());
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.OrderBy.Should().HaveCount(2);
+        result.Value.OrderBy[0].Direction.Should().Be(SortDirection.Ascending);
+        result.Value.OrderBy[1].Direction.Should().Be(SortDirection.Ascending);
+    }
+
+    [Fact]
     public void OrderBy_ShouldParseDescendingAlias()
     {
         Result<Query<Target>> result = QueryParser.Parse(
@@ -224,5 +236,45 @@ public sealed class OrderPageSearchTest
 
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().Contain(e => e.Code == "Query.Search.TooLong");
+    }
+
+    [Fact]
+    public void OrderBy_WhenDirectionIsUnknownSuffix_ShouldFail()
+    {
+        Result<Query<Target>> result = QueryParser.Parse(
+            new QueryParameters { OrderBy = "name unknown" }, Map());
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(e => e.Code == "Query.Order.Syntax");
+    }
+
+    [Fact]
+    public void OrderBy_WhenNullStateOnNonNullable_ShouldFail()
+    {
+        Result<Query<Target>> result = QueryParser.Parse(
+            new QueryParameters { OrderBy = "score?" }, Map());
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(e => e.Code == "Query.Order.Syntax");
+    }
+
+    [Fact]
+    public void Search_WhenEmptyString_ShouldReturnNull()
+    {
+        Result<Query<Target>> result = QueryParser.Parse(
+            new QueryParameters { Search = "" }, Map());
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Search.Should().BeNull();
+    }
+
+    [Fact]
+    public void Search_WhenWhitespace_ShouldReturnNull()
+    {
+        Result<Query<Target>> result = QueryParser.Parse(
+            new QueryParameters { Search = "   " }, Map());
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Search.Should().BeNull();
     }
 }

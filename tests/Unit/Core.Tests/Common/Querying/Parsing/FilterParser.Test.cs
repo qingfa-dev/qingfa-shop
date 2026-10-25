@@ -403,4 +403,48 @@ public sealed class FilterParserTest
         result.IsFailure.Should().BeTrue();
         result.Errors.Count(e => e.Code == "Query.Field.NotMapped").Should().Be(2);
     }
+
+    [Fact]
+    public void Filter_WhenEmptyString_ShouldReturnNull()
+    {
+        Result<Query<Target>> result = Parse("");
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Filter.Should().BeNull();
+    }
+
+    [Fact]
+    public void Filter_WhenWhitespace_ShouldReturnNull()
+    {
+        Result<Query<Target>> result = Parse("   ");
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Filter.Should().BeNull();
+    }
+
+    [Fact]
+    public void FilterText_WhenEmpty_ShouldReturnEmptyGroup()
+    {
+        // Direct call to FilterText.Parse to cover the empty filter branch
+        // that the public QueryParser.Parse skips.
+        var map = Map();
+        var state = new Core.Common.Querying.Parsing.ParserState<Target>(map, QueryOptions.Default);
+        Result<FilterNode> result = Core.Common.Querying.Parsing.FilterText.Parse("", state);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().BeOfType<FilterGroup>()
+            .Which.Children.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void FilterText_WhenWhitespace_ShouldReturnEmptyGroup()
+    {
+        var map = Map();
+        var state = new Core.Common.Querying.Parsing.ParserState<Target>(map, QueryOptions.Default);
+        Result<FilterNode> result = Core.Common.Querying.Parsing.FilterText.Parse("   ", state);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().BeOfType<FilterGroup>()
+            .Which.Children.Should().BeEmpty();
+    }
 }

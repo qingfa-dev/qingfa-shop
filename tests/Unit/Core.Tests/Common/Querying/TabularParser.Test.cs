@@ -199,4 +199,49 @@ public sealed class TabularParserTest
 
         result.IsSuccess.Should().BeTrue();
     }
+
+    [Fact]
+    public void Select_WhenFieldIsUnknown_ShouldFail()
+    {
+        Result<Query<Target>> result = Parse(select: "unknown");
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(e => e.Code == "Query.Field.NotMapped");
+    }
+
+    [Fact]
+    public void GroupBy_WhenFieldIsUnknown_ShouldFail()
+    {
+        Result<Query<Target>> result = Parse(groupBy: "unknown");
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(e => e.Code == "Query.Field.NotMapped");
+    }
+
+    [Fact]
+    public void GroupBy_WhenFieldIsNotGroupable_ShouldFail()
+    {
+        Result<Query<Target>> result = Parse(groupBy: "hidden");
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(e => e.Code == "Query.Field.NotGroupable");
+    }
+
+    [Fact]
+    public void Aggregate_WhenFieldIsUnknown_ShouldFail()
+    {
+        Result<Query<Target>> result = Parse(aggregate: "count(unknown)");
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(e => e.Code == "Query.Field.NotMapped");
+    }
+
+    [Fact]
+    public void Aggregate_WhenFunctionIsUnknown_ShouldFail()
+    {
+        Result<Query<Target>> result = Parse(aggregate: "median(score)");
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(e => e.Code == "Query.Aggregate.Syntax");
+    }
 }
