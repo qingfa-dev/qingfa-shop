@@ -171,7 +171,7 @@ payment.validator
 Order.Factory
 ```
 
-### 2.9 Project-Level Roles (QingFa.eShop)
+### 2.9 Project-Level Roles (QingFa.Shop)
 
 These roles extend §2 for this repository. They are listed here because the
 code adopts them deliberately and consistently; §9.6 says a new role is added
