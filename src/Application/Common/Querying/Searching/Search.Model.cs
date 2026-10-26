@@ -56,3 +56,39 @@ public sealed record BasicSearchRequest : SearchRequest
     }
 }
 
+/// <summary>Full-text search request with ranking and language options.</summary>
+public sealed record FullTextSearchRequest : SearchRequest
+{
+    /// <summary>Creates a full-text search request.</summary>
+    /// <param name="query">The text to search for.</param>
+    /// <param name="language">The language for stemming/stopwords (e.g. "en", "de").</param>
+    /// <param name="includeRank">Whether to include relevance score in results.</param>
+    /// <param name="minScore">Minimum relevance score (0-1) to include in results.</param>
+    public FullTextSearchRequest(
+        string query,
+        string? language = null,
+        bool includeRank = false,
+        double? minScore = null)
+        : base(query, SearchMode.FullText)
+    {
+        if (language != null && language.Length > QueryConstant.Limits.Search.MaxLanguageLength)
+            throw new ArgumentException(
+                $"Language code cannot exceed {QueryConstant.Limits.Search.MaxLanguageLength} characters.", nameof(language));
+
+        if (minScore.HasValue && (minScore < 0 || minScore > 1))
+            throw new ArgumentException("Minimum score must be between 0 and 1.", nameof(minScore));
+
+        Language = language;
+        IncludeRank = includeRank;
+        MinScore = minScore;
+    }
+
+    /// <summary>Language for stemming and stopwords (e.g. "en", "de").</summary>
+    public string? Language { get; init; }
+
+    /// <summary>Whether to include relevance score in results (e.g. SQL Server RANK, PostgreSQL ts_rank).</summary>
+    public bool IncludeRank { get; init; }
+
+    /// <summary>Minimum relevance score (0-1) to include in results.</summary>
+    public double? MinScore { get; init; }
+}
