@@ -670,7 +670,7 @@
         "dependencies": {
           "FluentValidation": "[12.2.0, )",
           "Mapster": "[10.0.13, )",
-          "Mediator.Abstractions": "[3.0.2, )",
+          "MediatR": "[12.5.0, )",
           "Slugify.Core": "[5.1.1, )"
         }
       },
@@ -786,12 +786,6 @@
         "dependencies": {
           "Mapster": "10.0.13"
         }
-      },
-      "Mediator.Abstractions": {
-        "type": "CentralTransitive",
-        "requested": "[3.0.2, )",
-        "resolved": "3.0.2",
-        "contentHash": "TytjnyN8gLObZBxkM7HHPFJF3LHtk6Y8mHW56ONuXRuVEK6Fmed3f0z79H9TpmoZQP2zQAIS4/0O9R2w0v02qw=="
       },
       "MessagePack": {
         "type": "CentralTransitive",
