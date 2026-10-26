@@ -2,6 +2,9 @@ using Application.Common.Caching;
 
 using Core.Common.Monad.Results;
 
+using Infrastructure.Caching.Options;
+using Infrastructure.Caching.Services;
+
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Configuration;
@@ -40,18 +43,6 @@ public static class CachingComposition
         CachingSetting setting = configuration
             .GetSection(CachingSettingConstant.SectionName)
             .Get<CachingSetting>() ?? new CachingSetting();
-
-        // Validate: fail during composition with every broken rule, before wiring any tier.
-        Result<CachingSetting> validation = CachingSettingValidation.Validate(setting);
-        if (validation.IsFailure)
-        {
-            throw new OptionsValidationException(
-                CachingSettingConstant.SectionName,
-                typeof(CachingSetting),
-                CachingSettingValidation.Describe(validation));
-        }
-
-        setting = validation.Value;
 
         // Guard: a disabled facade must still be resolvable, but it must not pay for a cache.
         if (!setting.Enabled)

@@ -1,8 +1,10 @@
 using Application.Common.Caching;
 
-using Infrastructure.Caching.Options;
+using Infrastructure.Caching.Options.Distributed;
+using Infrastructure.Caching.Options.Hybrid;
+using Infrastructure.Caching.Options.Memory;
 
-namespace Infrastructure.Caching;
+namespace Infrastructure.Caching.Options;
 
 /// <summary>Options for the L1/L2 caching stack exposed through <see cref="ICacheService"/>.</summary>
 public sealed class CachingSetting

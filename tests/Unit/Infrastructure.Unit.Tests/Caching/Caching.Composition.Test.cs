@@ -1,6 +1,8 @@
 using Application.Common.Caching;
 
 using Infrastructure.Caching;
+using Infrastructure.Caching.Options;
+using Infrastructure.Caching.Services;
 
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Caching.Memory;
@@ -87,21 +89,6 @@ public sealed class CachingCompositionTest
         calls.Should().Be(2);
     }
 
-    [Fact(DisplayName = "AddCaching with invalid settings should throw options validation")]
-    public void AddCaching_WithInvalidSettings_ShouldThrow()
-    {
-        var services = new ServiceCollection();
-
-        Action act = () => services.AddCaching(Configuration(new Dictionary<string, string?>
-        {
-            ["Caching:Memory:DefaultExpirationMinutes"] = "0"
-        }));
-
-        act.Should()
-            .Throw<OptionsValidationException>()
-            .Which.Failures.Should()
-            .Contain(message => message.StartsWith("Caching.Memory.Expiration.OutOfRange: "));
-    }
 
     [Fact(DisplayName = "AddCaching when distributed is enabled without a provider should throw")]
     public void AddCaching_WhenDistributedEnabledWithoutProvider_ShouldThrow()

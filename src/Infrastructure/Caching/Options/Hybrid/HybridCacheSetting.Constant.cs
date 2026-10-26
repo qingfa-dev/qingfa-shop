@@ -1,6 +1,6 @@
 using Application.Common.Caching;
 
-namespace Infrastructure.Caching.Options;
+namespace Infrastructure.Caching.Options.Hybrid;
 
 /// <summary>Constants for the HybridCache facade limits.</summary>
 public static class HybridCacheSettingConstant

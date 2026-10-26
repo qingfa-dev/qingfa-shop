@@ -1,9 +1,11 @@
 using Core.Common.Monad.Errors;
 using Core.Common.Monad.Results;
 
-using Infrastructure.Caching.Options;
+using Infrastructure.Caching.Options.Distributed;
+using Infrastructure.Caching.Options.Hybrid;
+using Infrastructure.Caching.Options.Memory;
 
-namespace Infrastructure.Caching;
+namespace Infrastructure.Caching.Options;
 
 /// <summary>Validates caching settings and returns the monad's <see cref="Result{TValue}"/>.</summary>
 /// <remarks>
@@ -30,9 +32,9 @@ public static class CachingSettingValidation
 
         // Compute: validate each tier independently, then the rules that span tiers.
         Result combined = ResultExtension.Combine(
-            ValidateMemory(setting.Memory),
-            ValidateDistributed(setting.Distributed),
-            ValidateHybrid(setting.Hybrid),
+            MemoryCacheSettingValidation.ValidateMemory(setting.Memory),
+            DistributedCacheSettingValidation.ValidateDistributed(setting.Distributed),
+            HybridCacheSettingValidation.ValidateHybrid(setting.Hybrid),
             ValidateTiers(setting));
 
         // Return: preserve every error the combined result collected.
@@ -49,71 +51,6 @@ public static class CachingSettingValidation
         ArgumentNullException.ThrowIfNull(result);
 
         return result.Errors.Select(error => $"{error.Code}: {error.Message}");
-    }
-
-    private static Result ValidateMemory(MemoryCacheSetting memory)
-    {
-        if (!memory.Enabled)
-        {
-            return Result.Success();
-        }
-
-        var errors = new List<Error>();
-
-        if (memory.DefaultExpirationMinutes is < MemoryCacheSettingConstant.Constraints.ExpirationMinutesMin
-            or > MemoryCacheSettingConstant.Constraints.ExpirationMinutesMax)
-        {
-            errors.Add(MemoryCacheSettingOutcome.Failure.ExpirationOutOfRange);
-        }
-
-        if (memory.CompactionPercentage is < MemoryCacheSettingConstant.Constraints.CompactionPercentageMin
-            or > MemoryCacheSettingConstant.Constraints.CompactionPercentageMax)
-        {
-            errors.Add(MemoryCacheSettingOutcome.Failure.CompactionOutOfRange);
-        }
-
-        if (memory.SizeLimitBytes is < MemoryCacheSettingConstant.Constraints.SizeLimitBytesMin)
-        {
-            errors.Add(MemoryCacheSettingOutcome.Failure.SizeLimitOutOfRange);
-        }
-
-        return errors.Count == 0 ? Result.Success() : Result.Fail(errors);
-    }
-
-    private static Result ValidateDistributed(DistributedCacheSetting distributed)
-    {
-        if (!distributed.Enabled)
-        {
-            return Result.Success();
-        }
-
-        if (distributed.DefaultExpirationMinutes is < DistributedCacheSettingConstant.Constraints.ExpirationMinutesMin
-            or > DistributedCacheSettingConstant.Constraints.ExpirationMinutesMax)
-        {
-            return Result.Fail(
-                DistributedCacheSettingOutcome.Failure.ExpirationOutOfRange);
-        }
-
-        return Result.Success();
-    }
-
-    private static Result ValidateHybrid(HybridCacheSetting hybrid)
-    {
-        var errors = new List<Error>();
-
-        if (hybrid.MaximumPayloadBytes is < HybridCacheSettingConstant.Constraints.MaximumPayloadBytesMin
-            or > HybridCacheSettingConstant.Constraints.MaximumPayloadBytesMax)
-        {
-            errors.Add(HybridCacheSettingOutcome.Failure.PayloadOutOfRange);
-        }
-
-        if (hybrid.MaximumKeyLength is < HybridCacheSettingConstant.Constraints.MaximumKeyLengthMin
-            or > HybridCacheSettingConstant.Constraints.MaximumKeyLengthMax)
-        {
-            errors.Add(HybridCacheSettingOutcome.Failure.KeyLengthOutOfRange);
-        }
-
-        return errors.Count == 0 ? Result.Success() : Result.Fail(errors);
     }
 
     private static Result ValidateTiers(CachingSetting setting)

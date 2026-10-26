@@ -1,4 +1,4 @@
-namespace Infrastructure.Caching.Options;
+namespace Infrastructure.Caching.Options.Memory;
 
 /// <summary>Constants for the L1 memory cache options.</summary>
 public static class MemoryCacheSettingConstant

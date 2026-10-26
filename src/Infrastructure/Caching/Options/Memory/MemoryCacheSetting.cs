@@ -1,4 +1,4 @@
-namespace Infrastructure.Caching.Options;
+namespace Infrastructure.Caching.Options.Memory;
 
 /// <summary>Options for the L1 in-process memory cache.</summary>
 public sealed class MemoryCacheSetting

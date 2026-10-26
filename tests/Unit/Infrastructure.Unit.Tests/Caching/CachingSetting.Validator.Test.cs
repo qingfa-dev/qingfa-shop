@@ -1,5 +1,8 @@
 using Infrastructure.Caching;
 using Infrastructure.Caching.Options;
+using Infrastructure.Caching.Options.Distributed;
+using Infrastructure.Caching.Options.Hybrid;
+using Infrastructure.Caching.Options.Memory;
 
 using Microsoft.Extensions.Options;
 

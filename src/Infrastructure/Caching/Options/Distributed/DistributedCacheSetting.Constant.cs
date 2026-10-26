@@ -1,4 +1,4 @@
-namespace Infrastructure.Caching.Options;
+namespace Infrastructure.Caching.Options.Distributed;
 
 /// <summary>Constants for the L2 distributed cache options.</summary>
 public static class DistributedCacheSettingConstant

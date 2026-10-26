@@ -1,5 +1,7 @@
 using Core.Common.Monad.Results;
 
+using Infrastructure.Caching.Options;
+
 using Microsoft.Extensions.Options;
 
 namespace Infrastructure.Caching;

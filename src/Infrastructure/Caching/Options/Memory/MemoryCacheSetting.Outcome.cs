@@ -1,6 +1,6 @@
 using Core.Common.Monad.Errors;
 
-namespace Infrastructure.Caching.Options;
+namespace Infrastructure.Caching.Options.Memory;
 
 /// <summary>Failure outcomes for the L1 memory cache options.</summary>
 public static class MemoryCacheSettingOutcome

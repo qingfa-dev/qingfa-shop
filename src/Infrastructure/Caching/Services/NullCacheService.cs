@@ -1,6 +1,6 @@
 using Application.Common.Caching;
 
-namespace Infrastructure.Caching;
+namespace Infrastructure.Caching.Services;
 
 /// <summary>Cache facade used when caching is disabled: it always takes the factory path.</summary>
 internal sealed class NullCacheService : ICacheService

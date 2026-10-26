@@ -1,5 +1,7 @@
 using Core.Common.Monad.Errors;
 
+using Infrastructure.Caching.Options.Distributed;
+
 namespace Infrastructure.Caching.Options;
 
 /// <summary>Failure outcomes for the L2 distributed cache options.</summary>

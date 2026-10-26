@@ -1,8 +1,8 @@
 using Microsoft.Extensions.Logging;
 
-namespace Infrastructure.Caching;
+namespace Infrastructure.Caching.Services;
 
-public sealed partial class CacheService
+internal sealed partial class CacheService
 {
     /// <summary>Structured log events for the cache lifecycle.</summary>
     internal static partial class Loggers

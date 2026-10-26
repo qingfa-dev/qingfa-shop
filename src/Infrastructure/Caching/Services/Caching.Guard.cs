@@ -1,6 +1,6 @@
 using Application.Common.Caching;
 
-namespace Infrastructure.Caching;
+namespace Infrastructure.Caching.Services;
 
 /// <summary>Enforces the cache port's argument contract with the shared outcome messages.</summary>
 internal static class CachingGuard

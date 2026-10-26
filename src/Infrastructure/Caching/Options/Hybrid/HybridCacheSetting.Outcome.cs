@@ -1,6 +1,6 @@
 using Core.Common.Monad.Errors;
 
-namespace Infrastructure.Caching.Options;
+namespace Infrastructure.Caching.Options.Hybrid;
 
 /// <summary>Failure outcomes for the HybridCache facade limits.</summary>
 public static class HybridCacheSettingOutcome

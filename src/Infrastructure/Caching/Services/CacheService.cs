@@ -3,10 +3,10 @@ using Application.Common.Caching;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Logging;
 
-namespace Infrastructure.Caching;
+namespace Infrastructure.Caching.Services;
 
 /// <summary>Wraps <see cref="HybridCache"/> with the application's cache contract and logging.</summary>
-public sealed partial class CacheService(
+internal sealed partial class CacheService(
     HybridCache hybridCache,
     ILogger<CacheService> logger) : ICacheService
 {

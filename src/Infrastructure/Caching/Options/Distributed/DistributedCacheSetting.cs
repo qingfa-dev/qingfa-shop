@@ -1,4 +1,4 @@
-namespace Infrastructure.Caching.Options;
+namespace Infrastructure.Caching.Options.Distributed;
 
 /// <summary>Options for the L2 distributed cache.</summary>
 /// <remarks>

@@ -1,4 +1,4 @@
-namespace Infrastructure.Caching.Options;
+namespace Infrastructure.Caching.Options.Hybrid;
 
 /// <summary>Limits shared by the HybridCache facade across both tiers.</summary>
 public sealed class HybridCacheSetting

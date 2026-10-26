@@ -2,7 +2,7 @@ using Application.Common.Caching;
 
 using Microsoft.Extensions.Caching.Hybrid;
 
-namespace Infrastructure.Caching;
+namespace Infrastructure.Caching.Services;
 
 /// <summary>Maps the application's provider-neutral cache options onto HybridCache options.</summary>
 internal static class CachingEntryOptionMapper

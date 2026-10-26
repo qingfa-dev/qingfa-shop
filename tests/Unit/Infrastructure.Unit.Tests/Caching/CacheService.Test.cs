@@ -1,6 +1,6 @@
 using Application.Common.Caching;
 
-using Infrastructure.Caching;
+using Infrastructure.Caching.Services;
 
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.DependencyInjection;
