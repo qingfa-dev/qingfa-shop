@@ -9,9 +9,9 @@ CONFIG="${CONFIGURATION:-Release}"
 # (see the `test.runner` entry in global.json).
 projects=(
   "Architecture.Tests/Architecture.Tests.csproj"
-  "Unit/Core.Tests/Core.Tests.csproj"
+  "Unit/Core.Unit.Tests/Core.Unit.Tests.csproj"
   "Unit/Contract.Unit.Tests/Contract.Unit.Tests.csproj"
-  "Unit/Application.Tests/Application.Tests.csproj"
+  "Unit/Application.Unit.Tests/Application.Unit.Tests.csproj"
   "Unit/Infrastructure.Unit.Tests/Infrastructure.Unit.Tests.csproj"
 )
 

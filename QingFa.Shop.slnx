@@ -13,14 +13,13 @@
   </Folder>
   <Folder Name="/tests/">
     <Project Path="tests/Testing/Testing.csproj" />
-    <Project Path="tests/Unit/Core.Tests/Core.Tests.csproj" />
+    <Project Path="tests/Unit/Core.Unit.Tests/Core.Unit.Tests.csproj" />
     <Project Path="tests/Unit/Infrastructure.Unit.Tests/Infrastructure.Unit.Tests.csproj" />
+    <Project Path="tests/Unit/Application.Unit.Tests/Application.Unit.Tests.csproj" />
     <Project Path="tests/Unit/Contract.Unit.Tests/Contract.Unit.Tests.csproj" />
-    <Project Path="tests/Unit/Application.Tests/Application.Tests.csproj" />
-    <Project Path="tests/Integration/Api.Tests/Api.Tests.csproj" />
+    <Project Path="tests/Integration/Api.Integration.Tests/Api.Integration.Tests.csproj" />
+    <Project Path="tests/Integration/AppHost.Integration.Tests/AppHost.Integration.Tests.csproj" />
     <Project Path="tests/Integration/Infrastructure.Integration.Tests/Infrastructure.Integration.Tests.csproj" />
-    <Project Path="tests/Integration/AppHost.Tests/AppHost.Tests.csproj" />
-    <Project Path="tests/Contract/Contract.Tests.csproj" />
     <Project Path="tests/Architecture.Tests/Architecture.Tests.csproj" />
   </Folder>
 </Solution>
