@@ -21,7 +21,9 @@ internal static class SelectText
 
         var errors = new List<Error>();
         var aliases = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        var fieldNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var result = new List<SelectField>();
+
         foreach (string part in parts)
         {
             // Normalize: an explicit `as` renames the column; without one the
@@ -42,6 +44,13 @@ internal static class SelectText
             if (!field.Selectable)
             {
                 errors.Add(QueryOutcome.Failure.NotSelectable(fieldName));
+                continue;
+            }
+
+            // Validate: the same field cannot be selected more than once.
+            if (!fieldNames.Add(fieldName))
+            {
+                errors.Add(QueryOutcome.Failure.Duplicate(fieldName));
                 continue;
             }
 

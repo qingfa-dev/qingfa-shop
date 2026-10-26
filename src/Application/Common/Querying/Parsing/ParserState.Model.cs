@@ -1,15 +1,19 @@
-using Application.Common.Querying.Mapping;
-
 namespace Application.Common.Querying.Parsing;
 
-/// <summary>Shared parser state: map, options, and the running limits.</summary>
-internal sealed class ParserState<T>(QueryMap<T> map, QueryParseLimits options)
-{
-    public QueryMap<T> Map { get; } = map;
-    public QueryParseLimits Options { get; } = options;
-    public int Conditions { get; private set; }
-    public int Depth { get; private set; }
+using Application.Common.Querying.Mapping;
+using Core.Common.Monad.Results;
 
+/// <summary>Immutable parser state: map, options, and the running limits.</summary>
+/// <remarks>
+/// All mutation methods return a new <see cref="ParserState{T}"/> instance.
+/// Thread the returned state through recursive parsing calls.
+/// </remarks>
+internal sealed record ParserState<T>(
+    QueryMap<T> Map,
+    QueryParseLimits Options,
+    int Conditions = 0,
+    int Depth = 0)
+{
     /// <summary>Resolves a field name against the map.</summary>
     /// <param name="name">The field name to resolve.</param>
     /// <returns>The mapped field, or a failure when the name is not mapped.</returns>
@@ -19,26 +23,28 @@ internal sealed class ParserState<T>(QueryMap<T> map, QueryParseLimits options)
             : Result<QueryField>.Fail(QueryOutcome.Failure.NotMapped(name));
 
     /// <summary>Enters one nesting level.</summary>
-    /// <returns>Success while the depth stays within the limit; otherwise a failure.</returns>
-    public Result EnterDepth()
+    /// <returns>A tuple of the new state and a result indicating success or depth limit exceeded.</returns>
+    public (ParserState<T> State, Result Result) EnterDepth()
     {
-        Depth++;
-        if (Depth <= Options.MaxFilterDepth)
-            return Result.Success();
+        var newDepth = Depth + 1;
+        if (newDepth <= Options.MaxFilterDepth)
+            return (this with { Depth = newDepth }, Result.Success());
 
-        return Result.Fail(QueryOutcome.Failure.DepthExceeded(Options.MaxFilterDepth));
+        return (this, Result.Fail(QueryOutcome.Failure.DepthExceeded(Options.MaxFilterDepth)));
     }
 
-    public void ExitDepth() => Depth--;
+    /// <summary>Exits one nesting level.</summary>
+    /// <returns>A new state with decremented depth.</returns>
+    public ParserState<T> ExitDepth() => this with { Depth = Depth - 1 };
 
     /// <summary>Counts one condition against the budget.</summary>
-    /// <returns>Success while the budget holds; otherwise a failure.</returns>
-    public Result AddCondition()
+    /// <returns>A tuple of the new state and a result indicating success or budget exceeded.</returns>
+    public (ParserState<T> State, Result Result) AddCondition()
     {
-        Conditions++;
-        if (Conditions <= Options.MaxConditions)
-            return Result.Success();
+        var newConditions = Conditions + 1;
+        if (newConditions <= Options.MaxConditions)
+            return (this with { Conditions = newConditions }, Result.Success());
 
-        return Result.Fail(QueryOutcome.Failure.TooManyConditions(Options.MaxConditions));
+        return (this, Result.Fail(QueryOutcome.Failure.TooManyConditions(Options.MaxConditions)));
     }
 }

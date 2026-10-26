@@ -80,12 +80,24 @@ internal static class SearchText
 
         var mode = parameters.SearchMode ?? SearchMode.Contains;
 
-        // TODO: Replace with FullTextSearchRequest for FullText mode (with Language, IncludeRank, MinScore)
-        var request = new BasicSearchRequest(query, mode)
+        SearchRequest request = mode switch
         {
-            Fields = fields,
-            TermLogic = parameters.SearchTermLogic ?? SearchTermLogic.And,
-            CaseInsensitive = parameters.SearchCaseInsensitive ?? true,
+            SearchMode.FullText => new FullTextSearchRequest(
+                query,
+                parameters.SearchLanguage,
+                parameters.SearchIncludeRank ?? false,
+                parameters.SearchMinScore)
+            {
+                Fields = fields,
+                TermLogic = parameters.SearchTermLogic ?? SearchTermLogic.And,
+                CaseInsensitive = parameters.SearchCaseInsensitive ?? true,
+            },
+            _ => new BasicSearchRequest(query, mode)
+            {
+                Fields = fields,
+                TermLogic = parameters.SearchTermLogic ?? SearchTermLogic.And,
+                CaseInsensitive = parameters.SearchCaseInsensitive ?? true,
+            }
         };
 
         return Result<SearchRequest>.Success(request);

@@ -6,6 +6,7 @@ namespace Application.Common.Querying.Parsing;
 /// <summary>Parses the Gridify-compatible filter grammar into a neutral AST.</summary>
 internal static class FilterText
 {
+    /// <summary>Parses query parameters into a filter AST.</summary>
     public static Result<FilterNode> Parse<T>(string? text, ParserState<T> state)
     {
         if (string.IsNullOrWhiteSpace(text))
@@ -17,30 +18,29 @@ internal static class FilterText
                 QueryOutcome.Failure.TooLong(state.Options.MaxFilterLength));
         }
 
-        var errors = new List<Error>();
         var cursor = new TextCursor(text);
-        FilterNode? node = ParseOr(cursor, state, errors);
+        var (newState, nodeResult) = ParseOr(cursor, state);
+
+        if (nodeResult.IsFailure)
+            return nodeResult;
+
         cursor.SkipWhitespace();
 
         if (!cursor.AtEnd)
-            errors.Add(QueryOutcome.Failure.Syntax("unexpected trailing text"));
+            return Result<FilterNode>.Fail(QueryOutcome.Failure.Syntax("unexpected trailing text"));
 
-        // All-or-nothing: one error discards the whole filter, so a caller can
-        // never act on a partially parsed tree.
-        return errors.Count > 0
-            ? Result<FilterNode>.Fail(errors)
-            : Result<FilterNode>.Success(node!);
+        return nodeResult;
     }
 
-    private static FilterNode? ParseOr<T>(
+    private static (ParserState<T> State, Result<FilterNode> Result) ParseOr<T>(
         TextCursor cursor,
-        ParserState<T> state,
-        List<Error> errors)
+        ParserState<T> state)
     {
-        var children = new List<FilterNode>();
-        FilterNode? first = ParseAnd(cursor, state, errors);
-        if (first is not null)
-            children.Add(first);
+        var (newState, firstResult) = ParseAnd(cursor, state);
+        if (firstResult.IsFailure)
+            return (newState, Result<FilterNode>.Fail(firstResult.Errors));
+
+        var children = new List<FilterNode> { firstResult.Value };
 
         while (true)
         {
@@ -49,28 +49,34 @@ internal static class FilterText
                 break;
 
             cursor.Read();
-            FilterNode? next = ParseAnd(cursor, state, errors);
-            if (next is not null)
-                children.Add(next);
+            var (nextState, nextResult) = ParseAnd(cursor, newState);
+            newState = nextState;
+
+            if (nextResult.IsFailure)
+                return (newState, Result<FilterNode>.Fail(nextResult.Errors));
+
+            children.Add(nextResult.Value);
         }
 
-        return children.Count switch
+        var node = children.Count switch
         {
             0 => null,
             1 => children[0],
             _ => new FilterGroup(FilterLogic.Or, children),
         };
+
+        return (newState, Result<FilterNode>.Success(node!));
     }
 
-    private static FilterNode? ParseAnd<T>(
+    private static (ParserState<T> State, Result<FilterNode> Result) ParseAnd<T>(
         TextCursor cursor,
-        ParserState<T> state,
-        List<Error> errors)
+        ParserState<T> state)
     {
-        var children = new List<FilterNode>();
-        FilterNode? first = ParsePrimary(cursor, state, errors);
-        if (first is not null)
-            children.Add(first);
+        var (newState, firstResult) = ParsePrimary(cursor, state);
+        if (firstResult.IsFailure)
+            return (newState, Result<FilterNode>.Fail(firstResult.Errors));
+
+        var children = new List<FilterNode> { firstResult.Value };
 
         while (true)
         {
@@ -79,105 +85,103 @@ internal static class FilterText
                 break;
 
             cursor.Read();
-            FilterNode? next = ParsePrimary(cursor, state, errors);
-            if (next is not null)
-                children.Add(next);
+            var (nextState, nextResult) = ParsePrimary(cursor, newState);
+            newState = nextState;
+
+            if (nextResult.IsFailure)
+                return (newState, Result<FilterNode>.Fail(nextResult.Errors));
+
+            children.Add(nextResult.Value);
         }
 
-        return children.Count switch
+        var node = children.Count switch
         {
             0 => null,
             1 => children[0],
             _ => new FilterGroup(FilterLogic.And, children),
         };
+
+        return (newState, Result<FilterNode>.Success(node!));
     }
 
-    private static FilterNode? ParsePrimary<T>(
+    private static (ParserState<T> State, Result<FilterNode> Result) ParsePrimary<T>(
         TextCursor cursor,
-        ParserState<T> state,
-        List<Error> errors)
+        ParserState<T> state)
     {
         cursor.SkipWhitespace();
         if (cursor.Peek() != '(')
-            return ParseCondition(cursor, state, errors);
+            return ParseCondition(cursor, state);
 
         cursor.Read();
-        Result depth = state.EnterDepth();
-        if (depth.IsFailure)
-        {
-            errors.AddRange(depth.Errors);
-            return null;
-        }
+        var (depthState, depthResult) = state.EnterDepth();
+        if (depthResult.IsFailure)
+            return (depthState, Result<FilterNode>.Fail(depthResult.Errors));
 
-        // Depth: counted once per opening parenthesis, so the limit measures
-        // nesting and not the number of conditions.
         try
         {
-            FilterNode? node = ParseOr(cursor, state, errors);
+            var (orState, orResult) = ParseOr(cursor, depthState);
+            if (orResult.IsFailure)
+                return (orState, Result<FilterNode>.Fail(orResult.Errors));
+
             cursor.SkipWhitespace();
 
             if (cursor.Peek() != ')')
             {
-                errors.Add(QueryOutcome.Failure.Syntax("missing ')'"));
-                return null;
+                return (orState, Result<FilterNode>.Fail(QueryOutcome.Failure.Syntax("missing ')'")));
             }
 
             cursor.Read();
-            return node;
+            var finalState = orState.ExitDepth();
+            return (finalState, orResult);
         }
-        finally
+        catch
         {
-            state.ExitDepth();
+            // Ensure depth is exited even on exception
+            var finalState = depthState.ExitDepth();
+            throw;
         }
     }
 
-    private static FilterNode? ParseCondition<T>(
+    private static (ParserState<T> State, Result<FilterNode> Result) ParseCondition<T>(
         TextCursor cursor,
-        ParserState<T> state,
-        List<Error> errors)
+        ParserState<T> state)
     {
         string token = cursor.ReadField();
         if (token.Length == 0)
         {
-            errors.Add(QueryOutcome.Failure.Syntax("field is missing"));
-            return null;
+            return (state, Result<FilterNode>.Fail(QueryOutcome.Failure.Syntax("field is missing")));
         }
 
         (string fieldName, string? indexText) = SplitIndex(token);
-        Result<QueryField> mapped = state.Field(fieldName);
+        var mapped = state.Field(fieldName);
         if (mapped.IsFailure)
         {
-            errors.AddRange(mapped.Errors);
-            return null;
+            return (state, Result<FilterNode>.Fail(mapped.Errors));
         }
 
         QueryField field = mapped.Value;
         if (!field.Filterable)
         {
-            errors.Add(QueryOutcome.Failure.NotFilterable(fieldName));
-            return null;
+            return (state, Result<FilterNode>.Fail(QueryOutcome.Failure.NotFilterable(fieldName)));
         }
 
         // Guard: the condition budget is spent before the value is converted, so a
         // rejected condition still counts against the limit.
-        Result condition = state.AddCondition();
-        if (condition.IsFailure)
+        var (condState, condResult) = state.AddCondition();
+        if (condResult.IsFailure)
         {
-            errors.AddRange(condition.Errors);
-            return null;
+            return (condState, Result<FilterNode>.Fail(condResult.Errors));
         }
 
         string operatorToken = cursor.ReadOperator();
         if (operatorToken.Length == 0)
         {
-            errors.Add(QueryOutcome.Failure.Syntax("operator is missing"));
-            return null;
+            return (condState, Result<FilterNode>.Fail(QueryOutcome.Failure.Syntax("operator is missing")));
         }
 
         if (!TryMapOperator(operatorToken, out FilterOperator @operator, out string? customOperator))
         {
-            errors.Add(QueryOutcome.Failure.Syntax($"unknown operator '{operatorToken}'"));
-            return null;
+            return (condState, Result<FilterNode>.Fail(QueryOutcome.Failure.Syntax($"unknown operator '{operatorToken}'")));
         }
 
         bool caseInsensitive;
@@ -186,8 +190,7 @@ internal static class FilterText
 
         if (!ValidateOperator(fieldName, valueType, @operator, caseInsensitive))
         {
-            errors.Add(QueryOutcome.Failure.TypeMismatch(fieldName, operatorToken));
-            return null;
+            return (condState, Result<FilterNode>.Fail(QueryOutcome.Failure.TypeMismatch(fieldName, operatorToken)));
         }
 
         object? indexValue = null;
@@ -197,16 +200,14 @@ internal static class FilterText
             // indexed; anything else is not filterable.
             if (!field.IsIndexed || field.IndexType is null)
             {
-                errors.Add(QueryOutcome.Failure.NotFilterable(fieldName));
-                return null;
+                return (condState, Result<FilterNode>.Fail(QueryOutcome.Failure.NotFilterable(fieldName)));
             }
 
-            Result<QueryValue> index = ValueConverter.Convert(
+            var index = ValueConverter.Convert(
                 indexText, field.IndexType, converter: null, fieldName);
             if (index.IsFailure)
             {
-                errors.AddRange(index.Errors);
-                return null;
+                return (condState, Result<FilterNode>.Fail(index.Errors));
             }
 
             indexValue = index.Value.Value;
@@ -215,21 +216,21 @@ internal static class FilterText
         if (string.Equals(rawValue, QueryConstant.Tokens.Keyword.Null, StringComparison.OrdinalIgnoreCase) &&
             !field.AllowNullSearch)
         {
-            errors.Add(QueryOutcome.Failure.ValueInvalid(fieldName, rawValue));
-            return null;
+            return (condState, Result<FilterNode>.Fail(QueryOutcome.Failure.ValueInvalid(fieldName, rawValue)));
         }
 
-        Result<QueryValue> converted = ValueConverter.Convert(
+        var converted = ValueConverter.Convert(
             rawValue, valueType, field.Converter, fieldName);
         if (converted.IsFailure)
         {
-            errors.AddRange(converted.Errors);
-            return null;
+            return (condState, Result<FilterNode>.Fail(converted.Errors));
         }
 
-        return new FilterCondition(
+        var node = new FilterCondition(
             fieldName, @operator, rawValue, converted.Value.Value, valueType,
             caseInsensitive, indexValue, customOperator);
+
+        return (condState, Result<FilterNode>.Success(node));
     }
 
     private static bool ValidateOperator(

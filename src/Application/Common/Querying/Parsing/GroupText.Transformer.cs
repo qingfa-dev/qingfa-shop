@@ -20,7 +20,9 @@ internal static class GroupText
         }
 
         var errors = new List<Error>();
+        var fieldNames = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         var result = new List<GroupByField>();
+
         foreach (string part in parts)
         {
             string fieldName = part;
@@ -36,6 +38,13 @@ internal static class GroupText
             if (!field.Groupable)
             {
                 errors.Add(QueryOutcome.Failure.NotGroupable(fieldName));
+                continue;
+            }
+
+            // Validate: the same field cannot be grouped more than once.
+            if (!fieldNames.Add(fieldName))
+            {
+                errors.Add(QueryOutcome.Failure.Duplicate(fieldName));
                 continue;
             }
 
