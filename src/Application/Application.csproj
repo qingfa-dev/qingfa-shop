@@ -23,5 +23,6 @@
     <PackageReference Include="Mapster.DependencyInjection" />
     <PackageReference Include="Scrutor" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
+    <PackageReference Include="Microsoft.Extensions.Logging" />
   </ItemGroup>
 </Project>

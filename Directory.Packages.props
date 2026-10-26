@@ -39,9 +39,9 @@
       release. They are separate properties because the families can ship
       on different patch cadences.
     -->
-    <DotNetVersion>10.0.13</DotNetVersion>
-    <AspNetCoreVersion>10.0.13</AspNetCoreVersion>
-    <EFCoreVersion>10.0.13</EFCoreVersion>
+    <DotNetVersion>10.0.14</DotNetVersion>
+    <AspNetCoreVersion>10.0.14</AspNetCoreVersion>
+    <EFCoreVersion>10.0.14</EFCoreVersion>
     <!-- Microsoft.Extensions.* "extra" libraries (Hybrid cache, resilience,
          service discovery) ship on their own version line. -->
     <ExtensionsVersion>10.11.0</ExtensionsVersion>
@@ -59,6 +59,7 @@
       Microsoft.OpenApi 3.x is outside that range, so the latest compatible 2.x
       release (2.13.0) is used instead of the absolute latest.
     -->
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="$(DotNetVersion)" />
     <PackageVersion Include="Microsoft.OpenApi" Version="2.13.0" />
     <PackageVersion Include="Scalar.AspNetCore" Version="2.18.3" />
     <!-- Lightweight endpoint-routing abstraction. Only if the API adopts Carter. -->
