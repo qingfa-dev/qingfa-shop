@@ -1,7 +1,7 @@
 using Core.Common.Concerns.Lifecycle;
 using Core.Common.Concerns.Lifecycle.SoftDeletable;
 
-namespace Core.UnitTests.Common.Concerns.Lifecycle.SoftDeletable;
+namespace Core.Unit.Tests.Common.Concerns.Lifecycle.SoftDeletable;
 
 /// <summary>Specification tests for <see cref="SoftDeletableExtensions"/>.</summary>
 public class SoftDeletableExtensionSpec

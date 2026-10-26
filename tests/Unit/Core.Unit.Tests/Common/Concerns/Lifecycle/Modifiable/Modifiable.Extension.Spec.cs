@@ -2,7 +2,7 @@ using Core.Common.Concerns.Lifecycle;
 using Core.Common.Concerns.Lifecycle.Creatable;
 using Core.Common.Concerns.Lifecycle.Modifiable;
 
-namespace Core.UnitTests.Common.Concerns.Lifecycle.Modifiable;
+namespace Core.Unit.Tests.Common.Concerns.Lifecycle.Modifiable;
 
 /// <summary>Specification tests for <see cref="ModifiableExtensions"/>.</summary>
 public class ModifiableExtensionSpec

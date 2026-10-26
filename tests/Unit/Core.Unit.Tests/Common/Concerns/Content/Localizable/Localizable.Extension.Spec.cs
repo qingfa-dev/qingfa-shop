@@ -1,6 +1,6 @@
 using Core.Common.Concerns.Content.Localizable;
 
-namespace Core.UnitTests.Common.Concerns.Content.Localizable;
+namespace Core.Unit.Tests.Common.Concerns.Content.Localizable;
 
 /// <summary>Spec for <see cref="LocalizableExtensions"/> covering extension behavior,
 /// <see cref="LocalizableValidator"/> branches and <see cref="LocalizableConstant"/> values.</summary>

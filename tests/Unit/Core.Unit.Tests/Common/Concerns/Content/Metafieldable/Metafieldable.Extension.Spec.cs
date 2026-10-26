@@ -1,6 +1,6 @@
 using Core.Common.Concerns.Content.Metafieldable;
 
-namespace Core.UnitTests.Common.Concerns.Content.Metafieldable;
+namespace Core.Unit.Tests.Common.Concerns.Content.Metafieldable;
 
 /// <summary>Spec for <see cref="MetafieldableExtensions"/> covering extension behavior,
 /// <see cref="MetafieldableValidator"/> branches and <see cref="MetafieldableConstant"/> values.</summary>

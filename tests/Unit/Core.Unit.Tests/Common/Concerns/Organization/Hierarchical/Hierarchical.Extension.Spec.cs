@@ -1,6 +1,6 @@
 using Core.Common.Concerns.Organization.Hierarchical;
 
-namespace Core.UnitTests.Common.Concerns.Organization.Hierarchical;
+namespace Core.Unit.Tests.Common.Concerns.Organization.Hierarchical;
 
 /// <summary>Specification for <see cref="HierarchicalExtensions"/>.</summary>
 public class HierarchicalExtensionSpec

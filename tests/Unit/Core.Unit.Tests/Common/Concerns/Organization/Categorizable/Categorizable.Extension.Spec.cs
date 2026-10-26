@@ -1,6 +1,6 @@
 using Core.Common.Concerns.Organization.Categorizable;
 
-namespace Core.UnitTests.Common.Concerns.Organization.Categorizable;
+namespace Core.Unit.Tests.Common.Concerns.Organization.Categorizable;
 
 /// <summary>Specification for <see cref="CategorizableExtensions"/>.</summary>
 public class CategorizableExtensionSpec

@@ -1,6 +1,6 @@
 using Core.Common.Concerns.Foundation.Referenceable;
 
-namespace Core.UnitTests.Common.Concerns.Foundation.Referenceable;
+namespace Core.Unit.Tests.Common.Concerns.Foundation.Referenceable;
 
 /// <summary>Specifications for <see cref="ReferenceableExtensions"/> and <see cref="ReferenceableValidator"/>.</summary>
 public class ReferenceableExtensionSpec
