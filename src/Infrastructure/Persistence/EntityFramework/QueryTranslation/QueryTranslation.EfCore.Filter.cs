@@ -1,0 +1,307 @@
+using System.Linq.Expressions;
+
+using Application.Common.Querying;
+using Application.Common.Querying.Filtering;
+using Application.Common.Querying.Mapping;
+
+namespace Infrastructure.Persistence.EntityFramework.QueryTranslation;
+
+public sealed partial class QueryTranslationEfCore<T>
+{
+    /// <summary>Applies a filter tree to a source query.</summary>
+    public Result<IQueryable<T>> ApplyFilter(
+        IQueryable<T> source,
+        FilterNode? filter,
+        QueryMap<T> map)
+    {
+        if (filter is null)
+            return Result<IQueryable<T>>.Success(source);
+
+        Result<Expression<Func<T, bool>>> predicate = BuildPredicate(filter, map);
+        if (predicate.IsFailure)
+            return Result<IQueryable<T>>.Fail(predicate.Errors);
+
+        return Result<IQueryable<T>>.Success(source.Where(predicate.Value));
+    }
+
+    private Result<Expression<Func<T, bool>>> BuildPredicate(FilterNode node, QueryMap<T> map)
+    {
+        ParameterExpression parameter = Expression.Parameter(typeof(T), "x");
+        Result<Expression> body = BuildNode(node, parameter, map);
+        if (body.IsFailure)
+            return Result<Expression<Func<T, bool>>>.Fail(body.Errors);
+
+        return Result<Expression<Func<T, bool>>>.Success(
+            Expression.Lambda<Func<T, bool>>(body.Value, parameter));
+    }
+
+    private Result<Expression> BuildNode(
+        FilterNode node,
+        ParameterExpression parameter,
+        QueryMap<T> map)
+    {
+        switch (node)
+        {
+            case FilterGroup group:
+                return BuildGroup(group, parameter, map);
+
+            case FilterCondition condition:
+                return BuildCondition(condition, parameter, map);
+
+            default:
+                return Result<Expression>.Fail(
+                    QueryOutcome.Failure.Syntax("unknown filter node"));
+        }
+    }
+
+    private Result<Expression> BuildGroup(
+        FilterGroup group,
+        ParameterExpression parameter,
+        QueryMap<T> map)
+    {
+        Expression? combined = null;
+
+        foreach (FilterNode child in group.Children)
+        {
+            Result<Expression> built = BuildNode(child, parameter, map);
+            if (built.IsFailure)
+                return Result<Expression>.Fail(built.Errors);
+
+            combined = combined is null
+                ? built.Value
+                : group.Logic == FilterLogic.And
+                    ? Expression.AndAlso(combined, built.Value)
+                    : Expression.OrElse(combined, built.Value);
+        }
+
+        return combined is null
+            ? Result<Expression>.Fail(QueryOutcome.Failure.Syntax("empty filter group"))
+            : Result<Expression>.Success(combined);
+    }
+
+    private Result<Expression> BuildCondition(
+        FilterCondition condition,
+        ParameterExpression parameter,
+        QueryMap<T> map)
+    {
+        Result<QueryField> field = Resolve(map, condition.Field, sorting: false);
+        if (field.IsFailure)
+            return Result<Expression>.Fail(field.Errors);
+
+        bool insensitive = condition.CaseInsensitive ||
+            (field.Value.CaseInsensitive && field.Value.ComparisonType == typeof(string));
+        bool needsLeaf = NeedsLeaf(condition);
+
+        if (field.Value.Composite.Count > 0)
+        {
+            Expression[] members = field.Value.Composite
+                .Select(member => Replace(member, parameter))
+                .ToArray();
+
+            return BuildComposite(field.Value, members, condition, insensitive, needsLeaf);
+        }
+
+        Result<Expression> member = BuildMember(field.Value, parameter, condition.IndexValue);
+        if (member.IsFailure)
+            return Result<Expression>.Fail(member.Errors);
+
+        if (!field.Value.IsCollection)
+        {
+            Result<Expression> scalar = BuildBinary(member.Value, condition, insensitive);
+            if (scalar.IsFailure)
+                return scalar;
+
+            return Result<Expression>.Success(
+                ApplyGuard(member.Value, needsLeaf, scalar.Value));
+        }
+
+        Type elementType = field.Value.ElementType!;
+        ParameterExpression element = Expression.Parameter(elementType, "e");
+        Result<Expression> elementBody = BuildBinary(element, condition, insensitive);
+        if (elementBody.IsFailure)
+            return elementBody;
+
+        Expression body = elementBody.Value;
+        if (needsLeaf && NeedsElementGuard(elementType))
+        {
+            // Guard: reference element types get a null check; primitive collections
+            // cannot translate `e != null` under EF Core's InMemory provider.
+            body = Expression.AndAlso(NotNull(element), body);
+        }
+
+        Expression any = Expression.Call(
+            typeof(Enumerable),
+            nameof(Enumerable.Any),
+            [elementType],
+            member.Value,
+            Expression.Lambda(body, element));
+
+        // Guard: a null collection must not be dereferenced by Any.
+        return Result<Expression>.Success(
+            ApplyGuard(CollectionSource(member.Value), includeLeaf: true, any));
+    }
+
+    /// <summary>Builds the OR chain a composite map expands a condition into.</summary>
+    private Result<Expression> BuildComposite(
+        QueryField field,
+        IReadOnlyList<Expression> members,
+        FilterCondition condition,
+        bool caseInsensitive,
+        bool needsLeaf)
+    {
+        Expression? combined = null;
+
+        foreach (Expression member in members)
+        {
+            Result<Expression> body = BuildBinary(member, condition, caseInsensitive);
+            if (body.IsFailure)
+                return Result<Expression>.Fail(body.Errors);
+
+            Expression guarded = ApplyGuard(member, needsLeaf, body.Value);
+            combined = combined is null ? guarded : Expression.OrElse(combined, guarded);
+        }
+
+        return combined is null
+            ? Result<Expression>.Fail(QueryOutcome.Failure.NotFilterable(field.Name))
+            : Result<Expression>.Success(combined);
+    }
+
+    private Result<Expression> BuildBinary(
+        Expression member,
+        FilterCondition condition,
+        bool caseInsensitive)
+    {
+        try
+        {
+            return BuildBinaryCore(member, condition, caseInsensitive);
+        }
+        catch (Exception ex) when (ex is InvalidOperationException or ArgumentException or InvalidCastException)
+        {
+            // Translate: expression factories throw when an operator or operand does not fit
+            // the member type (for example `<` on a string). The contract reports a value.
+            return Result<Expression>.Fail(
+                QueryOutcome.Failure.ValueInvalid(condition.Field, condition.RawValue ?? "null"));
+        }
+    }
+
+    private Result<Expression> BuildBinaryCore(
+        Expression member,
+        FilterCondition condition,
+        bool caseInsensitive)
+    {
+        if (condition.RawValue is { Length: 0 } && condition.Operator is
+            FilterOperator.Equal or FilterOperator.NotEqual)
+        {
+            Expression empty = BuildEmpty(member);
+            return Result<Expression>.Success(
+                condition.Operator == FilterOperator.Equal ? empty : Expression.Not(empty));
+        }
+
+        if (condition.Value is null)
+        {
+            // Validate: only equality operators accept a null operand.
+            if (condition.Operator is not (FilterOperator.Equal or FilterOperator.NotEqual))
+            {
+                return Result<Expression>.Fail(
+                    QueryOutcome.Failure.ValueInvalid(condition.Field, condition.RawValue ?? "null"));
+            }
+
+            // Validate: a non-nullable value type can never equal null.
+            if (!IsNullable(member.Type))
+            {
+                return Result<Expression>.Fail(
+                    QueryOutcome.Failure.ValueInvalid(condition.Field, condition.RawValue ?? "null"));
+            }
+
+            Expression isNull = Expression.Equal(member, Expression.Constant(null, member.Type));
+            return Result<Expression>.Success(
+                condition.Operator == FilterOperator.Equal ? isNull : Expression.Not(isNull));
+        }
+
+        Expression value = Parameterize(condition.Value, condition.Value.GetType());
+        if (value.Type != member.Type)
+            value = Expression.Convert(value, member.Type);
+
+        // Translate: enums (and nullable enums) widen to their integer only for ordering;
+        // equality keeps the enum type so a value converter on the column still applies.
+        if (IsOrdering(condition.Operator) && EnumUnderlying(member.Type) is { } underlying)
+        {
+            Type ordered = member.Type.IsEnum ? underlying : typeof(Nullable<>).MakeGenericType(underlying);
+            member = Expression.Convert(member, ordered);
+            value = Expression.Convert(value, ordered);
+        }
+
+        if (caseInsensitive && member.Type == typeof(string))
+        {
+            member = Expression.Call(member, nameof(string.ToLower), Type.EmptyTypes);
+            value = Parameterize(((string)condition.Value).ToLowerInvariant(), typeof(string));
+        }
+
+        return condition.Operator switch
+        {
+            FilterOperator.Equal              => Result<Expression>.Success(Expression.Equal(member, value)),
+            FilterOperator.NotEqual           => Result<Expression>.Success(Expression.NotEqual(member, value)),
+            FilterOperator.LessThan           => Result<Expression>.Success(Expression.LessThan(member, value)),
+            FilterOperator.GreaterThan        => Result<Expression>.Success(Expression.GreaterThan(member, value)),
+            FilterOperator.GreaterThanOrEqual => Result<Expression>.Success(Expression.GreaterThanOrEqual(member, value)),
+            FilterOperator.LessThanOrEqual    => Result<Expression>.Success(Expression.LessThanOrEqual(member, value)),
+            FilterOperator.Contains           => Result<Expression>.Success(
+                Expression.Call(member, nameof(string.Contains), Type.EmptyTypes, value)),
+            FilterOperator.NotContains        => Result<Expression>.Success(
+                Expression.Not(Expression.Call(member, nameof(string.Contains), Type.EmptyTypes, value))),
+            FilterOperator.StartsWith         => Result<Expression>.Success(
+                Expression.Call(member, nameof(string.StartsWith), Type.EmptyTypes, value)),
+            FilterOperator.NotStartsWith      => Result<Expression>.Success(
+                Expression.Not(Expression.Call(member, nameof(string.StartsWith), Type.EmptyTypes, value))),
+            FilterOperator.EndsWith           => Result<Expression>.Success(
+                Expression.Call(member, nameof(string.EndsWith), Type.EmptyTypes, value)),
+            FilterOperator.NotEndsWith        => Result<Expression>.Success(
+                Expression.Not(Expression.Call(member, nameof(string.EndsWith), Type.EmptyTypes, value))),
+            FilterOperator.Custom             => condition.CustomOperator is { } custom
+                ? _operators.Build(custom, member, value)
+                : Result<Expression>.Fail(QueryOutcome.Failure.Syntax("custom operator has no name")),
+            _ => Result<Expression>.Fail(QueryOutcome.Failure.Syntax("unknown operator")),
+        };
+    }
+
+    private static bool NeedsLeaf(FilterCondition condition) =>
+        condition.Value is not null &&
+        !(condition.RawValue is { Length: 0 } && condition.Operator is
+            FilterOperator.Equal or FilterOperator.NotEqual);
+
+    private static bool NeedsElementGuard(Type elementType) =>
+        IsNullable(elementType) && !IsScalar(elementType);
+
+    private static Expression CollectionSource(Expression expression)
+    {
+        Expression current = Unwrap(expression);
+        while (current is MethodCallExpression call &&
+               call.Method.DeclaringType == typeof(Enumerable) &&
+               call.Arguments.Count > 0)
+        {
+            current = Unwrap(call.Arguments[0]);
+        }
+
+        return current;
+    }
+
+    private static Expression BuildEmpty(Expression member)
+    {
+        // Validate: for strings "empty" is null or "" (default(string) is only null).
+        if (member.Type == typeof(string))
+        {
+            return Expression.OrElse(
+                Expression.Equal(member, Expression.Constant(null, typeof(string))),
+                Expression.Equal(member, Expression.Constant(string.Empty)));
+        }
+
+        // Nullable types are empty when null; plain value types when default.
+        return IsNullable(member.Type)
+            ? Expression.Equal(member, Expression.Constant(null, member.Type))
+            : Expression.Equal(member, Expression.Default(member.Type));
+    }
+
+    private static bool IsOrdering(FilterOperator op) =>
+        op is FilterOperator.LessThan or FilterOperator.GreaterThan or
+            FilterOperator.LessThanOrEqual or FilterOperator.GreaterThanOrEqual;
+}

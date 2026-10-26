@@ -9,7 +9,7 @@ public static class DatabaseOption
     public const string Default = "DefaultConnection";
 
     /// <summary>The connection string key used when running in a .NET Aspire environment.</summary>
-    public const string Aspire = Infrastructures.Databases.Resource;
+    public const string Aspire = "AspireConnection";
 
     /// <summary>The key used for in-memory database configuration in testing scenarios.</summary>
     public const string InMemory = "InMemoryDatabase";
