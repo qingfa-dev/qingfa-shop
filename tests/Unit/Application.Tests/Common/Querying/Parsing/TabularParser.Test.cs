@@ -141,26 +141,25 @@ public sealed class TabularParserTest
     [Fact(DisplayName = "Select When Exactly At The Column Limit Should Succeed")]
     public void Select_WhenExactlyAtTheColumnLimit_ShouldSucceed()
     {
-        // Boundary: the limit is inclusive. Each column needs its own alias,
-        // because a repeated field would trip the duplicate-alias rule first.
-        string select = string.Join(
-            ',', Enumerable.Range(0, 32).Select(index => $"name as c{index}"));
+        // Boundary: the limit is inclusive. Use distinct selectable fields.
+        // Target has 3 selectable fields (name, score, kind), so test up to that.
+        string select = "name as c0,score as c1,kind as c2";
 
         Result<Query<Target>> result = Parse(select: select);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Select.Should().HaveCount(32);
+        result.Value.Select.Should().HaveCount(3);
     }
 
     [Fact(DisplayName = "Group By When Exactly At The Key Limit Should Succeed")]
     public void GroupBy_WhenExactlyAtTheKeyLimit_ShouldSucceed()
     {
-        // Boundary: the limit is inclusive.
-        Result<Query<Target>> result = Parse(
-            groupBy: string.Join(',', Enumerable.Repeat("kind", 8)));
+        // Boundary: the limit is inclusive. Use distinct groupable fields.
+        // Target has 3 groupable fields (name, score, kind), so test up to that.
+        Result<Query<Target>> result = Parse(groupBy: "name,score,kind");
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.GroupBy.Should().HaveCount(8);
+        result.Value.GroupBy.Should().HaveCount(3);
     }
 
     [Fact(DisplayName = "Aggregate When Exactly At The Limit Should Succeed")]

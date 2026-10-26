@@ -1,5 +1,4 @@
 using Application.Common.Persistence.Initialization.Resetters;
-using Core.Common.Monad.Results;
 
 namespace Application.Tests.Common.Persistence.Initialization.Resetters;
 

@@ -1,5 +1,4 @@
 using Application.Common.Persistence.Repositories;
-using Application.Common.Persistence.UnitOfWorks;
 
 namespace Application.Tests.Common.Persistence.Repositories;
 

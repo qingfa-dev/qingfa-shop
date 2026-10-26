@@ -1,5 +1,4 @@
 using Application.Common.Persistence.Repositories;
-using Core.Common.Monad.Results;
 
 namespace Application.Tests.Common.Persistence.Repositories;
 

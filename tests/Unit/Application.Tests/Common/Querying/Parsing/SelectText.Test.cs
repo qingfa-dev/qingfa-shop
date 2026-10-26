@@ -155,8 +155,16 @@ public sealed class SelectTextTest
         Result<IReadOnlyList<SelectField>> result = SelectText.Parse("name,name", State(Map()));
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(e =>
-            e.Code == "Query.Filter.Syntax" && e.Message.Contains("duplicate alias"));
+        result.Errors.Should().Contain(e => e.Code == "Query.Field.Duplicate");
+    }
+
+    [Fact(DisplayName = "Parse Duplicate Field With Different Aliases Returns Failure")]
+    public void Parse_DuplicateFieldWithDifferentAliases_ReturnsFailure()
+    {
+        Result<IReadOnlyList<SelectField>> result = SelectText.Parse("name as a, name as b", State(Map()));
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(e => e.Code == "Query.Field.Duplicate");
     }
 
     [Fact(DisplayName = "Parse Exceeds Max Columns Returns Failure")]

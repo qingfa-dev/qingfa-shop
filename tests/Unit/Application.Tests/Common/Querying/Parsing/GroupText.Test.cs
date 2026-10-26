@@ -110,6 +110,15 @@ public sealed class GroupTextTest
         result.Errors.Should().Contain(e => e.Code == "Query.Field.NotGroupable");
     }
 
+    [Fact(DisplayName = "Parse Duplicate Field Returns Failure")]
+    public void Parse_DuplicateField_ReturnsFailure()
+    {
+        Result<IReadOnlyList<GroupByField>> result = GroupText.Parse("kind,kind", State(Map()));
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(e => e.Code == "Query.Field.Duplicate");
+    }
+
     [Fact(DisplayName = "Parse Exceeds Max Group Fields Returns Failure")]
     public void Parse_ExceedsMaxGroupFields_ReturnsFailure()
     {

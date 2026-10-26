@@ -1,5 +1,4 @@
 using Application.Common.Persistence.Initialization.Migrations;
-using Core.Common.Monad.Results;
 
 namespace Application.Tests.Common.Persistence.Initialization.Migrations;
 

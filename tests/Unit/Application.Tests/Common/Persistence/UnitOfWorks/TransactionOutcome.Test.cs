@@ -1,5 +1,4 @@
 using Application.Common.Persistence.UnitOfWorks;
-using Core.Common.Monad.Results;
 
 namespace Application.Tests.Common.Persistence.UnitOfWorks;
 
