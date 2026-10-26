@@ -1,5 +1,3 @@
-using AwesomeAssertions;
-
 namespace AppHost.Integration.Tests;
 
 [Collection(AppHostCollection.Name)]

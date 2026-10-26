@@ -1,5 +1,3 @@
-using Core.Common.Monad.Results;
-
 using MediatR;
 
 namespace Application.Common.Mediators.Queries;

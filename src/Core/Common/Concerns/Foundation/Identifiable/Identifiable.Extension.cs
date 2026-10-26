@@ -1,5 +1,3 @@
-using Core.Common.Concerns.Foundation.Identifiable;
-
 namespace Core.Common.Concerns.Foundation.Identifiable;
 
 /// <summary>Extension methods for <see cref="IIdentifiable{TKey}"/>.</summary>

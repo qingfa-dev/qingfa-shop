@@ -1,5 +1,3 @@
-using Core.Common.Concerns.Foundation.Identifiable;
-
 namespace Core.Common.Concerns.Foundation.Identifiable;
 
 /// <summary>Validates identification state for <see cref="IIdentifiable{TKey}"/> entities.</summary>
