@@ -1,7 +1,5 @@
 namespace Application.Common.Persistence.Initialization.Migrations;
 
-using Core.Common.Monad.Results;
-
 public static class MigrationOutcome
 {
     public static class Failure

@@ -1,7 +1,4 @@
 namespace Application.Common.Persistence.Repositories;
-
-using Core.Common.Monad.Results;
-
 /// <summary>Repository validation failures.</summary>
 public static class RepositoryOutcome
 {

@@ -1,7 +1,4 @@
 namespace Application.Common.Persistence.UnitOfWorks;
-
-using Core.Common.Monad.Results;
-
 /// <summary>Transaction validation failures.</summary>
 public static class TransactionOutcome
 {

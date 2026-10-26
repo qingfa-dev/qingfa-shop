@@ -1,7 +1,4 @@
 namespace Application.Common.Persistence.Initialization.Seeders;
-
-using Core.Common.Monad.Results;
-
 /// <summary>Seeder validation failures.</summary>
 public static class SeederOutcome
 {

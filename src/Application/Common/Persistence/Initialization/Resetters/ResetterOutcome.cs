@@ -1,7 +1,4 @@
 namespace Application.Common.Persistence.Initialization.Resetters;
-
-using Core.Common.Monad.Results;
-
 /// <summary>Resetter validation failures.</summary>
 public static class ResetterOutcome
 {

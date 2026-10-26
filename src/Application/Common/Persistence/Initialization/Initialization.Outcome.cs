@@ -1,7 +1,5 @@
 namespace Application.Common.Persistence.Initialization;
 
-using Core.Common.Monad.Results;
-
 public static class InitializationOutcome
 {
     public static class Failure
