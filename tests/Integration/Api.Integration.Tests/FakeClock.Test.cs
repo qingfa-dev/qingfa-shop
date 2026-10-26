@@ -3,7 +3,7 @@ using System.Net.Http.Json;
 using Testing;
 using Testing.Fixtures;
 
-namespace Api.Tests;
+namespace Api.Integration.Tests;
 
 /// <summary>
 /// Proves <c>/time</c> reads the injected <c>TimeProvider</c>, not the system clock.

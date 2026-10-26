@@ -4,7 +4,7 @@ using System.Net.Http.Json;
 using Testing;
 using Testing.Fixtures;
 
-namespace Api.Tests;
+namespace Api.Integration.Tests;
 
 [Collection(ApiHostCollection.Name)]
 public sealed class ApiSmokeTest : IntegrationTestBase

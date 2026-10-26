@@ -2,7 +2,7 @@ using System.Net.Http.Json;
 
 using AwesomeAssertions;
 
-namespace AppHost.Tests;
+namespace AppHost.Integration.Tests;
 
 [Collection(AppHostCollection.Name)]
 public class GatewayRoutingSpec

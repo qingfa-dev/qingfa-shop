@@ -1,4 +1,4 @@
-namespace AppHost.Tests;
+namespace AppHost.Integration.Tests;
 
 // Verify: the sweep covers every resource AppHost declares, so a new resource cannot
 // silently go untested.

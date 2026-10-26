@@ -85,7 +85,7 @@ Out of scope:
 ## Related
 
 - Parent: [`../README.md`](../README.md)
-- Consumers: [`../Integration/Api.Tests/`](../Integration/Api.Tests/), [`../Integration/Infrastructure.Integration.Tests/`](../Integration/Infrastructure.Integration.Tests/), [`../Integration/AppHost.Tests/`](../Integration/AppHost.Tests/)
+- Consumers: [`../Integration/Api.Integration.Tests/`](../Integration/Api.Integration.Tests/), [`../Integration/Infrastructure.Integration.Tests/`](../Integration/Infrastructure.Integration.Tests/), [`../Integration/AppHost.Integration.Tests/`](../Integration/AppHost.Integration.Tests/)
 - ADR: [`../../docs/adr/0007-testing-strategy.md`](../../docs/adr/0007-testing-strategy.md)
 
 ## Ownership

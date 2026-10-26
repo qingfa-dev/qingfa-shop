@@ -4,8 +4,6 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <AssemblyName>QingFa.Shop.Integration.Infrastructure.Tests</AssemblyName>
-    <RootNamespace>QingFa.Shop.Integration.Infrastructure.Tests</RootNamespace>
   </PropertyGroup>
 
   <ItemGroup>

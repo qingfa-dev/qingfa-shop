@@ -1,6 +1,6 @@
 using Testing;
 
-namespace AppHost.Tests;
+namespace AppHost.Integration.Tests;
 
 // Guard: every AppHost test starts the whole app, so each one must skip when the
 // Vite dev servers cannot start.

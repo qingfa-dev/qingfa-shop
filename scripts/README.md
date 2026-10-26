@@ -89,6 +89,6 @@ Environment variables read by scripts:
 - `infra/smoke` waits up to three minutes for the gateway, then asserts the edge
   paths and both SPA titles. It prints the gateway log tail when readiness fails.
 - `backend/test-gateway` filters the shared AppHost suite to
-  `AppHost.Tests.GatewayRoutingSpec`.
+  `AppHost.Integration.Tests.GatewayRoutingSpec`.
 - `trace.common.sh` prints `(in <dir>)` when the command runs from a different
   directory than the caller, which matters for the `app/` pnpm commands.

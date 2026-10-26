@@ -20,9 +20,9 @@ All test projects live here, organized by **test pyramid** level:
 | `Unit/Contract.Unit.Tests/` | test · unit | DTO serialization, validator rules, command/query shapes |
 | `Unit/Application.Tests/` | test · unit | Handlers, services, mappers, policies (mocked deps) |
 | `Unit/Infrastructure.Unit.Tests/` | test · unit | EF Core InMemory, mappers, configs (no containers) |
-| `Integration/Api.Tests/` | test · integration | HTTP endpoints via `ShopApiFactory` + real Postgres/Redis |
+| `Integration/Api.Integration.Tests/` | test · integration | HTTP endpoints via `ShopApiFactory` + real Postgres/Redis |
 | `Integration/Infrastructure.Integration.Tests/` | test · integration | EF migrations, Wolverine outbox, email, Stripe, S3 |
-| `Integration/AppHost.Tests/` | test · integration | Aspire resource graph, wiring, health checks |
+| `Integration/AppHost.Integration.Tests/` | test · integration | Aspire resource graph, wiring, health checks |
 | `Contract/Contract.Tests/` | test · contract | Pact consumer tests for HTTP APIs |
 | `Architecture.Tests/` | test · architecture | Layer deps, vertical slices, naming, comment labels |
 
@@ -85,7 +85,7 @@ Out of scope:
 ## Conventions
 
 - Test projects named `*.Tests.csproj` (e.g., `Core.Tests`, not `Core.Unit.Tests`).
-- Assembly names: `QingFa.Shop.Unit.Core.Tests`, `QingFa.Shop.Integration.Api.Tests`.
+- Assembly names: `QingFa.Shop.Unit.Core.Tests`, `QingFa.Shop.Integration.Api.Integration.Tests`.
 - xUnit v3: `[Fact]`, `[Theory]`, `AwesomeAssertions` (`Should().BeTrue()`).
 - Collections: `PostgresCollection`, `RedisCollection`, `AppHostCollection`.
 - No `async void`; all tests `async Task`.
@@ -114,5 +114,5 @@ Out of scope:
 ## Notes
 
 - `TODO-2026Q3:` Add mutation testing (Stryker.NET) to CI.
-- `TEMP:` `AppHost.Tests` uses reflection to load `Projects.AppHost`; improve when Aspire testing API stabilizes.
+- `TEMP:` `AppHost.Integration.Tests` uses reflection to load `Projects.AppHost`; improve when Aspire testing API stabilizes.
 - `DEADLINE-2026-11-01:` Migrate contract tests to Pactflow broker.

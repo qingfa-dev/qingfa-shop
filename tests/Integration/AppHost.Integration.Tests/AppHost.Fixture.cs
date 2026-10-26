@@ -6,7 +6,7 @@ using Aspire.Hosting.Testing;
 
 using Testing;
 
-namespace AppHost.Tests;
+namespace AppHost.Integration.Tests;
 
 /// <summary>
 /// Starts the AppHost once and shares it with every test in the collection.

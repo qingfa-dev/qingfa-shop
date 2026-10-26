@@ -2,7 +2,7 @@ using Testing.Fixtures;
 
 using Xunit;
 
-namespace Api.Tests;
+namespace Api.Integration.Tests;
 
 /// <summary>
 /// One in-process Api host shared by every suite that exercises the pipeline.

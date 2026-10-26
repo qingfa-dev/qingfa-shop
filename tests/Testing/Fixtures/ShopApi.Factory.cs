@@ -5,8 +5,6 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Time.Testing;
 
-using Web.Api;
-
 namespace Testing.Fixtures;
 
 /// <summary>
@@ -19,7 +17,7 @@ namespace Testing.Fixtures;
 /// resolves the last registration, but removing first keeps exactly one
 /// registration so the intent is explicit rather than order-dependent.
 /// </remarks>
-public sealed class ShopApiFactory : WebApplicationFactory<AssemblyMarker>
+public sealed class ShopApiFactory : WebApplicationFactory<Web.Api.AssemblyMarker>
 {
     /// <summary>The fake clock handed to the host; tests advance it then assert on responses.</summary>
     public FakeTimeProvider Clock { get; } = new();

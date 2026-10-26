@@ -1,4 +1,4 @@
-namespace AppHost.Tests;
+namespace AppHost.Integration.Tests;
 
 /// <summary>Collapses every AppHost test onto one shared orchestration.</summary>
 [CollectionDefinition(Name)]

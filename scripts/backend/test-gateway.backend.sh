@@ -9,4 +9,4 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 # the fixture in a second test project.
 trace_exec dotnet test --project "$ROOT/tests/Integration/AppHost.Integration.Tests/AppHost.Integration.Tests.csproj" \
   -c "${CONFIGURATION:-Release}" --no-build \
-  --filter-class AppHost.Tests.GatewayRoutingSpec
+  --filter-class AppHost.Integration.Tests.GatewayRoutingSpec

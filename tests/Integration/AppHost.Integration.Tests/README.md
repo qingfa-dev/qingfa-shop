@@ -1,4 +1,4 @@
-# AppHost.Tests
+# AppHost.Integration.Tests
 
 End-to-end tests over a real Aspire orchestration. _test · orchestrator_
 
@@ -19,7 +19,7 @@ most expensive suite, so every test shares one orchestration through
 | `ApiResource.Spec.cs` | spec | `api` health endpoint responds 200 |
 | `WebResource.Spec.cs` | spec | Every declared resource reaches a runnable state |
 | `JavaScriptResources.Util.cs` | util | `SkipUnlessToolchainAvailable()` guard for Node/pnpm |
-| `AppHost.Tests.csproj` | package | Aspire.Hosting.Testing; references `AppHost` and `Testing` |
+| `AppHost.Integration.Tests.csproj` | package | Aspire.Hosting.Testing; references `AppHost` and `Testing` |
 
 ## Boundaries
 
@@ -30,7 +30,7 @@ In scope:
 
 Out of scope:
 - Edge policy internals (JWT, rate limiting) beyond reachability.
-- Business behaviour of the API → [`../Api.Tests/`](../Api.Tests/README.md).
+- Business behaviour of the API → [`../Api.Integration.Tests/`](../Api.Integration.Tests/README.md).
 
 ## Assumptions
 
