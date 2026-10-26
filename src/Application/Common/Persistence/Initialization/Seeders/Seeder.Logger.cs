@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Application.Common.Persistence.Initialization.Seeders;
 
-public static partial class DataSeederLoggers
+public static partial class PersistenceSeederLoggers
 {
     [LoggerMessage(
         EventId = 300,

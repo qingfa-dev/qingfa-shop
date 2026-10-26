@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Application.Common.Persistence.Initialization.Migrations;
 
-public static partial class DatabaseMigratorLoggers
+public static partial class PersistenceMigratorLoggers
 {
     [LoggerMessage(
         EventId = 280,

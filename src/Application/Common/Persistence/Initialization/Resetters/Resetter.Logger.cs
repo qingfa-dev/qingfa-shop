@@ -2,7 +2,7 @@ using Microsoft.Extensions.Logging;
 
 namespace Application.Common.Persistence.Initialization.Resetters;
 
-public static partial class DatabaseSchemaResetterLoggers
+public static partial class PersistenceSchemaResetterLoggers
 {
     [LoggerMessage(
         EventId = 290,
