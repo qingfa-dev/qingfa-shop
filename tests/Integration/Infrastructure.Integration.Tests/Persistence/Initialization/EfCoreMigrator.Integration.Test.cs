@@ -1,4 +1,3 @@
-using Infrastructure.Persistence;
 using Application.Common.Persistence.Initialization;
 using Application.Common.Persistence.Initialization.Migrations;
 using Application.Common.Persistence.UnitOfWorks;
@@ -9,6 +8,7 @@ using Infrastructure.Persistence.Todos;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Infrastructure.Persistence.EntityFramework.Contexts;
 
 namespace Infrastructure.Integration.Tests.Persistence.Initialization;
 
@@ -55,7 +55,7 @@ public sealed class EfCoreMigratorIntegrationTest(PersistenceInitializationFixtu
 
         // Assert
         var migrationId = await _fixture.ScalarAsync(
-            "SELECT \"MigrationId\" FROM \"__EFMigrationsHistory\" LIMIT 1;");
+            "SELECT \"MigrationId\" FROM todo.\"__EFMigrationsHistory\" LIMIT 1;");
 
         migrationId.Should().NotBeNull();
         migrationId.Should().EndWith("_InitialCreate");
@@ -79,7 +79,7 @@ public sealed class EfCoreMigratorIntegrationTest(PersistenceInitializationFixtu
             command.CommandText = """
                 SELECT column_name || ':' || data_type
                 FROM information_schema.columns
-                WHERE table_schema = 'public'
+                WHERE table_schema = 'todo'
                   AND table_name = 'todos'
                   AND column_name IN ('category_ids', 'metadata')
                 ORDER BY column_name;

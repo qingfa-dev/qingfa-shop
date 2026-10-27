@@ -9,6 +9,7 @@ public sealed class QueryFieldBuilderTest
     private sealed class Target
     {
         public string Name { get; set; } = string.Empty;
+        public string Alias { get; set; } = string.Empty;
         public int Score { get; set; }
     }
 
@@ -164,6 +165,111 @@ public sealed class QueryFieldBuilderTest
 
         field.Sortable.Should().BeFalse();
         field.Selectable.Should().BeFalse();
+        field.Groupable.Should().BeFalse();
+    }
+
+    [Fact(DisplayName = "Is Collection False Clears The Element Type")]
+    public void IsCollection_False_ClearsTheElementType()
+    {
+        var builder = new QueryFieldBuilder().IsCollection(false);
+        Expression<Func<Target, object?>> expr = x => x.Name;
+
+        QueryField field = builder.Build(
+            "name",
+            expr,
+            "Name",
+            typeof(List<string>),
+            typeof(string),
+            indexType: null);
+
+        field.ElementType.Should().BeNull();
+        field.IsCollection.Should().BeFalse();
+    }
+
+    [Fact(DisplayName = "Is Indexed True Sets An Integer Index Type")]
+    public void IsIndexed_True_SetsAnIntegerIndexType()
+    {
+        var builder = new QueryFieldBuilder().IsIndexed(true);
+        Expression<Func<Target, object?>> expr = x => x.Name;
+
+        QueryField field = builder.Build("name", expr, "Name", typeof(string), null, indexType: null);
+
+        field.IsIndexed.Should().BeTrue();
+        field.IndexType.Should().Be(typeof(int));
+    }
+
+    [Fact(DisplayName = "Member Path Overrides The Declared Path")]
+    public void MemberPath_OverridesTheDeclaredPath()
+    {
+        var builder = new QueryFieldBuilder().MemberPath("Alias");
+        Expression<Func<Target, object?>> expr = x => x.Name;
+
+        QueryField field = builder.Build("name", expr, "Name", typeof(string), null, null);
+
+        field.MemberPath.Should().Be("Alias");
+    }
+
+    [Fact(DisplayName = "Expression Overrides The Declared Expression")]
+    public void Expression_OverridesTheDeclaredExpression()
+    {
+        Expression<Func<Target, object?>> replacement = x => x.Score;
+        var builder = new QueryFieldBuilder().Expression(replacement);
+        Expression<Func<Target, object?>> expr = x => x.Name;
+
+        QueryField field = builder.Build("name", expr, "Name", typeof(string), null, null);
+
+        field.Expression.Should().BeSameAs(replacement);
+    }
+
+    [Fact(DisplayName = "Element Type Overrides The Detected Element Type")]
+    public void ElementType_OverridesTheDetectedElementType()
+    {
+        var builder = new QueryFieldBuilder().ElementType(typeof(Guid));
+        Expression<Func<Target, object?>> expr = x => x.Name;
+
+        QueryField field = builder.Build("name", expr, "Name", typeof(string), null, null);
+
+        field.ElementType.Should().Be(typeof(Guid));
+        field.IsCollection.Should().BeTrue();
+    }
+
+    [Fact(DisplayName = "Composite Adds A Member To The Field")]
+    public void Composite_AddsAMemberToTheField()
+    {
+        var builder = new QueryFieldBuilder().Composite<Target>(x => x.Alias);
+        Expression<Func<Target, object?>> expr = x => x.Name;
+
+        QueryField field = builder.Build("name", expr, "Name", typeof(string), null, null);
+
+        field.Composite.Should().ContainSingle();
+    }
+
+    [Fact(DisplayName = "Capability Methods Without Arguments Re Enable The Capability")]
+    public void CapabilityMethods_WithoutArguments_ReEnableTheCapability()
+    {
+        var builder = new QueryFieldBuilder()
+            .Filterable(false)
+            .Sortable(false)
+            .Selectable(false)
+            .Searchable(true)
+            .Groupable(true);
+
+        var reenabled = builder
+            .Filterable()
+            .Sortable()
+            .Selectable()
+            .Searchable(false)
+            .Groupable(false);
+
+        reenabled.Should().BeSameAs(builder);
+
+        Expression<Func<Target, object?>> expr = x => x.Name;
+        QueryField field = builder.Build("name", expr, "Name", typeof(string), null, null);
+
+        field.Filterable.Should().BeTrue();
+        field.Sortable.Should().BeTrue();
+        field.Selectable.Should().BeTrue();
+        field.Searchable.Should().BeFalse();
         field.Groupable.Should().BeFalse();
     }
 }

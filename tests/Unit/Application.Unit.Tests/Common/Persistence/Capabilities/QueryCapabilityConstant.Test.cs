@@ -87,12 +87,6 @@ public sealed class QueryCapabilityConstantTest
         QueryCapabilityConstant.Search.MaxFields.Should().Be(8);
     }
 
-    [Fact(DisplayName = "Search MaxLanguageLength Should Be 8")]
-    public void Search_MaxLanguageLength_ShouldBe8()
-    {
-        QueryCapabilityConstant.Search.MaxLanguageLength.Should().Be(8);
-    }
-
     #endregion
 
     #region Map Limits

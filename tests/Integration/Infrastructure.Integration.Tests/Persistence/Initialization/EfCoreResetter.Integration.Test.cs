@@ -1,4 +1,3 @@
-using Infrastructure.Persistence;
 using Application.Common.Persistence.Initialization;
 using Application.Common.Persistence.Initialization.Resetters;
 using Application.Common.Persistence.UnitOfWorks;
@@ -12,6 +11,7 @@ using Infrastructure.Persistence.Todos.Seeders;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Infrastructure.Persistence.EntityFramework.Contexts;
 
 namespace Infrastructure.Integration.Tests.Persistence.Initialization;
 
@@ -95,7 +95,7 @@ public sealed class EfCoreResetterIntegrationTest(PersistenceInitializationFixtu
     public async Task ExecuteAsync_DataOnly_WhenNoTablesExist_ShouldReturnSuccess()
     {
         // Arrange
-        await _fixture.ExecuteAsync("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
+        await _fixture.ExecuteAsync("DROP SCHEMA todo CASCADE; CREATE SCHEMA todo;");
         using var scope = _fixture.CreateScope();
         var resetter = CreateResetter(scope, ResetScope.DataOnly);
 
@@ -203,7 +203,7 @@ public sealed class EfCoreResetterIntegrationTest(PersistenceInitializationFixtu
     public async Task ExecuteAsync_SchemaOnly_WhenAlreadyEmpty_ShouldReturnSuccess()
     {
         // Arrange
-        await _fixture.ExecuteAsync("DROP SCHEMA public CASCADE; CREATE SCHEMA public;");
+        await _fixture.ExecuteAsync("DROP SCHEMA todo CASCADE; CREATE SCHEMA todo;");
         using var scope = _fixture.CreateScope();
         var resetter = CreateResetter(scope, ResetScope.SchemaOnly);
 

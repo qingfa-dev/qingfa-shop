@@ -8,6 +8,7 @@ public sealed class QueryMapBuilderTest
     private sealed class Target
     {
         public string Name { get; set; } = string.Empty;
+        public string Alias { get; set; } = string.Empty;
         public int Score { get; set; }
         public Target? Child { get; set; }
         public List<string> Tags { get; set; } = [];
@@ -186,6 +187,162 @@ public sealed class QueryMapBuilderTest
 
         map.TryGet("Value", out _).Should().BeTrue();
         map.TryGet("Nested.Value", out _).Should().BeTrue();
+    }
+
+    [Fact(DisplayName = "Build With No Declarations Should Produce An Empty Map")]
+    public void Build_WithNoDeclarations_ShouldProduceAnEmptyMap()
+    {
+        QueryMap<Target> map = Build(QueryMapBuilder<Target>.Create());
+
+        map.Fields.Should().BeEmpty();
+    }
+
+    [Fact(DisplayName = "Map Should Expose The Member Metadata")]
+    public void Map_ShouldExposeTheMemberMetadata()
+    {
+        QueryMap<Target> map = Build(
+            QueryMapBuilder<Target>.Create().Map("name", x => x.Name));
+
+        map.TryGet("name", out QueryField? field).Should().BeTrue();
+        field!.Name.Should().Be("name");
+        field.ValueType.Should().Be(typeof(string));
+        field.MemberPath.Should().Be(nameof(Target.Name));
+        field.Expression.Should().NotBeNull();
+        field.Filterable.Should().BeTrue();
+        field.Sortable.Should().BeTrue();
+        field.Selectable.Should().BeTrue();
+        field.Searchable.Should().BeFalse();
+        field.Groupable.Should().BeFalse();
+    }
+
+    [Fact(DisplayName = "Map Should Trim The Declared Name")]
+    public void Map_ShouldTrimTheDeclaredName()
+    {
+        QueryMap<Target> map = Build(
+            QueryMapBuilder<Target>.Create().Map("  name  ", x => x.Name));
+
+        map.TryGet("name", out QueryField? field).Should().BeTrue();
+        field!.Name.Should().Be("name");
+    }
+
+    [Fact(DisplayName = "Map Should Resolve Names Case Insensitively")]
+    public void Map_ShouldResolveNamesCaseInsensitively()
+    {
+        QueryMap<Target> map = Build(
+            QueryMapBuilder<Target>.Create().Map("Name", x => x.Name));
+
+        map.TryGet("name", out _).Should().BeTrue();
+        map.TryGet("NAME", out _).Should().BeTrue();
+    }
+
+    [Fact(DisplayName = "Map Should Apply The Field Configuration")]
+    public void Map_ShouldApplyTheFieldConfiguration()
+    {
+        QueryMap<Target> map = Build(
+            QueryMapBuilder<Target>.Create().Map("name", x => x.Name, field => field
+                .Filterable(false)
+                .Sortable(false)
+                .Selectable(false)
+                .Searchable()
+                .Groupable()
+                .CaseInsensitive()
+                .AllowNullSearch(false)));
+
+        map.TryGet("name", out QueryField? configured).Should().BeTrue();
+        configured!.Filterable.Should().BeFalse();
+        configured.Sortable.Should().BeFalse();
+        configured.Selectable.Should().BeFalse();
+        configured.Searchable.Should().BeTrue();
+        configured.Groupable.Should().BeTrue();
+        configured.CaseInsensitive.Should().BeTrue();
+        configured.AllowNullSearch.Should().BeFalse();
+    }
+
+    [Fact(DisplayName = "Map A Collection Member Should Expose Its Element Type")]
+    public void Map_CollectionMember_ShouldExposeItsElementType()
+    {
+        QueryMap<Target> map = Build(
+            QueryMapBuilder<Target>.Create().Map("tags", x => x.Tags));
+
+        map.TryGet("tags", out QueryField? field).Should().BeTrue();
+        field!.ValueType.Should().Be(typeof(List<string>));
+        field.ElementType.Should().Be(typeof(string));
+        field.IsCollection.Should().BeTrue();
+        field.ComparisonType.Should().Be(typeof(string));
+    }
+
+    [Fact(DisplayName = "Map A Nested Member Should Record The Member Path")]
+    public void Map_NestedMember_ShouldRecordTheMemberPath()
+    {
+        QueryMap<Target> map = Build(
+            QueryMapBuilder<Target>.Create().Map("childName", x => x.Child!.Name));
+
+        map.TryGet("childName", out QueryField? field).Should().BeTrue();
+        field!.MemberPath.Should().Be("Child.Name");
+        field.ValueType.Should().Be(typeof(string));
+    }
+
+    [Fact(DisplayName = "Map Composite Should Force Unsupported Capabilities Off")]
+    public void MapComposite_ShouldForceUnsupportedCapabilitiesOff()
+    {
+        QueryMap<Target> map = Build(
+            QueryMapBuilder<Target>.Create().MapComposite(
+                "anyName",
+                [x => x.Name, x => x.Alias],
+                field => field.Sortable().Selectable().Groupable()));
+
+        map.TryGet("anyName", out QueryField? field).Should().BeTrue();
+        field!.Composite.Should().HaveCount(2);
+        field.ValueType.Should().Be(typeof(string));
+        field.Filterable.Should().BeTrue();
+        field.Sortable.Should().BeFalse();
+        field.Selectable.Should().BeFalse();
+        field.Groupable.Should().BeFalse();
+    }
+
+    [Fact(DisplayName = "Map Composite When Searchable Should Report A Failure")]
+    public void MapComposite_WhenSearchable_ShouldReportAFailure()
+    {
+        Result<QueryMap<Target>> map = QueryMapBuilder<Target>.Create()
+            .MapComposite("anyName", [x => x.Name], field => field.Searchable())
+            .Build();
+
+        map.IsFailure.Should().BeTrue();
+        map.Errors.Should().Contain(error => error.Code == "Query.Map.SearchableNotString");
+    }
+
+    [Fact(DisplayName = "Map Indexed Should Expose The Index Type")]
+    public void MapIndexed_ShouldExposeTheIndexType()
+    {
+        QueryMap<Target> map = Build(
+            QueryMapBuilder<Target>.Create().MapIndexed<int>("tag", (target, index) => target.Tags[index]));
+
+        map.TryGet("tag", out QueryField? field).Should().BeTrue();
+        field!.IsIndexed.Should().BeTrue();
+        field.IndexType.Should().Be(typeof(int));
+        field.IsCollection.Should().BeFalse();
+        field.Sortable.Should().BeFalse();
+        field.Selectable.Should().BeFalse();
+        field.Groupable.Should().BeFalse();
+    }
+
+    [Fact(DisplayName = "Generate Mappings Should Mark String Properties Searchable")]
+    public void GenerateMappings_ShouldMarkStringPropertiesSearchable()
+    {
+        QueryMap<Target> map = Build(QueryMapBuilder<Target>.Create().GenerateMappings());
+
+        map.TryGet("Name", out QueryField? name).Should().BeTrue();
+        map.TryGet("Score", out QueryField? score).Should().BeTrue();
+        name!.Searchable.Should().BeTrue();
+        score!.Searchable.Should().BeFalse();
+    }
+
+    [Fact(DisplayName = "Generate Mappings With Negative Depth Should Throw")]
+    public void GenerateMappings_WithNegativeDepth_ShouldThrow()
+    {
+        Action act = () => QueryMapBuilder<Target>.Create().GenerateMappings(-1);
+
+        act.Should().Throw<ArgumentOutOfRangeException>();
     }
 }
 

@@ -1,7 +1,7 @@
 using Core.Common.Monad.Metadata;
 using Core.Todos;
 
-using Infrastructure.Persistence;
+using Infrastructure.Persistence.EntityFramework.Contexts;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -77,6 +77,22 @@ public sealed class ApplicationDbContextTest : IAsyncLifetime
 
         // Assert
         tables.Should().BeEquivalentTo("todos", "todo_lists", "todo_categories");
+    }
+
+    [Fact(DisplayName = "ApplicationDbContext should place every Todo table in the todo schema")]
+    public void Model_ShouldUseTheTodoSchema()
+    {
+        // Arrange
+        var context = new ApplicationDbContext(_options!);
+
+        // Act
+        var schemas = context.Model.GetEntityTypes()
+            .Select(entity => entity.GetSchema())
+            .Distinct()
+            .ToList();
+
+        // Assert
+        schemas.Should().BeEquivalentTo(["todo"]);
     }
 
     [Fact(DisplayName = "ApplicationDbContext should apply every entity configuration in the assembly")]
@@ -167,7 +183,7 @@ public sealed class ApplicationDbContextTest : IAsyncLifetime
 
         // Assert
         contexts.Should().ContainSingle().Which.Should().Be(typeof(ApplicationDbContext));
-        factories.Should().ContainSingle().Which.Should().Be(typeof(global::ApplicationDbContextDesignTimeFactory));
+        factories.Should().ContainSingle().Which.Should().Be(typeof(ApplicationDbContextDesignTimeFactory));
     }
 
     [Fact(DisplayName = "ApplicationDbContext database should be accessible")]

@@ -523,46 +523,6 @@ public sealed class QueryCapabilityGuardTest
 
     #endregion
 
-    #region ValidateSearchLanguageLength
-
-    [Theory(DisplayName = "ValidateSearchLanguageLength Should Accept Valid Lengths")]
-    [InlineData("en")]
-    [InlineData("de")]
-    [InlineData("zh-CN")]
-    [InlineData("en-US-x")]  // 7 chars < MaxLanguageLength
-    public void ValidateSearchLanguageLength_ShouldAcceptValidLengths(string language)
-    {
-        var result = QueryCapabilityGuard.ValidateSearchLanguageLength(language);
-        result.IsSuccess.Should().BeTrue();
-    }
-
-    [Fact(DisplayName = "ValidateSearchLanguageLength Should Accept MaxLanguageLength")]
-    public void ValidateSearchLanguageLength_ShouldAcceptMaxLanguageLength()
-    {
-        var language = new string('x', QueryCapabilityConstant.Search.MaxLanguageLength);
-        var result = QueryCapabilityGuard.ValidateSearchLanguageLength(language);
-        result.IsSuccess.Should().BeTrue();
-    }
-
-    [Fact(DisplayName = "ValidateSearchLanguageLength Should Accept Null")]
-    public void ValidateSearchLanguageLength_ShouldAcceptNull()
-    {
-        var result = QueryCapabilityGuard.ValidateSearchLanguageLength(null);
-        result.IsSuccess.Should().BeTrue();
-    }
-
-    [Fact(DisplayName = "ValidateSearchLanguageLength Should Reject Over MaxLength")]
-    public void ValidateSearchLanguageLength_ShouldRejectOverMaxLength()
-    {
-        var language = new string('x', QueryCapabilityConstant.Search.MaxLanguageLength + 1);
-        var result = QueryCapabilityGuard.ValidateSearchLanguageLength(language);
-
-        result.IsFailure.Should().BeTrue();
-        result.Errors.Should().ContainSingle(e => e.Code == QueryCapabilityOutcome.Codes.SearchLanguageTooLong);
-    }
-
-    #endregion
-
     #region ValidateMapFieldNameLength
 
     [Theory(DisplayName = "ValidateMapFieldNameLength Should Accept Valid Lengths")]

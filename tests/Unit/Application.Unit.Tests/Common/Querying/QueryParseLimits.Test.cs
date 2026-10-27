@@ -22,7 +22,6 @@ public sealed class QueryParseLimitsTest
         limits.MaxSearchLength.Should().Be(QueryConstant.Limits.Search.MaxLength);
         limits.MaxSearchTerms.Should().Be(QueryConstant.Limits.Search.MaxTerms);
         limits.MaxSearchFields.Should().Be(QueryConstant.Limits.Search.MaxFields);
-        limits.MaxSearchLanguage.Should().Be(QueryConstant.Limits.Search.MaxLanguageLength);
     }
 
     [Theory(DisplayName = "Default Page Size Can Be Customized")]
@@ -157,17 +156,6 @@ public sealed class QueryParseLimitsTest
         limits.MaxSearchFields.Should().Be(fields);
     }
 
-    [Theory(DisplayName = "Max Search Language Can Be Customized")]
-    [InlineData(4)]
-    [InlineData(16)]
-    [InlineData(32)]
-    public void MaxSearchLanguage_CanBeCustomized(int length)
-    {
-        var limits = new QueryParseLimits { MaxSearchLanguage = length };
-
-        limits.MaxSearchLanguage.Should().Be(length);
-    }
-
     [Fact(DisplayName = "Default Instance Is Shared")]
     public void DefaultInstance_IsShared()
     {
@@ -193,8 +181,7 @@ public sealed class QueryParseLimitsTest
             MaxAggregates = 8,
             MaxSearchLength = 128,
             MaxSearchTerms = 4,
-            MaxSearchFields = 4,
-            MaxSearchLanguage = 4
+            MaxSearchFields = 4
         };
         var l2 = new QueryParseLimits
         {
@@ -209,8 +196,7 @@ public sealed class QueryParseLimitsTest
             MaxAggregates = 8,
             MaxSearchLength = 128,
             MaxSearchTerms = 4,
-            MaxSearchFields = 4,
-            MaxSearchLanguage = 4
+            MaxSearchFields = 4
         };
 
         l1.Should().Be(l2);

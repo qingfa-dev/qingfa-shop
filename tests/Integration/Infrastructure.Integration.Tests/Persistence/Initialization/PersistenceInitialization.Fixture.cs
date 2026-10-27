@@ -3,6 +3,7 @@ using Application.Common.Persistence.UnitOfWorks;
 
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.EntityFramework.Contexts;
+using Infrastructure.Persistence.EntityFramework.Options;
 using Infrastructure.Persistence.EntityFramework.UnitOfWorks;
 using Infrastructure.Persistence.Initialization;
 using Infrastructure.Persistence.Todos;
@@ -49,7 +50,9 @@ public sealed class PersistenceInitializationFixture : IAsyncLifetime
         services.AddLogging();
 
         services.AddDbContext<ApplicationDbContext>(options =>
-            options.UseNpgsql(ConnectionString, npgsql => npgsql.CommandTimeout(30)));
+            options.UseNpgsql(ConnectionString, npgsql => npgsql
+                .UsePersistenceMigrationHistory()
+                .CommandTimeout(30)));
 
         services.AddScoped<EfCoreDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
         services.AddScoped<IUnitOfWork>(sp => new EfCoreUnitOfWork(sp.GetRequiredService<ApplicationDbContext>()));
@@ -103,14 +106,16 @@ public sealed class PersistenceInitializationFixture : IAsyncLifetime
         await using var connection = new NpgsqlConnection(ConnectionString);
         await connection.OpenAsync();
         await using var command = connection.CreateCommand();
-        command.CommandText = $"SELECT COUNT(*) FROM \"{table}\";";
+        command.CommandText = $"SELECT COUNT(*) FROM {Qualify(table)};";
         var value = await command.ExecuteScalarAsync();
         return Convert.ToInt32(value);
     }
 
-    /// <summary>Determines whether a table exists in the public schema.</summary>
+    /// <summary>Determines whether a table exists in the configured schema.</summary>
     public async Task<bool> TableExistsAsync(string table)
     {
+        (string schema, string name) = Split(table);
+
         try
         {
             await using var connection = new NpgsqlConnection(ConnectionString);
@@ -120,10 +125,11 @@ public sealed class PersistenceInitializationFixture : IAsyncLifetime
                 SELECT EXISTS (
                     SELECT 1
                     FROM information_schema.tables
-                    WHERE table_schema = 'public' AND table_name = @table
+                    WHERE table_schema = @schema AND table_name = @table
                 );
                 """;
-            command.Parameters.AddWithValue("table", table);
+            command.Parameters.AddWithValue("schema", schema);
+            command.Parameters.AddWithValue("table", name);
             var value = await command.ExecuteScalarAsync();
             return Convert.ToBoolean(value);
         }
@@ -132,6 +138,20 @@ public sealed class PersistenceInitializationFixture : IAsyncLifetime
             // A Full reset drops the database; treat that as "no tables".
             return false;
         }
+    }
+
+    private static (string Schema, string Table) Split(string table)
+    {
+        string[] parts = table.Split('.', 2, StringSplitOptions.TrimEntries);
+        return parts.Length == 2
+            ? (parts[0].Trim('"'), parts[1].Trim('"'))
+            : ("todo", table);
+    }
+
+    private static string Qualify(string table)
+    {
+        (string schema, string name) = Split(table);
+        return $"\"{schema}\".\"{name}\"";
     }
 
     /// <summary>Determines whether the container database can be reached.</summary>

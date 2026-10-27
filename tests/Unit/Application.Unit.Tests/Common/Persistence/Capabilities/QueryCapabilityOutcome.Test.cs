@@ -41,7 +41,6 @@ public sealed class QueryCapabilityOutcomeTest
             { "SearchTooManyTerms", QueryCapabilityOutcome.Codes.SearchTooManyTerms, new object[] { "testSearch" } },
             { "SearchTooManyFields", QueryCapabilityOutcome.Codes.SearchTooManyFields, new object[] { "testSearch" } },
             { "SearchInvalidMode", QueryCapabilityOutcome.Codes.SearchInvalidMode, new object[] { "testSearch", "badMode" } },
-            { "SearchLanguageTooLong", QueryCapabilityOutcome.Codes.SearchLanguageTooLong, new object[] { "testLang" } },
 
             // ---- Map ----
             { "MapFieldNameTooLong", QueryCapabilityOutcome.Codes.MapFieldNameTooLong, new object[] { "testField" } },
@@ -286,16 +285,6 @@ public sealed class QueryCapabilityOutcomeTest
 
         // Assert
         error.Message.Should().Contain(QueryCapabilityConstant.Search.MaxFields.ToString());
-    }
-
-    [Fact(DisplayName = "SearchLanguageTooLong Should Include MaxLanguageLength In Message")]
-    public void SearchLanguageTooLong_ShouldIncludeMaxLanguageLengthInMessage()
-    {
-        // Act
-        var error = QueryCapabilityOutcome.Failure.SearchLanguageTooLong("myLang");
-
-        // Assert
-        error.Message.Should().Contain(QueryCapabilityConstant.Search.MaxLanguageLength.ToString());
     }
 
     #endregion

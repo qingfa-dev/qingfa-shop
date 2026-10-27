@@ -64,6 +64,36 @@ public sealed class EfCoreRepositoryDeleteTest
         found.Should().BeNull();
     }
 
+    [Fact(DisplayName = "RemoveAsync should delete a detached copy while a stale copy is tracked")]
+    public async Task RemoveAsync_WithStaleTrackedCopy_ShouldDeleteRow()
+    {
+        // Arrange
+        var context = EfCoreRepositoryTestFixture.CreateContext();
+        var tracked = EfCoreRepositoryTestFixture.CreateProduct("Widget", 9.99m);
+        context.Products.Add(tracked);
+        await context.SaveChangesAsync();
+        var repository = EfCoreRepositoryTestFixture.CreateRepository(context);
+
+        var detached = new UnitTestProduct
+        {
+            Id = tracked.Id,
+            Name = tracked.Name,
+            Price = tracked.Price,
+            Stock = tracked.Stock,
+        };
+
+        // Act
+        Result result = await repository.RemoveAsync(detached);
+        await context.SaveChangesAsync();
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        context.Entry(tracked).State.Should().Be(EntityState.Detached);
+        (await context.Products.AsNoTracking().AnyAsync(product => product.Id == tracked.Id))
+            .Should()
+            .BeFalse();
+    }
+
     #endregion
 
     #region RemoveAsync by Id

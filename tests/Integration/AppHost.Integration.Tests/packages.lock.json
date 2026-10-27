@@ -1518,6 +1518,7 @@
       "QingFa.Shop.Contract": {
         "type": "Project",
         "dependencies": {
+          "Core": "[1.0.0, )",
           "FluentValidation": "[12.2.0, )",
           "MediatR": "[12.5.0, )"
         }

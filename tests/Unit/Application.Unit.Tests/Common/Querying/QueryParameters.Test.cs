@@ -19,8 +19,6 @@ public sealed class QueryParametersTest
         parameters.SearchMode.Should().BeNull();
         parameters.SearchTermLogic.Should().BeNull();
         parameters.SearchCaseInsensitive.Should().BeNull();
-        parameters.SearchLanguage.Should().BeNull();
-        parameters.SearchMinScore.Should().BeNull();
         parameters.Select.Should().BeNull();
         parameters.GroupBy.Should().BeNull();
         parameters.Aggregate.Should().BeNull();
@@ -126,28 +124,6 @@ public sealed class QueryParametersTest
         parameters.SearchCaseInsensitive.Should().Be(value);
     }
 
-    [Theory(DisplayName = "Search Language Accepts Valid String")]
-    [InlineData("en")]
-    [InlineData("de")]
-    [InlineData("zh-CN")]
-    public void SearchLanguage_AcceptsValidString(string language)
-    {
-        var parameters = new QueryParameters { SearchLanguage = language };
-
-        parameters.SearchLanguage.Should().Be(language);
-    }
-
-    [Theory(DisplayName = "Search Min Score Accepts Valid Range")]
-    [InlineData(0.0)]
-    [InlineData(0.5)]
-    [InlineData(1.0)]
-    public void SearchMinScore_AcceptsValidRange(double score)
-    {
-        var parameters = new QueryParameters { SearchMinScore = score };
-
-        parameters.SearchMinScore.Should().Be(score);
-    }
-
     [Theory(DisplayName = "Select Accepts Valid Projection")]
     [InlineData("name")]
     [InlineData("name as title")]
@@ -194,8 +170,6 @@ public sealed class QueryParametersTest
             SearchMode = SearchMode.Contains,
             SearchTermLogic = SearchTermLogic.And,
             SearchCaseInsensitive = true,
-            SearchLanguage = "en",
-            SearchMinScore = 0.5,
             Select = "name",
             GroupBy = "category",
             Aggregate = "count(name)"
@@ -211,8 +185,6 @@ public sealed class QueryParametersTest
             SearchMode = SearchMode.Contains,
             SearchTermLogic = SearchTermLogic.And,
             SearchCaseInsensitive = true,
-            SearchLanguage = "en",
-            SearchMinScore = 0.5,
             Select = "name",
             GroupBy = "category",
             Aggregate = "count(name)"

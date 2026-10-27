@@ -50,6 +50,11 @@
           "System.Diagnostics.EventLog": "6.0.0"
         }
       },
+      "Mapster.Core": {
+        "type": "Transitive",
+        "resolved": "10.0.13",
+        "contentHash": "fLj/MDJy16QiL7IULC0+e2YXh9nNDhtzdNl13R6CI0Qh6181eadA6EHykWkJWgTHdMjC5Ured3fq5x1QV7U9vg=="
+      },
       "MediatR.Contracts": {
         "type": "Transitive",
         "resolved": "2.0.1",
@@ -183,9 +188,19 @@
           "xunit.v3.runner.common": "[4.0.2]"
         }
       },
+      "core": {
+        "type": "Project",
+        "dependencies": {
+          "FluentValidation": "[12.2.0, )",
+          "Mapster": "[10.0.13, )",
+          "MediatR": "[12.5.0, )",
+          "Slugify.Core": "[5.1.1, )"
+        }
+      },
       "QingFa.Shop.Contract": {
         "type": "Project",
         "dependencies": {
+          "Core": "[1.0.0, )",
           "FluentValidation": "[12.2.0, )",
           "MediatR": "[12.5.0, )"
         }
@@ -195,6 +210,15 @@
         "requested": "[12.2.0, )",
         "resolved": "12.2.0",
         "contentHash": "DR3lFbdnKucaaj1/8zMNOACMz/64igzox1yVZSFVsLxYB5mxAB+wFP1WZ8fjwrZnbU1KA1DoMzHKYKxUfuZ4wQ=="
+      },
+      "Mapster": {
+        "type": "CentralTransitive",
+        "requested": "[10.0.13, )",
+        "resolved": "10.0.13",
+        "contentHash": "/FaFSm4W6rQp5kEZa7yTtvHH2yGmuC1p22Bg2zi83+W8SMJ+5RBTEWgRK0JS2S8jIdXj2hm2s4z1egjkE2azoQ==",
+        "dependencies": {
+          "Mapster.Core": "10.0.13"
+        }
       },
       "MediatR": {
         "type": "CentralTransitive",
@@ -211,6 +235,12 @@
         "requested": "[10.0.14, )",
         "resolved": "10.0.14",
         "contentHash": "QtpQzuSZVyTPCuHW058yCs9Nj0394uUkNyFHS813nOmK9UgUdBdaprJ5PPsBgsQIpxADTsTkbaMMonykem6qdw=="
+      },
+      "Slugify.Core": {
+        "type": "CentralTransitive",
+        "requested": "[5.1.1, )",
+        "resolved": "5.1.1",
+        "contentHash": "9dsxewpdgnLgOVN6dIRX3XvlEy1XpLbE2nd2bFebcW0XPdysU1WgQUXChFcAfjHpdfImBxMUe33PTwZOuU531Q=="
       },
       "xunit.analyzers": {
         "type": "CentralTransitive",

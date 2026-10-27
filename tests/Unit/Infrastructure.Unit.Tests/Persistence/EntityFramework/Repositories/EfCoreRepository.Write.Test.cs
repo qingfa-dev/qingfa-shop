@@ -251,6 +251,38 @@ public sealed class EfCoreRepositoryWriteTest
         found.Price.Should().Be(19.99m);
     }
 
+    [Fact(DisplayName = "UpdateAsync should replace a stale tracked copy with the detached instance")]
+    public async Task UpdateAsync_WithStaleTrackedCopy_ShouldUpdateRow()
+    {
+        // Arrange
+        var context = EfCoreRepositoryTestFixture.CreateContext();
+        var tracked = EfCoreRepositoryTestFixture.CreateProduct("Original", 9.99m);
+        context.Products.Add(tracked);
+        await context.SaveChangesAsync();
+        var repository = EfCoreRepositoryTestFixture.CreateRepository(context);
+
+        var detached = new UnitTestProduct
+        {
+            Id = tracked.Id,
+            Name = "Renamed",
+            Price = 12.50m,
+            Stock = 5,
+        };
+
+        // Act
+        Result result = await repository.UpdateAsync(detached);
+        await context.SaveChangesAsync();
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        context.Entry(tracked).State.Should().Be(EntityState.Detached);
+        UnitTestProduct reloaded = await context.Products
+            .AsNoTracking()
+            .SingleAsync(product => product.Id == tracked.Id);
+        reloaded.Name.Should().Be("Renamed");
+        reloaded.Price.Should().Be(12.50m);
+    }
+
     #endregion
 
     #region UpdateRangeAsync

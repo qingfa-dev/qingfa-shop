@@ -1,3 +1,5 @@
+using Core.Common.Concerns.Lifecycle.Modifiable;
+using Core.Common.Concerns.Lifecycle.SoftDeletable;
 using Core.Todos;
 
 namespace Core.Unit.Tests.Todos;
@@ -75,5 +77,93 @@ public sealed class TodoListSpec
         ShouldFailWith(
             TodoList.Create(ListId, TenantId, "   ", CreatedAt, "alice"),
             "TodoList.Name.Required");
+    }
+
+    [Fact]
+    public void Create_NoOptionalInput_ShouldLeaveOptionalStateEmpty()
+    {
+        var result = TodoList.Create(ListId, TenantId, "Groceries", CreatedAt, "alice");
+
+        result.Value.Description.Should().BeNull();
+    }
+
+    [Fact]
+    public void Create_NoModificationOrDeletion_ShouldLeaveTheAuditFlagsClear()
+    {
+        var result = TodoList.Create(ListId, TenantId, "Groceries", CreatedAt, "alice");
+
+        result.Value.ModifiedAtUtc.Should().BeNull();
+        result.Value.ModifiedBy.Should().BeNull();
+        result.Value.IsDeleted.Should().BeFalse();
+        result.Value.DeletedAtUtc.Should().BeNull();
+        result.Value.DeletedBy.Should().BeNull();
+    }
+
+    [Fact]
+    public void Create_PaddedDescription_ShouldStoreTheTrimmedDescription()
+    {
+        var result = TodoList.Create(
+            ListId,
+            TenantId,
+            "Groceries",
+            CreatedAt,
+            "alice",
+            description: "  Weekly shop  ");
+
+        result.Value.Description.Should().Be("Weekly shop");
+    }
+
+    [Fact]
+    public void Create_DescriptionExceedingMaxLength_ShouldFailWithDescriptionTooLong()
+    {
+        string tooLong = new('a', TodoListConstant.Constraints.Description.MaxLength + 1);
+
+        ShouldFailWith(
+            TodoList.Create(ListId, TenantId, "Groceries", CreatedAt, "alice", description: tooLong),
+            "TodoList.Description.TooLong");
+    }
+
+    [Fact]
+    public void Create_NameExceedingMaxLength_ShouldFailWithNameTooLong()
+    {
+        string tooLong = new('a', TodoListConstant.Constraints.Name.MaxLength + 1);
+
+        ShouldFailWith(
+            TodoList.Create(ListId, TenantId, tooLong, CreatedAt, "alice"),
+            "TodoList.Name.TooLong");
+    }
+
+    [Fact]
+    public void MarkDeleted_ThenRestore_ShouldRoundTripTheDeletionAudit()
+    {
+        TodoList list = TodoList.Create(ListId, TenantId, "Groceries", CreatedAt, "alice").Value;
+        DateTimeOffset deletedAt = CreatedAt.AddDays(1);
+
+        Result<TodoList> deleted = Result<TodoList>.Ok(list).MarkDeleted(deletedAt, "bob");
+
+        deleted.IsSuccess.Should().BeTrue();
+        list.IsDeleted.Should().BeTrue();
+        list.DeletedAtUtc.Should().Be(deletedAt);
+        list.DeletedBy.Should().Be("bob");
+
+        Result<TodoList> restored = Result<TodoList>.Ok(list).Restore("alice");
+
+        restored.IsSuccess.Should().BeTrue();
+        list.IsDeleted.Should().BeFalse();
+        list.DeletedAtUtc.Should().BeNull();
+        list.DeletedBy.Should().BeNull();
+    }
+
+    [Fact]
+    public void MarkModified_ShouldStampTheTrimmedActor()
+    {
+        TodoList list = TodoList.Create(ListId, TenantId, "Groceries", CreatedAt, "alice").Value;
+        DateTimeOffset modifiedAt = CreatedAt.AddHours(1);
+
+        Result<TodoList> modified = Result<TodoList>.Ok(list).MarkModified(modifiedAt, "bob");
+
+        modified.IsSuccess.Should().BeTrue();
+        list.ModifiedAtUtc.Should().Be(modifiedAt);
+        list.ModifiedBy.Should().Be("bob");
     }
 }

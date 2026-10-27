@@ -1,8 +1,9 @@
-using Infrastructure.Persistence;
+using Application.Common.Contexts;
 using Application.Common.Persistence.Capabilities;
 using Application.Common.Persistence.Repositories;
 using Application.Common.Persistence.UnitOfWorks;
 using Application.Common.Querying.Mapping;
+using Application.Features.Todos.Abstractions;
 
 using Core.Todos;
 
@@ -18,6 +19,8 @@ using Microsoft.Extensions.DependencyInjection;
 using Respawn;
 
 using Testcontainers.PostgreSql;
+using Infrastructure.Persistence.EntityFramework.Contexts;
+using Infrastructure.Persistence.EntityFramework.Options;
 
 namespace Infrastructure.Integration.Tests.Persistence.Todos;
 
@@ -56,6 +59,15 @@ public sealed class TodoEfCoreFixture : IAsyncLifetime
     /// <summary>The UnitOfWork.</summary>
     public IUnitOfWork UnitOfWork => CurrentScope?.ServiceProvider.GetRequiredService<IUnitOfWork>() ?? throw new InvalidOperationException("Scope not initialized");
 
+    /// <summary>The cross-aggregate reference cleaner.</summary>
+    public ITodoReferenceCleaner ReferenceCleaner => CurrentScope?.ServiceProvider.GetRequiredService<ITodoReferenceCleaner>() ?? throw new InvalidOperationException("Scope not initialized");
+
+    /// <summary>The ambient tenant and actor the handlers read.</summary>
+    public AmbientExecutionContext Ambient { get; } = new();
+
+    /// <summary>The frozen clock the handlers read.</summary>
+    public IntegrationClock Clock { get; } = new(DateTimeOffset.UtcNow.Date);
+
     /// <summary>The query map for Todo.</summary>
     public QueryMap<Todo> TodoQueryMap { get; private set; } = null!;
 
@@ -86,7 +98,9 @@ public sealed class TodoEfCoreFixture : IAsyncLifetime
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseNpgsql(ConnectionString, npgsql =>
             {
-                npgsql.CommandTimeout(30);
+                npgsql
+                    .UsePersistenceMigrationHistory()
+                    .CommandTimeout(30);
             }));
 
         // Register QueryMaps
@@ -135,6 +149,10 @@ public sealed class TodoEfCoreFixture : IAsyncLifetime
         services.AddScoped<IUnitOfWork>(sp =>
             new EfCoreUnitOfWork(sp.GetRequiredService<ApplicationDbContext>()));
 
+        // Register the cross-aggregate reference cleaner and its ambient context.
+        services.AddScoped<ITodoReferenceCleaner, TodoReferenceCleaner>();
+        services.AddSingleton<TimeProvider>(Clock);
+
         Services = services.BuildServiceProvider();
 
         // Create the schema using a temporary scope
@@ -149,8 +167,8 @@ public sealed class TodoEfCoreFixture : IAsyncLifetime
         await connection.OpenAsync();
         Respawner = await Respawner.CreateAsync(connection, new RespawnerOptions
         {
-            TablesToIgnore = [new Respawn.Graph.Table("ef_migrations_history", "public"), new Respawn.Graph.Table("__EFMigrationsHistory", "public")],
-            SchemasToInclude = new[] { "public" }
+            TablesToIgnore = [new Respawn.Graph.Table("__EFMigrationsHistory", "todo")],
+            SchemasToInclude = ["todo"]
         });
     }
 
@@ -196,4 +214,15 @@ public sealed class TodoEfCoreFixture : IAsyncLifetime
 
         await _container.StopAsync();
     }
+}
+
+/// <summary>A clock frozen at a controllable instant for integration tests.</summary>
+/// <param name="utcNow">The initial instant.</param>
+public sealed class IntegrationClock(DateTimeOffset utcNow) : TimeProvider
+{
+    /// <summary>Gets or sets the instant returned by the clock.</summary>
+    public DateTimeOffset UtcNow { get; set; } = utcNow;
+
+    /// <inheritdoc />
+    public override DateTimeOffset GetUtcNow() => UtcNow;
 }

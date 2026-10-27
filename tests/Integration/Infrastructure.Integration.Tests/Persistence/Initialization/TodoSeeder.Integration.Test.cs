@@ -1,4 +1,3 @@
-using Infrastructure.Persistence;
 using System.Text.Json;
 
 using Application.Common.Persistence.Initialization;
@@ -15,6 +14,7 @@ using Infrastructure.Persistence.Todos.Seeders;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
+using Infrastructure.Persistence.EntityFramework.Contexts;
 
 namespace Infrastructure.Integration.Tests.Persistence.Initialization;
 
@@ -97,7 +97,7 @@ public sealed class TodoSeederIntegrationTest(PersistenceInitializationFixture f
 
         // Act
         var json = await _fixture.ScalarAsync(
-            "SELECT category_ids::text FROM todos WHERE list_id IS NOT NULL LIMIT 1;");
+            "SELECT category_ids::text FROM todo.todos WHERE list_id IS NOT NULL LIMIT 1;");
 
         // Assert
         json.Should().NotBeNull();
@@ -135,7 +135,7 @@ public sealed class TodoSeederIntegrationTest(PersistenceInitializationFixture f
         await RunSeedersAsync();
 
         // Act
-        var metadata = await _fixture.ScalarAsync("SELECT metadata::text FROM todos LIMIT 1;");
+        var metadata = await _fixture.ScalarAsync("SELECT metadata::text FROM todo.todos LIMIT 1;");
 
         // Assert
         metadata.Should().NotBeNull();
@@ -276,7 +276,7 @@ public sealed class TodoSeederIntegrationTest(PersistenceInitializationFixture f
     {
         // Arrange
         await _fixture.ExecuteAsync(
-            "INSERT INTO todo_categories (id, name, description, created_at_utc, created_by, tenant_id, metadata) " +
+            "INSERT INTO todo.todo_categories (id, name, description, created_at_utc, created_by, tenant_id, metadata) " +
             "VALUES (gen_random_uuid(), 'Existing', NULL, now(), 'test', gen_random_uuid(), '{}');");
         using var scope = _fixture.CreateScope();
         var seeder = new TodoCategorySeeder();

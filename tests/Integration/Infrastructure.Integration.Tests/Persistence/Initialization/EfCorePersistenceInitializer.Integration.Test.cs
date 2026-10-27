@@ -1,4 +1,3 @@
-using Infrastructure.Persistence;
 using Application.Common.Persistence.Initialization;
 using Application.Common.Persistence.Initialization.Migrations;
 using Application.Common.Persistence.Initialization.Resetters;
@@ -9,6 +8,7 @@ using Infrastructure.Persistence.Todos;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Infrastructure.Persistence.EntityFramework.Contexts;
 
 namespace Infrastructure.Integration.Tests.Persistence.Initialization;
 

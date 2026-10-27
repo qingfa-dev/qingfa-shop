@@ -14,11 +14,11 @@ using Core.Common.Domain.Entities;
 using Core.Common.Monad.Results;
 
 using Infrastructure.Persistence.EntityFramework.Capabilities;
-using Infrastructure.Persistence.EntityFramework.Contexts;
 using Infrastructure.Persistence.EntityFramework.QueryTranslation;
 using Infrastructure.Persistence.EntityFramework.Repositories;
 
 using Microsoft.EntityFrameworkCore;
+using Infrastructure.Persistence.EntityFramework.Contexts;
 
 namespace Infrastructure.Unit.Tests.Persistence.EntityFramework.Capabilities;
 

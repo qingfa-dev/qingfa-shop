@@ -1,3 +1,5 @@
+using Core.Common.Concerns.Lifecycle.Modifiable;
+using Core.Common.Concerns.Lifecycle.SoftDeletable;
 using Core.Todos;
 
 namespace Core.Unit.Tests.Todos;
@@ -75,5 +77,104 @@ public sealed class TodoCategorySpec
         ShouldFailWith(
             TodoCategory.Create(CategoryId, TenantId, "   ", CreatedAt, "alice"),
             "TodoCategory.Name.Required");
+    }
+
+    [Fact]
+    public void Create_NoOptionalInput_ShouldLeaveOptionalStateEmpty()
+    {
+        var result = TodoCategory.Create(CategoryId, TenantId, "Errands", CreatedAt, "alice");
+
+        result.Value.Description.Should().BeNull();
+    }
+
+    [Fact]
+    public void Create_NoModificationOrDeletion_ShouldLeaveTheAuditFlagsClear()
+    {
+        var result = TodoCategory.Create(CategoryId, TenantId, "Errands", CreatedAt, "alice");
+
+        result.Value.ModifiedAtUtc.Should().BeNull();
+        result.Value.ModifiedBy.Should().BeNull();
+        result.Value.IsDeleted.Should().BeFalse();
+        result.Value.DeletedAtUtc.Should().BeNull();
+        result.Value.DeletedBy.Should().BeNull();
+    }
+
+    [Fact]
+    public void Create_PaddedDescription_ShouldStoreTheTrimmedDescription()
+    {
+        var result = TodoCategory.Create(
+            CategoryId,
+            TenantId,
+            "Errands",
+            CreatedAt,
+            "alice",
+            description: "  Out of the house  ");
+
+        result.Value.Description.Should().Be("Out of the house");
+    }
+
+    [Fact]
+    public void Create_DescriptionExceedingMaxLength_ShouldFailWithDescriptionTooLong()
+    {
+        string tooLong = new('a', TodoCategoryConstant.Constraints.Description.MaxLength + 1);
+
+        ShouldFailWith(
+            TodoCategory.Create(CategoryId, TenantId, "Errands", CreatedAt, "alice", description: tooLong),
+            "TodoCategory.Description.TooLong");
+    }
+
+    [Fact]
+    public void Create_NameExceedingMaxLength_ShouldFailWithNameTooLong()
+    {
+        string tooLong = new('a', TodoCategoryConstant.Constraints.Name.MaxLength + 1);
+
+        ShouldFailWith(
+            TodoCategory.Create(CategoryId, TenantId, tooLong, CreatedAt, "alice"),
+            "TodoCategory.Name.TooLong");
+    }
+
+    [Fact]
+    public void MarkDeleted_ThenRestore_ShouldRoundTripTheDeletionAudit()
+    {
+        TodoCategory category = TodoCategory.Create(
+            CategoryId,
+            TenantId,
+            "Errands",
+            CreatedAt,
+            "alice").Value;
+        DateTimeOffset deletedAt = CreatedAt.AddDays(1);
+
+        Result<TodoCategory> deleted = Result<TodoCategory>.Ok(category).MarkDeleted(deletedAt, "bob");
+
+        deleted.IsSuccess.Should().BeTrue();
+        category.IsDeleted.Should().BeTrue();
+        category.DeletedAtUtc.Should().Be(deletedAt);
+        category.DeletedBy.Should().Be("bob");
+
+        Result<TodoCategory> restored = Result<TodoCategory>.Ok(category).Restore("alice");
+
+        restored.IsSuccess.Should().BeTrue();
+        category.IsDeleted.Should().BeFalse();
+        category.DeletedAtUtc.Should().BeNull();
+        category.DeletedBy.Should().BeNull();
+    }
+
+    [Fact]
+    public void MarkModified_ShouldStampTheTrimmedActor()
+    {
+        TodoCategory category = TodoCategory.Create(
+            CategoryId,
+            TenantId,
+            "Errands",
+            CreatedAt,
+            "alice").Value;
+        DateTimeOffset modifiedAt = CreatedAt.AddHours(1);
+
+        Result<TodoCategory> modified = Result<TodoCategory>.Ok(category)
+            .MarkModified(modifiedAt, "bob");
+
+        modified.IsSuccess.Should().BeTrue();
+        category.ModifiedAtUtc.Should().Be(modifiedAt);
+        category.ModifiedBy.Should().Be("bob");
     }
 }

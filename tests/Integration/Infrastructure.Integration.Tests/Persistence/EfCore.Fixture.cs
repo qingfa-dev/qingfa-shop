@@ -4,6 +4,7 @@ using Application.Common.Querying.Mapping;
 using Core.Common.Monad.Results;
 
 using Infrastructure.Persistence.EntityFramework.Capabilities;
+using Infrastructure.Persistence.EntityFramework.Options;
 using Infrastructure.Persistence.EntityFramework.QueryTranslation;
 using Infrastructure.Persistence.EntityFramework.Repositories;
 using Infrastructure.Persistence.EntityFramework.UnitOfWorks;
@@ -70,7 +71,9 @@ public sealed class EfCoreFixture : IAsyncLifetime
         services.AddDbContext<TestDbContext>(options =>
             options.UseNpgsql(ConnectionString, npgsql =>
             {
-                npgsql.CommandTimeout(30);
+                npgsql
+                    .UsePersistenceMigrationHistory()
+                    .CommandTimeout(30);
             }));
 
         // Register QueryMap
@@ -126,8 +129,8 @@ public sealed class EfCoreFixture : IAsyncLifetime
         await connection.OpenAsync();
         Respawner = await Respawner.CreateAsync(connection, new RespawnerOptions
         {
-            TablesToIgnore = [new Respawn.Graph.Table("ef_migrations_history", "public"), new Respawn.Graph.Table("__EFMigrationsHistory", "public")],
-            SchemasToInclude = new[] { "public" }
+            TablesToIgnore = [new Respawn.Graph.Table("__EFMigrationsHistory", "todo")],
+            SchemasToInclude = ["todo"]
         });
     }
 
