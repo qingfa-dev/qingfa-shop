@@ -658,8 +658,6 @@
           "Core": "[1.0.0, )",
           "FluentValidation": "[12.2.0, )",
           "FluentValidation.DependencyInjectionExtensions": "[12.2.0, )",
-          "Mapster": "[10.0.13, )",
-          "Mapster.DependencyInjection": "[10.0.13, )",
           "MediatR": "[12.5.0, )",
           "QingFa.Shop.Contract": "[1.0.0, )",
           "Scrutor": "[7.0.0, )"
@@ -695,6 +693,7 @@
           "OpenTelemetry.Instrumentation.EntityFrameworkCore": "[1.20.1-beta.1, )",
           "OpenTelemetry.Instrumentation.StackExchangeRedis": "[1.20.1-beta.1, )",
           "QingFa.Shop.Contract": "[1.0.0, )",
+          "Scrutor": "[7.0.0, )",
           "ServiceDefaults": "[1.0.0, )",
           "SkiaSharp": "[4.153.1, )",
           "SkiaSharp.NativeAssets.Linux": "[4.153.1, )",
@@ -776,15 +775,6 @@
         "contentHash": "/FaFSm4W6rQp5kEZa7yTtvHH2yGmuC1p22Bg2zi83+W8SMJ+5RBTEWgRK0JS2S8jIdXj2hm2s4z1egjkE2azoQ==",
         "dependencies": {
           "Mapster.Core": "10.0.13"
-        }
-      },
-      "Mapster.DependencyInjection": {
-        "type": "CentralTransitive",
-        "requested": "[10.0.13, )",
-        "resolved": "10.0.13",
-        "contentHash": "/465HIt8gnkAHLF9s78JuHd7GEXanL6Yp/g5Jd5+ygC8a/9XNSlJf+0wBXrXASTRa5v64OKIHL8QA7fkgICyVA==",
-        "dependencies": {
-          "Mapster": "10.0.13"
         }
       },
       "MessagePack": {
