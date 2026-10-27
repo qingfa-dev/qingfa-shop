@@ -4,6 +4,8 @@ using Application.Common.Mediators.Behaviors.Exceptions;
 using Application.Common.Mediators.Behaviors.Logging;
 using Application.Common.Mediators.Behaviors.Validation;
 
+using FluentValidation;
+
 using MediatR;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -28,6 +30,14 @@ public static class MediatorComposition
         params Assembly[] additionalAssemblies)
     {
         #region MediatR Configuration
+
+        // Initialize: register the validators the validation behavior resolves.
+        services.AddValidatorsFromAssembly(typeof(AssemblyMarker).Assembly);
+
+        foreach (var assembly in additionalAssemblies)
+        {
+            services.AddValidatorsFromAssembly(assembly);
+        }
 
         // Initialize: Configure MediatR with pipeline behaviors
         services.AddMediatR(cfg =>
