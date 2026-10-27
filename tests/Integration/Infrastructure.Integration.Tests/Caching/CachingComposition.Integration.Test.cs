@@ -129,11 +129,15 @@ public sealed class CachingCompositionIntegrationTest
     {
         var services = new ServiceCollection();
 
-        Action act = () => services.AddCaching(BuildConfig());
+        Action act = () => services.AddCaching(BuildConfig(new Dictionary<string, string?>
+        {
+            ["Caching:Distributed:Provider"] = null,
+            ["Caching:Distributed:ConnectionStringName"] = null
+        }));
 
         act.Should()
             .Throw<InvalidOperationException>()
-            .WithMessage("*IDistributedCache*");
+            .WithMessage("*Required*");
     }
 
     [Fact(DisplayName = "Memory-only mode should register CacheService")]
@@ -162,7 +166,10 @@ public sealed class CachingCompositionIntegrationTest
         services.AddCaching(BuildConfig(new Dictionary<string, string?>
         {
             ["Caching:Memory:Enabled"] = "false",
-            ["Caching:Distributed:Enabled"] = "true"
+            ["Caching:Distributed:Enabled"] = "true",
+            ["Caching:Distributed:Provider"] = "memory",
+            ["Caching:Distributed:ConnectionStringName"] = "Cache",
+            ["ConnectionStrings:Cache"] = "memory-cache"
         }));
 
         using var provider = services.BuildServiceProvider();
@@ -183,8 +190,11 @@ public sealed class CachingCompositionIntegrationTest
             ["Caching:Memory:CompactionPercentage"] = "25",
             ["Caching:Memory:SizeLimitBytes"] = "104857600",
             ["Caching:Distributed:DefaultExpirationMinutes"] = "60",
+            ["Caching:Distributed:Provider"] = "memory",
+            ["Caching:Distributed:ConnectionStringName"] = "Cache",
             ["Caching:Hybrid:MaximumPayloadBytes"] = "5242880",
-            ["Caching:Hybrid:MaximumKeyLength"] = "512"
+            ["Caching:Hybrid:MaximumKeyLength"] = "512",
+            ["ConnectionStrings:Cache"] = "memory-cache"
         }));
 
         using var provider = services.BuildServiceProvider();
@@ -233,19 +243,17 @@ public sealed class CachingCompositionIntegrationTest
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddDistributedMemoryCache();
-        services.AddCaching(BuildConfig(new Dictionary<string, string?>
+
+        Action act = () => services.AddCaching(BuildConfig(new Dictionary<string, string?>
         {
             ["Caching:Memory:Enabled"] = "false",
-            ["Caching:Distributed:Enabled"] = "false"
+            ["Caching:Distributed:Enabled"] = "false",
+            ["Caching:Distributed:Provider"] = "memory",
+            ["Caching:Distributed:ConnectionStringName"] = "Cache",
+            ["ConnectionStrings:Cache"] = "memory-cache"
         }));
 
-        using var provider = services.BuildServiceProvider();
-        var optionsService = provider.GetRequiredService<IOptions<CachingSetting>>();
-
-        // ValidateOnStart fires when accessing .Value
-        Action act = () => { var _ = optionsService.Value; };
-
-        act.Should().Throw<OptionsValidationException>()
+        act.Should().Throw<InvalidOperationException>()
             .WithMessage("*Caching.Tier.Required*");
     }
 
@@ -255,19 +263,17 @@ public sealed class CachingCompositionIntegrationTest
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddDistributedMemoryCache();
-        services.AddCaching(BuildConfig(new Dictionary<string, string?>
+
+        Action act = () => services.AddCaching(BuildConfig(new Dictionary<string, string?>
         {
             ["Caching:Memory:DefaultExpirationMinutes"] = "60",
-            ["Caching:Distributed:DefaultExpirationMinutes"] = "5"
+            ["Caching:Distributed:DefaultExpirationMinutes"] = "5",
+            ["Caching:Distributed:Provider"] = "memory",
+            ["Caching:Distributed:ConnectionStringName"] = "Cache",
+            ["ConnectionStrings:Cache"] = "memory-cache"
         }));
 
-        using var provider = services.BuildServiceProvider();
-        var optionsService = provider.GetRequiredService<IOptions<CachingSetting>>();
-
-        // ValidateOnStart fires when accessing .Value
-        Action act = () => { var _ = optionsService.Value; };
-
-        act.Should().Throw<OptionsValidationException>()
+        act.Should().Throw<InvalidOperationException>()
             .WithMessage("*Caching.Expiration.Inverted*");
     }
 
@@ -279,7 +285,10 @@ public sealed class CachingCompositionIntegrationTest
             ["Caching:Memory:Enabled"] = "true",
             ["Caching:Memory:DefaultExpirationMinutes"] = "5",
             ["Caching:Distributed:Enabled"] = "true",
-            ["Caching:Distributed:DefaultExpirationMinutes"] = "30"
+            ["Caching:Distributed:Provider"] = "memory",
+            ["Caching:Distributed:ConnectionStringName"] = "Cache",
+            ["Caching:Distributed:DefaultExpirationMinutes"] = "30",
+            ["ConnectionStrings:Cache"] = "memory-cache"
         };
 
         if (overrides is not null)

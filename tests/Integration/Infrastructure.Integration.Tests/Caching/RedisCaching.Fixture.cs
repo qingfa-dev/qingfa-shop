@@ -102,7 +102,10 @@ public sealed class RedisCachingFixture : IAsyncLifetime
             ["Caching:Memory:Enabled"] = "true",
             ["Caching:Memory:DefaultExpirationMinutes"] = "1",
             ["Caching:Distributed:Enabled"] = "true",
-            ["Caching:Distributed:DefaultExpirationMinutes"] = "5"
+            ["Caching:Distributed:Provider"] = "redis",
+            ["Caching:Distributed:ConnectionStringName"] = "Cache",
+            ["Caching:Distributed:DefaultExpirationMinutes"] = "5",
+            ["ConnectionStrings:Cache"] = "redis-connection-string"
         };
 
         return new ConfigurationBuilder()

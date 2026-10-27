@@ -69,7 +69,10 @@ public sealed class CachingFixture : IAsyncLifetime
             ["Caching:Memory:Enabled"] = "true",
             ["Caching:Memory:DefaultExpirationMinutes"] = "1",
             ["Caching:Distributed:Enabled"] = "true",
-            ["Caching:Distributed:DefaultExpirationMinutes"] = "5"
+            ["Caching:Distributed:Provider"] = "memory",
+            ["Caching:Distributed:ConnectionStringName"] = "Cache",
+            ["Caching:Distributed:DefaultExpirationMinutes"] = "5",
+            ["ConnectionStrings:Cache"] = "memory-cache"
         };
 
         return new ConfigurationBuilder()
