@@ -1,7 +1,7 @@
 using Application.Common.Querying;
 using Application.Common.Querying.Mapping;
 
-namespace Application.Tests.Common.Querying.Parsing;
+namespace Application.Unit.Tests.Common.Querying.Parsing;
 
 
 public sealed class FilterLimitTest

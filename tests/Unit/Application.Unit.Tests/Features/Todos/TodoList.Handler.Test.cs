@@ -8,7 +8,7 @@ using Application.Unit.Tests.Features.Todos.Fixtures;
 using Contract.Common;
 using Contract.Todos.Models;
 
-using Core.Todos;
+using Core.Todos.Lists;
 
 namespace Application.Unit.Tests.Features.Todos;
 

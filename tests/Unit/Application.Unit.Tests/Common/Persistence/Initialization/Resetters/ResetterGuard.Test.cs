@@ -1,6 +1,6 @@
 using Application.Common.Persistence.Initialization.Resetters;
 
-namespace Application.Tests.Common.Persistence.Initialization.Resetters;
+namespace Application.Unit.Tests.Common.Persistence.Initialization.Resetters;
 
 [Trait("Category", "Unit")]
 public sealed class ResetterGuardTest

@@ -1,7 +1,7 @@
 using System.Reflection;
 using System.Runtime.CompilerServices;
 
-namespace Core.Tests.Common.Monad.Results;
+namespace Core.Unit.Tests.Common.Monad.Results;
 
 /// <summary>Tests for Bind and Flatten extensions in <see cref="ResultExtension"/>.</summary>
 [Trait("Category", "Unit")]

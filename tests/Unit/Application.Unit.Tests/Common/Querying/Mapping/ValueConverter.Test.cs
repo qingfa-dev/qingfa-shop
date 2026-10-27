@@ -3,7 +3,7 @@ using Application.Common.Querying.Mapping;
 using Application.Common.Querying.Parsing;
 using System.Globalization;
 
-namespace Application.Tests.Common.Querying.Mapping;
+namespace Application.Unit.Tests.Common.Querying.Mapping;
 
 [Trait("Category", "Unit")]
 public sealed class ValueConverterTest

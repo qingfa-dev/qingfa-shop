@@ -5,13 +5,9 @@ using Infrastructure.Persistence;
 using Infrastructure.Persistence.EntityFramework.Contexts;
 using Infrastructure.Persistence.EntityFramework.Options;
 using Infrastructure.Persistence.EntityFramework.UnitOfWorks;
-using Infrastructure.Persistence.Initialization;
-using Infrastructure.Persistence.Todos;
-using Infrastructure.Persistence.Todos.Seeders;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
 using Npgsql;
 

@@ -1,5 +1,5 @@
 using Application.Common.Mediators.Behaviors.Validation;
-using Application.UnitTests.Common.Mediators.Fixtures;
+using Application.Unit.Tests.Common.Mediators.Fixtures;
 
 using FluentValidation;
 using FluentValidation.Results;
@@ -8,7 +8,7 @@ using MediatR;
 
 using Microsoft.Extensions.Logging;
 
-namespace Application.UnitTests.Common.Mediators.Behaviors.Validation;
+namespace Application.Unit.Tests.Common.Mediators.Behaviors.Validation;
 
 [Trait("Category", "Unit")]
 [Trait("Module", "Shared")]

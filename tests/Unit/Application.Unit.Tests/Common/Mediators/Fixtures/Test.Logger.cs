@@ -2,7 +2,7 @@ using System.Collections.Concurrent;
 
 using Microsoft.Extensions.Logging;
 
-namespace Application.UnitTests.Common.Mediators.Fixtures;
+namespace Application.Unit.Tests.Common.Mediators.Fixtures;
 
 public class TestLogger<T> : ILogger<T>
 {

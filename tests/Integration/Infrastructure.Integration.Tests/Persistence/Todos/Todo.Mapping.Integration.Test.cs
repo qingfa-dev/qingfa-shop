@@ -1,4 +1,3 @@
-using Application.Common.Persistence;
 using Application.Common.Persistence.Repositories;
 using Application.Common.Querying;
 using Application.Common.Querying.Filtering;
@@ -7,7 +6,9 @@ using Application.Common.Querying.Searching;
 using Application.Common.Querying.Sorting;
 
 using Core.Common.Monad.Results;
-using Core.Todos;
+using Core.Todos.Categories;
+using Core.Todos.Items;
+using Core.Todos.Lists;
 
 using Microsoft.Extensions.DependencyInjection;
 

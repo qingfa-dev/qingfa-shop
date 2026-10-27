@@ -2,7 +2,9 @@ using Application.Common.Caching;
 using Application.Common.Persistence.Repositories;
 using Application.Common.Querying.Mapping;
 
-using Core.Todos;
+using Core.Todos.Categories;
+using Core.Todos.Items;
+using Core.Todos.Lists;
 
 using Infrastructure.Caching.Services;
 using Infrastructure.Persistence.EntityFramework.Contexts;

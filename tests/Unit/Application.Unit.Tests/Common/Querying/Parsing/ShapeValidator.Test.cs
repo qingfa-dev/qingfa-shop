@@ -3,7 +3,7 @@ using Application.Common.Querying.Grouping;
 using Application.Common.Querying.Projection;
 using Application.Common.Querying.Parsing;
 
-namespace Application.Tests.Common.Querying.Parsing;
+namespace Application.Unit.Tests.Common.Querying.Parsing;
 
 
 public sealed class ShapeValidatorTest

@@ -1,7 +1,13 @@
 using System.Data;
+
 using Application.Common.Persistence.Initialization;
-using Core.Todos;
+
+using Core.Todos.Categories;
+using Core.Todos.Items;
+using Core.Todos.Lists;
+
 using Infrastructure.Persistence.Todos.Seeders;
+
 using Microsoft.Extensions.Logging;
 
 namespace Infrastructure.Unit.Tests.Persistence.Todos.Seeders;

@@ -1,7 +1,7 @@
 using Application.Common.Querying;
 using Application.Common.Querying.Searching;
 
-namespace Application.Tests.Common.Querying;
+namespace Application.Unit.Tests.Common.Querying;
 
 public sealed class QueryParametersTest
 {

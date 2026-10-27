@@ -1,6 +1,6 @@
 using Application.Common.Querying.Mapping;
 
-namespace Application.Tests.Common.Querying.Mapping;
+namespace Application.Unit.Tests.Common.Querying.Mapping;
 using Xunit;
 
 public sealed class QueryValueTest

@@ -1,6 +1,6 @@
 using Application.Common.Persistence.Initialization.Migrations;
 
-namespace Application.Tests.Common.Persistence.Initialization.Migrations;
+namespace Application.Unit.Tests.Common.Persistence.Initialization.Migrations;
 
 [Trait("Category", "Unit")]
 public sealed class MigrationOutcomeTest

@@ -1,7 +1,7 @@
 using Application.Common.Persistence.UnitOfWorks;
 using System.Data;
 
-namespace Application.Tests.Common.Persistence.UnitOfWorks;
+namespace Application.Unit.Tests.Common.Persistence.UnitOfWorks;
 
 [Trait("Category", "Unit")]
 public sealed class TransactionGuardTest

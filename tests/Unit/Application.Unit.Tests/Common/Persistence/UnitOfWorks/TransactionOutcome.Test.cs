@@ -1,6 +1,6 @@
 using Application.Common.Persistence.UnitOfWorks;
 
-namespace Application.Tests.Common.Persistence.UnitOfWorks;
+namespace Application.Unit.Tests.Common.Persistence.UnitOfWorks;
 
 [Trait("Category", "Unit")]
 public sealed class TransactionOutcomeTest

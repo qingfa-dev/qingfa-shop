@@ -1,6 +1,6 @@
 using Application.Common.Querying;
 
-namespace Application.Tests.Common.Querying;
+namespace Application.Unit.Tests.Common.Querying;
 
 
 public sealed class QueryParseLimitsTest

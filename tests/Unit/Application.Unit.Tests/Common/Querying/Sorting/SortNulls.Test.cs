@@ -1,6 +1,6 @@
 using Application.Common.Querying.Sorting;
 
-namespace Application.Tests.Common.Querying.Sorting;
+namespace Application.Unit.Tests.Common.Querying.Sorting;
 
 
 public sealed class SortNullsTest

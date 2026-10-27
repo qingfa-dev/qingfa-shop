@@ -1,7 +1,7 @@
 using Application.Common.Querying;
 using Application.Common.Querying.Searching;
 
-namespace Application.Tests.Common.Querying.Searching;
+namespace Application.Unit.Tests.Common.Querying.Searching;
 
 [Trait("Category", "Unit")]
 public sealed class FullTextSearchRequestTest

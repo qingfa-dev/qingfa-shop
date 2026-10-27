@@ -5,9 +5,7 @@ using Application.Features.Todos.Queries;
 using Contract.Todos.Models;
 
 using Core.Common.Monad.Results;
-using Core.Todos;
-
-using Infrastructure.Integration.Tests.Persistence.Todos;
+using Core.Todos.Items;
 
 namespace Infrastructure.Integration.Tests.Persistence.Todos;
 

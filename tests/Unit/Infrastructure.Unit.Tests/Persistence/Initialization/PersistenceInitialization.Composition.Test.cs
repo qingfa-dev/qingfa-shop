@@ -1,13 +1,15 @@
-using Application.Common.Persistence;
 using Application.Common.Persistence.Initialization;
 using Application.Common.Persistence.Initialization.Seeders;
 using Application.Common.Persistence.UnitOfWorks;
+
+using Core.Todos.Categories;
+using Core.Todos.Items;
+using Core.Todos.Lists;
 
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.EntityFramework.Contexts;
 using Infrastructure.Persistence.EntityFramework.UnitOfWorks;
 using Infrastructure.Persistence.Initialization;
-using Infrastructure.Persistence.Todos;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -68,9 +70,9 @@ public sealed class PersistenceInitializationCompositionTest
         seeders.Select(seeder => seeder.EntityType).Should().BeEquivalentTo(
             new[]
             {
-                typeof(Core.Todos.TodoCategory),
-                typeof(Core.Todos.TodoList),
-                typeof(Core.Todos.Todo)
+                typeof(TodoCategory),
+                typeof(TodoList),
+                typeof(Todo)
             });
     }
 

@@ -1,6 +1,6 @@
 using Application.Common.Querying.Parsing;
 
-namespace Application.Tests.Common.Querying.Parsing;
+namespace Application.Unit.Tests.Common.Querying.Parsing;
 
 
 public sealed class TextCursorTest

@@ -334,6 +334,107 @@ public sealed class EfCorePersistenceInitializerTest : IAsyncLifetime
         context.Dispose();
     }
 
+    [Fact(DisplayName = "InitializeAsync with a data-only reset should run the resetter after migrations")]
+    public async Task InitializeAsync_WithDataOnlyReset_ShouldRunResetterAfterMigrations()
+    {
+        // Arrange
+        var context = new TestInitializerDbContext(_options!);
+        await context.Database.EnsureCreatedAsync();
+        var unitOfWork = new Mock<IUnitOfWork>().Object;
+        var logger = new Mock<ILogger<EfCorePersistenceInitializer<TestInitializerDbContext>>>().Object;
+        var initializer = new EfCorePersistenceInitializer<TestInitializerDbContext>(
+            context, unitOfWork, logger, Array.Empty<IInitializationStep>());
+
+        // Act
+        var result = await initializer.InitializeAsync(
+            runMigrations: false,
+            runSeeders: false,
+            runResetters: true,
+            resetScope: ResetScope.DataOnly);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+
+        // Cleanup
+        await context.Database.EnsureDeletedAsync();
+        context.Dispose();
+    }
+
+    [Fact(DisplayName = "InitializeAsync should wire step dependencies into the pipeline")]
+    public async Task InitializeAsync_WithDependencies_ShouldWireThemIntoThePipeline()
+    {
+        // Arrange
+        var context = new TestInitializerDbContext(_options!);
+        await context.Database.EnsureCreatedAsync();
+        var unitOfWork = new Mock<IUnitOfWork>().Object;
+        var logger = new Mock<ILogger<EfCorePersistenceInitializer<TestInitializerDbContext>>>().Object;
+
+        var first = new Mock<IInitializationStep>();
+        first.SetupGet(s => s.Name).Returns("seed:first");
+        first.SetupGet(s => s.DisplayName).Returns("First");
+        first.SetupGet(s => s.Order).Returns(10);
+        first.SetupGet(s => s.DependsOn).Returns(Array.Empty<string>());
+        first.SetupGet(s => s.IsRequired).Returns(false);
+        first.Setup(s => s.ExecuteAsync(It.IsAny<IInitializationContext>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok());
+
+        var second = new Mock<IInitializationStep>();
+        second.SetupGet(s => s.Name).Returns("seed:second");
+        second.SetupGet(s => s.DisplayName).Returns("Second");
+        second.SetupGet(s => s.Order).Returns(20);
+        second.SetupGet(s => s.DependsOn).Returns(["seed:first"]);
+        second.SetupGet(s => s.IsRequired).Returns(false);
+        second.Setup(s => s.ExecuteAsync(It.IsAny<IInitializationContext>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok());
+
+        var initializer = new EfCorePersistenceInitializer<TestInitializerDbContext>(
+            context, unitOfWork, logger, [first.Object, second.Object]);
+
+        // Act
+        var result = await initializer.InitializeAsync(runMigrations: false);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+
+        // Cleanup
+        await context.Database.EnsureDeletedAsync();
+        context.Dispose();
+    }
+
+    [Fact(DisplayName = "InitializeAsync should report a required step failure")]
+    public async Task InitializeAsync_WhenRequiredStepFails_ShouldReturnFailure()
+    {
+        // Arrange
+        var context = new TestInitializerDbContext(_options!);
+        await context.Database.EnsureCreatedAsync();
+        var unitOfWork = new Mock<IUnitOfWork>().Object;
+        var logger = new Mock<ILogger<EfCorePersistenceInitializer<TestInitializerDbContext>>>().Object;
+
+        var failingStep = new Mock<IInitializationStep>();
+        failingStep.SetupGet(s => s.Name).Returns("seed:required-failing");
+        failingStep.SetupGet(s => s.DisplayName).Returns("Required Failing");
+        failingStep.SetupGet(s => s.Order).Returns(10);
+        failingStep.SetupGet(s => s.DependsOn).Returns(Array.Empty<string>());
+        failingStep.SetupGet(s => s.IsRequired).Returns(true);
+        failingStep.Setup(s => s.ExecuteAsync(It.IsAny<IInitializationContext>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Fail(InitializationOutcome.Failure.Unexpected("required failure")));
+        failingStep.Setup(s => s.PreviewAsync(It.IsAny<IInitializationContext>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<IReadOnlyList<InitializationOperation>>.Ok(Array.Empty<InitializationOperation>()));
+
+        var initializer = new EfCorePersistenceInitializer<TestInitializerDbContext>(
+            context, unitOfWork, logger, [failingStep.Object]);
+
+        // Act
+        var result = await initializer.InitializeAsync(runMigrations: false);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+
+        // Cleanup
+        await context.Database.EnsureDeletedAsync();
+        context.Dispose();
+    }
+
     private EfCoreInitializationContext CreateInitContext(DbContext context)
     {
         var connection = context.Database.GetDbConnection();

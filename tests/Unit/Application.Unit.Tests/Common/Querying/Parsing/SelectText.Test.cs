@@ -3,7 +3,7 @@ using Application.Common.Querying.Projection;
 using Application.Common.Querying.Parsing;
 using Application.Common.Querying;
 
-namespace Application.Tests.Common.Querying.Parsing;
+namespace Application.Unit.Tests.Common.Querying.Parsing;
 using Xunit;
 
 public sealed class SelectTextTest

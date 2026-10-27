@@ -1,5 +1,5 @@
 using Infrastructure.Persistence.EntityFramework.Contexts;
-using Infrastructure.Persistence.EntityFramework.Options;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Integration.Tests.Persistence;

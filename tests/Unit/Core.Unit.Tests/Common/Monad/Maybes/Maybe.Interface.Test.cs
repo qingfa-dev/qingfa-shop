@@ -1,4 +1,4 @@
-using Shared.Foundations.Maybes;
+using Core.Common.Monad.Maybes;
 
 namespace Core.Unit.Tests.Common.Monad.Maybes;
 

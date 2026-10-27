@@ -1,6 +1,6 @@
 using Infrastructure.Persistence.EntityFramework.Options;
 
-namespace Infrastructure.Tests.Persistence.EntityFramework.Options;
+namespace Infrastructure.Unit.Tests.Persistence.EntityFramework.Options;
 
 [Trait("Category", "Unit")]
 public sealed class PersistenceSettingTest

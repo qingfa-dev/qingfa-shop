@@ -2,7 +2,7 @@ using Application.Common.Querying;
 using Application.Common.Querying.Mapping;
 using Application.Common.Querying.Sorting;
 
-namespace Application.Tests.Common.Querying.Mapping;
+namespace Application.Unit.Tests.Common.Querying.Mapping;
 
 public sealed class QueryMapProviderTest
 {

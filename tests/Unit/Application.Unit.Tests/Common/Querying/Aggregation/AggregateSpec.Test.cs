@@ -1,6 +1,6 @@
 using Application.Common.Querying.Aggregation;
 
-namespace Application.Tests.Common.Querying.Aggregation;
+namespace Application.Unit.Tests.Common.Querying.Aggregation;
 
 
 public sealed class AggregateSpecTest

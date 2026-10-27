@@ -4,7 +4,10 @@ using Application.Common.Persistence.UnitOfWorks;
 using Application.Common.Querying.Mapping;
 using Application.Features.Todos.Abstractions;
 
-using Core.Todos;
+using Core.Common.Monad.Maybes;
+using Core.Todos.Categories;
+using Core.Todos.Items;
+using Core.Todos.Lists;
 namespace Application.Unit.Tests.Features.Todos.Fixtures;
 
 /// <summary>Shared mocks and clock for the Todos handler unit tests.</summary>

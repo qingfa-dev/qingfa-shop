@@ -1,6 +1,6 @@
-using Shared.Foundations.Maybes;
+using Core.Common.Monad.Maybes;
 
-namespace Shared.Foundations.UnitTests.Maybes;
+namespace Core.Unit.Tests.Common.Monad.Maybes;
 
 public class MaybeTest
 {

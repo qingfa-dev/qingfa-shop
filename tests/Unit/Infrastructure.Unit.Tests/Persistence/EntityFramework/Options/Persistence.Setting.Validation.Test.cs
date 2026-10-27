@@ -279,6 +279,136 @@ public sealed class PersistenceSettingValidationTest
 
     #region Connection String Resolution
 
+    [Fact(DisplayName = "ValidateWithConnectionString with invalid static rules should skip resolution")]
+    public void ValidateWithConnectionString_WhenStaticRulesFail_ShouldReturnThem()
+    {
+        // Arrange
+        var setting = CreateValidSetting();
+        setting.Provider = "SqlServer";
+        var config = new ConfigurationBuilder().Build();
+
+        // Act
+        Result<PersistenceSetting> result = PersistenceSettingValidation
+            .ValidateWithConnectionString(setting, config);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Errors.First().Code.Should().Be("EfCore.Provider.Unsupported");
+    }
+
+    [Fact(DisplayName = "ValidateWithConnectionString without a Host key should fail for PostgreSQL")]
+    public void ValidateWithConnectionString_WhenHostMissing_ShouldFail()
+    {
+        // Arrange
+        var setting = CreateValidSetting();
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:Default"] = "Database=test;Username=test;Password=test"
+            })
+            .Build();
+
+        // Act
+        Result<PersistenceSetting> result = PersistenceSettingValidation
+            .ValidateWithConnectionString(setting, config);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Errors.First().Code.Should().Be("EfCore.ConnectionString.Invalid");
+    }
+
+    #endregion
+
+    #region Connection Probe
+
+    [Fact(DisplayName = "ValidateWithConnectionProbeAsync should short-circuit on invalid static rules")]
+    public async Task ValidateWithConnectionProbeAsync_WhenStaticRulesFail_ShouldReturnThem()
+    {
+        // Arrange
+        var setting = CreateValidSetting();
+        setting.Provider = "SqlServer";
+        var config = new ConfigurationBuilder().Build();
+
+        // Act
+        Result<PersistenceSetting> result = await PersistenceSettingValidation
+            .ValidateWithConnectionProbeAsync(setting, config);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Errors.First().Code.Should().Be("EfCore.Provider.Unsupported");
+    }
+
+    [Fact(DisplayName = "ValidateWithConnectionProbeAsync should report an unreachable host")]
+    public async Task ValidateWithConnectionProbeAsync_WhenHostRefuses_ShouldFail()
+    {
+        // Arrange
+        var setting = CreateValidSetting();
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:Default"] =
+                    "Host=127.0.0.1;Port=1;Timeout=1;Database=test;Username=test;Password=test;Pooling=false"
+            })
+            .Build();
+
+        // Act
+        Result<PersistenceSetting> result = await PersistenceSettingValidation
+            .ValidateWithConnectionProbeAsync(setting, config);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Errors.First().Code.Should().Be("EfCore.Connection.ProbeFailed");
+    }
+
+    [Fact(DisplayName = "ValidateWithConnectionProbeAsync should report a malformed connection string")]
+    public async Task ValidateWithConnectionProbeAsync_WhenConnectionStringMalformed_ShouldFail()
+    {
+        // Arrange
+        var setting = CreateValidSetting();
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:Default"] = "Host=localhost;this is not a valid key"
+            })
+            .Build();
+
+        // Act
+        Result<PersistenceSetting> result = await PersistenceSettingValidation
+            .ValidateWithConnectionProbeAsync(setting, config);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Errors.First().Code.Should().Be("EfCore.Connection.ProbeFailed");
+    }
+
+    [Fact(DisplayName = "ValidateWithConnectionProbeAsync should report cancellation")]
+    public async Task ValidateWithConnectionProbeAsync_WhenCancelled_ShouldFail()
+    {
+        // Arrange
+        var setting = CreateValidSetting();
+        var config = new ConfigurationBuilder()
+            .AddInMemoryCollection(new Dictionary<string, string?>
+            {
+                ["ConnectionStrings:Default"] =
+                    "Host=127.0.0.1;Port=1;Timeout=1;Database=test;Username=test;Password=test"
+            })
+            .Build();
+        using var cts = new CancellationTokenSource();
+        cts.Cancel();
+
+        // Act
+        Result<PersistenceSetting> result = await PersistenceSettingValidation
+            .ValidateWithConnectionProbeAsync(setting, config, cts.Token);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Errors.First().Code.Should().Be("EfCore.Connection.ProbeFailed");
+    }
+
+    #endregion
+
+    #region Connection String Resolution
+
     [Fact(DisplayName = "ValidateWithConnectionString with missing connection string should fail")]
     public void ValidateWithConnectionString_WithMissingConnectionString_ShouldFail()
     {

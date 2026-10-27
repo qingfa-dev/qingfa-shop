@@ -1,6 +1,6 @@
 using Application.Common.Persistence.Initialization.Seeders;
 
-namespace Application.Tests.Common.Persistence.Initialization.Seeders;
+namespace Application.Unit.Tests.Common.Persistence.Initialization.Seeders;
 
 [Trait("Category", "Unit")]
 public sealed class SeederGuardTest

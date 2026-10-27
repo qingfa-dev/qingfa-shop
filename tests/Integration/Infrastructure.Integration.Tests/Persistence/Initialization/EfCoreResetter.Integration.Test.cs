@@ -1,11 +1,7 @@
-using Application.Common.Persistence.Initialization;
 using Application.Common.Persistence.Initialization.Resetters;
 using Application.Common.Persistence.UnitOfWorks;
 
-using Core.Common.Monad.Results;
-
 using Infrastructure.Persistence.Initialization;
-using Infrastructure.Persistence.Todos;
 using Infrastructure.Persistence.Todos.Seeders;
 
 using Microsoft.EntityFrameworkCore;

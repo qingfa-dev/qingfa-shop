@@ -5,8 +5,6 @@ using Application.Common.Persistence.UnitOfWorks;
 using Application.Common.Querying.Mapping;
 using Application.Features.Todos.Abstractions;
 
-using Core.Todos;
-
 using Infrastructure.Persistence.EntityFramework.Capabilities;
 using Infrastructure.Persistence.EntityFramework.QueryTranslation;
 using Infrastructure.Persistence.EntityFramework.Repositories;
@@ -21,6 +19,9 @@ using Respawn;
 using Testcontainers.PostgreSql;
 using Infrastructure.Persistence.EntityFramework.Contexts;
 using Infrastructure.Persistence.EntityFramework.Options;
+using Core.Todos.Categories;
+using Core.Todos.Items;
+using Core.Todos.Lists;
 
 namespace Infrastructure.Integration.Tests.Persistence.Todos;
 

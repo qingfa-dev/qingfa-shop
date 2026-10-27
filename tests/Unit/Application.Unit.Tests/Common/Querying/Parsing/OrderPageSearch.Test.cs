@@ -3,7 +3,7 @@ using Application.Common.Querying.Mapping;
 using Application.Common.Querying.Searching;
 using Application.Common.Querying.Sorting;
 
-namespace Application.Tests.Common.Querying.Parsing;
+namespace Application.Unit.Tests.Common.Querying.Parsing;
 
 
 public sealed class OrderPageSearchTest

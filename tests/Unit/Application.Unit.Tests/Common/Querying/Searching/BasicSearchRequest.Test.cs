@@ -2,8 +2,7 @@ using Application.Common.Querying;
 using Application.Common.Querying.Mapping;
 using Application.Common.Querying.Searching;
 
-namespace Application.Tests.Common.Querying.Searching;
-
+namespace Application.Unit.Tests.Common.Querying.Searching;
 
 public sealed class BasicSearchRequestTest
 {

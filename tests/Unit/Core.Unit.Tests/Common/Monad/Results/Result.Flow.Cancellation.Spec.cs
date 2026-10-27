@@ -1,4 +1,4 @@
-namespace Core.Tests.Common.Monad.Results;
+namespace Core.Unit.Tests.Common.Monad.Results;
 
 /// <summary>Tests for cancellation behavior in asynchronous result extensions.</summary>
 [Trait("Category", "Unit")]

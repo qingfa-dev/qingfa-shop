@@ -2,7 +2,7 @@ using Application.Common.Persistence.Repositories;
 using Application.Features.Todos.Commands;
 using Application.Unit.Tests.Features.Todos.Fixtures;
 
-using Core.Todos;
+using Core.Todos.Items;
 
 namespace Application.Unit.Tests.Features.Todos.Commands;
 

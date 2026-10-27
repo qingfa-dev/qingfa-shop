@@ -1,6 +1,6 @@
 using Core.Common.Concerns.Lifecycle.Modifiable;
 using Core.Common.Concerns.Lifecycle.SoftDeletable;
-using Core.Todos;
+using Core.Todos.Lists;
 
 namespace Core.Unit.Tests.Todos;
 

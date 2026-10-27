@@ -1,9 +1,7 @@
 using Application.Common.Persistence.Initialization;
-using Application.Common.Persistence.Initialization.Migrations;
 using Application.Common.Persistence.UnitOfWorks;
 
 using Infrastructure.Persistence.Initialization;
-using Infrastructure.Persistence.Todos;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;

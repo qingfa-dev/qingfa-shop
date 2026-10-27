@@ -1,4 +1,3 @@
-using Application.Common.Persistence;
 using Application.Common.Persistence.Repositories;
 using Application.Common.Persistence.Capabilities;
 using Application.Common.Querying;
@@ -11,7 +10,6 @@ using Application.Common.Querying.Projection;
 using Application.Common.Querying.Sorting;
 
 using Core.Common.Domain.Entities;
-using Core.Common.Monad.Results;
 
 using Infrastructure.Persistence.EntityFramework.Capabilities;
 using Infrastructure.Persistence.EntityFramework.QueryTranslation;

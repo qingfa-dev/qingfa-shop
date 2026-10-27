@@ -1,6 +1,6 @@
 using Application.Common.Querying.Projection;
 
-namespace Application.Tests.Common.Querying.Projection;
+namespace Application.Unit.Tests.Common.Querying.Projection;
 using Xunit;
 
 public sealed class TabularModelTest

@@ -1,6 +1,6 @@
 using Application.Common.Persistence.Capabilities;
 
-namespace Application.Tests.Common.Persistence.Capabilities;
+namespace Application.Unit.Tests.Common.Persistence.Capabilities;
 
 [Trait("Category", "Unit")]
 public sealed class QueryCapabilityConstantTest

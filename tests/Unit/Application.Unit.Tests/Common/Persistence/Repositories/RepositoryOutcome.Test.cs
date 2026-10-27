@@ -1,6 +1,6 @@
 using Application.Common.Persistence.Repositories;
 
-namespace Application.Tests.Common.Persistence.Repositories;
+namespace Application.Unit.Tests.Common.Persistence.Repositories;
 
 [Trait("Category", "Unit")]
 public sealed class RepositoryOutcomeTest

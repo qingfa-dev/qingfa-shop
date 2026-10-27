@@ -6,7 +6,7 @@ using Infrastructure.Persistence.Initialization;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-namespace Infrastructure.Unit.Tests.Persistence.Initialization;
+namespace Infrastructure.Unit.Tests.Persistence.Initialization.Resetters;
 
 /// <summary>Unit tests for EfCoreResetter using SQLite-backed DbContext.</summary>
 public sealed class EfCoreResetterTest : IAsyncLifetime

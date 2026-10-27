@@ -1,6 +1,6 @@
 using Application.Common.Querying.Pagination;
 
-namespace Application.Tests.Common.Querying.Pagination;
+namespace Application.Unit.Tests.Common.Querying.Pagination;
 
 
 public sealed class QueryPageTest

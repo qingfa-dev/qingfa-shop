@@ -1,4 +1,4 @@
-using Core.Todos;
+using Core.Todos.Categories;
 
 namespace Core.Unit.Tests.Todos;
 

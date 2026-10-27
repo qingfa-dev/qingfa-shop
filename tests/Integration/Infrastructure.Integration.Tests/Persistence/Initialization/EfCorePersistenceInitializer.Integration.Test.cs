@@ -4,7 +4,6 @@ using Application.Common.Persistence.Initialization.Resetters;
 using Application.Common.Persistence.Initialization.Seeders;
 
 using Infrastructure.Persistence.Initialization;
-using Infrastructure.Persistence.Todos;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;

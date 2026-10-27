@@ -1,4 +1,6 @@
-namespace Core.Tests.Common.Monad.Results;
+using Core.Unit.Tests.Common.Monad.Results;
+
+namespace Core.Unit.Tests.Common.Monad.Results;
 
 /// <summary>Tests for Map and MapError extensions in <see cref="ResultExtension"/>.</summary>
 [Trait("Category", "Unit")]

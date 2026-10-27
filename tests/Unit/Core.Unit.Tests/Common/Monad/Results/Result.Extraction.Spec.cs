@@ -1,4 +1,4 @@
-namespace Core.Tests.Common.Monad.Results;
+namespace Core.Unit.Tests.Common.Monad.Results;
 
 /// <summary>Tests for value extraction extensions in <see cref="ResultExtension"/>.</summary>
 [Trait("Category", "Unit")]

@@ -3,7 +3,7 @@ using Application.Unit.Tests.Features.Todos.Fixtures;
 
 using Contract.Todos.Models;
 
-using Core.Todos;
+using Core.Todos.Items;
 
 namespace Application.Unit.Tests.Features.Todos.Commands;
 

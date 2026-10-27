@@ -1,4 +1,3 @@
-using Application.Common.Persistence;
 using Application.Common.Querying;
 using Application.Common.Querying.Aggregation;
 using Application.Common.Querying.Filtering;

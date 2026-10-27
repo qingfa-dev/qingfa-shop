@@ -1,7 +1,6 @@
 using Application.Common.Querying;
 
-namespace Core.Tests.Common.Querying;
-
+namespace Application.Unit.Tests.Common.Querying;
 
 public sealed class QueryOutcomeTest
 {

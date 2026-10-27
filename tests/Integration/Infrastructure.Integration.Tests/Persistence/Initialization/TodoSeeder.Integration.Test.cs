@@ -1,20 +1,20 @@
 using System.Text.Json;
 
 using Application.Common.Persistence.Initialization;
-using Application.Common.Persistence.Initialization.Seeders;
 using Application.Common.Persistence.UnitOfWorks;
 
 using Core.Common.Monad.Results;
-using Core.Todos;
 
 using Infrastructure.Persistence.Initialization;
-using Infrastructure.Persistence.Todos;
 using Infrastructure.Persistence.Todos.Seeders;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Infrastructure.Persistence.EntityFramework.Contexts;
+using Core.Todos.Categories;
+using Core.Todos.Items;
+using Core.Todos.Lists;
 
 namespace Infrastructure.Integration.Tests.Persistence.Initialization;
 

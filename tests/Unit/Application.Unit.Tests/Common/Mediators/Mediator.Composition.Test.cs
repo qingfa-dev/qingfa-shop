@@ -2,7 +2,7 @@ using Application.Common.Mediators;
 using Application.Common.Mediators.Behaviors.Exceptions;
 using Application.Common.Mediators.Behaviors.Logging;
 using Application.Common.Mediators.Behaviors.Validation;
-using Application.UnitTests.Common.Mediators.Fixtures;
+using Application.Unit.Tests.Common.Mediators.Fixtures;
 
 using MediatR;
 

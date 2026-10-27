@@ -4,8 +4,7 @@ using Application.Common.Querying.Grouping;
 using Application.Common.Querying.Pagination;
 using Application.Common.Querying.Projection;
 
-namespace Core.Tests.Common.Querying;
-
+namespace Application.Unit.Tests.Common.Querying;
 
 public sealed class QueryModelTest
 {

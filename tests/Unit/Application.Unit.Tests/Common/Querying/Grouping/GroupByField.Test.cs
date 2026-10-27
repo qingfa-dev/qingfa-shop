@@ -1,6 +1,6 @@
 using Application.Common.Querying.Grouping;
 
-namespace Application.Tests.Common.Querying.Grouping;
+namespace Application.Unit.Tests.Common.Querying.Grouping;
 
 
 public sealed class GroupByFieldTest

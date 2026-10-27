@@ -1,5 +1,3 @@
-using Application.Common.Persistence;
-using Application.Common.Persistence.Repositories;
 using Application.Common.Querying;
 using Application.Common.Querying.Filtering;
 using Application.Common.Querying.Mapping;
@@ -7,7 +5,9 @@ using Application.Common.Querying.Pagination;
 using Application.Common.Querying.Searching;
 using Application.Common.Querying.Sorting;
 
-using Core.Todos;
+using Core.Todos.Categories;
+using Core.Todos.Items;
+using Core.Todos.Lists;
 
 using Infrastructure.Persistence.EntityFramework.Contexts;
 using Infrastructure.Persistence.EntityFramework.QueryTranslation;

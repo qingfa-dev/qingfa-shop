@@ -1,7 +1,7 @@
 using Application.Common.Persistence.Repositories;
 using Application.Common.Persistence.UnitOfWorks;
 
-using Core.Todos;
+using Core.Todos.Items;
 
 namespace Infrastructure.Integration.Tests.Persistence.Todos;
 

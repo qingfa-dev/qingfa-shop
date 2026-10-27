@@ -1,6 +1,6 @@
 using Application.Common.Querying.Filtering;
 
-namespace Application.Tests.Common.Querying.Filtering;
+namespace Application.Unit.Tests.Common.Querying.Filtering;
 
 
 public sealed class FilterGroupTest

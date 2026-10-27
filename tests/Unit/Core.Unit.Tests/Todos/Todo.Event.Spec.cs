@@ -1,6 +1,5 @@
 using Core.Common.Domain.Events;
-
-using Core.Todos;
+using Core.Todos.Items;
 
 namespace Core.Unit.Tests.Todos;
 

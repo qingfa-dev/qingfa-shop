@@ -1,6 +1,5 @@
 using Application.Common.Caching;
 
-using Infrastructure.Caching;
 using Infrastructure.Caching.Options;
 using Infrastructure.Caching.Options.Distributed;
 using Infrastructure.Caching.Options.Memory;

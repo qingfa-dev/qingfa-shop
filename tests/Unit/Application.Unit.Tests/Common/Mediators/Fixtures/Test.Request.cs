@@ -2,7 +2,7 @@ using FluentValidation;
 
 using MediatR;
 
-namespace Application.UnitTests.Common.Mediators.Fixtures;
+namespace Application.Unit.Tests.Common.Mediators.Fixtures;
 
 public record TestRequest : IRequest<Result>
 {

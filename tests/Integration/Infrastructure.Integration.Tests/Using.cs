@@ -1,1 +1,1 @@
-global using Shared.Foundations.Maybes;
+global using Core.Common.Monad.Maybes;

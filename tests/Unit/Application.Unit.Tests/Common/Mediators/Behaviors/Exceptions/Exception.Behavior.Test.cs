@@ -1,11 +1,11 @@
 using Application.Common.Mediators.Behaviors.Exceptions;
-using Application.UnitTests.Common.Mediators.Fixtures;
+using Application.Unit.Tests.Common.Mediators.Fixtures;
 
 using MediatR;
 
 using Microsoft.Extensions.Logging;
 
-namespace Application.UnitTests.Common.Mediators.Behaviors.Exceptions;
+namespace Application.Unit.Tests.Common.Mediators.Behaviors.Exceptions;
 
 [Trait("Category", "Unit")]
 [Trait("Module", "Shared")]

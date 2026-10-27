@@ -5,7 +5,6 @@ using Application.Common.Persistence.UnitOfWorks;
 using Core.Common.Domain.Entities;
 
 using Infrastructure.Persistence.EntityFramework.Contexts;
-using Infrastructure.Persistence.EntityFramework.Options;
 using Infrastructure.Persistence.EntityFramework.UnitOfWorks;
 
 using Microsoft.EntityFrameworkCore;

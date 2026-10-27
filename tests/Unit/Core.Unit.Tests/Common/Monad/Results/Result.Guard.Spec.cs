@@ -1,4 +1,4 @@
-namespace Core.Tests.Common.Monad.Results;
+namespace Core.Unit.Tests.Common.Monad.Results;
 
 /// <summary>Tests for <see cref="ResultGuard"/> validation methods.</summary>
 [Trait("Category", "Unit")]

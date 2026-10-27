@@ -1,5 +1,3 @@
-using Application.Common.Persistence;
-
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Unit.Tests.Persistence.EntityFramework.Repositories;

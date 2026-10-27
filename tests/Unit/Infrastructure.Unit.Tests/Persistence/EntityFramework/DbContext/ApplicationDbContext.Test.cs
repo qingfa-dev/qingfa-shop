@@ -1,11 +1,12 @@
-using Core.Common.Monad.Metadata;
-using Core.Todos;
+using Core.Todos.Categories;
+using Core.Todos.Items;
+using Core.Todos.Lists;
 
 using Infrastructure.Persistence.EntityFramework.Contexts;
 
 using Microsoft.EntityFrameworkCore;
 
-namespace Infrastructure.Unit.Tests.Persistence.EntityFramework.Contexts;
+namespace Infrastructure.Unit.Tests.Persistence.EntityFramework.DbContext;
 
 /// <summary>
 /// Unit tests for the single <see cref="ApplicationDbContext"/>, using SQLite so

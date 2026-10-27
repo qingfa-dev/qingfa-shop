@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-namespace Application.UnitTests.Common.Mediators.Fixtures;
+namespace Application.Unit.Tests.Common.Mediators.Fixtures;
 
 /// <summary>
 /// Provides extension methods for verifying log calls on mocked ILogger instances in unit tests.
