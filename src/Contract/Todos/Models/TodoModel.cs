@@ -1,4 +1,4 @@
-using Core.Todos;
+using Core.Todos.Items;
 
 namespace Contract.Todos.Models;
 
