@@ -87,10 +87,6 @@ public static class QueryCapabilityOutcome
             Codes.SearchInvalidMode,
             $"{parameterName} has an invalid mode.{(!string.IsNullOrEmpty(mode) ? $" Mode: {mode}" : "")}");
 
-        public static Error SearchLanguageTooLong(string parameterName = "language") => Error.Validation(
-            Codes.SearchLanguageTooLong,
-            $"{parameterName} cannot exceed {QueryCapabilityConstant.Search.MaxLanguageLength} characters.");
-
         // ---- Map ----
         public static Error MapFieldNameTooLong(string parameterName = "fieldName") => Error.Validation(
             Codes.MapFieldNameTooLong,
@@ -151,7 +147,6 @@ public static class QueryCapabilityOutcome
         public const string SearchTooManyTerms     = "QueryCapability.Search.TooManyTerms";
         public const string SearchTooManyFields    = "QueryCapability.Search.TooManyFields";
         public const string SearchInvalidMode      = "QueryCapability.Search.InvalidMode";
-        public const string SearchLanguageTooLong  = "QueryCapability.Search.LanguageTooLong";
 
         // ---- Map ----
         public const string MapFieldNameTooLong = "QueryCapability.Map.FieldNameTooLong";

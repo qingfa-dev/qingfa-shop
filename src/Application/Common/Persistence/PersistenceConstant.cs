@@ -7,6 +7,22 @@ namespace Application.Common.Persistence;
 /// </remarks>
 public static class PersistenceConstant
 {
+    /// <summary>Database schema settings.</summary>
+    public static class Schema
+    {
+        /// <summary>The schema owned by the Todo module.</summary>
+        public const string Todo = "todo";
+
+        /// <summary>
+        /// Every schema the persistence layer owns, in creation order.
+        /// Modules append their schema here so reset and initialization cover them all.
+        /// </summary>
+        public static readonly IReadOnlyList<string> Names = [Todo];
+
+        /// <summary>The default schema used when a model does not set one.</summary>
+        public const string Default = Todo;
+    }
+
     /// <summary>Configuration section names.</summary>
     public static class Configuration
     {

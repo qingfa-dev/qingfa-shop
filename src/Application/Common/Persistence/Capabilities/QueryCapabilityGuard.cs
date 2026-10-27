@@ -406,29 +406,6 @@ public static class QueryCapabilityGuard
         return Result.Ok();
     }
 
-    /// <summary>
-    /// Validates a full-text search language tag length.
-    /// </summary>
-    /// <param name="language">The language tag to validate.</param>
-    /// <param name="parameterName">The parameter name for error context.</param>
-    /// <returns>A successful Result if valid; otherwise a failed Result with validation error.</returns>
-    public static Result ValidateSearchLanguageLength(
-        string? language,
-        string parameterName = "language")
-    {
-        if (language is null || language.Length == 0)
-        {
-            return Result.Ok();
-        }
-
-        if (language.Length > QueryCapabilityConstant.Search.MaxLanguageLength)
-        {
-            return Result.Fail(QueryCapabilityOutcome.Failure.SearchLanguageTooLong(parameterName));
-        }
-
-        return Result.Ok();
-    }
-
     #endregion
 
     #region Map
