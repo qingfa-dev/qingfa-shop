@@ -7,7 +7,7 @@ using Application.Features.Todos.Mapping;
 using Contract.Todos.Models;
 
 using Core.Common.Concerns.Lifecycle.SoftDeletable;
-using Core.Todos;
+using Core.Todos.Categories;
 
 namespace Application.Features.Todos.Commands;
 

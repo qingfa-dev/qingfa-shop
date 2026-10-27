@@ -4,7 +4,7 @@ using Application.Common.Persistence.Repositories;
 using Application.Common.Persistence.UnitOfWorks;
 using Application.Features.Todos.Abstractions;
 
-using Core.Todos;
+using Core.Todos.Categories;
 
 namespace Application.Features.Todos.Commands;
 

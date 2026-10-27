@@ -1,8 +1,7 @@
-using Application.Common.Persistence.Repositories;
-
 using Core.Common.Domain.Entities;
+using Core.Common.Monad.Maybes;
 
-namespace Application.Common.Persistence;
+namespace Application.Common.Persistence.Repositories;
 
 /// <summary>Reads a single entity by its key (cRud).</summary>
 public interface IReadableRepository<TEntity, TKey> : IRepository<TEntity, TKey>

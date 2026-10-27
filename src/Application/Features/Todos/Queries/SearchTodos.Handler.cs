@@ -3,13 +3,12 @@ using Application.Common.Mediators.Queries;
 using Application.Common.Persistence.Repositories;
 using Application.Common.Querying;
 using Application.Common.Querying.Mapping;
-using Application.Common.Querying.Pagination;
 using Application.Features.Todos.Mapping;
 
 using Contract.Common;
 using Contract.Todos.Models;
 
-using Core.Todos;
+using Core.Todos.Items;
 
 namespace Application.Features.Todos.Queries;
 

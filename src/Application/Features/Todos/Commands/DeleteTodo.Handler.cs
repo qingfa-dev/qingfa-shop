@@ -3,7 +3,7 @@ using Application.Common.Mediators.Commands;
 using Application.Common.Persistence.Repositories;
 using Application.Common.Persistence.UnitOfWorks;
 
-using Core.Todos;
+using Core.Todos.Items;
 
 namespace Application.Features.Todos.Commands;
 

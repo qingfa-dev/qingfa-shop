@@ -1,10 +1,9 @@
-using Application.Common.Persistence.Repositories;
-
 using Core.Common.Domain.Entities;
+
 using Application.Common.Querying;
 using Application.Common.Querying.Pagination;
 
-namespace Application.Common.Persistence;
+namespace Application.Common.Persistence.Repositories;
 
 /// <summary>Paged / scalar queries over an entity set (cRud).</summary>
 public interface ISearchableRepository<TEntity, TKey> : IRepository<TEntity, TKey>

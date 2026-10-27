@@ -1,8 +1,6 @@
-using Application.Common.Persistence.Repositories;
-
 using Core.Common.Domain.Entities;
 
-namespace Application.Common.Persistence;
+namespace Application.Common.Persistence.Repositories;
 
 /// <summary>Stages adds and updates for the next <c>IUnitOfWork.SaveChangesAsync</c> (CrUd).</summary>
 public interface IWritableRepository<TEntity, TKey> : IRepository<TEntity, TKey>

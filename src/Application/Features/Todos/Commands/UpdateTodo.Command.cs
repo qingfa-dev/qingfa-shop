@@ -2,7 +2,7 @@ using Application.Common.Mediators.Commands;
 
 using Contract.Todos.Models;
 
-using Core.Todos;
+using Core.Todos.Items;
 
 namespace Application.Features.Todos.Commands;
 

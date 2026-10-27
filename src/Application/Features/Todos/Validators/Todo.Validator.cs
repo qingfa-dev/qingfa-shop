@@ -1,6 +1,6 @@
 using Application.Features.Todos.Commands;
 
-using Core.Todos;
+using Core.Todos.Items;
 
 using FluentValidation;
 

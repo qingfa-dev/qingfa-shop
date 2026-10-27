@@ -1,6 +1,6 @@
 using Contract.Todos.Models;
 
-using Core.Todos;
+using Core.Todos.Categories;
 
 namespace Application.Features.Todos.Mapping;
 
