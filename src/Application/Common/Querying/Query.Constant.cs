@@ -73,9 +73,6 @@ public static class QueryConstant
 
             /// <summary>Most fields a request may target for search.</summary>
             public const int MaxFields = 8;
-
-            /// <summary>Longest full-text language tag a request may send (e.g. "en", "de").</summary>
-            public const int MaxLanguageLength = 8;
         }
 
         /// <summary>Limits on a mapped field.</summary>

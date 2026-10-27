@@ -62,31 +62,11 @@ internal static class SearchText
                 QueryOutcome.Failure.TooManySearchFields(state.Options.MaxSearchFields));
         }
 
-        // Validate MaxSearchLanguage
-        if (!string.IsNullOrWhiteSpace(parameters.SearchLanguage) &&
-            parameters.SearchLanguage.Length > state.Options.MaxSearchLanguage)
-        {
-            return Result<SearchRequest>.Fail(
-                QueryOutcome.Failure.SearchLanguageTooLong(state.Options.MaxSearchLanguage));
-        }
-
-        // Validate MinScore range
-        if (parameters.SearchMinScore.HasValue &&
-            (parameters.SearchMinScore < 0 || parameters.SearchMinScore > 1))
-        {
-            return Result<SearchRequest>.Fail(
-                QueryOutcome.Failure.InvalidMinScore);
-        }
-
         var mode = parameters.SearchMode ?? SearchMode.Contains;
 
         SearchRequest request = mode switch
         {
-            SearchMode.FullText => new FullTextSearchRequest(
-                query,
-                parameters.SearchLanguage,
-                parameters.SearchIncludeRank ?? false,
-                parameters.SearchMinScore)
+            SearchMode.FullText => new FullTextSearchRequest(query)
             {
                 Fields = fields,
                 TermLogic = parameters.SearchTermLogic ?? SearchTermLogic.And,

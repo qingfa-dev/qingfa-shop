@@ -38,8 +38,6 @@ public static class QueryErrorCodes
     public const string SearchTooLong               = "Query.Search.TooLong";
     public const string SearchTooManyTerms          = "Query.Search.TooManyTerms";
     public const string SearchTooManyFields         = "Query.Search.TooManyFields";
-    public const string SearchLanguageTooLong       = "Query.Search.LanguageTooLong";
-    public const string SearchInvalidMinScore       = "Query.Search.InvalidMinScore";
 
     // ---- Tabular ----
     public const string TabularMixedShape           = "Query.Tabular.MixedShape";

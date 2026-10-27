@@ -14,9 +14,6 @@ public sealed record QueryParameters
     public SearchMode? SearchMode { get; init; }
     public SearchTermLogic? SearchTermLogic { get; init; }
     public bool? SearchCaseInsensitive { get; init; }
-    public string? SearchLanguage { get; init; }
-    public bool? SearchIncludeRank { get; init; }
-    public double? SearchMinScore { get; init; }
     public string? Select { get; init; }
     public string? GroupBy { get; init; }
     public string? Aggregate { get; init; }

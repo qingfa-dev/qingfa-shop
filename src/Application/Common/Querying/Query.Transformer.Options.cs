@@ -28,5 +28,4 @@ public sealed record QueryParseLimits
     public int MaxSearchLength   { get; init; } = QueryConstant.Limits.Search.MaxLength;
     public int MaxSearchTerms    { get; init; } = QueryConstant.Limits.Search.MaxTerms;
     public int MaxSearchFields   { get; init; } = QueryConstant.Limits.Search.MaxFields;
-    public int MaxSearchLanguage { get; init; } = QueryConstant.Limits.Search.MaxLanguageLength;
 }

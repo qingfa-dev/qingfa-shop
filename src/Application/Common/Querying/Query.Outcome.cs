@@ -90,14 +90,6 @@ public static class QueryOutcome
             code: QueryErrorCodes.SearchTooManyFields,
             message: $"Search cannot target more than {max} fields.");
 
-        public static Error SearchLanguageTooLong(int max) => Error.BadRequest(
-            code: QueryErrorCodes.SearchLanguageTooLong,
-            message: $"Search language cannot exceed {max} characters.");
-
-        public static Error InvalidMinScore => Error.BadRequest(
-            code: QueryErrorCodes.SearchInvalidMinScore,
-            message: "Minimum score must be between 0 and 1.");
-
         // ---- Tabular ----
         public static Error MixedShape => Error.BadRequest(
             code: QueryErrorCodes.TabularMixedShape,
