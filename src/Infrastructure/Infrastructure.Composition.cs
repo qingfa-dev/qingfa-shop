@@ -5,7 +5,6 @@ using Infrastructure.Caching;
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.EntityFramework.Contexts;
 
-using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;

@@ -1,9 +1,6 @@
-using Application.Common.Persistence;
 using Application.Common.Persistence.Capabilities;
 using Application.Common.Persistence.Repositories;
 using Application.Common.Querying;
-
-using Core.Common.Domain.Entities;
 
 namespace Infrastructure.Persistence.EntityFramework.Repositories;
 

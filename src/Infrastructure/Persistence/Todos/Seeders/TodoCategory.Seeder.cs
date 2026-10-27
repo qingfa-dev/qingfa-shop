@@ -4,9 +4,7 @@ using System.Data;
 using Application.Common.Persistence.Initialization;
 using Application.Common.Persistence.Initialization.Seeders;
 
-using Core.Todos;
-
-using Microsoft.Extensions.Logging;
+using Core.Todos.Categories;
 
 using static Application.Common.Persistence.Initialization.Seeders.PersistenceSeederLoggers;
 

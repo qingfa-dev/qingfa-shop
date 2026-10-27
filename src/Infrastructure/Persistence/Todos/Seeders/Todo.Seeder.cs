@@ -1,14 +1,9 @@
-
 using System.Data;
 
 using Application.Common.Persistence.Initialization;
 using Application.Common.Persistence.Initialization.Seeders;
 
-using Core.Todos;
-
-using Microsoft.Extensions.Logging;
-
-using static Application.Common.Persistence.Initialization.Seeders.PersistenceSeederLoggers;
+using Core.Todos.Items;
 
 namespace Infrastructure.Persistence.Todos.Seeders;
 /// <summary>
@@ -50,7 +45,7 @@ public sealed class TodoSeeder : IPersistenceSeeder<Todo, Guid>
         var existingCount = GetExistingCount(context);
         if (existingCount > 0)
         {
-            AlreadySeeded(context.Logger, "Todos", existingCount);
+            PersistenceSeederLoggers.AlreadySeeded(context.Logger, "Todos", existingCount);
             return Task.FromResult(Result.Success());
         }
 
@@ -94,7 +89,7 @@ public sealed class TodoSeeder : IPersistenceSeeder<Todo, Guid>
             inserted++;
         }
 
-        Seeded(context.Logger, inserted, "todo items");
+        PersistenceSeederLoggers.Seeded(context.Logger, inserted, "todo items");
         return Task.FromResult(Result.Success());
     }
 

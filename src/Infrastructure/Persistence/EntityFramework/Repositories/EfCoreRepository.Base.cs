@@ -181,20 +181,4 @@ public partial class EfCoreRepository<TEntity, TKey> : IPersistentRepository<TEn
             entry.State = EntityState.Detached;
         }
     }
-
-    /// <summary>
-    /// Checks if a DbUpdateException is caused by a unique constraint violation.
-    /// </summary>
-    private static bool IsUniqueConstraintViolation(DbUpdateException ex)
-    {
-        if (ex.InnerException is Npgsql.PostgresException pgEx &&
-            pgEx.SqlState == "23505")
-            return true;
-
-        // Generic check for unique constraint messages
-        string message = ex.Message.ToLowerInvariant();
-        return message.Contains("unique") ||
-               message.Contains("duplicate") ||
-               message.Contains("violation");
-    }
 }

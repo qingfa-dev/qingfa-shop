@@ -1,5 +1,6 @@
 using Application.Common.Querying.Mapping;
-using Core.Todos;
+
+using Core.Todos.Items;
 
 namespace Infrastructure.Persistence.Todos;
 

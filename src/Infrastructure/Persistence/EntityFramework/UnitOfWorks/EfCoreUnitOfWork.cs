@@ -1,7 +1,5 @@
 using System.Data;
 
-using Application.Common.Persistence;
-using Application.Common.Persistence.Repositories;
 using Application.Common.Persistence.UnitOfWorks;
 
 using Infrastructure.Persistence.EntityFramework.Contexts;

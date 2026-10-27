@@ -1,4 +1,4 @@
-namespace Infrastructure.Caching;
+namespace Infrastructure.Caching.Options;
 
 /// <summary>Failure outcomes for the root caching configuration.</summary>
 public static class CachingSettingOutcome

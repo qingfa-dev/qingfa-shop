@@ -1,4 +1,4 @@
-using Core.Todos;
+using Core.Todos.Lists;
 
 using Infrastructure.Persistence.EntityFramework.Comparers;
 

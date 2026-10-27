@@ -1,7 +1,5 @@
 using Application.Common.Persistence;
 
-using Microsoft.EntityFrameworkCore;
-
 using Npgsql.EntityFrameworkCore.PostgreSQL.Infrastructure;
 
 namespace Infrastructure.Persistence.EntityFramework.Options;

@@ -1,7 +1,7 @@
 using Application.Common.Persistence.Repositories;
 using Application.Features.Todos.Abstractions;
 
-using Core.Todos;
+using Core.Todos.Items;
 
 using Infrastructure.Persistence.EntityFramework.Contexts;
 

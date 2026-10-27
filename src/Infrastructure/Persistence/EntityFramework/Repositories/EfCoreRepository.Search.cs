@@ -1,13 +1,9 @@
-using Application.Common.Persistence;
 using Application.Common.Persistence.Capabilities;
 using Application.Common.Persistence.Repositories;
 using Application.Common.Querying;
-using Application.Common.Querying.Mapping;
 using Application.Common.Querying.Pagination;
 
-using Core.Common.Domain.Entities;
-
-using Infrastructure.Persistence.EntityFramework.QueryTranslation;
+using Core.Common.Monad.Maybes;
 
 using Microsoft.EntityFrameworkCore;
 

@@ -1,12 +1,8 @@
-using Application.Common.Persistence;
 using Application.Common.Persistence.Capabilities;
 using Application.Common.Persistence.Repositories;
 using Application.Common.Querying;
-using Application.Common.Querying.Mapping;
 using Application.Common.Querying.Pagination;
 using Application.Common.Querying.Projection;
-
-using Core.Common.Domain.Entities;
 
 using Infrastructure.Persistence.EntityFramework.QueryTranslation;
 

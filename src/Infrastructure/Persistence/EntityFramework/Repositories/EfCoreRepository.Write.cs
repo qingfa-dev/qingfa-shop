@@ -1,7 +1,4 @@
-using Application.Common.Persistence;
 using Application.Common.Persistence.Repositories;
-
-using Core.Common.Domain.Entities;
 
 namespace Infrastructure.Persistence.EntityFramework.Repositories;
 

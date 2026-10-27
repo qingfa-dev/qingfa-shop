@@ -1,12 +1,9 @@
 using System.Linq.Expressions;
 
-using Application.Common.Persistence;
 using Application.Common.Persistence.Capabilities;
+using Application.Common.Persistence.Repositories;
 using Application.Common.Querying;
 using Application.Common.Querying.Pagination;
-
-using Core.Common.Domain.Entities;
-using Core.Common.Monad.Results;
 
 using Microsoft.EntityFrameworkCore;
 
