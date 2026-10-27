@@ -47,4 +47,25 @@ public static partial class PersistenceMigratorLoggers
         Message = "The migration adapter failed to classify an exception for {MigratorName}.")]
     public static partial void ClassificationFailed(
         ILogger logger, string migratorName, Exception exception);
+
+    [LoggerMessage(
+        EventId = 286,
+        Level = LogLevel.Information,
+        Message = "No pending migrations for '{MigratorName}'.")]
+    public static partial void NoPendingMigrations(
+        ILogger logger, string migratorName);
+
+    [LoggerMessage(
+        EventId = 287,
+        Level = LogLevel.Information,
+        Message = "Applying {Count} pending migration(s) for '{MigratorName}'.")]
+    public static partial void ApplyingPendingMigrations(
+        ILogger logger, int count, string migratorName);
+
+    [LoggerMessage(
+        EventId = 288,
+        Level = LogLevel.Error,
+        Message = "Migration failed for '{MigratorName}' after {Attempts} attempts.")]
+    public static partial void FailedAfterAttempts(
+        ILogger logger, string migratorName, int attempts, Exception? exception);
 }

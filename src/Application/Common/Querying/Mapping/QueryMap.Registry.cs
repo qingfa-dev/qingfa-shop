@@ -18,6 +18,33 @@ public sealed class QueryMapRegistry : IQueryMapProvider
 {
     private readonly ConcurrentDictionary<Type, object> _maps = new();
 
+    /// <summary>Creates an empty registry.</summary>
+    public QueryMapRegistry()
+    {
+    }
+
+    /// <summary>
+    /// Creates a registry populated from the supplied definitions.
+    /// </summary>
+    /// <param name="definitions">The map definitions discovered during composition.</param>
+    /// <exception cref="ArgumentNullException"><paramref name="definitions"/> is <c>null</c>.</exception>
+    /// <exception cref="InvalidOperationException">A map is registered more than once.</exception>
+    public QueryMapRegistry(IEnumerable<IQueryMapDefinition> definitions)
+    {
+        ArgumentNullException.ThrowIfNull(definitions);
+
+        foreach (IQueryMapDefinition definition in definitions)
+        {
+            Result registered = definition.Register(this);
+            if (registered.IsFailure)
+            {
+                throw new InvalidOperationException(
+                    $"Failed to register query map from '{definition.GetType().Name}': " +
+                    string.Join("; ", registered.Errors.Select(error => $"{error.Code}: {error.Message}")));
+            }
+        }
+    }
+
     /// <summary>Registers the map for <typeparamref name="T"/>.</summary>
     /// <typeparam name="T">The type the map describes.</typeparam>
     /// <param name="map">The map to register.</param>

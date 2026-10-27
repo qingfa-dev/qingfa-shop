@@ -32,4 +32,18 @@ public static partial class PersistenceSeederLoggers
         Message = "Seeder {SeederName} threw an exception.")]
     public static partial void Threw(
         ILogger logger, string seederName, Exception exception);
+
+    [LoggerMessage(
+        EventId = 304,
+        Level = LogLevel.Information,
+        Message = "{EntityName} already seeded ({Count} found). Skipping.")]
+    public static partial void AlreadySeeded(
+        ILogger logger, string entityName, int count);
+
+    [LoggerMessage(
+        EventId = 305,
+        Level = LogLevel.Information,
+        Message = "Seeded {Count} {EntityName}.")]
+    public static partial void Seeded(
+        ILogger logger, int count, string entityName);
 }
