@@ -1,4 +1,4 @@
-namespace Infrastructure.Caching;
+namespace Infrastructure.Caching.Options;
 
 /// <summary>Constants for the root caching configuration section.</summary>
 public static class CachingSettingConstant
@@ -12,4 +12,5 @@ public static class CachingSettingConstant
         /// <summary>Caching is enabled unless a host turns it off.</summary>
         public const bool Enabled = true;
     }
+
 }

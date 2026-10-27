@@ -10,6 +10,16 @@ public sealed class DistributedCacheSetting
     /// <summary>Enables the L2 tier.</summary>
     public bool Enabled { get; set; } = DistributedCacheSettingConstant.Defaults.Enabled;
 
+    /// <summary>
+    /// Distributed cache provider: "redis" or "sqlserver".
+    /// </summary>
+    public string? Provider { get; set; }
+
+    /// <summary>
+    /// Name of the connection string in the <c>ConnectionStrings</c> configuration section.
+    /// </summary>
+    public string? ConnectionStringName { get; set; }
+
     /// <summary>Lifetime of an entry in the L2 cache, in minutes.</summary>
     public int DefaultExpirationMinutes { get; set; } =
         DistributedCacheSettingConstant.Defaults.ExpirationMinutes;

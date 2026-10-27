@@ -1,9 +1,8 @@
 namespace Infrastructure.Caching.Options.Hybrid;
 
-/// <summary>Validates caching settings and returns the monad's <see cref="Result{TValue}"/>.</summary>
+/// <summary>Validates hybrid cache settings and returns the monad's <see cref="Result{TValue}"/>.</summary>
 /// <remarks>
-/// The composition uses this method to fail fast, and <see cref="CachingSettingValidator"/>
-/// adapts the same errors to the options pipeline.
+/// The composition uses this method to fail fast at startup.
 /// </remarks>
 internal static class HybridCacheSettingValidation
 {

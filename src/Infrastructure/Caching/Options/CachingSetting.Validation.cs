@@ -2,16 +2,17 @@ using Infrastructure.Caching.Options.Distributed;
 using Infrastructure.Caching.Options.Hybrid;
 using Infrastructure.Caching.Options.Memory;
 
+using Microsoft.Extensions.Configuration;
+
 namespace Infrastructure.Caching.Options;
 
 /// <summary>Validates caching settings and returns the monad's <see cref="Result{TValue}"/>.</summary>
 /// <remarks>
-/// The composition uses this method to fail fast, and <see cref="CachingSettingValidator"/>
-/// adapts the same errors to the options pipeline.
+/// The composition uses this method to fail fast at startup.
 /// </remarks>
 public static class CachingSettingValidation
 {
-    /// <summary>Validates the complete caching configuration.</summary>
+    /// <summary>Validates the complete caching configuration (static rules only).</summary>
     /// <param name="setting">The settings to validate.</param>
     /// <returns>
     /// The unchanged settings on success; otherwise a failure carrying every broken rule.
@@ -38,6 +39,37 @@ public static class CachingSettingValidation
         return combined.IsSuccess
             ? Result<CachingSetting>.Success(setting)
             : Result<CachingSetting>.Fail(combined.Errors, combined.StatusCode);
+    }
+
+    /// <summary>
+    /// Validates the complete caching configuration including connection string resolution.
+    /// </summary>
+    /// <param name="setting">The settings to validate.</param>
+    /// <param name="configuration">The configuration to resolve connection strings from.</param>
+    /// <returns>
+    /// The unchanged settings on success; otherwise a failure carrying every broken rule.
+    /// </returns>
+    public static Result<CachingSetting> ValidateWithConnectionString(
+        CachingSetting setting, IConfiguration configuration)
+    {
+        ArgumentNullException.ThrowIfNull(configuration);
+
+        // First validate static rules
+        Result<CachingSetting> staticResult = Validate(setting);
+        if (staticResult.IsFailure)
+        {
+            return staticResult;
+        }
+
+        // Validate distributed cache connection string resolution
+        Result distributedResult = DistributedCacheSettingValidation
+            .ValidateDistributedWithConnectionString(setting.Distributed, configuration);
+        if (distributedResult.IsFailure)
+        {
+            return Result<CachingSetting>.Fail(distributedResult.Errors, distributedResult.StatusCode);
+        }
+
+        return Result<CachingSetting>.Success(setting);
     }
 
     /// <summary>Formats a failed result as the messages the options pipeline reports.</summary>

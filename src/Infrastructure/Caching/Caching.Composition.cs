@@ -8,7 +8,6 @@ using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Options;
 
 namespace Infrastructure.Caching;
 
@@ -19,9 +18,8 @@ public static class CachingComposition
     /// <param name="services">The host's service collection.</param>
     /// <param name="configuration">Configuration holding the <c>Caching</c> section.</param>
     /// <returns>The same collection, for chaining.</returns>
-    /// <exception cref="OptionsValidationException">The configured settings are invalid.</exception>
     /// <exception cref="InvalidOperationException">
-    /// The distributed tier is enabled but no <see cref="IDistributedCache"/> is registered.
+    /// The configured settings are invalid or the distributed tier is enabled without a provider.
     /// </exception>
     public static IServiceCollection AddCaching(
         this IServiceCollection services,
@@ -30,17 +28,28 @@ public static class CachingComposition
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
 
-        services.AddOptions<CachingSetting>()
-            .Configure(options => configuration
-                .GetSection(CachingSettingConstant.SectionName)
-                .Bind(options))
-            .ValidateOnStart();
-        services.TryAddEnumerable(
-            ServiceDescriptor.Singleton<IValidateOptions<CachingSetting>, CachingSettingValidator>());
-
         CachingSetting setting = configuration
             .GetSection(CachingSettingConstant.SectionName)
             .Get<CachingSetting>() ?? new CachingSetting();
+
+        // Validate: fail fast if settings are invalid (including connection string resolution)
+        Result<CachingSetting> validationResult = CachingSettingValidation
+            .ValidateWithConnectionString(setting, configuration);
+        if (validationResult.IsFailure)
+        {
+            throw new InvalidOperationException(
+                string.Join("; ", CachingSettingValidation.Describe(validationResult)));
+        }
+
+        // Register the setting as both a singleton and via IOptions for flexibility
+        services.TryAddSingleton(setting);
+        services.Configure<CachingSetting>(options =>
+        {
+            options.Enabled = setting.Enabled;
+            options.Memory = setting.Memory;
+            options.Distributed = setting.Distributed;
+            options.Hybrid = setting.Hybrid;
+        });
 
         // Guard: a disabled facade must still be resolvable, but it must not pay for a cache.
         if (!setting.Enabled)
@@ -50,12 +59,41 @@ public static class CachingComposition
         }
 
         // Validate: enabling L2 without a provider would silently collapse the facade to L1.
-        if (setting.Distributed.Enabled &&
-            !services.Any(descriptor => descriptor.ServiceType == typeof(IDistributedCache)))
+        if (setting.Distributed.Enabled)
         {
-            throw new InvalidOperationException(
-                $"{CachingSettingOutcome.Failure.DistributedProviderMissing.Code}: " +
-                CachingSettingOutcome.Failure.DistributedProviderMissing.Message);
+            // Register the distributed cache provider based on configuration
+            string? connectionString = configuration.GetConnectionString(setting.Distributed.ConnectionStringName!);
+            switch (setting.Distributed.Provider?.ToLowerInvariant())
+            {
+                case "redis":
+                    // Check if IDistributedCache is already registered (e.g., by test fixtures)
+                    if (!services.Any(descriptor => descriptor.ServiceType == typeof(IDistributedCache)))
+                    {
+                        services.AddStackExchangeRedisCache(options =>
+                        {
+                            options.Configuration = connectionString;
+                        });
+                    }
+                    break;
+
+                case "memory":
+                    // IDistributedMemoryCache should be pre-registered by the host (e.g., tests)
+                    if (!services.Any(descriptor => descriptor.ServiceType == typeof(IDistributedCache)))
+                    {
+                        services.AddDistributedMemoryCache();
+                    }
+                    break;
+
+                default:
+                    // Check if IDistributedCache is already registered
+                    if (!services.Any(descriptor => descriptor.ServiceType == typeof(IDistributedCache)))
+                    {
+                        throw new InvalidOperationException(
+                            $"{CachingSettingOutcome.Failure.DistributedProviderMissing.Code}: " +
+                            CachingSettingOutcome.Failure.DistributedProviderMissing.Message);
+                    }
+                    break;
+            }
         }
 
         // Initialize: the L1 cache is registered here because its limits belong to the cache stack.
