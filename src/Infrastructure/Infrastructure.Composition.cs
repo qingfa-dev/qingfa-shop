@@ -1,4 +1,5 @@
 using Application.Common.Caching;
+using Application.Common.Persistence.Initialization;
 
 using Infrastructure.Caching;
 using Infrastructure.Persistence;
@@ -19,7 +20,7 @@ public static class InfrastructureComposition
 {
     /// <summary>
     /// Adds all infrastructure services to the service collection.
-    /// This includes EF Core persistence with AppDbContext, caching, repositories,
+    /// This includes EF Core persistence with ApplicationDbContext, caching, repositories,
     /// unit of work, and query map registrations.
     /// </summary>
     /// <param name="services">The host's service collection.</param>
@@ -69,26 +70,37 @@ public static class InfrastructureComposition
 
     /// <summary>
     /// Initializes Infrastructure layer services at startup.
-    /// Applies pending database migrations and validates connectivity.
+    /// Applies pending database migrations and, when requested, runs seeders.
     /// Call this after building the host to ensure the database is ready.
     /// </summary>
     /// <param name="provider">The application's service provider.</param>
     /// <param name="autoMigrate">Whether to apply pending migrations automatically.</param>
+    /// <param name="seed">Whether to run the registered seeders after migrating.</param>
     /// <returns>The same provider for chaining.</returns>
+    /// <exception cref="InvalidOperationException">Initialization returned a failure.</exception>
     public static IServiceProvider UseInfrastructure(
         this IServiceProvider provider,
-        bool autoMigrate = true)
+        bool autoMigrate = true,
+        bool seed = false)
     {
         ArgumentNullException.ThrowIfNull(provider);
 
-        // Apply: Database migrations if enabled.
-        if (autoMigrate)
+        if (!autoMigrate && !seed)
         {
-            using var scope = provider.CreateScope();
-            var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+            return provider;
+        }
 
-            // Migrate: Apply any pending migrations.
-            context.Database.Migrate();
+        using var scope = provider.CreateScope();
+        var initializer = scope.ServiceProvider.GetRequiredService<IPersistenceInitializer>();
+        var result = initializer
+            .InitializeAsync(runMigrations: autoMigrate, runSeeders: seed)
+            .GetAwaiter()
+            .GetResult();
+
+        if (result.IsFailure)
+        {
+            throw new InvalidOperationException(
+                $"Database initialization failed: {string.Join("; ", result.Errors.Select(error => error.Message))}");
         }
 
         return provider;

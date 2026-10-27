@@ -8,6 +8,8 @@ using Core.Todos;
 
 using Microsoft.Extensions.Logging;
 
+using static Application.Common.Persistence.Initialization.Seeders.PersistenceSeederLoggers;
+
 namespace Infrastructure.Persistence.Todos.Seeders;
 /// <summary>
 /// Seeds default todo categories into the database.
@@ -57,7 +59,7 @@ public sealed class TodoCategorySeeder : IPersistenceSeeder<TodoCategory, Guid>
         var existingCount = GetExistingCount(context);
         if (existingCount > 0)
         {
-            context.Logger.LogInformation("Todo categories already seeded ({Count} found). Skipping.", existingCount);
+            AlreadySeeded(context.Logger, "Todo categories", existingCount);
             return Task.FromResult(Result.Success());
         }
 
@@ -76,7 +78,7 @@ public sealed class TodoCategorySeeder : IPersistenceSeeder<TodoCategory, Guid>
             using var command = context.Connection.CreateCommand();
             command.CommandText = """
                 INSERT INTO todo_categories (id, name, description, created_at_utc, created_by, tenant_id, metadata)
-                VALUES (@id, @name, @description, @created_at_utc, @created_by, @tenant_id, @metadata)
+                VALUES (@id, @name, @description, @created_at_utc, @created_by, @tenant_id, CAST(@metadata AS jsonb))
                 """;
             command.Parameters.Add(CreateParam(command, "@id", id));
             command.Parameters.Add(CreateParam(command, "@name", name));
@@ -91,7 +93,7 @@ public sealed class TodoCategorySeeder : IPersistenceSeeder<TodoCategory, Guid>
             inserted++;
         }
 
-        context.Logger.LogInformation("Seeded {Count} todo categories.", inserted);
+        Seeded(context.Logger, inserted, "todo categories");
         return Task.FromResult(Result.Success());
     }
 

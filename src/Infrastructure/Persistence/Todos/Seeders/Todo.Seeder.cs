@@ -8,6 +8,8 @@ using Core.Todos;
 
 using Microsoft.Extensions.Logging;
 
+using static Application.Common.Persistence.Initialization.Seeders.PersistenceSeederLoggers;
+
 namespace Infrastructure.Persistence.Todos.Seeders;
 /// <summary>
 /// Seeds sample todo items into the database.
@@ -48,7 +50,7 @@ public sealed class TodoSeeder : IPersistenceSeeder<Todo, Guid>
         var existingCount = GetExistingCount(context);
         if (existingCount > 0)
         {
-            context.Logger.LogInformation("Todos already seeded ({Count} found). Skipping.", existingCount);
+            AlreadySeeded(context.Logger, "Todos", existingCount);
             return Task.FromResult(Result.Success());
         }
 
@@ -71,7 +73,7 @@ public sealed class TodoSeeder : IPersistenceSeeder<Todo, Guid>
                 INSERT INTO todos (id, title, description, status, priority, due_at_utc, completed_at_utc,
                     list_id, category_ids, created_at_utc, created_by, tenant_id, metadata)
                 VALUES (@id, @title, @description, @status, @priority, @due_at_utc, @completed_at_utc,
-                    @list_id, @category_ids, @created_at_utc, @created_by, @tenant_id, @metadata)
+                    @list_id, CAST(@category_ids AS jsonb), @created_at_utc, @created_by, @tenant_id, CAST(@metadata AS jsonb))
                 """;
             command.Parameters.Add(CreateParam(command, "@id", sample.Id));
             command.Parameters.Add(CreateParam(command, "@title", sample.Title));
@@ -92,7 +94,7 @@ public sealed class TodoSeeder : IPersistenceSeeder<Todo, Guid>
             inserted++;
         }
 
-        context.Logger.LogInformation("Seeded {Count} todo items.", inserted);
+        Seeded(context.Logger, inserted, "todo items");
         return Task.FromResult(Result.Success());
     }
 
@@ -188,7 +190,7 @@ public sealed class TodoSeeder : IPersistenceSeeder<Todo, Guid>
         Guid? listId)
     {
         var categoryJson = categoryId is not null
-            ? $"\"[{categoryId}]\""
+            ? System.Text.Json.JsonSerializer.Serialize(new[] { categoryId.Value })
             : "[]";
 
         return new List<TodoSample>

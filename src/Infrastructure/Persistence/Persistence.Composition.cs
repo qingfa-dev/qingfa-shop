@@ -1,13 +1,14 @@
 using Application.Common.Persistence;
 using Application.Common.Persistence.Repositories;
+using Application.Common.Querying.Mapping;
 
 using Infrastructure.Persistence.EntityFramework;
 using Infrastructure.Persistence.EntityFramework.Contexts;
 using Infrastructure.Persistence.EntityFramework.Repositories;
-using Infrastructure.Persistence.Todos;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Infrastructure.Persistence;
 
@@ -43,6 +44,9 @@ public static class PersistenceComposition
         // Register: Generic repositories for all entity types.
         services.RegisterRepositories();
 
+        // Register: database initialization (initializer + module seeders).
+        services.AddPersistenceInitialization<TContext>();
+
         return services;
     }
 
@@ -72,6 +76,9 @@ public static class PersistenceComposition
         // Register: Generic repositories for all entity types.
         services.RegisterRepositories();
 
+        // Register: database initialization (initializer + module seeders).
+        services.AddPersistenceInitialization<TContext>();
+
         return services;
     }
 
@@ -88,27 +95,26 @@ public static class PersistenceComposition
     }
 
     /// <summary>
-    /// Registers query maps for all queryable entities in the QueryMapRegistry.
-    /// The registry is resolved from DI after it is registered by AddEfCorePersistence.
+    /// Discovers every <see cref="IQueryMapDefinition"/> in the persistence
+    /// assembly and builds the shared <see cref="QueryMapRegistry"/> from them.
     /// </summary>
     private static void RegisterQueryMaps(this IServiceCollection services)
     {
-        // The QueryMapRegistry is registered as a singleton by AddEfCorePersistence.
-        // We configure it via a hosted service that runs at startup, or we can
-        // register it directly here before AddEfCorePersistence overwrites it.
-        // Since AddEfCorePersistence uses TryAddSingleton, we register first.
-        var registry = new Application.Common.Querying.Mapping.QueryMapRegistry();
+        // Discover: query map definitions live next to their maps, so a new map
+        // only needs a definition class to join the registry.
+        services.Scan(scan => scan
+            .FromAssemblyOf<EfCoreDbContext>()
+            .AddClasses(classes => classes
+                .AssignableTo<IQueryMapDefinition>()
+                .Where(type => type is { IsAbstract: false, IsInterface: false }))
+            .As<IQueryMapDefinition>()
+            .WithSingletonLifetime());
 
-        // Register: Todo query map.
-        registry.Register(TodoQueryMap.Create());
-
-        // Register: TodoList query map.
-        registry.Register(TodoListQueryMap.Create());
-
-        // Register: TodoCategory query map.
-        registry.Register(TodoCategoryQueryMap.Create());
-
-        // Replace the default singleton with our pre-configured registry.
-        services.AddSingleton(registry);
+        // Register: the registry is composed from the discovered definitions and
+        // shared as a singleton with the provider interface.
+        services.TryAddSingleton(sp => new QueryMapRegistry(
+            sp.GetServices<IQueryMapDefinition>()));
+        services.TryAddSingleton<IQueryMapProvider>(sp =>
+            sp.GetRequiredService<QueryMapRegistry>());
     }
 }

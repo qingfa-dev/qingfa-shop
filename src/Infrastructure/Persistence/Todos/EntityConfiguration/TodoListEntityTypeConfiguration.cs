@@ -1,6 +1,9 @@
 using Core.Todos;
 
+using Infrastructure.Persistence.EntityFramework.Comparers;
+
 using Microsoft.EntityFrameworkCore;
+
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Infrastructure.Persistence.Todos.EntityConfiguration;
@@ -77,7 +80,8 @@ public sealed class TodoListEntityTypeConfiguration : IEntityTypeConfiguration<T
             .HasConversion(
                 (Core.Common.Monad.Metadata.DefaultMetadata v) => System.Text.Json.JsonSerializer.Serialize(v),
                 (string v) => DeserializeMetadata(v))
-            .HasColumnType("jsonb");
+            .HasColumnType("jsonb")
+            .Metadata.SetValueComparer(MetadataValueComparer.Instance);
 
         // Indexes: Query performance for common filters.
         builder.HasIndex(t => t.TenantId);

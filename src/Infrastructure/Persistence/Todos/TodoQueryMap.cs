@@ -79,3 +79,14 @@ public static class TodoQueryMap
         return result.Value;
     }
 }
+
+/// <summary>Registers the Todo query map during composition.</summary>
+public sealed class TodoQueryMapDefinition : IQueryMapDefinition
+{
+    /// <inheritdoc />
+    public Result Register(QueryMapRegistry registry)
+    {
+        ArgumentNullException.ThrowIfNull(registry);
+        return registry.Register(TodoQueryMap.Create());
+    }
+}

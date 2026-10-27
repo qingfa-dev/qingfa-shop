@@ -51,3 +51,14 @@ public static class TodoCategoryQueryMap
         return result.Value;
     }
 }
+
+/// <summary>Registers the TodoCategory query map during composition.</summary>
+public sealed class TodoCategoryQueryMapDefinition : IQueryMapDefinition
+{
+    /// <inheritdoc />
+    public Result Register(QueryMapRegistry registry)
+    {
+        ArgumentNullException.ThrowIfNull(registry);
+        return registry.Register(TodoCategoryQueryMap.Create());
+    }
+}

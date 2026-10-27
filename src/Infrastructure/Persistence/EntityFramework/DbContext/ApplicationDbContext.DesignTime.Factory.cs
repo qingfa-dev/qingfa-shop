@@ -5,13 +5,13 @@ using Microsoft.EntityFrameworkCore.Design;
 
 /// <summary>
 /// Design-time factory for EF Core migrations.
-/// Required so the dotnet-ef tools can instantiate AppDbContext without DI.
+/// Required so the dotnet-ef tools can instantiate ApplicationDbContext without DI.
 /// </summary>
-public sealed class AppDbContextDesignTimeFactory : IDesignTimeDbContextFactory<ApplicationDbContext>
+public sealed class ApplicationDbContextDesignTimeFactory : IDesignTimeDbContextFactory<ApplicationDbContext>
 {
-    /// <summary>Creates a new AppDbContext configured for PostgreSQL migrations.</summary>
+    /// <summary>Creates a new ApplicationDbContext configured for PostgreSQL migrations.</summary>
     /// <param name="args">Command-line arguments (unused).</param>
-    /// <returns>A configured AppDbContext instance.</returns>
+    /// <returns>A configured ApplicationDbContext instance.</returns>
     public ApplicationDbContext CreateDbContext(string[]? args = null)
     {
         // Configure: Use a default connection string for design-time only.

@@ -51,3 +51,14 @@ public static class TodoListQueryMap
         return result.Value;
     }
 }
+
+/// <summary>Registers the TodoList query map during composition.</summary>
+public sealed class TodoListQueryMapDefinition : IQueryMapDefinition
+{
+    /// <inheritdoc />
+    public Result Register(QueryMapRegistry registry)
+    {
+        ArgumentNullException.ThrowIfNull(registry);
+        return registry.Register(TodoListQueryMap.Create());
+    }
+}

@@ -1,6 +1,9 @@
 using Core.Todos;
 
+using Infrastructure.Persistence.EntityFramework.Comparers;
+
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
 namespace Infrastructure.Persistence.Todos.EntityConfiguration;
@@ -67,7 +70,12 @@ public sealed class TodoEntityTypeConfiguration : IEntityTypeConfiguration<Todo>
                 v => string.IsNullOrEmpty(v)
                     ? new List<Guid>()
                     : System.Text.Json.JsonSerializer.Deserialize<List<Guid>>(v) ?? new List<Guid>())
-            .HasColumnType("jsonb");
+            .HasColumnType("jsonb")
+            .Metadata.SetValueComparer(new ValueComparer<ICollection<Guid>>(
+                (left, right) => ReferenceEquals(left, right) ||
+                    (left != null && right != null && left.SequenceEqual(right)),
+                value => value.Aggregate(0, (hash, id) => HashCode.Combine(hash, id.GetHashCode())),
+                value => value.ToList()));
 
         // Lifecycle: Creation audit fields.
         builder.Property(t => t.CreatedAtUtc)
@@ -111,7 +119,8 @@ public sealed class TodoEntityTypeConfiguration : IEntityTypeConfiguration<Todo>
             .HasConversion(
                 (Core.Common.Monad.Metadata.DefaultMetadata v) => System.Text.Json.JsonSerializer.Serialize(v),
                 (string v) => DeserializeMetadata(v))
-            .HasColumnType("jsonb");
+            .HasColumnType("jsonb")
+            .Metadata.SetValueComparer(MetadataValueComparer.Instance);
 
         // Indexes: Query performance for common filters.
         builder.HasIndex(t => t.TenantId);

@@ -8,6 +8,8 @@ using Core.Todos;
 
 using Microsoft.Extensions.Logging;
 
+using static Application.Common.Persistence.Initialization.Seeders.PersistenceSeederLoggers;
+
 namespace Infrastructure.Persistence.Todos.Seeders;
 /// <summary>
 /// Seeds default todo lists into the database.
@@ -56,7 +58,7 @@ public sealed class TodoListSeeder : IPersistenceSeeder<TodoList, Guid>
         var existingCount = GetExistingCount(context);
         if (existingCount > 0)
         {
-            context.Logger.LogInformation("Todo lists already seeded ({Count} found). Skipping.", existingCount);
+            AlreadySeeded(context.Logger, "Todo lists", existingCount);
             return Task.FromResult(Result.Success());
         }
 
@@ -75,7 +77,7 @@ public sealed class TodoListSeeder : IPersistenceSeeder<TodoList, Guid>
             using var command = context.Connection.CreateCommand();
             command.CommandText = """
                 INSERT INTO todo_lists (id, name, description, created_at_utc, created_by, tenant_id, metadata)
-                VALUES (@id, @name, @description, @created_at_utc, @created_by, @tenant_id, @metadata)
+                VALUES (@id, @name, @description, @created_at_utc, @created_by, @tenant_id, CAST(@metadata AS jsonb))
                 """;
             command.Parameters.Add(CreateParam(command, "@id", id));
             command.Parameters.Add(CreateParam(command, "@name", name));
@@ -90,7 +92,7 @@ public sealed class TodoListSeeder : IPersistenceSeeder<TodoList, Guid>
             inserted++;
         }
 
-        context.Logger.LogInformation("Seeded {Count} todo lists.", inserted);
+        Seeded(context.Logger, inserted, "todo lists");
         return Task.FromResult(Result.Success());
     }
 
