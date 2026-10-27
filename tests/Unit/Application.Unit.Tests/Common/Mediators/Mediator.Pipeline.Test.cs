@@ -2,8 +2,6 @@ using Application.Common.Mediators;
 using Application.Common.Mediators.Behaviors.Logging;
 using Application.UnitTests.Common.Mediators.Fixtures;
 
-using Core.Common.Monad.Results;
-
 using FluentValidation;
 
 using MediatR;

@@ -4,8 +4,6 @@ using Application.Common.Mediators.Behaviors.Logging;
 using Application.Common.Mediators.Behaviors.Validation;
 using Application.UnitTests.Common.Mediators.Fixtures;
 
-using Core.Common.Monad.Results;
-
 using MediatR;
 
 using Microsoft.Extensions.DependencyInjection;
