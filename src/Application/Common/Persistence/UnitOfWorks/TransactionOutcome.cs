@@ -125,6 +125,10 @@ public static class TransactionOutcome
         public static Error SaveChangesFailed(string reason) => Error.InternalServerError(
             Codes.SaveChangesFailed, $"SaveChanges failed: {reason}");
 
+        /// <summary>Write attempted in a read-only transaction.</summary>
+        public static Error ReadOnlyViolation => Error.Conflict(
+            Codes.ReadOnlyViolation, "The transaction is read-only; writes are not permitted.");
+
         // ---- Store connections ----
 
         public static Error ConnectionFailed => Error.ServiceUnavailable(
@@ -193,6 +197,7 @@ public static class TransactionOutcome
         public const string DeadlockDetected     = "Transaction.Concurrency.Deadlock";
         public const string SerializationFailure = "Transaction.Concurrency.SerializationFailure";
         public const string SaveChangesFailed    = "Transaction.Write.SaveChangesFailed";
+        public const string ReadOnlyViolation    = "Transaction.Write.ReadOnlyViolation";
 
         // ---- Store connections ----
         public const string ConnectionFailed = "Transaction.Store.ConnectionFailed";

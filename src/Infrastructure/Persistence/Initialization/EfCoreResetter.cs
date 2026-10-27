@@ -111,10 +111,12 @@ public sealed class EfCoreResetter<TContext> : IPersistenceResetter
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
+            // Translate: caller's cancellation token was triggered.
             return Result.Fail(SchemaResetOutcome.Failure.Cancelled);
         }
         catch (Exception ex)
         {
+            // Translate: any unexpected reset failure to a typed error.
             _logger.LogError(ex, "Database reset failed for '{ResetterName}'.", Name);
             return Result.Fail(SchemaResetOutcome.Failure.ResetFailed(ex.Message));
         }
@@ -161,7 +163,10 @@ public sealed class EfCoreResetter<TContext> : IPersistenceResetter
         return Task.FromResult(Result<IReadOnlyList<InitializationOperation>>.Ok(operations));
     }
 
-    /// <summary>Resets data by truncating the requested tables that exist.</summary>
+    /// <summary>
+    /// Resets data by truncating tables, preserving the schema.
+    /// Disables foreign key checks on PostgreSQL so table order does not matter.
+    /// </summary>
     private async Task ResetDataAsync(IInitializationContext context, CancellationToken cancellationToken)
     {
         cancellationToken.ThrowIfCancellationRequested();
@@ -215,7 +220,11 @@ public sealed class EfCoreResetter<TContext> : IPersistenceResetter
         }
     }
 
-    /// <summary>Drops every configured schema object while keeping the database itself.</summary>
+    /// <summary>
+    /// Drops and recreates every configured schema, keeping the database itself.
+    /// For PostgreSQL this drops and recreates schemas; for other providers it drops
+    /// and recreates the entire database file or catalog.
+    /// </summary>
     private async Task ResetSchemaAsync(CancellationToken cancellationToken)
     {
         _logger.LogWarning("Dropping and recreating database schema.");
@@ -258,7 +267,11 @@ public sealed class EfCoreResetter<TContext> : IPersistenceResetter
         _logger.LogInformation("Database schema recreated.");
     }
 
-    /// <summary>Drops the database so the next migration run recreates it.</summary>
+    /// <summary>
+    /// Drops the entire database so the next migration run recreates it from scratch.
+    /// Closes the connection and clears the connection pool to avoid dead sessions
+    /// being reused after the database is dropped.
+    /// </summary>
     private async Task ResetDatabaseAsync(CancellationToken cancellationToken)
     {
         _logger.LogWarning("Dropping the database.");
@@ -284,9 +297,14 @@ public sealed class EfCoreResetter<TContext> : IPersistenceResetter
         _logger.LogInformation("Database dropped.");
     }
 
+    /// <summary>True if the database provider is PostgreSQL (Npgsql).</summary>
     private bool IsPostgres() =>
         _context.Database.ProviderName?.Contains("Npgsql", StringComparison.OrdinalIgnoreCase) == true;
 
+    /// <summary>
+    /// Queries the database metadata to find existing tables.
+    /// Returns "schema.table" keys for PostgreSQL and bare table names for other providers.
+    /// </summary>
     private async Task<HashSet<string>> GetExistingTablesAsync(
         IDbConnection connection,
         CancellationToken cancellationToken)
@@ -338,6 +356,10 @@ public sealed class EfCoreResetter<TContext> : IPersistenceResetter
         return tables;
     }
 
+    /// <summary>
+    /// Resolves requested table names to (schema, table) pairs, filtering to only existing tables.
+    /// Supports qualified names (schema.table) and looks up unqualified names in all configured schemas.
+    /// </summary>
     private List<(string Schema, string Table)> ResolveTables(
         IEnumerable<string> requested,
         HashSet<string> existing,
@@ -383,16 +405,19 @@ public sealed class EfCoreResetter<TContext> : IPersistenceResetter
         return tables;
     }
 
+    /// <summary>Builds a fully-qualified table name with proper quoting.</summary>
     private static string Qualify(string schema, string table) =>
         string.IsNullOrEmpty(schema)
             ? Quote(table)
             : $"{Quote(schema)}.{Quote(table)}";
 
+    /// <summary>Quotes an identifier with double quotes, escaping embedded quotes.</summary>
     private static string Quote(string identifier) =>
         $"\"{identifier.Replace("\"", "\"\"", StringComparison.Ordinal)}\"";
 
     private static IReadOnlyList<string> Schemas => PersistenceConstant.Schema.Names;
 
+    /// <summary>Executes a raw SQL command on the given connection with a 30-second timeout.</summary>
     private static async Task ExecuteAsync(
         IDbConnection connection,
         string sql,

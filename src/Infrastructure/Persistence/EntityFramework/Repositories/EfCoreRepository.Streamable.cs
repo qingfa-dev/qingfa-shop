@@ -8,12 +8,17 @@ namespace Infrastructure.Persistence.EntityFramework.Repositories;
 public partial class EfCoreRepository<TEntity, TKey> : IStreamableRepository<TEntity, TKey>
 {
     /// <inheritdoc />
+    /// <remarks>
+    /// Stream: AsAsyncEnumerable provides deferred execution with forward-only streaming,
+    /// keeping memory usage minimal for large result sets. Entities are materialized one at a
+    /// time as the caller iterates, rather than loading the entire result into memory.
+    /// </remarks>
     public async Task<Result<IAsyncEnumerable<TEntity>>> StreamAsync(
         Query<TEntity> query, CancellationToken cancellationToken = default)
     {
         try
         {
-            // Validate: streaming must be supported by the provider
+            // Validate: streaming must be supported by the provider.
             var capResult = QueryCapabilityGuard.ValidateCapabilitySupported(
                 "Streaming", Capabilities.SupportsStreaming);
             if (capResult.IsFailure)
@@ -31,6 +36,7 @@ public partial class EfCoreRepository<TEntity, TKey> : IStreamableRepository<TEn
         }
         catch (Exception ex)
         {
+            // Translate: query execution failure to typed persistence outcome.
             return Result<IAsyncEnumerable<TEntity>>.Fail(TranslateException(ex));
         }
     }

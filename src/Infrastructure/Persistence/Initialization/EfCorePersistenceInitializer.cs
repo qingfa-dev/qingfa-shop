@@ -41,6 +41,11 @@ public sealed class EfCorePersistenceInitializer<TContext> : IPersistenceInitial
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Order: the resetter position depends on scope. Schema reset must run before migrations
+    /// (it drops tables and history), while data reset runs after migrations (it truncates
+    /// the migrated tables). Seeders always run last so they populate the fresh schema.
+    /// </remarks>
     public async Task<Result> InitializeAsync(
         bool runMigrations = true,
         bool runSeeders = true,
@@ -55,7 +60,7 @@ public sealed class EfCorePersistenceInitializer<TContext> : IPersistenceInitial
 
             var allSteps = new List<IInitializationStep>();
 
-            // Compute: a schema reset must run before migrations because it drops the
+            // Order: a schema reset must run before migrations because it drops the
             // tables and history; a data reset must run after migrations because it
             // truncates the migrated tables. Seeders always run last.
             EfCoreResetter<TContext>? resetter = null;

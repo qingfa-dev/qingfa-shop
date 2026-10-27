@@ -11,12 +11,17 @@ namespace Infrastructure.Persistence.EntityFramework.QueryTranslation;
 
 public sealed partial class QueryTranslationEfCore<T>
 {
-    /// <summary>Evaluates group and aggregate shapes over an already-filtered row set.</summary>
+    /// <summary>
+    /// Evaluates group and aggregate shapes over an already-filtered row set.
+    /// Uses client-side evaluation because EF Core cannot translate complex group-by + aggregate
+    /// combinations to SQL reliably.
+    /// </summary>
     public Result<TabularResult> BuildTabularClientSide(
         IReadOnlyList<T> rows,
         Query<T> query,
         QueryMap<T> map)
     {
+        // Route: no group-by means aggregate-only (single row); otherwise group and aggregate.
         if (query.GroupBy is null || !query.GroupBy.Any())
         {
             // Validate: select and aggregate cannot combine without grouping.
@@ -29,6 +34,10 @@ public sealed partial class QueryTranslationEfCore<T>
         return BuildGroups(rows, query, map);
     }
 
+    /// <summary>
+    /// Computes aggregate functions over the entire row set without grouping,
+    /// producing a single-row result with one column per aggregate.
+    /// </summary>
     private static Result<TabularResult> BuildAggregateOnly(
         IReadOnlyList<T> rows,
         IReadOnlyList<AggregateSpec> aggregates,
@@ -51,10 +60,15 @@ public sealed partial class QueryTranslationEfCore<T>
             values.Add(aggregated.Value);
         }
 
+        // Result: a single row with one value per aggregate.
         return Result<TabularResult>.Success(
             new TabularResult(columns, [new TabularRow(values)]));
     }
 
+    /// <summary>
+    /// Groups rows by the specified keys and computes aggregates per group.
+    /// Validates that selected fields are included in the group-by keys.
+    /// </summary>
     private static Result<TabularResult> BuildGroups(
         IReadOnlyList<T> rows,
         Query<T> query,
@@ -73,6 +87,7 @@ public sealed partial class QueryTranslationEfCore<T>
             }
         }
 
+        // Resolve: build accessors for each group key so we can extract values from rows.
         var keys = new List<(GroupByField Key, QueryField Field, Func<T, object?> Accessor)>();
         foreach (GroupByField key in query.GroupBy!)
         {
@@ -83,6 +98,7 @@ public sealed partial class QueryTranslationEfCore<T>
             keys.Add((key, mapped.Value, CreateAccessor(mapped.Value)));
         }
 
+        // Resolve: build accessors for each aggregate.
         var aggregates = new List<(AggregateSpec Spec, QueryField Field, Func<T, object?> Accessor)>();
         foreach (AggregateSpec spec in query.Aggregate ?? Array.Empty<AggregateSpec>())
         {
@@ -93,6 +109,7 @@ public sealed partial class QueryTranslationEfCore<T>
             aggregates.Add((spec, mapped.Value, CreateAccessor(mapped.Value)));
         }
 
+        // Assemble: build the column metadata — group keys first, then aggregates.
         var columns = new List<TabularColumn>(keys.Count + aggregates.Count);
         foreach (var entry in keys)
         {
@@ -104,10 +121,12 @@ public sealed partial class QueryTranslationEfCore<T>
         foreach (var entry in aggregates)
             columns.Add(new TabularColumn(entry.Spec.Alias, ColumnType(entry.Spec, entry.Field)));
 
+        // Group: materialize and group client-side because EF Core cannot translate complex aggregates.
         IEnumerable<IGrouping<object?[], T>> groups = rows.GroupBy(
             row => keys.Select(key => key.Accessor(row)).ToArray(),
             ObjectArrayComparer.Instance);
 
+        // Build: construct one row per group with key values and aggregate results.
         var result = new List<TabularRow>();
         foreach (IGrouping<object?[], T> group in groups)
         {
@@ -134,6 +153,9 @@ public sealed partial class QueryTranslationEfCore<T>
         return Result<TabularResult>.Success(new TabularResult(columns, result));
     }
 
+    /// <summary>
+    /// Resolves the column name for a group-by key, honoring the caller's alias if provided.
+    /// </summary>
     private static string KeyColumnName(IReadOnlyList<SelectField> selectedKeys, string field)
     {
         // Name: honor the alias the caller gave the key, as BuildSelectPlan does.
@@ -143,14 +165,17 @@ public sealed partial class QueryTranslationEfCore<T>
                 return string.IsNullOrEmpty(selected.Alias) ? field : selected.Alias;
         }
 
+        // Default: no alias means the field name is the column name.
         return field;
     }
 
+    // Check: if no select fields are specified, all keys are included.
     private static bool IncludesKey(IReadOnlyList<SelectField> selectedKeys, string field) =>
         selectedKeys.Count == 0 ||
         selectedKeys.Any(selected =>
             string.Equals(selected.Field, field, StringComparison.OrdinalIgnoreCase));
 
+    // Catch: overflow and cast errors from numeric conversion are value problems, not faults.
     private static Result<object?> Aggregate(
         IEnumerable<T> rows,
         AggregateSpec spec,
@@ -167,11 +192,13 @@ public sealed partial class QueryTranslationEfCore<T>
         }
     }
 
+    // Dispatch: compute the aggregate function over the row set.
     private static Result<object?> AggregateCore(
         IEnumerable<T> rows,
         AggregateSpec spec,
         Func<T, object?> selector)
     {
+        // Precompute: evaluate all expensive aggregates once; the switch picks the result.
         object?[] values = rows.Select(selector).ToArray();
 
         object? avgResult = Average(values);
@@ -196,14 +223,22 @@ public sealed partial class QueryTranslationEfCore<T>
         };
     }
 
+    /// <summary>Converts non-null values to decimal and computes their sum.</summary>
+    // Convert: filter nulls and sum as decimal using invariant culture.
     private static decimal Sum(object?[] values) => Numbers(values).Sum();
 
+    // Compute: average of non-null numeric values, or null if empty.
     private static object? Average(object?[] values)
     {
         decimal[] numbers = Numbers(values);
         return numbers.Length == 0 ? null : numbers.Average();
     }
 
+    /// <summary>
+    /// Finds the minimum or maximum value using ordinal string comparison
+    /// and IComparable for other types.
+    /// </summary>
+    // Find: minimum or maximum using ordinal string comparison and IComparable for other types.
     private static object? Extreme(object?[] values, bool minimum)
     {
         IComparable? best = null;
@@ -227,20 +262,28 @@ public sealed partial class QueryTranslationEfCore<T>
         return best;
     }
 
+    // Convert: filter nulls and convert to decimal using invariant culture for consistency.
     private static decimal[] Numbers(object?[] values) => values
         .Where(value => value is not null)
         .Select(value => Convert.ToDecimal(value, CultureInfo.InvariantCulture))
         .ToArray();
 
+    /// <summary>
+    /// Compiles a lambda expression that accesses a field and boxes the result to object.
+    /// Used for heterogeneous projection where all values must be object.
+    /// </summary>
+    // Compile: create a delegate that accesses a field and boxes the result for heterogeneous projection.
     private static Func<T, object?> CreateAccessor(QueryField field)
     {
         ParameterExpression parameter = Expression.Parameter(typeof(T), "row");
         Expression body = Replace(field.Expression!, parameter);
 
+        // Transform: wrap in object for heterogeneous projection.
         return Expression.Lambda<Func<T, object?>>(
             BuildSafeObject(body), parameter).Compile();
     }
 
+    // Map: determine the result column type from the aggregate function.
     private static Type ColumnType(AggregateSpec spec, QueryField field) =>
         spec.Function switch
         {
@@ -250,6 +293,11 @@ public sealed partial class QueryTranslationEfCore<T>
             _ => typeof(object),
         };
 
+    /// <summary>
+    /// Checks whether an aggregate function is supported for a given type.
+    /// Sum and Average require numeric types; Min and Max require IComparable.
+    /// </summary>
+    // Check: validate that the aggregate function supports the field's type.
     internal static bool Supports(AggregateFunction function, Type type)
     {
         Type target = Nullable.GetUnderlyingType(type) ?? type;
@@ -263,6 +311,7 @@ public sealed partial class QueryTranslationEfCore<T>
         };
     }
 
+    // Check: numeric primitives that support Sum and Average.
     internal static bool IsNumeric(Type type) =>
         type == typeof(byte) ||
         type == typeof(sbyte) ||

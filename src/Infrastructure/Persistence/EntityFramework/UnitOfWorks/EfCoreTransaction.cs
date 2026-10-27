@@ -17,16 +17,11 @@ public sealed class EfCoreTransaction : ITransaction
 {
     private readonly EfCoreDbContext _context;
     private readonly IDbContextTransaction _transaction;
+    private readonly IsolationLevel _isolationLevel;
 
     private TransactionState _state = TransactionState.Active;
     private bool _disposed;
 
-    /// <summary>
-    /// Creates a new EfCoreTransaction.
-    /// </summary>
-    /// <param name="context">The EF Core DbContext.</param>
-    /// <param name="transaction">The underlying EF Core transaction.</param>
-    /// <param name="readOnly">Whether the transaction is read-only.</param>
     internal EfCoreTransaction(
         EfCoreDbContext context,
         IDbContextTransaction transaction,
@@ -35,83 +30,72 @@ public sealed class EfCoreTransaction : ITransaction
         _context = context;
         _transaction = transaction;
         IsReadOnly = readOnly;
+
+        // Captured up front: reading it from a completed/disposed DbTransaction throws.
+        _isolationLevel = transaction.GetDbTransaction().IsolationLevel;
     }
 
     /// <inheritdoc />
+    /// <summary>
+    /// Current state of the transaction (Active, RollbackOnly, Committed, RolledBack, Disposed).
+    /// </summary>
     public TransactionState State => _state;
 
     /// <inheritdoc />
-    public IsolationLevel IsolationLevel => _transaction.GetDbTransaction().IsolationLevel;
+    /// <summary>
+    /// Isolation level captured at transaction creation, before the underlying DbTransaction completes or disposes.
+    /// </summary>
+    public IsolationLevel IsolationLevel => _isolationLevel;
 
     /// <inheritdoc />
+    /// <summary>
+    /// True when the transaction is read-only; write operations are rejected and SaveChanges is skipped on commit.
+    /// </summary>
     public bool IsReadOnly { get; }
 
     /// <inheritdoc />
     /// <remarks>
-    /// This method saves pending changes via <c>SaveChangesAsync</c> before committing the underlying
-    /// database transaction. This is the expected commit flow: changes staged during the transaction
-    /// are persisted as part of the commit. Callers should not call <c>SaveChangesAsync</c> separately
-    /// before committing, as this method handles it.
+    /// Saves pending changes via <c>SaveChangesAsync</c> and then commits the database transaction.
+    /// Callers should not call <c>SaveChangesAsync</c> separately before committing.
+    /// If saving or committing fails, the transaction is moved to <see cref="TransactionState.RollbackOnly"/>
+    /// (PostgreSQL aborts the transaction after a failed statement), so the only valid next step is rollback.
     /// </remarks>
     public async Task<Result> CommitAsync(CancellationToken cancellationToken = default)
     {
-        Result? activeCheck = EnsureActive();
-        if (activeCheck is not null && activeCheck.IsFailure)
-            return activeCheck;
+        if (CheckActive() is { } inactive)
+            return Result.Fail(inactive);
 
         if (_state == TransactionState.RollbackOnly)
-        {
             return Result.Fail(TransactionOutcome.Failure.TransactionRollbackOnly);
-        }
+
+        // Read-only transactions must not persist changes.
+        if (IsReadOnly && _context.ChangeTracker.HasChanges())
+            return Result.Fail(TransactionOutcome.Failure.ReadOnlyViolation);
 
         try
         {
-            // Save any pending changes before committing the transaction
-            await _context.SaveChangesAsync(cancellationToken);
+            // Flush: EF Core does not auto-flush pending changes on transaction commit,
+            // so SaveChangesAsync must be called explicitly to write staged entities to the database.
+            if (!IsReadOnly)
+                await _context.SaveChangesAsync(cancellationToken);
+
             await _transaction.CommitAsync(cancellationToken);
             _state = TransactionState.Committed;
             return Result.Ok();
         }
-        catch (DbUpdateConcurrencyException)
-        {
-            return Result.Fail(TransactionOutcome.Failure.ConcurrencyConflict);
-        }
-        catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
-        {
-            return Result.Fail(TransactionOutcome.Failure.DuplicateKey);
-        }
-        catch (DbUpdateException ex)
-        {
-            return Result.Fail(TranslateDbUpdateException(ex));
-        }
-        catch (Npgsql.PostgresException pgEx)
-        {
-            return Result.Fail(TranslatePostgresException(pgEx));
-        }
-        catch (TimeoutException)
-        {
-            return Result.Fail(TransactionOutcome.Failure.Timeout);
-        }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-        {
-            return Result.Fail(TransactionOutcome.Failure.Timeout);
-        }
-        catch (OperationCanceledException)
-        {
-            return Result.Fail(TransactionOutcome.Failure.Cancelled);
-        }
         catch (Exception ex)
         {
-            return Result.Fail(TranslateException(ex));
+            // The transaction can no longer be committed; only rollback is valid.
+            _state = TransactionState.RollbackOnly;
+            return Result.Fail(PersistenceExceptionTranslator.Translate(ex, cancellationToken));
         }
     }
 
     /// <inheritdoc />
     public async Task<Result> RollbackAsync(CancellationToken cancellationToken = default)
     {
-        Result? activeCheck = EnsureActive();
-        if (activeCheck is not null && activeCheck.IsFailure)
-            return activeCheck;
+        if (CheckActive() is { } inactive)
+            return Result.Fail(inactive);
 
         try
         {
@@ -119,26 +103,18 @@ public sealed class EfCoreTransaction : ITransaction
             _state = TransactionState.RolledBack;
             return Result.Ok();
         }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-        {
-            return Result.Fail(TransactionOutcome.Failure.Timeout);
-        }
-        catch (OperationCanceledException)
-        {
-            return Result.Fail(TransactionOutcome.Failure.Cancelled);
-        }
         catch (Exception ex)
         {
-            return Result.Fail(TranslateException(ex));
+            return Result.Fail(PersistenceExceptionTranslator.Translate(ex, cancellationToken));
         }
     }
 
     /// <inheritdoc />
     public Result MarkRollbackOnly()
     {
-        Result? activeCheck = EnsureActive();
-        if (activeCheck is not null && activeCheck.IsFailure)
-            return activeCheck;
+        if (CheckActive() is { } inactive)
+            return Result.Fail(inactive);
+
         _state = TransactionState.RollbackOnly;
         return Result.Ok();
     }
@@ -151,16 +127,16 @@ public sealed class EfCoreTransaction : ITransaction
 
         _disposed = true;
 
-        // Rollback if not already committed or rolled back
-        if (_state == TransactionState.Active || _state == TransactionState.RollbackOnly)
+        // Compensate: rollback if not already committed or rolled back.
+        if (_state is TransactionState.Active or TransactionState.RollbackOnly)
         {
             try
             {
-                await _transaction.RollbackAsync();
+                await _transaction.RollbackAsync(CancellationToken.None);
             }
             catch
             {
-                // Ignore rollback failures during disposal
+                // Ignore rollback failures during disposal.
             }
         }
 
@@ -169,96 +145,11 @@ public sealed class EfCoreTransaction : ITransaction
     }
 
     /// <summary>
-    /// Checks whether the transaction is still active. Returns a failure Result when the
-    /// transaction has already been committed, rolled back, or disposed.
+    /// Returns an error when the transaction is not in an active or rollback-only state.
+    /// Prevents operations on a transaction that has already been committed, rolled back, or disposed.
     /// </summary>
-    private Result? EnsureActive()
-    {
-        if (_state != TransactionState.Active && _state != TransactionState.RollbackOnly)
-        {
-            return Result.Fail(TransactionOutcome.Failure.TransactionAlreadyCompleted);
-        }
-        return null;
-    }
-
-    private static bool IsUniqueConstraintViolation(DbUpdateException ex)
-    {
-        if (ex.InnerException is Npgsql.PostgresException pgEx &&
-            pgEx.SqlState == "23505")
-            return true;
-
-        string message = ex.Message.ToLowerInvariant();
-        return message.Contains("unique") ||
-               message.Contains("duplicate") ||
-               message.Contains("violation");
-    }
-
-    /// <summary>
-    /// Translates EF Core and database provider exceptions to granular persistence errors.
-    /// </summary>
-    private static Error TranslateException(Exception ex)
-    {
-        if (ex.InnerException is Npgsql.PostgresException pgEx)
-            return TranslatePostgresException(pgEx);
-
-        if (ex is DbUpdateConcurrencyException)
-            return TransactionOutcome.Failure.ConcurrencyConflict;
-
-        if (ex is DbUpdateException dbEx)
-            return TranslateDbUpdateException(dbEx);
-
-        if (ex is TimeoutException)
-            return TransactionOutcome.Failure.Timeout;
-
-        if (ex is OperationCanceledException ocEx)
-            return ocEx.CancellationToken.IsCancellationRequested
-                ? TransactionOutcome.Failure.Cancelled
-                : TransactionOutcome.Failure.Timeout;
-
-        if (ex is InvalidOperationException ioe &&
-            ioe.Message.Contains("timeout", StringComparison.OrdinalIgnoreCase))
-            return TransactionOutcome.Failure.Timeout;
-
-        if (ex is InvalidOperationException ioe2 &&
-            (ioe2.Message.Contains("translate", StringComparison.OrdinalIgnoreCase) ||
-             ioe2.Message.Contains("LINQ", StringComparison.OrdinalIgnoreCase)))
-            return TransactionOutcome.Failure.ExpressionTranslationFailed(ioe2.Message);
-
-        if (ex is InvalidOperationException ioe3)
-            return TransactionOutcome.Failure.InvalidOperationFor(ioe3.Message);
-
-        return TransactionOutcome.Failure.Unknown;
-    }
-
-    /// <summary>Translates PostgreSQL SQLSTATE codes to persistence errors.</summary>
-    static Error TranslatePostgresException(Npgsql.PostgresException ex) => ex.SqlState switch
-    {
-        "23505" => TransactionOutcome.Failure.DuplicateKey,
-        "23503" => TransactionOutcome.Failure.ForeignKeyViolation,
-        "23514" => TransactionOutcome.Failure.CheckConstraintViolation,
-        "23502" => TransactionOutcome.Failure.NotNullViolation,
-        "40P01" => TransactionOutcome.Failure.DeadlockDetected,
-        "40001" => TransactionOutcome.Failure.SerializationFailure,
-        "08001" => TransactionOutcome.Failure.ConnectionRefused,
-        "08006" => TransactionOutcome.Failure.ConnectionLost,
-        "28000" => TransactionOutcome.Failure.LoginFailed,
-        "08004" => TransactionOutcome.Failure.ConnectionFailed,
-        _ => TransactionOutcome.Failure.Unknown,
-    };
-
-    /// <summary>Translates DbUpdateException without a known inner exception.</summary>
-    static Error TranslateDbUpdateException(DbUpdateException ex)
-    {
-        string message = ex.Message.ToLowerInvariant();
-        if (message.Contains("unique") || message.Contains("duplicate"))
-            return TransactionOutcome.Failure.DuplicateKey;
-        if (message.Contains("foreign key") || message.Contains("reference constraint"))
-            return TransactionOutcome.Failure.ForeignKeyViolation;
-        if (message.Contains("check constraint"))
-            return TransactionOutcome.Failure.CheckConstraintViolation;
-        if (message.Contains("not null") || message.Contains("null value"))
-            return TransactionOutcome.Failure.NotNullViolation;
-        return TransactionOutcome.Failure.SaveChangesFailed(ex.Message);
-    }
-
+    private Error? CheckActive() =>
+        _state is TransactionState.Active or TransactionState.RollbackOnly
+            ? null
+            : TransactionOutcome.Failure.TransactionAlreadyCompleted;
 }

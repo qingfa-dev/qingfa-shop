@@ -129,6 +129,12 @@ public static partial class QueryParser
     /// <returns>The part's value, or null when the part failed or was not requested.</returns>
     private static IReadOnlyList<TItem>? ValueOf<TItem>(
         Result<IReadOnlyList<TItem>> part,
-        string? requested) =>
-        part.IsFailure || string.IsNullOrWhiteSpace(requested) ? null : part.Value;
+        string? requested)
+    {
+        // Guard: a failed parse must not leak a partial value into the shape validator,
+        // because its own error is already reported and the query will fail anyway.
+        if (part.IsFailure || string.IsNullOrWhiteSpace(requested))
+            return null;
+        return part.Value;
+    }
 }

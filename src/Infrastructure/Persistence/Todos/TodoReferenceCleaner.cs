@@ -44,6 +44,7 @@ public sealed class TodoReferenceCleaner(ApplicationDbContext context) : ITodoRe
         }
         catch (Exception exception)
         {
+            // Translate: any unexpected error to a typed persistence outcome.
             return Result<int>.Fail(
                 RepositoryOutcome.Failure.InvalidOperationFor(exception.Message));
         }
@@ -82,6 +83,7 @@ public sealed class TodoReferenceCleaner(ApplicationDbContext context) : ITodoRe
         }
         catch (Exception exception)
         {
+            // Translate: any unexpected error to a typed persistence outcome.
             return Result<int>.Fail(
                 RepositoryOutcome.Failure.InvalidOperationFor(exception.Message));
         }
@@ -89,6 +91,7 @@ public sealed class TodoReferenceCleaner(ApplicationDbContext context) : ITodoRe
 
     private static void Touch(Todo todo, DateTimeOffset nowUtc, string? actor)
     {
+        // Update: audit fields to reflect the reference change.
         todo.ModifiedAtUtc = nowUtc.ToUniversalTime();
         todo.ModifiedBy = actor?.Trim();
     }

@@ -7,6 +7,8 @@ using Infrastructure.Persistence.EntityFramework.Contexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
+using Npgsql;
+
 namespace Infrastructure.Persistence.EntityFramework.UnitOfWorks;
 
 /// <summary>
@@ -17,16 +19,12 @@ public sealed class EfCoreUnitOfWork : IUnitOfWork
 {
     private readonly EfCoreDbContext _context;
 
-    /// <summary>
-    /// Creates a new EfCoreUnitOfWork.
-    /// </summary>
-    /// <param name="context">The EF Core DbContext.</param>
     public EfCoreUnitOfWork(EfCoreDbContext context)
     {
         _context = context;
     }
 
-    /// <inheritdoc />
+    /// <summary>True when the change tracker has pending additions, updates, or deletions not yet saved.</summary>
     public bool HasChanges => _context.ChangeTracker.HasChanges();
 
     /// <inheritdoc />
@@ -37,29 +35,11 @@ public sealed class EfCoreUnitOfWork : IUnitOfWork
             await _context.SaveChangesAsync(cancellationToken);
             return Result.Ok();
         }
-        catch (DbUpdateConcurrencyException)
-        {
-            return Result.Fail(UnitOfWorkOutcome.Failure.ConcurrencyConflict);
-        }
-        catch (DbUpdateException ex) when (IsUniqueConstraintViolation(ex))
-        {
-            return Result.Fail(UnitOfWorkOutcome.Failure.DuplicateKey);
-        }
-        catch (TimeoutException)
-        {
-            return Result.Fail(UnitOfWorkOutcome.Failure.Timeout);
-        }
-        catch (OperationCanceledException) when (!cancellationToken.IsCancellationRequested)
-        {
-            return Result.Fail(UnitOfWorkOutcome.Failure.Timeout);
-        }
-        catch (OperationCanceledException)
-        {
-            return Result.Fail(UnitOfWorkOutcome.Failure.Cancelled);
-        }
         catch (Exception ex)
         {
-            return Result.Fail(UnitOfWorkOutcome.Failure.SaveChangesFailed(ex.Message));
+            // Single translation path: concurrency, constraint violations, deadlocks,
+            // serialization failures, timeouts and cancellation all map to typed errors.
+            return Result.Fail(TranslateException(ex, cancellationToken));
         }
     }
 
@@ -69,57 +49,45 @@ public sealed class EfCoreUnitOfWork : IUnitOfWork
         bool readOnly = false,
         CancellationToken cancellationToken = default)
     {
-        // Check for nested transaction
+        // Guard: nested transactions are not supported; caller must commit or rollback first.
         if (_context.Database.CurrentTransaction is not null)
-        {
             return Result<ITransaction>.Fail(UnitOfWorkOutcome.Failure.TransactionNested);
-        }
 
         try
         {
-            IDbContextTransaction transaction;
+            IDbContextTransaction transaction = isolationLevel.HasValue
+                ? await _context.Database.BeginTransactionAsync(isolationLevel.Value, cancellationToken)
+                : await _context.Database.BeginTransactionAsync(cancellationToken);
 
-            if (isolationLevel.HasValue)
-            {
-                transaction = await _context.Database.BeginTransactionAsync(
-                    isolationLevel.Value, cancellationToken);
-            }
-            else
-            {
-                transaction = await _context.Database.BeginTransactionAsync(cancellationToken);
-            }
-
-            var efTransaction = new EfCoreTransaction(_context, transaction, readOnly);
-            return Result<ITransaction>.Success(efTransaction);
+            return Result<ITransaction>.Success(new EfCoreTransaction(_context, transaction, readOnly));
         }
         catch (Exception ex)
         {
-            return Result<ITransaction>.Fail(TranslateException(ex));
+            return Result<ITransaction>.Fail(TranslateException(ex, cancellationToken));
         }
     }
 
     /// <inheritdoc />
+    /// <summary>
+    /// Executes the work delegate and saves changes. Delegates to the generic version
+    /// so there is a single copy of the commit/rollback/cleanup logic.
+    /// </summary>
     public async Task<Result> ExecuteAsync(
         Func<CancellationToken, Task> work,
         CancellationToken cancellationToken = default)
     {
-        // Guard: Null work function would cause NullReferenceException
         if (work is null)
             return Result.Fail(UnitOfWorkOutcome.Failure.WorkRequired);
 
-        try
+        // Delegate: wrap the void work as a bool-returning delegate so the generic
+        // ExecuteAsync<T> holds the single copy of commit/rollback/cleanup logic.
+        Result<bool> result = await ExecuteAsync<bool>(async ct =>
         {
-            await work(cancellationToken);
-            return await SaveChangesAsync(cancellationToken);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            return Result.Fail(UnitOfWorkOutcome.Failure.Cancelled);
-        }
-        catch (Exception ex)
-        {
-            return Result.Fail(TranslateException(ex));
-        }
+            await work(ct);
+            return true;
+        }, cancellationToken);
+
+        return result.IsFailure ? Result.Fail(result.Errors) : Result.Ok();
     }
 
     /// <inheritdoc />
@@ -127,7 +95,6 @@ public sealed class EfCoreUnitOfWork : IUnitOfWork
         Func<CancellationToken, Task<T>> work,
         CancellationToken cancellationToken = default)
     {
-        // Guard: Null work function would cause NullReferenceException
         if (work is null)
             return Result<T>.Fail(UnitOfWorkOutcome.Failure.WorkRequired);
 
@@ -136,18 +103,13 @@ public sealed class EfCoreUnitOfWork : IUnitOfWork
             T result = await work(cancellationToken);
             Result saveResult = await SaveChangesAsync(cancellationToken);
 
-            if (saveResult.IsFailure)
-                return Result<T>.Fail(saveResult.Errors);
-
-            return Result<T>.Success(result);
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            return Result<T>.Fail(UnitOfWorkOutcome.Failure.Cancelled);
+            return saveResult.IsFailure
+                ? Result<T>.Fail(saveResult.Errors)
+                : Result<T>.Success(result);
         }
         catch (Exception ex)
         {
-            return Result<T>.Fail(TranslateException(ex));
+            return Result<T>.Fail(TranslateException(ex, cancellationToken));
         }
     }
 
@@ -158,18 +120,18 @@ public sealed class EfCoreUnitOfWork : IUnitOfWork
         bool readOnly = false,
         CancellationToken cancellationToken = default)
     {
-        // Guard: Null work function would cause NullReferenceException
         if (work is null)
             return Result.Fail(UnitOfWorkOutcome.Failure.WorkRequired);
 
-        Result<ITransaction> txResult = await BeginTransactionAsync(
-            isolationLevel, readOnly, cancellationToken);
+        // Delegate to the generic implementation so there is exactly one copy of the
+        // commit/rollback/cleanup logic (the two copies had drifted apart).
+        Result<bool> result = await ExecuteInTransactionAsync<bool>(async (tx, ct) =>
+        {
+            await work(tx, ct);
+            return true;
+        }, isolationLevel, readOnly, cancellationToken);
 
-        if (txResult.IsFailure)
-            return Result.Fail(txResult.Errors);
-
-        return await ExecuteInTransactionCoreAsync(
-            txResult.Value, work, cancellationToken);
+        return result.IsFailure ? Result.Fail(result.Errors) : Result.Ok();
     }
 
     /// <inheritdoc />
@@ -179,7 +141,6 @@ public sealed class EfCoreUnitOfWork : IUnitOfWork
         bool readOnly = false,
         CancellationToken cancellationToken = default)
     {
-        // Guard: Null work function would cause NullReferenceException
         if (work is null)
             return Result<T>.Fail(UnitOfWorkOutcome.Failure.WorkRequired);
 
@@ -189,63 +150,13 @@ public sealed class EfCoreUnitOfWork : IUnitOfWork
         if (txResult.IsFailure)
             return Result<T>.Fail(txResult.Errors);
 
-        return await ExecuteInTransactionCoreAsync<T>(
-            txResult.Value, work, cancellationToken);
+        return await ExecuteInTransactionCoreAsync(txResult.Value, work, cancellationToken);
     }
 
-    private async Task<Result> ExecuteInTransactionCoreAsync(
-        ITransaction transaction,
-        Func<ITransaction, CancellationToken, Task> work,
-        CancellationToken cancellationToken)
-    {
-        try
-        {
-            await work(transaction, cancellationToken);
-
-            if (transaction.State == TransactionState.RollbackOnly)
-            {
-                await transaction.RollbackAsync(cancellationToken);
-                return Result.Fail(UnitOfWorkOutcome.Failure.TransactionRollbackOnly);
-            }
-
-            Result commitResult = await transaction.CommitAsync(cancellationToken);
-            if (commitResult.IsFailure)
-                return Result.Fail(commitResult.Errors);
-
-            return Result.Ok();
-        }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            if (transaction.State == TransactionState.Active)
-                await transaction.RollbackAsync(cancellationToken);
-
-            return Result.Fail(UnitOfWorkOutcome.Failure.Cancelled);
-        }
-        catch (Exception ex)
-        {
-            if (transaction.State == TransactionState.Active)
-            {
-                try
-                {
-                    await transaction.RollbackAsync(cancellationToken);
-                }
-                catch
-                {
-                    // Ignore rollback failures during exception handling
-                }
-            }
-
-            // Clear change tracker to discard staged but uncommitted entities
-            _context.ChangeTracker.Clear();
-
-            return Result.Fail(TranslateException(ex));
-        }
-        finally
-        {
-            await transaction.DisposeAsync();
-        }
-    }
-
+    /// <summary>
+    /// Core transaction execution: runs the work, commits on success, and rolls back on failure.
+    /// Always disposes the transaction in the finally block.
+    /// </summary>
     private async Task<Result<T>> ExecuteInTransactionCoreAsync<T>(
         ITransaction transaction,
         Func<ITransaction, CancellationToken, Task<T>> work,
@@ -257,41 +168,26 @@ public sealed class EfCoreUnitOfWork : IUnitOfWork
 
             if (transaction.State == TransactionState.RollbackOnly)
             {
-                await transaction.RollbackAsync(cancellationToken);
+                await TryRollbackAndClearAsync(transaction);
                 return Result<T>.Fail(UnitOfWorkOutcome.Failure.TransactionRollbackOnly);
             }
 
             Result commitResult = await transaction.CommitAsync(cancellationToken);
             if (commitResult.IsFailure)
+            {
+                await TryRollbackAndClearAsync(transaction);
                 return Result<T>.Fail(commitResult.Errors);
+            }
 
             return Result<T>.Success(result);
         }
-        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
-        {
-            if (transaction.State == TransactionState.Active)
-                await transaction.RollbackAsync(cancellationToken);
-
-            return Result<T>.Fail(UnitOfWorkOutcome.Failure.Cancelled);
-        }
         catch (Exception ex)
         {
-            if (transaction.State == TransactionState.Active)
-            {
-                try
-                {
-                    await transaction.RollbackAsync(cancellationToken);
-                }
-                catch
-                {
-                    // Ignore rollback failures during exception handling
-                }
-            }
+            // Compensate: rollback (with a non-cancelled token) and discard tracked state.
+            await TryRollbackAndClearAsync(transaction);
 
-            // Clear change tracker to discard staged but uncommitted entities
-            _context.ChangeTracker.Clear();
-
-            return Result<T>.Fail(TranslateException(ex));
+            // TranslateException maps OCE to Cancelled / Timeout based on the caller's token.
+            return Result<T>.Fail(TranslateException(ex, cancellationToken));
         }
         finally
         {
@@ -299,110 +195,163 @@ public sealed class EfCoreUnitOfWork : IUnitOfWork
         }
     }
 
-    private static bool IsUniqueConstraintViolation(DbUpdateException ex)
+    /// <summary>
+    /// Best-effort rollback that never throws, so it cannot mask the original failure.
+    /// Always clears the change tracker to prevent stale entities from leaking to the next operation.
+    /// </summary>
+    private async Task TryRollbackAndClearAsync(ITransaction transaction)
     {
-        if (ex.InnerException is Npgsql.PostgresException pgEx &&
-            pgEx.SqlState == "23505")
-            return true;
-
-        string message = ex.Message.ToLowerInvariant();
-        return message.Contains("unique") ||
-               message.Contains("duplicate") ||
-               message.Contains("violation");
+        try
+        {
+            await RollbackAndClearAsync(transaction);
+        }
+        catch
+        {
+            // Preserve the original outcome. Log the rollback failure in production.
+        }
     }
 
     /// <summary>
-    /// Translates EF Core and database provider exceptions to granular persistence errors.
+    /// Rolls back the transaction if active and clears the EF Core change tracker.
+    /// Uses a non-cancelled token for rollback so the caller's cancelled token does not abort cleanup.
     /// </summary>
-    private static Error TranslateException(Exception ex)
+    private async Task RollbackAndClearAsync(ITransaction transaction)
     {
-        // PostgreSQL-specific: inspect the inner PostgresException for precise SQLSTATE codes
-        if (ex.InnerException is Npgsql.PostgresException pgEx)
+        try
         {
-            return TranslatePostgresException(pgEx);
+            if (transaction.State is TransactionState.Active or TransactionState.RollbackOnly)
+            {
+                // Non-cancelled token: the caller's token may already be cancelled,
+                // and a cancelled token would make the rollback itself throw.
+                await transaction.RollbackAsync(CancellationToken.None);
+            }
         }
+        finally
+        {
+            // Rollback does not reset EF Core's tracked entity states.
+            _context.ChangeTracker.Clear();
+        }
+    }
 
-        // EF Core concurrency exception
+    // ---------------------------------------------------------------------
+    // Exception translation
+    // ---------------------------------------------------------------------
+
+    /// <summary>
+    /// Translates raw exceptions into typed persistence errors.
+    /// Checks concurrency first (it derives from DbUpdateException), then walks the exception chain
+    /// for PostgresException, DbUpdateException, cancellation, and timeout scenarios.
+    /// </summary>
+    private static Error TranslateException(Exception ex, CancellationToken cancellationToken = default)
+    {
+        // Concurrency first: it derives from DbUpdateException.
         if (ex is DbUpdateConcurrencyException)
-        {
             return UnitOfWorkOutcome.Failure.ConcurrencyConflict;
-        }
 
-        // EF Core update exception (constraint violations, etc.)
+        // Walk the whole chain; the PostgresException is not always the direct inner exception.
+        if (FindInChain<PostgresException>(ex) is { } pgEx)
+            return TranslatePostgresException(pgEx);
+
         if (ex is DbUpdateException dbEx)
-        {
             return TranslateDbUpdateException(dbEx);
-        }
 
-        // Timeout
-        if (ex is TimeoutException)
+        // Cancellation: caller's token => Cancelled, anything else (DB-side cancel) => Timeout.
+        if (ex is OperationCanceledException oce)
         {
-            return UnitOfWorkOutcome.Failure.Timeout;
-        }
-
-        // Cancellation
-        if (ex is OperationCanceledException ocEx)
-        {
-            return ocEx.CancellationToken.IsCancellationRequested
+            return cancellationToken.IsCancellationRequested || oce.CancellationToken.IsCancellationRequested
                 ? UnitOfWorkOutcome.Failure.Cancelled
                 : UnitOfWorkOutcome.Failure.Timeout;
         }
 
-        // InvalidOperationException with timeout message
-        if (ex is InvalidOperationException ioe &&
-            ioe.Message.Contains("timeout", StringComparison.OrdinalIgnoreCase))
-        {
+        // Npgsql wraps command timeouts as NpgsqlException -> TimeoutException.
+        if (FindInChain<TimeoutException>(ex) is not null)
             return UnitOfWorkOutcome.Failure.Timeout;
-        }
 
-        // LINQ expression translation failure
-        if (ex is InvalidOperationException ioe2 &&
-            (ioe2.Message.Contains("translate", StringComparison.OrdinalIgnoreCase) ||
-             ioe2.Message.Contains("LINQ", StringComparison.OrdinalIgnoreCase)))
+        if (ex is InvalidOperationException ioe)
         {
-            return UnitOfWorkOutcome.Failure.ExpressionTranslationFailed(ioe2.Message);
+            string msg = ioe.Message;
+
+            if (msg.Contains("timeout", StringComparison.OrdinalIgnoreCase))
+                return UnitOfWorkOutcome.Failure.Timeout;
+
+            if (msg.Contains("translate", StringComparison.OrdinalIgnoreCase) ||
+                msg.Contains("LINQ", StringComparison.OrdinalIgnoreCase))
+                return UnitOfWorkOutcome.Failure.ExpressionTranslationFailed(msg);
+
+            return UnitOfWorkOutcome.Failure.InvalidOperationFor(msg);
         }
 
-        if (ex is InvalidOperationException ioe3)
-        {
-            return UnitOfWorkOutcome.Failure.InvalidOperationFor(ioe3.Message);
-        }
-
-        // Unknown
-        return UnitOfWorkOutcome.Failure.Unknown;
+        return UnitOfWorkOutcome.Failure.SaveChangesFailed(ex.Message);
     }
 
-    /// <summary>Translates PostgreSQL SQLSTATE codes to persistence errors.</summary>
-    static Error TranslatePostgresException(Npgsql.PostgresException ex) => ex.SqlState switch
+    /// <summary>
+    /// Walks the InnerException chain to find the first exception of type T.
+    /// Used because PostgresException is often nested deep inside Npgsql wrappers.
+    /// </summary>
+    private static TException? FindInChain<TException>(Exception? ex) where TException : Exception
     {
-        // Integrity constraint violations
-        "23505" => UnitOfWorkOutcome.Failure.DuplicateKey,
-        "23503" => UnitOfWorkOutcome.Failure.ForeignKeyViolation,
-        "23514" => UnitOfWorkOutcome.Failure.CheckConstraintViolation,
-        "23502" => UnitOfWorkOutcome.Failure.NotNullViolation,
+        while (ex is not null)
+        {
+            if (ex is TException match)
+                return match;
 
-        // Lock/wait deadlocks
-        "40P01" => UnitOfWorkOutcome.Failure.DeadlockDetected,
+            ex = ex.InnerException;
+        }
 
-        // Serialization failures
-        "40001" => UnitOfWorkOutcome.Failure.SerializationFailure,
+        return null;
+    }
+
+    /// <summary>
+    /// Translates PostgreSQL SQLSTATE error codes to typed persistence errors.
+    /// Covers integrity violations, concurrency, timeouts, connection failures, and authentication errors.
+    /// </summary>
+    private static Error TranslatePostgresException(PostgresException ex) => ex.SqlState switch
+    {
+        // Integrity constraint violations (use the constraint/column when Npgsql provides it)
+        PostgresErrorCodes.UniqueViolation => ex.ConstraintName is { } c
+            ? UnitOfWorkOutcome.Failure.DuplicateKeyFor(c)
+            : UnitOfWorkOutcome.Failure.DuplicateKey,
+        PostgresErrorCodes.ForeignKeyViolation => ex.ConstraintName is { } c
+            ? UnitOfWorkOutcome.Failure.ForeignKeyViolationFor(c)
+            : UnitOfWorkOutcome.Failure.ForeignKeyViolation,
+        PostgresErrorCodes.CheckViolation => ex.ConstraintName is { } c
+            ? UnitOfWorkOutcome.Failure.CheckConstraintViolationFor(c)
+            : UnitOfWorkOutcome.Failure.CheckConstraintViolation,
+        PostgresErrorCodes.NotNullViolation => ex.ColumnName is { } col
+            ? UnitOfWorkOutcome.Failure.NotNullViolationFor(col)
+            : UnitOfWorkOutcome.Failure.NotNullViolation,
+
+        // Concurrency
+        PostgresErrorCodes.DeadlockDetected => UnitOfWorkOutcome.Failure.DeadlockDetected,
+        PostgresErrorCodes.SerializationFailure => UnitOfWorkOutcome.Failure.SerializationFailure,
+
+        // Timeouts / cancelled statements (statement_timeout, lock_timeout)
+        PostgresErrorCodes.QueryCanceled => UnitOfWorkOutcome.Failure.Timeout,
+        PostgresErrorCodes.LockNotAvailable => UnitOfWorkOutcome.Failure.Timeout,
 
         // Connection exceptions
-        "08001" => UnitOfWorkOutcome.Failure.ConnectionRefused,
-        "08006" => UnitOfWorkOutcome.Failure.ConnectionLost,
+        PostgresErrorCodes.SqlClientUnableToEstablishSqlConnection => UnitOfWorkOutcome.Failure.ConnectionRefused,
+        PostgresErrorCodes.ConnectionFailure => UnitOfWorkOutcome.Failure.ConnectionLost,
+        PostgresErrorCodes.ConnectionException => UnitOfWorkOutcome.Failure.ConnectionFailed,
+        PostgresErrorCodes.ConnectionDoesNotExist => UnitOfWorkOutcome.Failure.ConnectionLost,
+        PostgresErrorCodes.SqlServerRejectedEstablishmentOfSqlConnection => UnitOfWorkOutcome.Failure.ConnectionFailed,
+        PostgresErrorCodes.AdminShutdown => UnitOfWorkOutcome.Failure.ConnectionFailed,
+        PostgresErrorCodes.CrashShutdown => UnitOfWorkOutcome.Failure.ConnectionFailed,
+        PostgresErrorCodes.CannotConnectNow => UnitOfWorkOutcome.Failure.ConnectionFailed,
+        PostgresErrorCodes.TooManyConnections => UnitOfWorkOutcome.Failure.ConnectionFailed,
 
-        // Invalid authorization specification
-        "28000" => UnitOfWorkOutcome.Failure.LoginFailed,
+        // Authentication
+        PostgresErrorCodes.InvalidAuthorizationSpecification => UnitOfWorkOutcome.Failure.LoginFailed,
+        PostgresErrorCodes.InvalidPassword => UnitOfWorkOutcome.Failure.LoginFailed,
 
-        // Cannot connect now (server shutting down, etc.)
-        "08004" => UnitOfWorkOutcome.Failure.ConnectionFailed,
-
-        // Other PostgreSQL errors
         _ => UnitOfWorkOutcome.Failure.Unknown,
     };
 
-    /// <summary>Translates DbUpdateException without a known inner exception.</summary>
-    static Error TranslateDbUpdateException(DbUpdateException ex)
+    /// <summary>
+    /// Fallback for DbUpdateException when no PostgresException is found in the chain.
+    /// Uses message keyword matching to infer the constraint type violated.
+    /// </summary>
+    private static Error TranslateDbUpdateException(DbUpdateException ex)
     {
         string message = ex.Message.ToLowerInvariant();
         if (message.Contains("unique") || message.Contains("duplicate"))
@@ -415,5 +364,4 @@ public sealed class EfCoreUnitOfWork : IUnitOfWork
             return UnitOfWorkOutcome.Failure.NotNullViolation;
         return UnitOfWorkOutcome.Failure.SaveChangesFailed(ex.Message);
     }
-
 }

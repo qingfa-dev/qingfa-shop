@@ -6,11 +6,16 @@ namespace Infrastructure.Persistence.EntityFramework.QueryTranslation;
 
 public sealed partial class QueryTranslationEfCore<T>
 {
+    /// <summary>
+    /// Resolves a field name to a QueryField, checking whether it is filterable or sortable.
+    /// </summary>
     internal static Result<QueryField> Resolve(QueryMap<T> map, string name, bool sorting)
     {
+        // Lookup: find the field in the map.
         if (!map.TryGet(name, out QueryField? field))
             return Result<QueryField>.Fail(QueryOutcome.Failure.NotMapped(name));
 
+        // Check: filterable for filters, sortable for sort — the map controls access.
         if (sorting ? !field.Sortable : !field.Filterable)
         {
             return Result<QueryField>.Fail(
@@ -20,6 +25,10 @@ public sealed partial class QueryTranslationEfCore<T>
         return Result<QueryField>.Success(field);
     }
 
+    /// <summary>
+    /// True if the field is searchable: it must be a single string value, not a collection or indexed field.
+    /// </summary>
+    // Filter: only single string-valued, non-collection, non-indexed fields can be searched.
     private static bool IsTextSearchable(QueryField field) =>
         field.Searchable &&
         field.Expression is not null &&
@@ -27,21 +36,28 @@ public sealed partial class QueryTranslationEfCore<T>
         !field.IsIndexed &&
         field.ComparisonType == typeof(string);
 
+    /// <summary>Resolves a field name to a QueryField without checking filterable or sortable flags.</summary>
     internal static Result<QueryField> ResolveMapped(string name, QueryMap<T> map)
     {
+        // Lookup: find the field without checking capabilities — the caller validates.
         if (!map.TryGet(name, out QueryField? field))
             return Result<QueryField>.Fail(QueryOutcome.Failure.NotMapped(name));
 
         return Result<QueryField>.Success(field);
     }
 
+    /// <summary>
+    /// Resolves a field for select projection. Rejects collection and indexed fields
+    /// because projections need single scalar values that can be mapped to a column.
+    /// </summary>
     internal static Result<QueryField> ResolveSelectable(string name, QueryMap<T> map)
     {
+        // Lookup: find the field first.
         Result<QueryField> mapped = ResolveMapped(name, map);
         if (mapped.IsFailure)
             return mapped;
 
-        // Validate: projections need a non-indexed, non-collection, single value.
+        // Validate: projections need a non-indexed, non-collection, single scalar value.
         if (!mapped.Value.Selectable || mapped.Value.IsCollection || mapped.Value.IsIndexed ||
             mapped.Value.Expression is null)
         {
@@ -51,14 +67,18 @@ public sealed partial class QueryTranslationEfCore<T>
         return mapped;
     }
 
+    /// <summary>
+    /// Resolves a field for group-by. Rejects collections, indexed fields, and composite fields
+    /// because grouping keys must be simple scalar values.
+    /// </summary>
     internal static Result<QueryField> ResolveGroupable(string name, QueryMap<T> map)
     {
+        // Lookup: find the field first.
         Result<QueryField> mapped = ResolveMapped(name, map);
         if (mapped.IsFailure)
             return mapped;
 
-        // Validate: maps are allowlists, so the translator enforces the flag as well
-        // as the structural shape of a grouping key.
+        // Validate: grouping keys must be simple scalars — no collections, indexes, or composites.
         if (!mapped.Value.Groupable || mapped.Value.IsCollection || mapped.Value.IsIndexed ||
             mapped.Value.Composite.Count > 0 || mapped.Value.Expression is null)
         {
@@ -68,8 +88,13 @@ public sealed partial class QueryTranslationEfCore<T>
         return mapped;
     }
 
+    /// <summary>
+    /// Resolves a field for aggregation. Validates that the field is selectable and that
+    /// the aggregate function supports the field's type (e.g., Sum requires numeric).
+    /// </summary>
     internal static Result<QueryField> ResolveAggregatable(AggregateSpec spec, QueryMap<T> map)
     {
+        // Lookup: find the field first.
         Result<QueryField> mapped = ResolveMapped(spec.Field, map);
         if (mapped.IsFailure)
             return mapped;

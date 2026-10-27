@@ -13,12 +13,17 @@ namespace Infrastructure.Persistence.EntityFramework.Repositories;
 public partial class EfCoreRepository<TEntity, TKey> : ISearchableRepository<TEntity, TKey>
 {
     /// <inheritdoc />
+    /// <remarks>
+    /// Count: LongCountAsync is called before paging so the total count reflects the full
+    /// filtered set, not the paged subset. The count query is cheap (COUNT(*) without LIMIT)
+    /// and must precede the paged materialization.
+    /// </remarks>
     public async Task<Result<QueryPage<TEntity>>> QueryAsync(
         Query<TEntity> query, CancellationToken cancellationToken = default)
     {
         try
         {
-            // Validate: page size against provider limit
+            // Validate: page size against provider limit.
             if (query.Page is not null && Capabilities.MaxPageSize is int maxPageSize)
             {
                 var pageResult = QueryCapabilityGuard.ValidatePageSizeWithinProviderLimit(
@@ -27,7 +32,7 @@ public partial class EfCoreRepository<TEntity, TKey> : ISearchableRepository<TEn
                     return Result<QueryPage<TEntity>>.Fail(pageResult.Errors);
             }
 
-            // Validate: order-by clause count against provider limit
+            // Validate: order-by clause count against provider limit.
             if (Capabilities.MaxOrderByClauses is int maxOrderBy && query.OrderBy.Count > maxOrderBy)
             {
                 return Result<QueryPage<TEntity>>.Fail(
@@ -41,10 +46,10 @@ public partial class EfCoreRepository<TEntity, TKey> : ISearchableRepository<TEn
 
             IQueryable<TEntity> queryable = buildResult.Value;
 
-            // Fetch total count before paging
+            // Fetch total count before paging.
             long totalCount = await queryable.LongCountAsync(cancellationToken);
 
-            // Apply paging if requested
+            // Apply paging if requested.
             if (query.Page is not null)
             {
                 Result<IQueryable<TEntity>> paged = _translator.ApplyPaging(queryable, query.Page);
@@ -54,7 +59,7 @@ public partial class EfCoreRepository<TEntity, TKey> : ISearchableRepository<TEn
                 queryable = paged.Value;
             }
 
-            // Materialize the page
+            // Materialize the page.
             var items = await queryable.ToListAsync(cancellationToken);
 
             var page = new QueryPage<TEntity>(
@@ -67,6 +72,7 @@ public partial class EfCoreRepository<TEntity, TKey> : ISearchableRepository<TEn
         }
         catch (Exception ex)
         {
+            // Translate: query execution failure to typed persistence outcome.
             return Result<QueryPage<TEntity>>.Fail(TranslateException(ex));
         }
     }
@@ -91,6 +97,7 @@ public partial class EfCoreRepository<TEntity, TKey> : ISearchableRepository<TEn
         }
         catch (Exception ex)
         {
+            // Translate: query execution failure to typed persistence outcome.
             return Result<TEntity>.Fail(TranslateException(ex));
         }
     }
@@ -116,6 +123,7 @@ public partial class EfCoreRepository<TEntity, TKey> : ISearchableRepository<TEn
         }
         catch (Exception ex)
         {
+            // Translate: query execution failure to typed persistence outcome.
             return Result<Maybe<TEntity>>.Fail(TranslateException(ex));
         }
     }
@@ -137,6 +145,7 @@ public partial class EfCoreRepository<TEntity, TKey> : ISearchableRepository<TEn
         }
         catch (Exception ex)
         {
+            // Translate: query execution failure to typed persistence outcome.
             return Result<int>.Fail(TranslateException(ex));
         }
     }
@@ -158,6 +167,7 @@ public partial class EfCoreRepository<TEntity, TKey> : ISearchableRepository<TEn
         }
         catch (Exception ex)
         {
+            // Translate: query execution failure to typed persistence outcome.
             return Result<bool>.Fail(TranslateException(ex));
         }
     }
@@ -168,11 +178,15 @@ public partial class EfCoreRepository<TEntity, TKey> : ISearchableRepository<TEn
     /// Builds a queryable from a Query by applying filter, search, and sort.
     /// Returns a failure Result if any translation step fails, maintaining the Result pattern.
     /// </summary>
+    /// <remarks>
+    /// Read: AsNoTracking is the default for search queries — they are read-only and should not
+    /// incur the overhead of EF Core change tracking (snapshot creation, state management).
+    /// </remarks>
     private Result<IQueryable<TEntity>> BuildQuery(Query<TEntity> query)
     {
         IQueryable<TEntity> source = _context.Set<TEntity>().AsNoTracking();
 
-        // Apply filter
+        // Apply filter.
         if (query.Filter is not null)
         {
             Result<IQueryable<TEntity>> filtered = _translator.ApplyFilter(source, query.Filter, _map);
@@ -182,7 +196,7 @@ public partial class EfCoreRepository<TEntity, TKey> : ISearchableRepository<TEn
             source = filtered.Value;
         }
 
-        // Apply search
+        // Apply search.
         if (query.Search is not null)
         {
             Result<IQueryable<TEntity>> searched = _translator.ApplySearch(
@@ -193,7 +207,7 @@ public partial class EfCoreRepository<TEntity, TKey> : ISearchableRepository<TEn
             source = searched.Value;
         }
 
-        // Apply sort
+        // Apply sort.
         if (query.OrderBy is not null && query.OrderBy.Count > 0)
         {
             Result<IQueryable<TEntity>> sorted = _translator.ApplySort(

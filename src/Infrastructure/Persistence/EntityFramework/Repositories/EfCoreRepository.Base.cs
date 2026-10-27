@@ -26,7 +26,10 @@ public partial class EfCoreRepository<TEntity, TKey> : IPersistentRepository<TEn
     private readonly IQueryTranslator<TEntity> _translator;
     private readonly QueryMap<TEntity> _map;
 
-    /// <summary>What query shapes this provider can translate.</summary>
+    /// <summary>
+    /// What query shapes this provider can translate (expressions, search, ranking, etc.).
+    /// Used by callers to check feature support before constructing queries.
+    /// </summary>
     public IQueryCapabilities Capabilities { get; }
 
     public EfCoreRepository(
@@ -39,7 +42,8 @@ public partial class EfCoreRepository<TEntity, TKey> : IPersistentRepository<TEn
         _translator = translator;
         Capabilities = capabilities;
 
-        // Resolve the query map from the provider
+        // Guard: fail fast at DI resolution rather than at the first query, so the missing
+        // map is discovered when the repository is constructed, not deep in a request pipeline.
         if (!mapProvider.TryGet<TEntity>(out QueryMap<TEntity>? map))
         {
             throw new InvalidOperationException(
@@ -52,8 +56,8 @@ public partial class EfCoreRepository<TEntity, TKey> : IPersistentRepository<TEn
 
     /// <summary>
     /// Translates EF Core and database provider exceptions to granular persistence errors.
-    /// Maps specific error codes (e.g., PostgreSQL SQLSTATE) to semantic outcomes so callers
-    /// can distinguish between constraint violations, connection failures, timeouts, and more.
+    /// Isolated from PersistenceExceptionTranslator: repository-level errors use RepositoryOutcome
+    /// (not UnitOfWorkOutcome), since repository operations are not within a unit-of-work transaction.
     /// </summary>
     private static Error TranslateException(Exception ex)
     {
@@ -114,7 +118,10 @@ public partial class EfCoreRepository<TEntity, TKey> : IPersistentRepository<TEn
         return RepositoryOutcome.Failure.Unknown;
     }
 
-    /// <summary>Translates PostgreSQL SQLSTATE codes to persistence errors.</summary>
+    /// <summary>
+    /// Translates PostgreSQL SQLSTATE codes to repository-level persistence errors.
+    /// Uses RepositoryOutcome rather than UnitOfWorkOutcome for consistency with the repository pattern.
+    /// </summary>
     static Error TranslatePostgresException(Npgsql.PostgresException ex) => ex.SqlState switch
     {
         // Integrity constraint violations
@@ -143,7 +150,10 @@ public partial class EfCoreRepository<TEntity, TKey> : IPersistentRepository<TEn
         _ => RepositoryOutcome.Failure.Unknown,
     };
 
-    /// <summary>Translates DbUpdateException without a known inner exception.</summary>
+    /// <summary>
+    /// Fallback for DbUpdateException when no PostgresException is found in the inner exception chain.
+    /// Uses message keyword matching to infer the constraint type violated.
+    /// </summary>
     static Error TranslateDbUpdateException(DbUpdateException ex)
     {
         string message = ex.Message.ToLowerInvariant();
@@ -160,6 +170,8 @@ public partial class EfCoreRepository<TEntity, TKey> : IPersistentRepository<TEn
 
     /// <summary>
     /// Detaches any tracked instance that shares the supplied entity's key.
+    /// EF Core rejects a second instance with the same key, so the stale tracked copy must be
+    /// detached before the caller's detached entity can be attached and updated.
     /// </summary>
     /// <remarks>
     /// Reads use <c>AsNoTracking</c>, so update and delete receive detached copies.

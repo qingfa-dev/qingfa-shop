@@ -77,6 +77,10 @@ public sealed class EfCoreMigrator<TContext> : IPersistenceMigrator
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Retry: uses exponential backoff because transient database failures like deadlocks
+    /// and lock timeouts resolve quickly when retried after a short delay.
+    /// </remarks>
     public async Task<Result> ExecuteAsync(
         IInitializationContext context,
         CancellationToken cancellationToken = default)
@@ -108,10 +112,12 @@ public sealed class EfCoreMigrator<TContext> : IPersistenceMigrator
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
+                // Translate: caller's cancellation token was triggered.
                 return Result.Fail(MigrationOutcome.Failure.Cancelled(Name));
             }
             catch (Exception ex) when (IsTransient(ex))
             {
+                // Retry: transient failures (timeout, deadlock) may succeed on retry with exponential backoff.
                 lastException = ex;
                 var delayMs = (int)Math.Min(1000 * Math.Pow(2, attempt), 10000);
                 _logger.LogWarning(
@@ -122,6 +128,7 @@ public sealed class EfCoreMigrator<TContext> : IPersistenceMigrator
             }
             catch (Exception ex)
             {
+                // Fail: non-transient errors are not retried.
                 _logger.LogError(
                     ex,
                     "Migration failed for '{MigratorName}' on attempt {Attempt}.",
@@ -172,6 +179,10 @@ public sealed class EfCoreMigrator<TContext> : IPersistenceMigrator
     }
 
     /// <inheritdoc />
+    /// <summary>
+    /// Determines whether an exception is transient and worth retrying.
+    /// Timeouts and deadlocks are transient; other errors are not.
+    /// </summary>
     public bool IsTransient(Exception exception)
     {
         return exception switch

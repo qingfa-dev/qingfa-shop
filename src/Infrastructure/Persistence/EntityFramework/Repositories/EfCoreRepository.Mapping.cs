@@ -15,6 +15,11 @@ namespace Infrastructure.Persistence.EntityFramework.Repositories;
 public partial class EfCoreRepository<TEntity, TKey> : IMappableRepository<TEntity, TKey>
 {
     /// <inheritdoc />
+    /// <remarks>
+    /// Map: entities are materialized first, then mapped to DTOs using the provided delegate.
+    /// This is client-side mapping after EF Core materialization, suitable for complex mappings
+    /// that cannot be expressed as a simple expression tree.
+    /// </remarks>
     public async Task<Result<QueryPage<TDto>>> MapAsync<TDto>(
         Query<TEntity> query,
         Func<TEntity, TDto> mapper,
@@ -71,6 +76,11 @@ public partial class EfCoreRepository<TEntity, TKey> : IMappableRepository<TEnti
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Project: the Expression&lt;Func&lt;TEntity, TDto&gt;&gt; enables server-side projection —
+    /// EF Core translates the expression tree into a SQL SELECT clause, so only the projected
+    /// columns are retrieved from the database, reducing network and memory overhead.
+    /// </remarks>
     public async Task<Result<QueryPage<TDto>>> ProjectAsync<TDto>(
         Query<TEntity> query,
         Expression<Func<TEntity, TDto>> projection,

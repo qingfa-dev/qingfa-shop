@@ -10,12 +10,16 @@ namespace Infrastructure.Persistence.EntityFramework.QueryTranslation;
 
 public sealed partial class QueryTranslationEfCore<T>
 {
-    /// <summary>Applies an ordering to a source query.</summary>
+    /// <summary>
+    /// Applies an ordering to a source query.
+    /// Appends a stable ID order at the end so rows with equal sort values page deterministically.
+    /// </summary>
     public Result<IQueryable<T>> ApplySort(
         IQueryable<T> source,
         IReadOnlyList<SortField> order,
         QueryMap<T> map)
     {
+        // Default: no sort fields means apply the default ID order.
         if (order.Count == 0)
             return Result<IQueryable<T>>.Success(ApplyDefaultOrder(source));
 
@@ -25,6 +29,7 @@ public sealed partial class QueryTranslationEfCore<T>
 
         foreach (SortField sort in order)
         {
+            // Resolve: look up the field and check sortability.
             Result<QueryField> field = Resolve(map, sort.Field, sorting: true);
             if (field.IsFailure)
                 return Result<IQueryable<T>>.Fail(field.Errors);
@@ -33,6 +38,7 @@ public sealed partial class QueryTranslationEfCore<T>
             if (member.IsFailure)
                 return Result<IQueryable<T>>.Fail(member.Errors);
 
+            // Guard: wrap the key so null intermediates produce default(T) instead of throwing.
             Expression key = BuildSafeKey(member.Value);
 
             // Validate: null-state ordering only applies to nullable members.
@@ -59,7 +65,7 @@ public sealed partial class QueryTranslationEfCore<T>
             then = true;
         }
 
-        // Sort: end on the key so rows with equal sort values page deterministically.
+        // Stabilize: end on the key so rows with equal sort values page deterministically.
         return Result<IQueryable<T>>.Success(ApplyIdOrder(query, then: true));
     }
 
@@ -74,10 +80,15 @@ public sealed partial class QueryTranslationEfCore<T>
                 QueryOutcome.Failure.Syntax("page window is out of range"));
         }
 
+        // Compute: convert 1-based page to 0-based offset for Skip.
         return Result<IQueryable<T>>.Success(
             source.Skip((page.Page - 1) * page.PageSize).Take(page.PageSize));
     }
 
+    /// <summary>
+    /// Builds a null-state boolean expression for nulls-first or nulls-last ordering.
+    /// Uses HasValue for Nullable&lt;T&gt; and a null comparison for reference types.
+    /// </summary>
     private static Expression BuildNullState(Expression member, SortNulls nulls)
     {
         // Validate: Nullable<T> exposes HasValue; reference types use a null comparison.
@@ -85,24 +96,35 @@ public sealed partial class QueryTranslationEfCore<T>
             ? Expression.Property(member, nameof(Nullable<int>.HasValue))
             : Expression.NotEqual(member, Expression.Constant(null, member.Type));
 
+        // Invert: HasValue puts nulls last; NotHasValue puts them first.
         return nulls == SortNulls.HasValue ? hasValue : Expression.Not(hasValue);
     }
 
+    /// <summary>
+    /// Wraps a sort key with a null guard so intermediate navigation access does not throw
+    /// NullReferenceException when a reference property is null.
+    /// </summary>
     private static Expression BuildSafeKey(Expression member)
     {
-        // Sort: a null intermediate must not throw; fall back to default(T) for the key.
+        // Guard: a null intermediate must not throw; fall back to default(T) for the key.
         Expression? guard = BuildGuard(member, includeLeaf: false);
         return guard is null
             ? member
+            // Conditional: if the guard passes, use the member; otherwise use default(T).
             : Expression.Condition(guard, member, Expression.Default(member.Type));
     }
 
+    /// <summary>
+    /// Applies a single order-by clause using the correct Queryable method
+    /// (OrderBy, OrderByDescending, ThenBy, ThenByDescending).
+    /// </summary>
     private static IQueryable<T> ApplyOrder(
         IQueryable<T> source,
         LambdaExpression key,
         SortDirection direction,
         bool then)
     {
+        // Select: choose the correct Queryable method based on direction and position.
         string method = then
             ? direction == SortDirection.Ascending ? nameof(Queryable.ThenBy) : nameof(Queryable.ThenByDescending)
             : direction == SortDirection.Ascending ? nameof(Queryable.OrderBy) : nameof(Queryable.OrderByDescending);
@@ -119,11 +141,20 @@ public sealed partial class QueryTranslationEfCore<T>
     private static readonly PropertyInfo? IdProperty =
         typeof(T).GetProperty("Id", BindingFlags.Public | BindingFlags.Instance);
 
+    /// <summary>
+    /// Applies a default order by the entity's Id property ascending.
+    /// Used when no explicit order-by is provided.
+    /// </summary>
     internal static IQueryable<T> ApplyDefaultOrder(IQueryable<T> source) =>
         ApplyIdOrder(source, then: false);
 
+    /// <summary>
+    /// Applies an order-by on the entity's Id property for deterministic paging.
+    /// Skipped if the entity type has no Id property.
+    /// </summary>
     private static IQueryable<T> ApplyIdOrder(IQueryable<T> source, bool then)
     {
+        // Skip: not all entities have an Id property.
         if (IdProperty is null)
             return source;
 

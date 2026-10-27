@@ -6,12 +6,19 @@ namespace Application.Common.Querying.Parsing;
 /// <summary>Parses the Gridify-compatible ordering grammar into neutral sort fields.</summary>
 internal static class OrderText
 {
+    /// <summary>Parses a comma-separated ordering expression into sort fields.</summary>
+    /// <param name="text">The raw ordering text (e.g., "Name,-CreatedAt asc").</param>
+    /// <param name="state">The parser state with the query map and limits.</param>
+    /// <returns>A list of sort fields, or a failure if syntax is invalid.</returns>
     public static Result<IReadOnlyList<SortField>> Parse<T>(string? text, ParserState<T> state)
     {
+        // Default: no ordering text means no sort fields.
         if (string.IsNullOrWhiteSpace(text))
             return Result<IReadOnlyList<SortField>>.Success([]);
 
+        // Split: each comma-separated part is one sort specification.
         string[] parts = text.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+        // Guard: limit the number of sort fields to prevent excessive ORDER BY clauses.
         if (parts.Length > state.Options.MaxSortFields)
         {
             return Result<IReadOnlyList<SortField>>.Fail(
@@ -26,6 +33,7 @@ internal static class OrderText
             string token = part;
             SortDirection direction = SortDirection.Ascending;
 
+            // Parse: an explicit direction suffix ("asc" / "desc") follows a space.
             int space = token.LastIndexOf(' ');
             if (space >= 0)
             {
@@ -69,6 +77,7 @@ internal static class OrderText
                 nulls = SortNulls.NotHasValue;
             }
 
+            // Resolve: the cleaned token is the field name to look up in the map.
             Result<QueryField> mapped = state.Field(token);
             if (mapped.IsFailure)
             {
@@ -77,6 +86,7 @@ internal static class OrderText
             }
 
             QueryField field = mapped.Value;
+            // Validate: the map controls which fields are sortable.
             if (!field.Sortable)
             {
                 errors.Add(QueryOutcome.Failure.NotSortable(token));
@@ -93,11 +103,13 @@ internal static class OrderText
             result.Add(new SortField(token, direction, nulls));
         }
 
+        // Collect: accumulate all errors so the caller sees every problem in one pass.
         return errors.Count > 0
             ? Result<IReadOnlyList<SortField>>.Fail(errors)
             : Result<IReadOnlyList<SortField>>.Success(result);
     }
 
+    // Parse: a type is nullable if it's a reference type or a Nullable<T> wrapper.
     private static bool IsNullable(Type type) =>
         !type.IsValueType || Nullable.GetUnderlyingType(type) is not null;
 }

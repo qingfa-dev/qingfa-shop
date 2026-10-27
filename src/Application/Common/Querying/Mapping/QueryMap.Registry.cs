@@ -59,6 +59,8 @@ public sealed class QueryMapRegistry : IQueryMapProvider
     {
         ArgumentNullException.ThrowIfNull(map);
 
+        // Enforce: TryAdd is atomic — it both checks for duplicates and inserts in one operation,
+        // so a second registration for the same type is safely rejected without replacing the first.
         return _maps.TryAdd(typeof(T), map)
             ? Result.Success()
             : Result.Fail(QueryMapOutcome.Failure.AlreadyRegistered(typeof(T)));
@@ -85,7 +87,10 @@ public sealed class QueryMapRegistry : IQueryMapProvider
 
     /// <summary>Looks up the map for <typeparamref name="T"/>.</summary>
     /// <typeparam name="T">The type whose map is wanted.</typeparam>
-    /// <returns>The registered map, or a failure when the type has none.</returns>
+    /// <returns>
+    /// The registered map, or a failure when the type has none.
+    /// Returns a typed failure instead of null so the caller can collect the error rather than handle a null reference.
+    /// </returns>
     public Result<QueryMap<T>> Get<T>() =>
         TryGet<T>(out QueryMap<T>? map)
             ? Result<QueryMap<T>>.Success(map)

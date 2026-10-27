@@ -36,16 +36,17 @@ public static class PersistenceComposition
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
 
-        // Register: Query maps first so AddEfCorePersistence picks up the pre-configured registry.
+        // Enforce: Query maps must be registered before EF Core so the registry is available
+        // when the DbContext is configured and repositories resolve their maps.
         services.RegisterQueryMaps();
 
-        // Register: EF Core persistence with the specified DbContext.
+        // Call: Configure EF Core persistence with the specified DbContext and settings.
         services.AddEfCorePersistence<TContext>(configuration);
 
-        // Register: Generic repositories for all entity types.
+        // Create: Open-generic repository implementations for all entity types.
         services.RegisterRepositories();
 
-        // Register: database initialization (initializer + module seeders).
+        // Create: Database initialization pipeline (migrator + seeders + resetter).
         services.AddPersistenceInitialization<TContext>();
 
         return services;
@@ -68,16 +69,17 @@ public static class PersistenceComposition
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNullOrWhiteSpace(connectionString);
 
-        // Register: Query maps first so AddEfCorePersistence picks up the pre-configured registry.
+        // Enforce: Query maps must be registered before EF Core so the registry is available
+        // when the DbContext is configured and repositories resolve their maps.
         services.RegisterQueryMaps();
 
-        // Register: EF Core persistence with the specified DbContext.
+        // Call: Configure EF Core persistence with explicit connection string and provider.
         services.AddEfCorePersistence<TContext>(connectionString, provider);
 
-        // Register: Generic repositories for all entity types.
+        // Create: Open-generic repository implementations for all entity types.
         services.RegisterRepositories();
 
-        // Register: database initialization (initializer + module seeders).
+        // Create: Database initialization pipeline (migrator + seeders + resetter).
         services.AddPersistenceInitialization<TContext>();
 
         return services;
@@ -88,13 +90,13 @@ public static class PersistenceComposition
     /// </summary>
     private static void RegisterRepositories(this IServiceCollection services)
     {
-        // Register: Open-generic repository so any IEntity is resolvable.
+        // Create: Open-generic repository so any IEntity is resolvable.
         services.AddScoped(typeof(IPersistentRepository<,>), typeof(EfCoreRepository<,>));
         services.AddScoped(typeof(IProjectionRepository<,>), typeof(EfCoreRepository<,>));
         services.AddScoped(typeof(IStreamableRepository<,>), typeof(EfCoreRepository<,>));
         services.AddScoped(typeof(IMappableRepository<,>), typeof(EfCoreRepository<,>));
 
-        // Register: cross-aggregate reference cleanup used by the delete use cases.
+        // Create: Cross-aggregate reference cleanup used by the delete use cases.
         services.TryAddScoped<ITodoReferenceCleaner, TodoReferenceCleaner>();
     }
 

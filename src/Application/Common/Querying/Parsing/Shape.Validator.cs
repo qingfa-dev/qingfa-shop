@@ -17,12 +17,17 @@ internal static class ShapeValidator
         IReadOnlyList<GroupByField>? group,
         IReadOnlyList<AggregateSpec>? aggregate)
     {
+        // Enforce: in SQL, mixing SELECT columns with aggregates requires GROUP BY.
+        // Without it, the query shape is ambiguous — the adapter cannot produce a valid result.
         if (select is not null && aggregate is not null && group is null)
             return Result.Fail(QueryOutcome.Failure.MixedShape);
 
+        // Skip: no group-by means no select+group validation is needed.
         if (group is null || select is null)
             return Result.Success();
 
+        // Validate: every selected field must appear in the group-by keys,
+        // mirroring the SQL rule that non-aggregated columns must be grouped.
         foreach (SelectField field in select)
         {
             if (!group.Any(key => string.Equals(key.Field, field.Field, StringComparison.OrdinalIgnoreCase)))

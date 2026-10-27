@@ -14,17 +14,24 @@ public partial class EfCoreRepository<TEntity, TKey> : IDeletableRepository<TEnt
 
         try
         {
+            // Cleanup: detach any stale tracked copy so the caller's instance becomes the single tracked entity.
             DetachTrackedCopy(entity);
             _context.Set<TEntity>().Remove(entity);
             return Task.FromResult(Result.Ok());
         }
         catch (Exception ex)
         {
+            // Translate: stage error to typed persistence outcome.
             return Task.FromResult(Result.Fail(TranslateException(ex)));
         }
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Load: EF Core's change tracker requires the entity to be loaded before it can stage
+    /// a deletion. FindAsync retrieves the entity (checking the identity cache first),
+    /// so Remove can mark it for deletion in the next SaveChangesAsync call.
+    /// </remarks>
     public async Task<Result> RemoveAsync(TKey id, CancellationToken cancellationToken = default)
     {
         try
@@ -40,6 +47,7 @@ public partial class EfCoreRepository<TEntity, TKey> : IDeletableRepository<TEnt
         }
         catch (Exception ex)
         {
+            // Translate: stage error to typed persistence outcome.
             return Result.Fail(TranslateException(ex));
         }
     }
@@ -59,6 +67,7 @@ public partial class EfCoreRepository<TEntity, TKey> : IDeletableRepository<TEnt
         }
         catch (Exception ex)
         {
+            // Translate: stage error to typed persistence outcome.
             return Task.FromResult(Result.Fail(TranslateException(ex)));
         }
     }

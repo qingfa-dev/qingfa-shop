@@ -183,10 +183,19 @@ public static class QueryConstant
         /// <summary>Search-mode names accepted by the structured <c>SearchSpec</c>.</summary>
         public static class SearchMode
         {
+            /// <summary>Matches terms that appear anywhere in the target field (substring match).</summary>
             public const string Contains = "contains";
+
+            /// <summary>Matches terms that appear at the beginning of the target field.</summary>
             public const string StartsWith = "startswith";
+
+            /// <summary>Matches only when the target field equals the term exactly.</summary>
             public const string Exact = "exact";
+
+            /// <summary>Delegates to the database full-text search engine for ranked results.</summary>
             public const string FullText = "fulltext";
+
+            /// <summary>Matches terms with a small edit distance (typo-tolerant search).</summary>
             public const string Fuzzy = "fuzzy";
         }
 

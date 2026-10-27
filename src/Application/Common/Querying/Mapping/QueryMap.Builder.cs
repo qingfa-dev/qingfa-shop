@@ -111,8 +111,10 @@ public sealed class QueryMapBuilder<T>
         return this;
     }
 
-    /// <summary>Maps every public property, optionally recursing into nested ones.</summary>
-    /// <param name="depth">How many levels of nested properties to map.</param>
+    /// <summary>
+    /// Automatically maps every public property of the entity, optionally recursing into nested objects.
+    /// </summary>
+    /// <param name="depth">How many levels of nested properties to map (0 = only top-level properties).</param>
     /// <returns>The builder, for chaining.</returns>
     public QueryMapBuilder<T> GenerateMappings(int depth = 0)
     {
@@ -131,6 +133,12 @@ public sealed class QueryMapBuilder<T>
             ? Result<QueryMap<T>>.Fail(_errors)
             : Result<QueryMap<T>>.Success(new QueryMap<T>(_fields));
 
+    /// <summary>
+    /// Recursively discovers public properties and adds them as mapped fields.
+    /// </summary>
+    /// <param name="type">The type whose properties to map.</param>
+    /// <param name="prefix">The dotted prefix for nested properties (e.g., "Owner").</param>
+    /// <param name="depth">Remaining recursion depth; 0 stops recursion.</param>
     private void Generate(Type type, string? prefix, int depth)
     {
         foreach (PropertyInfo property in type.GetProperties(BindingFlags.Public | BindingFlags.Instance))
@@ -152,6 +160,7 @@ public sealed class QueryMapBuilder<T>
             var lambda = Expression.Lambda<Func<T, object?>>(
                 Expression.Convert(access, typeof(object)), parameter);
             var builder = new QueryFieldBuilder();
+            // Normalize: string properties are automatically searchable so the common case works out of the box.
             if (property.PropertyType == typeof(string))
                 builder.Searchable();
 
@@ -168,18 +177,27 @@ public sealed class QueryMapBuilder<T>
         }
     }
 
+    /// <summary>
+    /// Adds a field to the map, validating that searchable fields are strings and names are unique.
+    /// </summary>
+    /// <param name="field">The field to add.</param>
     private void Add(QueryField field)
     {
+        // Guard: only string fields can be searched because the parser produces string values.
         if (field.Searchable && (field.ValueType != typeof(string) || field.Composite.Count > 0))
         {
             _errors.Add(QueryMapOutcome.Failure.SearchableNotString(field.Name));
             return;
         }
 
+        // Enforce: TryAdd is atomic — it both checks for duplicates and inserts in one operation.
         if (!_fields.TryAdd(field.Name, field))
             _errors.Add(QueryMapOutcome.Failure.Duplicate(field.Name));
     }
 
+    /// <summary>Validates the field name is not empty and does not exceed the maximum length.</summary>
+    /// <param name="name">The field name to validate.</param>
+    /// <returns>True when the name is valid.</returns>
     private bool ValidateName(string name)
     {
         if (string.IsNullOrWhiteSpace(name))
@@ -234,6 +252,9 @@ public sealed class QueryMapBuilder<T>
             ? Unwrap(unary.Operand)
             : expression;
 
+    /// <summary>Checks whether a type can be recursed into for nested property mapping.</summary>
+    /// <param name="type">The type to check.</param>
+    /// <returns>True when the type is a concrete, non-string, non-collection class.</returns>
     private static bool IsNestable(Type type) =>
         type.IsClass &&
         type != typeof(string) &&

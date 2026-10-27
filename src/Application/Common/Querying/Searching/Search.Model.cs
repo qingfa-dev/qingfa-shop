@@ -11,6 +11,11 @@ namespace Application.Common.Querying.Searching;
 /// </remarks>
 public abstract record SearchRequest
 {
+    /// <summary>
+    /// Creates a search request, validating that the query is not empty and does not exceed the maximum length.
+    /// </summary>
+    /// <param name="query">The text to search for; must not be null, empty, or exceed the configured limit.</param>
+    /// <param name="mode">The search algorithm (Contains, StartsWith, Exact, FullText, Fuzzy).</param>
     protected SearchRequest(string query, SearchMode mode)
     {
         if (string.IsNullOrWhiteSpace(query))
@@ -49,6 +54,11 @@ public abstract record SearchRequest
 /// <summary>Standard search request for non-full-text modes (Contains, StartsWith, Exact, Fuzzy).</summary>
 public sealed record BasicSearchRequest : SearchRequest
 {
+    /// <summary>
+    /// Creates a basic search request for non-full-text modes.
+    /// </summary>
+    /// <param name="query">The text to search for.</param>
+    /// <param name="mode">The search mode; must not be FullText (use FullTextSearchRequest instead).</param>
     public BasicSearchRequest(string query, SearchMode mode) : base(query, mode)
     {
         if (mode == SearchMode.FullText)
@@ -59,6 +69,8 @@ public sealed record BasicSearchRequest : SearchRequest
 /// <summary>Full-text search request.</summary>
 public sealed record FullTextSearchRequest : SearchRequest
 {
+    /// <summary>Creates a full-text search request with the given query text.</summary>
+    /// <param name="query">The full-text search query.</param>
     public FullTextSearchRequest(string query)
         : base(query, SearchMode.FullText)
     {
