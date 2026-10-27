@@ -11,12 +11,14 @@
     <ProjectReference Include="../Contract/Contract.csproj" />
   </ItemGroup>
 
+    <ItemGroup>
+    <InternalsVisibleTo Include="Application.Unit.Tests" />
+  </ItemGroup>
+
   <ItemGroup>
     <PackageReference Include="MediatR" />
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
-    <PackageReference Include="Mapster" />
-    <PackageReference Include="Mapster.DependencyInjection" />
     <PackageReference Include="Scrutor" />
     <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
     <PackageReference Include="Microsoft.Extensions.Logging" />
