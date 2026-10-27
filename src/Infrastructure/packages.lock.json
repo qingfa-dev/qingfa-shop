@@ -959,6 +959,7 @@
           "Mapster": "[10.0.13, )",
           "Mapster.DependencyInjection": "[10.0.13, )",
           "MediatR": "[12.5.0, )",
+          "Microsoft.AspNetCore.Http.Abstractions": "[10.0.14, )",
           "Microsoft.Extensions.DependencyInjection.Abstractions": "[10.0.14, )",
           "Microsoft.Extensions.Logging": "[10.0.14, )",
           "QingFa.Shop.Contract": "[1.0.0, )",

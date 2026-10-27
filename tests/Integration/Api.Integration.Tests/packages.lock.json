@@ -1142,6 +1142,7 @@
           "FluentEmail.Core": "[3.0.2, )",
           "FluentEmail.SendGrid": "[3.0.2, )",
           "MailKit": "[4.18.2, )",
+          "Microsoft.AspNetCore.Http.Abstractions": "(, )",
           "Microsoft.EntityFrameworkCore": "[10.0.14, )",
           "Microsoft.EntityFrameworkCore.Design": "[10.0.14, )",
           "Microsoft.EntityFrameworkCore.Relational": "[10.0.14, )",
