@@ -69,8 +69,8 @@ public sealed class TodoSeeder : IPersistenceSeeder<Todo, Guid>
         foreach (var sample in samples)
         {
             using var command = context.Connection.CreateCommand();
-            command.CommandText = """
-                INSERT INTO todos (id, title, description, status, priority, due_at_utc, completed_at_utc,
+            command.CommandText = $"""
+                INSERT INTO {TodoTable.Todos} (id, title, description, status, priority, due_at_utc, completed_at_utc,
                     list_id, category_ids, created_at_utc, created_by, tenant_id, metadata)
                 VALUES (@id, @title, @description, @status, @priority, @due_at_utc, @completed_at_utc,
                     @list_id, CAST(@category_ids AS jsonb), @created_at_utc, @created_by, @tenant_id, CAST(@metadata AS jsonb))
@@ -148,7 +148,7 @@ public sealed class TodoSeeder : IPersistenceSeeder<Todo, Guid>
 
         // Query: Count existing todos using raw SQL.
         using var command = context.Connection.CreateCommand();
-        command.CommandText = "SELECT COUNT(*) FROM todos";
+        command.CommandText = $"SELECT COUNT(*) FROM {TodoTable.Todos}";
         command.CommandTimeout = 30;
 
         var result = command.ExecuteScalar();
@@ -164,7 +164,7 @@ public sealed class TodoSeeder : IPersistenceSeeder<Todo, Guid>
 
         // Query: Get the first category ID.
         using var catCommand = context.Connection.CreateCommand();
-        catCommand.CommandText = "SELECT id FROM todo_categories LIMIT 1";
+        catCommand.CommandText = $"SELECT id FROM {TodoTable.Categories} LIMIT 1";
         catCommand.CommandTimeout = 30;
         var catResult = catCommand.ExecuteScalar();
         var categoryId = catResult != null && catResult != DBNull.Value
@@ -173,7 +173,7 @@ public sealed class TodoSeeder : IPersistenceSeeder<Todo, Guid>
 
         // Query: Get the first list ID.
         using var listCommand = context.Connection.CreateCommand();
-        listCommand.CommandText = "SELECT id FROM todo_lists LIMIT 1";
+        listCommand.CommandText = $"SELECT id FROM {TodoTable.Lists} LIMIT 1";
         listCommand.CommandTimeout = 30;
         var listResult = listCommand.ExecuteScalar();
         var listId = listResult != null && listResult != DBNull.Value

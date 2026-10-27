@@ -54,6 +54,7 @@ public partial class EfCoreRepository<TEntity, TKey> : IWritableRepository<TEnti
 
         try
         {
+            DetachTrackedCopy(entity);
             _context.Set<TEntity>().Update(entity);
             return Task.FromResult(Result.Ok());
         }

@@ -74,6 +74,7 @@ public static class EntityFrameworkComposition
                         optionsBuilder.UseNpgsql(cs, npgsqlOptions =>
                         {
                             npgsqlOptions
+                                .UsePersistenceMigrationHistory()
                                 .CommandTimeout(opt.CommandTimeoutSeconds)
                                 .EnableRetryOnFailure(
                                     opt.MaxRetryAttempts,
@@ -148,6 +149,7 @@ public static class EntityFrameworkComposition
                         optionsBuilder.UseNpgsql(connectionString, npgsqlOptions =>
                         {
                             npgsqlOptions
+                                .UsePersistenceMigrationHistory()
                                 .CommandTimeout(setting.CommandTimeoutSeconds)
                                 .EnableRetryOnFailure(
                                     setting.MaxRetryAttempts,

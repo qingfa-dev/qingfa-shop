@@ -1,10 +1,12 @@
 using Application.Common.Persistence;
 using Application.Common.Persistence.Repositories;
 using Application.Common.Querying.Mapping;
+using Application.Features.Todos.Abstractions;
 
 using Infrastructure.Persistence.EntityFramework;
 using Infrastructure.Persistence.EntityFramework.Contexts;
 using Infrastructure.Persistence.EntityFramework.Repositories;
+using Infrastructure.Persistence.Todos;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -92,6 +94,9 @@ public static class PersistenceComposition
         services.AddScoped(typeof(IProjectionRepository<,>), typeof(EfCoreRepository<,>));
         services.AddScoped(typeof(IStreamableRepository<,>), typeof(EfCoreRepository<,>));
         services.AddScoped(typeof(IMappableRepository<,>), typeof(EfCoreRepository<,>));
+
+        // Register: cross-aggregate reference cleanup used by the delete use cases.
+        services.TryAddScoped<ITodoReferenceCleaner, TodoReferenceCleaner>();
     }
 
     /// <summary>

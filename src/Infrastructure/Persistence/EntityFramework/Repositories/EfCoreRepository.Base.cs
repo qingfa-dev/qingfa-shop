@@ -8,6 +8,7 @@ using Infrastructure.Persistence.EntityFramework.Contexts;
 using Infrastructure.Persistence.EntityFramework.QueryTranslation;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.ChangeTracking;
 
 namespace Infrastructure.Persistence.EntityFramework.Repositories;
 
@@ -155,6 +156,30 @@ public partial class EfCoreRepository<TEntity, TKey> : IPersistentRepository<TEn
         if (message.Contains("not null") || message.Contains("null value"))
             return RepositoryOutcome.Failure.NotNullViolation;
         return RepositoryOutcome.Failure.SaveChangesFailed(ex.Message);
+    }
+
+    /// <summary>
+    /// Detaches any tracked instance that shares the supplied entity's key.
+    /// </summary>
+    /// <remarks>
+    /// Reads use <c>AsNoTracking</c>, so update and delete receive detached copies.
+    /// If the same key is still tracked (for example, after a create in the same
+    /// scope), EF rejects a second instance with that key. Detaching the stale copy
+    /// lets the caller's instance become the single tracked instance.
+    /// </remarks>
+    /// <param name="entity">The detached entity that will be attached.</param>
+    private void DetachTrackedCopy(TEntity entity)
+    {
+        List<EntityEntry<TEntity>> stale = _context.ChangeTracker
+            .Entries<TEntity>()
+            .Where(entry => !ReferenceEquals(entry.Entity, entity) &&
+                EqualityComparer<TKey>.Default.Equals(entry.Entity.Id, entity.Id))
+            .ToList();
+
+        foreach (EntityEntry<TEntity> entry in stale)
+        {
+            entry.State = EntityState.Detached;
+        }
     }
 
     /// <summary>

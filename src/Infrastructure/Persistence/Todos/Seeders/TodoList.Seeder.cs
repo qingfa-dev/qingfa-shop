@@ -75,8 +75,8 @@ public sealed class TodoListSeeder : IPersistenceSeeder<TodoList, Guid>
             var id = Guid.NewGuid();
 
             using var command = context.Connection.CreateCommand();
-            command.CommandText = """
-                INSERT INTO todo_lists (id, name, description, created_at_utc, created_by, tenant_id, metadata)
+            command.CommandText = $"""
+                INSERT INTO {TodoTable.Lists} (id, name, description, created_at_utc, created_by, tenant_id, metadata)
                 VALUES (@id, @name, @description, @created_at_utc, @created_by, @tenant_id, CAST(@metadata AS jsonb))
                 """;
             command.Parameters.Add(CreateParam(command, "@id", id));
@@ -142,7 +142,7 @@ public sealed class TodoListSeeder : IPersistenceSeeder<TodoList, Guid>
 
         // Query: Count existing lists using raw SQL.
         using var command = context.Connection.CreateCommand();
-        command.CommandText = "SELECT COUNT(*) FROM todo_lists";
+        command.CommandText = $"SELECT COUNT(*) FROM {TodoTable.Lists}";
         command.CommandTimeout = 30;
 
         var result = command.ExecuteScalar();

@@ -19,6 +19,7 @@ public partial class EfCoreRepository<TEntity, TKey> : IDeletableRepository<TEnt
 
         try
         {
+            DetachTrackedCopy(entity);
             _context.Set<TEntity>().Remove(entity);
             return Task.FromResult(Result.Ok());
         }

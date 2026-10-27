@@ -76,8 +76,8 @@ public sealed class TodoCategorySeeder : IPersistenceSeeder<TodoCategory, Guid>
             var id = Guid.NewGuid();
 
             using var command = context.Connection.CreateCommand();
-            command.CommandText = """
-                INSERT INTO todo_categories (id, name, description, created_at_utc, created_by, tenant_id, metadata)
+            command.CommandText = $"""
+                INSERT INTO {TodoTable.Categories} (id, name, description, created_at_utc, created_by, tenant_id, metadata)
                 VALUES (@id, @name, @description, @created_at_utc, @created_by, @tenant_id, CAST(@metadata AS jsonb))
                 """;
             command.Parameters.Add(CreateParam(command, "@id", id));
@@ -143,7 +143,7 @@ public sealed class TodoCategorySeeder : IPersistenceSeeder<TodoCategory, Guid>
 
         // Query: Count existing categories using raw SQL.
         using var command = context.Connection.CreateCommand();
-        command.CommandText = "SELECT COUNT(*) FROM todo_categories";
+        command.CommandText = $"SELECT COUNT(*) FROM {TodoTable.Categories}";
         command.CommandTimeout = 30;
 
         var result = command.ExecuteScalar();
