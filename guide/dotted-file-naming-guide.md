@@ -39,7 +39,7 @@ Each role describes an **architectural responsibility**, not a file's contents.
 | `resolver` | GraphQL or similar field/query resolver |
 | `middleware` | Request/response pipeline hook |
 | `interceptor` | Cross-cutting call boundary (auth, logging, retries) |
-| `guard` | Access/authorization gate before handling |
+| `guard` | Access/authorization gate before handling, or an argument/state guard (see §2.9 notes) |
 | `handler` | Handles a specific command/event/message |
 | `endpoint` | Single-purpose API surface |
 | `webhook` | External callback receiver |
@@ -74,7 +74,7 @@ Each role describes an **architectural responsibility**, not a file's contents.
 | `aggregate` | Consistency boundary |
 | `value-object` | Immutable value type |
 | `dto` | Data transfer object across boundaries |
-| `schema` | Shape/validation definition |
+| `schema` | Shape/validation definition (in this repository: a database model) |
 | `migration` | Schema/data migration |
 | `seed` | Initial/reference data |
 | `repository` | Persistence access for an aggregate |
@@ -88,14 +88,14 @@ Each role describes an **architectural responsibility**, not a file's contents.
 |---|---|
 | `interface` | Contract/protocol |
 | `type` | Type alias/definition |
-| `enum` | Enumerated values |
+| `enum` | Enumerated values (in this repository: an enumerated kind) |
 | `constant` | Shared immutable values |
-| `config` | Configuration surface |
+| `config` | Configuration surface (C# renders it as `.Configuration`, §3.2.1) |
 | `options` | Configurable behavior input |
 | `event` | Domain/integration event |
 | `message` | Transport message |
 | `result` | Outcome/return shape |
-| `error` | Error type or code container |
+| `error` | Error type (failure-code containers are `outcome`, §2.9) |
 
 ### 2.5 UI / Presentation
 
@@ -108,7 +108,7 @@ Each role describes an **architectural responsibility**, not a file's contents.
 | `directive` | Declarative UI behavior |
 | `pipe` | Value transformation in templates |
 | `hook` | Composable stateful logic |
-| `store` | UI state container |
+| `store` | UI state container (same role as §2.3 `store`) |
 | `slice` | State reducer segment |
 | `selector` | Derived state accessor |
 | `style` | Styling unit |
@@ -128,7 +128,7 @@ Each role describes an **architectural responsibility**, not a file's contents.
 | `proxy` | Delegating indirection |
 | `listener` | Subscribes to events/messages |
 | `scheduler` | Time/period-driven trigger |
-| `worker` | Background processor |
+| `worker` | Background processor (including hosted services) |
 | `job` | Discrete unit of background work |
 
 ### 2.7 Testing
@@ -141,7 +141,7 @@ Each role describes an **architectural responsibility**, not a file's contents.
 | `stub` | Test double with canned responses |
 | `fake` | Lightweight in-memory implementation |
 | `fixture` | Reusable test data |
-| `factory` | Test data builder |
+| `factory` | Test data builder (same role as §2.2 `factory`) |
 | `e2e-spec` | End-to-end specification |
 
 ### 2.8 Vocabulary Rules (Agnostic)
@@ -150,8 +150,10 @@ Each role describes an **architectural responsibility**, not a file's contents.
 - Roles describe **responsibility**, not contents.
 - Prefer the closest existing role over inventing a new one.
 - Do not encode behavior, timing, or implementation detail in the role.
-- Every dotted segment must map to a role or a recognized sub-role.
+- Every dotted segment must map to a role, a recognized sub-role (§2.10), or a C# variant (§3.2.2).
 - Tech-specific suffixes **derive from this pool** — do not maintain parallel lists.
+- A role listed in two tables (`store`, `factory`) is one role with one filename segment.
+- Roles are singular. Do not pluralize (`.Extension`, not `.Extensions`).
 
 Bad:
 
@@ -174,34 +176,64 @@ Order.Factory
 ### 2.9 Project-Level Roles (QingFa.Shop)
 
 These roles extend §2 for this repository. They are listed here because the
-code adopts them deliberately and consistently; §9.6 says a new role is added
-by extending §2, not by maintaining a parallel list.
+code adopts them deliberately and consistently; §9 step 6 says a new role is
+added by extending §2, not by maintaining a parallel list. Roles are written
+in kebab-case here and PascalCased in C# (`query-map` → `.QueryMap`).
 
-| Role | Responsibility | Where |
+| Role | Responsibility | Example |
 |---|---|---|
 | `outcome` | Failure-code container for a concept | `Todo.Outcome.cs` |
 | `marker` | Type that anchors an assembly for scanning or tests | `Assembly.Marker.cs` |
 | `composition` | Composition entry point for a layer or feature | `Application.Composition.cs` |
 | `collection` | xUnit collection definition | `AppHost.Collection.cs` |
-| `guard` | Argument and state guard | `Error.Guard.cs` |
 | `behavior` | MediatR pipeline behavior | `Exception.Behavior.cs` |
 | `logger` | Source-generated logging collaborator | `Logging.Behavior.Logger.cs` |
-| `operator` | Operator over a type, e.g. implicit conversions | `Result.Generic.Operator.cs` |
+| `operator` | Operators over a type, e.g. implicit conversions | `Result.Generic.Operator.cs` |
 | `severity` | Enumeration of a value's severity | `Error.Severity.cs` |
-| `default` | Default implementation of a concept | `Metadata.Default.cs` |
 | `exception` | Exception type or its mapping | `Result.Exception.cs` |
-| `generic` | Generic arity variant of a concept | `Result.Generic.cs` |
-| `design` | Design-time-only factory | `InfrastructureDbContextFactory.Design.cs` |
-| `tabular` | Tabular shape variant of a concept | `EfQuery.Tabular.cs` |
 | `request` | Request message shape | `Test.Request.cs` |
-| `querymap` | The query field allowlist for a concept | `Todo.QueryMap.cs` |
-| `queryconstant` | The field names a query surface addresses | `Todo.QueryConstant.cs` |
-| `configuration` | The long form of `config`, used for EF entity configurations | `Todo.Configuration.cs` |
-| `flow` | The control-flow shape of a result | `Result.Extension.Flow.Async.cs` |
+| `response` | Response message shape | — |
+| `query-map` | The query field allowlist for a concept | `Todo.QueryMap.cs` |
+| `query-constant` | The field names a query surface addresses | `Todo.QueryConstant.cs` |
 | `double` | Test double standing in for a production implementation | `SqliteErrorClassifier.Double.cs` |
+| `context` | Ambient persistence or execution context | — |
+| `unit-of-work` | Transaction/consistency scope across repositories | — |
+| `seeder` | Code that applies seed data | — |
+| `comparer` | Equality or ordering comparer | — |
+| `converter` | Value converter at a framework boundary (EF, JSON) | — |
+| `filter` | Pipeline or query filter | — |
+| `publisher` | Publishes events or messages | — |
+| `parser` | Text to structured value | — |
+| `serializer` | Structured value to and from a wire format | — |
+| `cache` | Cache implementation or cache policy holder | — |
+| `cache-key` | Cache key definition | — |
+| `health-check` | Health or readiness probe | — |
+| `assertion` | Reusable test assertions | — |
 
-`enum` and `schema` are already in §2.4 and §2.3; this repository uses them
-for an enumerated kind and for a database model respectively.
+Disambiguation:
+
+- `guard`: one role. In `Error.Guard.cs` it is an argument/state guard; in `auth.guard.ts` it is an access gate. Both are "a check that stops the flow".
+- `error` vs `outcome` vs `exception`: `error` is an error type, `outcome` is the failure-code container, `exception` is a thrown type or its mapping.
+- `mock` / `stub` / `fake` vs `double`: use `mock`, `stub` or `fake` when the double has that specific behavior; use `double` for a hand-written stand-in for a named production implementation.
+- `request` vs `message`: `request` is the shape of an inbound request; `message` is any transport message.
+- `config` vs `options`: `config` is the configuration surface (EF entity configuration in C#); `options` is behavior input passed to a component.
+
+### 2.10 Recognized Sub-Roles
+
+A sub-role narrows a role. It can never be the first segment after the
+subject, and it is never a substitute for a role.
+
+| Group | Sub-roles |
+|---|---|
+| Execution | `async`, `sync`, `stream` |
+| Control | `flow` (control-flow shape of a result, e.g. `Result.Extension.Flow.Async.cs`) |
+| Technology | `efcore`, `postgres`, `sqlite`, `sql`, `redis`, `http`, `grpc`, `json`, `xml`, `yaml`, `csv` |
+| Behavior | `cached`, `decorated`, `fallback`, `batch`, `bulk`, `paged`, `cursor`, `offset` |
+| Direction | `read`, `write`, `ascending`, `descending` |
+| Origin | `generated`, `partial` |
+| Version | `v1`, `v2` |
+
+Add a sub-role only when it has a stable meaning across several files.
 
 ---
 
@@ -245,23 +277,25 @@ auth.mock.guard.ts
 ### 3.2 C# / .NET
 
 ```text
-<Concept>[.<Responsibility>][.<SubResponsibility>].cs
+<Concept>[.<Responsibility>][.<SubResponsibility>]...cs
 ```
 
 - Concept: PascalCase.
-- Responsibility / sub-responsibility: **the same role from §2, PascalCased**.
+- Responsibility / sub-responsibility: **the same role from §2, PascalCased** (`value-object` → `ValueObject`).
 - Broad role first, narrow sub-role second.
 - Do not maintain a parallel C# role list; **render §2 in PascalCase**.
 
 #### 3.2.1 Role mapping
 
-| Agnostic role (§2) | C# suffix | Used for |
+| Agnostic role | C# suffix | Used for |
 |---|---|---|
 | `interface` | `.Interface` | Contract for the concept |
 | `extension` | `.Extension` | Extension methods |
 | `result` | `.Result` | Result/outcome type |
-| `error` | `.Error` / `.Errors` | Error type or code container |
+| `error` | `.Error` | Error type |
+| `outcome` (§2.9) | `.Outcome` | Failure-code container |
 | `constant` | `.Constant` | Shared constants with architectural home |
+| `config` | `.Configuration` | Configuration surface, e.g. EF entity configuration |
 | `options` | `.Options` | Configurable behavior input |
 | `factory` | `.Factory` | Object/aggregate construction |
 | `builder` | `.Builder` | Stepwise construction |
@@ -271,23 +305,35 @@ auth.mock.guard.ts
 | `policy` | `.Policy` | Decision/rule strategy |
 | `rule` | `.Rule` | Single business rule |
 
-#### 3.2.2 C#-conventional additions
+Every other role in §2 and §2.9 renders the same way: PascalCase, singular.
 
-These are not in the agnostic pool; they are C#-specific and closed at project level.
+#### 3.2.2 C#-conventional variants
 
-| Suffix | Meaning |
-|---|---|
-| *(none)* | Main concrete type |
-| `.Base` | Abstract/base implementation |
+These are not in the agnostic pool; they are C#-specific shape variants of the
+main concrete type, closed at project level. A variant may appear as the first
+segment after the subject, or later in the chain.
 
-`.Base` is a C#-idiomatic shape (abstract class naming) rather than a distinct architectural responsibility, which is why it lives here and not in §2.
+| Suffix | Meaning | Example |
+|---|---|---|
+| *(none)* | Main concrete type | `Order.cs` |
+| `.Base` | Abstract/base implementation | `Order.Base.cs` |
+| `.Default` | Default implementation of a concept | `Metadata.Default.cs` |
+| `.Generic` | Generic arity variant of a concept | `Result.Generic.cs` |
+| `.Tabular` | Tabular shape variant of a concept | `EfQuery.Tabular.cs` |
+| `.Design` | Design-time-only variant | `InfrastructureDbContextFactory.Design.cs` |
+
+Variants are idiomatic C# shapes rather than distinct architectural
+responsibilities, which is why they live here and not in §2.
 
 #### 3.2.3 Rules
 
 - Use the agnostic role set from §2; do not maintain a parallel C# list.
-- Render roles in PascalCase only.
+- Render roles in PascalCase, singular only.
 - Add a project-level suffix only by extending §2 deliberately, not by adding it to a C#-local table.
-- One responsibility suffix; two levels only when the second level has stable, recognized meaning.
+- Prefer one responsibility segment. Add a second only when it has stable, recognized meaning.
+- Hard maximum: three segments after the concept (`Result.Extension.Flow.Async.cs`).
+- The first segment after the concept must be a role or a variant, never a sub-role.
+- No segment may repeat the concept or another segment.
 
 #### 3.2.4 Examples
 
@@ -296,21 +342,27 @@ Order.cs
 Order.Interface.cs
 Order.Base.cs
 Order.Result.cs
-Order.Result.Errors.cs
+Order.Result.Error.cs
 Order.Extension.Async.cs
 Order.Factory.cs
 Order.Validator.cs
 Order.Mapper.cs
+Todo.Outcome.cs
+Todo.Configuration.cs
+Result.Generic.Operator.cs
 ```
 
 #### 3.2.5 Avoid
 
 ```text
-Order.BusinessLogic.cs      // not a role in §2
-Order.Helpers.cs            // use util/helper only if adopted at project level
+Order.BusinessLogic.cs                          // not a role in §2
+Order.Helpers.cs                                // plural, and helper only if adopted
 Order.Misc.cs
-Order.Result.Errors.Validation.Required.cs   // deep chain
-Order.Errors.Result.cs                       // backwards order
+Order.Result.Error.Validation.Required.cs       // deep chain
+Order.Error.Result.cs                           // backwards order
+Order.Async.cs                                  // sub-role without a role
+Order.Extensions.cs                             // plural role
+Order.Order.Service.cs                          // repeated segment
 ```
 
 ### 3.3 Python
@@ -409,8 +461,8 @@ InvalidOrderEmail
 
 | Tech | Subject case | Role case | Role source | Example |
 |---|---|---|---|---|
-| TypeScript / JS | kebab-case | kebab-case | §2 | `user.service.spec.ts` |
-| C# / .NET | PascalCase | PascalCase | §2 + §3.2.2 | `Order.Result.Errors.cs` |
+| TypeScript / JS | kebab-case | kebab-case | §2 + §2.9 + §2.10 | `user.service.spec.ts` |
+| C# / .NET | PascalCase | PascalCase | §2 + §2.9 + §2.10 + §3.2.2 | `Order.Result.Error.cs` |
 | Python | snake_case | snake_case | §2 | `user_service.py` |
 | Java / Kotlin | PascalCase | PascalCase | §2 | `UserService.java` |
 | React | PascalCase | project-defined | §2 | `UserProfile.tsx` |
@@ -455,7 +507,7 @@ Good:
 user.service.spec.ts
 auth.guard.mock.ts
 order.controller.e2e-spec.ts
-Order.Result.Errors.cs
+Order.Result.Error.cs
 Order.Extension.Async.cs
 ```
 
@@ -464,7 +516,7 @@ Bad:
 ```text
 user.spec.service.ts
 auth.mock.guard.ts
-Order.Errors.Result.cs
+Order.Error.Result.cs
 ```
 
 Second qualifier is optional. Do not add pre-emptively.
@@ -528,8 +580,10 @@ writes `using Testing;` once.
 | Backwards qualifier order | `user.spec.service.ts` | `user.service.spec.ts` |
 | Mixed casing | `userProfile.service.ts` | `user-profile.service.ts` |
 | Folder-dependent meaning | `orders/repository.ts` | `orders/order.repository.ts` |
-| Deep C# chains | `Order.Result.Errors.Validation.Required.cs` | `Order.Result.Errors.cs` |
+| Deep C# chains | `Order.Result.Error.Validation.Required.cs` | `Order.Result.Error.cs` |
 | Generic C# names | `Orders/Helpers.cs` | `Order.Mapper.cs` |
+| Plural roles | `Order.Extensions.cs` | `Order.Extension.cs` |
+| Sub-role without a role | `Order.Async.cs` | `Order.Extension.Async.cs` |
 | Parallel tech role lists | a C#-only role table | derive from §2 |
 
 ---
@@ -537,12 +591,13 @@ writes `using Testing;` once.
 ## 9. Agent Decision Procedure
 
 1. **Identify subject** — what single concept is this file primarily about?
-2. **Identify role** — what recognized responsibility from §2 does it have?
+2. **Identify role** — what recognized responsibility from §2 (or §2.9) does it have?
 3. **Apply tech convention from §3** for casing, delimiter, extension.
-4. **Add sub-role only if necessary** — e.g. `user.service.spec.ts`, `Order.Result.Errors.cs`.
+4. **Add sub-role only if necessary** — e.g. `user.service.spec.ts`, `Order.Result.Error.cs`.
 5. **Validate**:
    - subject meaningful;
-   - role from approved vocabulary (§2);
+   - role from approved vocabulary (§2, §2.9);
+   - sub-role from §2.10, variant from §3.2.2;
    - tech renders §2 rather than redefining it;
    - qualifier order broad → narrow;
    - casing matches ecosystem;
@@ -555,9 +610,30 @@ writes `using Testing;` once.
    - inspect nearby filenames;
    - check documented vocabulary;
    - reuse existing role when accurate;
-   - add new role only as deliberate project-level convention (extend §2, not a tech-local list).
+   - add new role only as deliberate project-level convention (extend §2.9, then the script's `ROLES`; never a tech-local list).
 
 Existing repository convention takes precedence over this generic guide when explicitly documented.
+
+### 9.1 Automated Enforcement
+
+`scripts/ci/check-structure.sh` (adjust to its actual path) enforces the C# rules
+and fails the build on any violation:
+
+| Check | Rule |
+|---|---|
+| Namespace | A namespace mirrors the folder path under the project root (§7). The root is the folder holding the `.csproj`: `<RootNamespace>` if declared, else the namespace in `Assembly.Marker.cs`, else the folder name. |
+| Flat test kit | Every file under `tests/Testing` declares the namespace `Testing`. |
+| First segment | The first segment after the concept is a role (§2, §2.9) or a variant (§3.2.2). |
+| Later segments | Each later segment is a role, a variant, or a sub-role (§2.10). |
+| Depth | At most three segments after the concept. |
+| Repetition | No segment repeats the concept or another segment. |
+| Plurals | A plural of a known term is rejected with a hint to use the singular. |
+
+Files without a dotted suffix (`Order.cs`) are main concrete types and are not
+role-checked. `obj`, `bin` and `Migrations` are skipped.
+
+**The script's lists are generated from this guide.** When §2, §2.9, §2.10 or
+§3.2.2 changes, update the matching array in the script in the same change.
 
 ---
 
@@ -567,14 +643,17 @@ Existing repository convention takes precedence over this generic guide when exp
 [ ] Does filename identify main subject/concept?
 [ ] Does it identify architectural role?
 [ ] Is every dotted segment meaningful?
-[ ] Are roles from the approved vocabulary (§2)?
+[ ] Are roles from the approved vocabulary (§2, §2.9)?
+[ ] Are sub-roles from §2.10 and variants from §3.2.2?
 [ ] Does the tech convention render §2 rather than redefine it?
 [ ] Is qualifier order broad → narrow?
+[ ] Is every role singular?
 [ ] Is casing consistent with the ecosystem?
 [ ] Is filename understandable without folder?
 [ ] Is name free of temporary/implementation-specific wording?
 [ ] Is a second qualifier genuinely necessary?
 [ ] Does it match existing repository convention?
+[ ] Does the structure check pass?
 ```
 
 ---
@@ -607,7 +686,7 @@ Order.cs
 Order.Interface.cs
 Order.Base.cs
 Order.Result.cs
-Order.Result.Errors.cs
+Order.Result.Error.cs
 ```
 
 Other tech: use §3.
