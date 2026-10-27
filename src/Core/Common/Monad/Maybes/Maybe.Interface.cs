@@ -1,4 +1,4 @@
-namespace Shared.Foundations.Maybes;
+namespace Core.Common.Monad.Maybes;
 
 /// <summary>
 /// Represents an optional value that may or may not be present.

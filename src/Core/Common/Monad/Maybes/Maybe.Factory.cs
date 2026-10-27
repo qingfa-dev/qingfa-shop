@@ -1,4 +1,4 @@
-namespace Shared.Foundations.Maybes;
+namespace Core.Common.Monad.Maybes;
 
 public partial record Maybe<T> : IMaybe<T>
 {
