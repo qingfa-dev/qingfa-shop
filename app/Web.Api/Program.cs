@@ -1,10 +1,21 @@
+using Application;
+
+using Infrastructure;
+
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using ServiceDefaults;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
+// Register: Service defaults (OpenTelemetry, health checks, resilience, service discovery).
 builder.AddServiceDefaults();
+
+// Register: Application layer services (MediatR, validators, Mapster).
+builder.Services.AddApplication();
+
+// Register: Infrastructure layer services (EF Core, caching, repositories, query maps).
+builder.Services.AddInfrastructure(builder.Configuration);
 
 // Initialize: production uses the system clock; TryAdd lets a test host replace it
 // with FakeTimeProvider without touching this composition.
