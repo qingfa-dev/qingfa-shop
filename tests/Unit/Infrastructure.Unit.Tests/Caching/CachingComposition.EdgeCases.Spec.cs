@@ -176,13 +176,14 @@ public sealed class CachingCompositionEdgeCasesTest
 
         services.AddCaching(Configuration(new Dictionary<string, string?>
         {
+            ["Caching:Distributed:Enabled"] = "false",
             ["Caching:Memory:DefaultExpirationMinutes"] = "15",
             ["Caching:Memory:CompactionPercentage"] = "25",
             ["Caching:Memory:SizeLimitBytes"] = "104857600"
         }));
 
         using ServiceProvider provider = services.BuildServiceProvider();
-        CachingSetting setting = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<CachingSetting>>().Value;
+        CachingSetting setting = provider.GetRequiredService<CachingSetting>();
 
         setting.Memory.DefaultExpirationMinutes.Should().Be(15);
         setting.Memory.CompactionPercentage.Should().Be(25);
@@ -199,12 +200,13 @@ public sealed class CachingCompositionEdgeCasesTest
 
         services.AddCaching(Configuration(new Dictionary<string, string?>
         {
+            ["Caching:Distributed:Enabled"] = "false",
             ["Caching:Hybrid:MaximumPayloadBytes"] = "5242880",
             ["Caching:Hybrid:MaximumKeyLength"] = "512"
         }));
 
         using ServiceProvider provider = services.BuildServiceProvider();
-        CachingSetting setting = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<CachingSetting>>().Value;
+        CachingSetting setting = provider.GetRequiredService<CachingSetting>();
 
         setting.Hybrid.MaximumPayloadBytes.Should().Be(5242880);
         setting.Hybrid.MaximumKeyLength.Should().Be(512);
@@ -220,11 +222,12 @@ public sealed class CachingCompositionEdgeCasesTest
 
         services.AddCaching(Configuration(new Dictionary<string, string?>
         {
+            ["Caching:Distributed:Enabled"] = "false",
             ["Caching:Distributed:DefaultExpirationMinutes"] = "60"
         }));
 
         using ServiceProvider provider = services.BuildServiceProvider();
-        CachingSetting setting = provider.GetRequiredService<Microsoft.Extensions.Options.IOptions<CachingSetting>>().Value;
+        CachingSetting setting = provider.GetRequiredService<CachingSetting>();
 
         setting.Distributed.DefaultExpirationMinutes.Should().Be(60);
     }
@@ -237,6 +240,9 @@ public sealed class CachingCompositionEdgeCasesTest
             ["Caching:Memory:Enabled"] = "true",
             ["Caching:Memory:DefaultExpirationMinutes"] = "5",
             ["Caching:Distributed:Enabled"] = "true",
+            ["Caching:Distributed:Provider"] = "redis",
+            ["Caching:Distributed:ConnectionStringName"] = "Cache",
+            ["ConnectionStrings:Cache"] = "localhost:6379",
             ["Caching:Distributed:DefaultExpirationMinutes"] = "30"
         };
 

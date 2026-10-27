@@ -1,6 +1,6 @@
 using Infrastructure.Caching.Services;
 
-namespace Infrastructure.Unit.Tests.Caching;
+namespace Infrastructure.Unit.Tests.Caching.Services;
 
 [Trait("Category", "Unit")]
 [Trait("Module", "Infrastructure")]

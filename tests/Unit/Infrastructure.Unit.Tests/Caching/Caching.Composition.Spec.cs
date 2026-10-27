@@ -25,9 +25,11 @@ public sealed class CachingCompositionTest
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
-        services.AddDistributedMemoryCache();
 
-        IServiceCollection result = services.AddCaching(Configuration());
+        IServiceCollection result = services.AddCaching(Configuration(new Dictionary<string, string?>
+        {
+            ["Caching:Distributed:Enabled"] = "false"
+        }));
 
         result.Should().BeSameAs(services);
 
@@ -43,20 +45,18 @@ public sealed class CachingCompositionTest
     {
         var services = new ServiceCollection();
         services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
-        services.AddDistributedMemoryCache();
 
         services.AddCaching(Configuration(new Dictionary<string, string?>
         {
+            ["Caching:Distributed:Enabled"] = "false",
             ["Caching:Memory:DefaultExpirationMinutes"] = "5",
-            ["Caching:Distributed:DefaultExpirationMinutes"] = "45",
             ["Caching:Hybrid:MaximumKeyLength"] = "256"
         }));
 
         using ServiceProvider provider = services.BuildServiceProvider();
-        CachingSetting setting = provider.GetRequiredService<IOptions<CachingSetting>>().Value;
+        CachingSetting setting = provider.GetRequiredService<CachingSetting>();
 
         setting.Memory.DefaultExpirationMinutes.Should().Be(5);
-        setting.Distributed.DefaultExpirationMinutes.Should().Be(45);
         setting.Hybrid.MaximumKeyLength.Should().Be(256);
     }
 
@@ -96,11 +96,13 @@ public sealed class CachingCompositionTest
         var services = new ServiceCollection();
         services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
 
-        Action act = () => services.AddCaching(Configuration());
+        Action act = () => services.AddCaching(Configuration(new Dictionary<string, string?>
+        {
+            ["Caching:Distributed:Provider"] = "unknown"
+        }));
 
         act.Should()
-            .Throw<InvalidOperationException>()
-            .WithMessage("*IDistributedCache*");
+            .Throw<InvalidOperationException>();
     }
 
     [Fact(DisplayName = "AddCaching when memory is disabled should still register HybridCache")]
@@ -109,7 +111,6 @@ public sealed class CachingCompositionTest
         var services = new ServiceCollection();
         services.AddLogging();
         services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
-        services.AddDistributedMemoryCache();
 
         services.AddCaching(Configuration(new Dictionary<string, string?>
         {
@@ -127,9 +128,11 @@ public sealed class CachingCompositionTest
     {
         var services = new ServiceCollection();
         services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
-        services.AddDistributedMemoryCache();
 
-        services.AddCaching(Configuration());
+        services.AddCaching(Configuration(new Dictionary<string, string?>
+        {
+            ["Caching:Distributed:Enabled"] = "false"
+        }));
 
         ServiceDescriptor? descriptor =
             services.FirstOrDefault(descriptor => descriptor.ServiceType == typeof(ICacheService));
@@ -146,6 +149,9 @@ public sealed class CachingCompositionTest
             ["Caching:Memory:Enabled"] = "true",
             ["Caching:Memory:DefaultExpirationMinutes"] = "5",
             ["Caching:Distributed:Enabled"] = "true",
+            ["Caching:Distributed:Provider"] = "redis",
+            ["Caching:Distributed:ConnectionStringName"] = "Cache",
+            ["ConnectionStrings:Cache"] = "localhost:6379",
             ["Caching:Distributed:DefaultExpirationMinutes"] = "30"
         };
 

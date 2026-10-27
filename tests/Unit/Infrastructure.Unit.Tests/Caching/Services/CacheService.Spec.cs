@@ -7,7 +7,7 @@ using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
-namespace Infrastructure.Unit.Tests.Caching;
+namespace Infrastructure.Unit.Tests.Caching.Services;
 
 [Trait("Category", "Unit")]
 [Trait("Module", "Infrastructure")]

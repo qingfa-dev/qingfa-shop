@@ -1,26 +1,20 @@
-using Infrastructure.Caching;
 using Infrastructure.Caching.Options;
 using Infrastructure.Caching.Options.Distributed;
 using Infrastructure.Caching.Options.Hybrid;
 using Infrastructure.Caching.Options.Memory;
 
-using Microsoft.Extensions.Options;
-
-namespace Infrastructure.Unit.Tests.Caching;
+namespace Infrastructure.Unit.Tests.Caching.Options;
 
 [Trait("Category", "Unit")]
 [Trait("Module", "Infrastructure")]
 [Trait("Feature", "Caching")]
-public sealed class CachingSettingValidatorTest
+public sealed class CachingSettingValidationTest
 {
-    private readonly CachingSettingValidator _validator = new();
-
     [Fact(DisplayName = "Valid defaults should pass validation")]
     public void ValidDefaults_ShouldPassValidation()
     {
-        ValidateOptionsResult result = _validator.Validate(null, new CachingSetting());
-
-        result.Succeeded.Should().BeTrue();
+        Result<CachingSetting> result = CachingSettingValidation.Validate(new CachingSetting());
+        result.IsSuccess.Should().BeTrue();
     }
 
     [Fact(DisplayName = "Disabled caching should skip tier validation")]
@@ -33,9 +27,8 @@ public sealed class CachingSettingValidatorTest
             Distributed = new DistributedCacheSetting { DefaultExpirationMinutes = 0 }
         };
 
-        ValidateOptionsResult result = _validator.Validate(null, setting);
-
-        result.Succeeded.Should().BeTrue();
+        Result<CachingSetting> result = CachingSettingValidation.Validate(setting);
+        result.IsSuccess.Should().BeTrue();
     }
 
     [Theory(DisplayName = "Memory expiration out of range should fail")]
@@ -45,13 +38,13 @@ public sealed class CachingSettingValidatorTest
     {
         CachingSetting setting = new()
         {
-            Memory = new MemoryCacheSetting { DefaultExpirationMinutes = value }
+            Distributed = new DistributedCacheSetting { Enabled = false }
         };
+        setting.Memory.DefaultExpirationMinutes = value;
 
-        ValidateOptionsResult result = _validator.Validate(null, setting);
-
-        result.Succeeded.Should().BeFalse();
-        result.FailureMessage.Should().Contain("Caching:Memory:DefaultExpirationMinutes");
+        Result<CachingSetting> result = CachingSettingValidation.Validate(setting);
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(e => e.Code.Contains("Memory.Expiration"));
     }
 
     [Theory(DisplayName = "Compaction percentage out of range should fail")]
@@ -61,13 +54,13 @@ public sealed class CachingSettingValidatorTest
     {
         CachingSetting setting = new()
         {
-            Memory = new MemoryCacheSetting { CompactionPercentage = value }
+            Distributed = new DistributedCacheSetting { Enabled = false }
         };
+        setting.Memory.CompactionPercentage = value;
 
-        ValidateOptionsResult result = _validator.Validate(null, setting);
-
-        result.Succeeded.Should().BeFalse();
-        result.FailureMessage.Should().Contain("Caching:Memory:CompactionPercentage");
+        Result<CachingSetting> result = CachingSettingValidation.Validate(setting);
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(e => e.Code.Contains("Memory.Compaction"));
     }
 
     [Fact(DisplayName = "Size limit below one byte should fail")]
@@ -75,13 +68,13 @@ public sealed class CachingSettingValidatorTest
     {
         CachingSetting setting = new()
         {
-            Memory = new MemoryCacheSetting { SizeLimitBytes = 0 }
+            Distributed = new DistributedCacheSetting { Enabled = false }
         };
+        setting.Memory.SizeLimitBytes = 0;
 
-        ValidateOptionsResult result = _validator.Validate(null, setting);
-
-        result.Succeeded.Should().BeFalse();
-        result.FailureMessage.Should().Contain("Caching:Memory:SizeLimitBytes");
+        Result<CachingSetting> result = CachingSettingValidation.Validate(setting);
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(e => e.Code.Contains("Memory.SizeLimit"));
     }
 
     [Fact(DisplayName = "Null size limit should pass")]
@@ -89,12 +82,12 @@ public sealed class CachingSettingValidatorTest
     {
         CachingSetting setting = new()
         {
+            Distributed = new DistributedCacheSetting { Enabled = false },
             Memory = new MemoryCacheSetting { SizeLimitBytes = null }
         };
 
-        ValidateOptionsResult result = _validator.Validate(null, setting);
-
-        result.Succeeded.Should().BeTrue();
+        Result<CachingSetting> result = CachingSettingValidation.Validate(setting);
+        result.IsSuccess.Should().BeTrue();
     }
 
     [Theory(DisplayName = "Distributed expiration out of range should fail")]
@@ -104,13 +97,18 @@ public sealed class CachingSettingValidatorTest
     {
         CachingSetting setting = new()
         {
-            Distributed = new DistributedCacheSetting { DefaultExpirationMinutes = value }
+            Distributed = new DistributedCacheSetting
+            {
+                Enabled = true,
+                Provider = "redis",
+                ConnectionStringName = "Cache",
+                DefaultExpirationMinutes = value
+            }
         };
 
-        ValidateOptionsResult result = _validator.Validate(null, setting);
-
-        result.Succeeded.Should().BeFalse();
-        result.FailureMessage.Should().Contain("Caching:Distributed:DefaultExpirationMinutes");
+        Result<CachingSetting> result = CachingSettingValidation.Validate(setting);
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(e => e.Code.Contains("Distributed.Expiration"));
     }
 
     [Theory(DisplayName = "Maximum payload out of range should fail")]
@@ -120,13 +118,13 @@ public sealed class CachingSettingValidatorTest
     {
         CachingSetting setting = new()
         {
+            Distributed = new DistributedCacheSetting { Enabled = false },
             Hybrid = new HybridCacheSetting { MaximumPayloadBytes = value }
         };
 
-        ValidateOptionsResult result = _validator.Validate(null, setting);
-
-        result.Succeeded.Should().BeFalse();
-        result.FailureMessage.Should().Contain("Caching:Hybrid:MaximumPayloadBytes");
+        Result<CachingSetting> result = CachingSettingValidation.Validate(setting);
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(e => e.Code.Contains("Hybrid.Payload"));
     }
 
     [Theory(DisplayName = "Maximum key length out of range should fail")]
@@ -136,13 +134,13 @@ public sealed class CachingSettingValidatorTest
     {
         CachingSetting setting = new()
         {
+            Distributed = new DistributedCacheSetting { Enabled = false },
             Hybrid = new HybridCacheSetting { MaximumKeyLength = value }
         };
 
-        ValidateOptionsResult result = _validator.Validate(null, setting);
-
-        result.Succeeded.Should().BeFalse();
-        result.FailureMessage.Should().Contain("Caching:Hybrid:MaximumKeyLength");
+        Result<CachingSetting> result = CachingSettingValidation.Validate(setting);
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(e => e.Code.Contains("Hybrid.KeyLength"));
     }
 
     [Fact(DisplayName = "Both tiers disabled should fail")]
@@ -154,10 +152,9 @@ public sealed class CachingSettingValidatorTest
             Distributed = new DistributedCacheSetting { Enabled = false }
         };
 
-        ValidateOptionsResult result = _validator.Validate(null, setting);
-
-        result.Succeeded.Should().BeFalse();
-        result.FailureMessage.Should().Contain("Caching.Tier.Required");
+        Result<CachingSetting> result = CachingSettingValidation.Validate(setting);
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(e => e.Code.Contains("Caching.Tier.Required"));
     }
 
     [Fact(DisplayName = "Memory expiration longer than distributed should fail")]
@@ -166,12 +163,17 @@ public sealed class CachingSettingValidatorTest
         CachingSetting setting = new()
         {
             Memory = new MemoryCacheSetting { DefaultExpirationMinutes = 120 },
-            Distributed = new DistributedCacheSetting { DefaultExpirationMinutes = 60 }
+            Distributed = new DistributedCacheSetting
+            {
+                Enabled = true,
+                Provider = "redis",
+                ConnectionStringName = "Cache",
+                DefaultExpirationMinutes = 60
+            }
         };
 
-        ValidateOptionsResult result = _validator.Validate(null, setting);
-
-        result.Succeeded.Should().BeFalse();
-        result.FailureMessage.Should().Contain("must not exceed");
+        Result<CachingSetting> result = CachingSettingValidation.Validate(setting);
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(e => e.Message.Contains("must not exceed"));
     }
 }
