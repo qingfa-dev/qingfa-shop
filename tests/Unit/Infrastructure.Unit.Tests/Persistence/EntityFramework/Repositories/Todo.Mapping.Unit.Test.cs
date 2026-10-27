@@ -292,7 +292,7 @@ public static class TodoSqliteTestFixture
                 description: i % 2 == 0 ? $"Description for todo {i}" : null,
                 dueAtUtc: i % 3 == 0 ? DateTimeOffset.UtcNow.AddDays(i) : null));
         }
-        context.Todos.AddRange(todos);
+        context.Set<Todo>().AddRange(todos);
         await context.SaveChangesAsync();
     }
 
@@ -305,7 +305,7 @@ public static class TodoSqliteTestFixture
                 name: $"List {i}",
                 description: i % 2 == 0 ? $"Description for list {i}" : null));
         }
-        context.TodoLists.AddRange(lists);
+        context.Set<TodoList>().AddRange(lists);
         await context.SaveChangesAsync();
     }
 
@@ -318,7 +318,7 @@ public static class TodoSqliteTestFixture
                 name: $"Category {i}",
                 description: i % 2 == 0 ? $"Description for category {i}" : null));
         }
-        context.TodoCategories.AddRange(categories);
+        context.Set<TodoCategory>().AddRange(categories);
         await context.SaveChangesAsync();
     }
 }
@@ -404,7 +404,7 @@ public sealed class TodoMappingUnitTest : IAsyncDisposable
         overdue.DueAtUtc = now.AddDays(-2); // Manually set past due date
         var future = TodoSqliteTestFixture.CreateTodo("Future task", TodoStatus.Pending, dueAtUtc: now.AddDays(5));
         var noDue = TodoSqliteTestFixture.CreateTodo("No due date", TodoStatus.Pending);
-        _context.Todos.AddRange(overdue, future, noDue);
+        _context.Set<Todo>().AddRange(overdue, future, noDue);
         await _context.SaveChangesAsync();
 
         var repository = TodoSqliteTestFixture.CreateTodoRepository(_context);
@@ -448,13 +448,13 @@ public sealed class TodoMappingUnitTest : IAsyncDisposable
         // Arrange
         var cat1 = TodoSqliteTestFixture.CreateTodoCategory("Urgent");
         var cat2 = TodoSqliteTestFixture.CreateTodoCategory("Backend");
-        _context.TodoCategories.AddRange(cat1, cat2);
+        _context.Set<TodoCategory>().AddRange(cat1, cat2);
         await _context.SaveChangesAsync();
 
         var todoWithCats = TodoSqliteTestFixture.CreateTodo(
             "Categorized", categoryIds: [cat1.Id, cat2.Id]);
         var todoWithoutCats = TodoSqliteTestFixture.CreateTodo("Uncategorized");
-        _context.Todos.AddRange(todoWithCats, todoWithoutCats);
+        _context.Set<Todo>().AddRange(todoWithCats, todoWithoutCats);
         await _context.SaveChangesAsync();
 
         var repository = TodoSqliteTestFixture.CreateTodoRepository(_context);
@@ -671,7 +671,7 @@ public sealed class TodoMappingUnitTest : IAsyncDisposable
         var overdue = TodoSqliteTestFixture.CreateTodo("Overdue task", TodoStatus.Pending);
         overdue.DueAtUtc = now.AddDays(-2); // Manually set past due date
         var future = TodoSqliteTestFixture.CreateTodo("Future task", TodoStatus.Pending, dueAtUtc: now.AddDays(5));
-        _context.Todos.AddRange(overdue, future);
+        _context.Set<Todo>().AddRange(overdue, future);
         await _context.SaveChangesAsync();
 
         var repository = TodoSqliteTestFixture.CreateTodoRepository(_context);
@@ -994,12 +994,12 @@ public sealed class TodoMappingUnitTest : IAsyncDisposable
     {
         // Arrange
         var list = TodoSqliteTestFixture.CreateTodoList("Work");
-        _context.TodoLists.Add(list);
+        _context.Set<TodoList>().Add(list);
         await _context.SaveChangesAsync();
 
         var todoWithList = TodoSqliteTestFixture.CreateTodo("Listed task", listId: list.Id);
         var todoWithoutList = TodoSqliteTestFixture.CreateTodo("No list task");
-        _context.Todos.AddRange(todoWithList, todoWithoutList);
+        _context.Set<Todo>().AddRange(todoWithList, todoWithoutList);
         await _context.SaveChangesAsync();
 
         var repository = TodoSqliteTestFixture.CreateTodoRepository(_context);
@@ -1031,12 +1031,12 @@ public sealed class TodoMappingUnitTest : IAsyncDisposable
     {
         // Arrange
         var list = TodoSqliteTestFixture.CreateTodoList("Work");
-        _context.TodoLists.Add(list);
+        _context.Set<TodoList>().Add(list);
         await _context.SaveChangesAsync();
 
         var todoWithList = TodoSqliteTestFixture.CreateTodo("Listed task", listId: list.Id);
         var todoWithoutList = TodoSqliteTestFixture.CreateTodo("No list task");
-        _context.Todos.AddRange(todoWithList, todoWithoutList);
+        _context.Set<Todo>().AddRange(todoWithList, todoWithoutList);
         await _context.SaveChangesAsync();
 
         var repository = TodoSqliteTestFixture.CreateTodoRepository(_context);
@@ -1196,7 +1196,7 @@ public sealed class TodoMappingUnitTest : IAsyncDisposable
     public async Task MapAsync_Todo_AuditFields_ShouldMapCorrectly()
     {
         // Arrange
-        _context.Todos.Add(TodoSqliteTestFixture.CreateTodo("Audited task"));
+        _context.Set<Todo>().Add(TodoSqliteTestFixture.CreateTodo("Audited task"));
         await _context.SaveChangesAsync();
 
         var repository = TodoSqliteTestFixture.CreateTodoRepository(_context);
@@ -1226,7 +1226,7 @@ public sealed class TodoMappingUnitTest : IAsyncDisposable
     public async Task ProjectAsync_Todo_AuditFields_ShouldProjectCorrectly()
     {
         // Arrange
-        _context.Todos.Add(TodoSqliteTestFixture.CreateTodo("Audited task"));
+        _context.Set<Todo>().Add(TodoSqliteTestFixture.CreateTodo("Audited task"));
         await _context.SaveChangesAsync();
 
         var repository = TodoSqliteTestFixture.CreateTodoRepository(_context);

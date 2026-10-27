@@ -993,6 +993,7 @@
           "OpenTelemetry.Instrumentation.EntityFrameworkCore": "[1.20.1-beta.1, )",
           "OpenTelemetry.Instrumentation.StackExchangeRedis": "[1.20.1-beta.1, )",
           "QingFa.Shop.Contract": "[1.0.0, )",
+          "Scrutor": "[7.0.0, )",
           "ServiceDefaults": "[1.0.0, )",
           "SkiaSharp": "[4.153.1, )",
           "SkiaSharp.NativeAssets.Linux": "[4.153.1, )",

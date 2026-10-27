@@ -2,7 +2,10 @@ using Application.Common.Caching;
 using Application.Common.Persistence.Repositories;
 using Application.Common.Querying.Mapping;
 
+using Core.Todos;
+
 using Infrastructure.Caching.Services;
+using Infrastructure.Persistence;
 using Infrastructure.Persistence.EntityFramework.Repositories;
 
 using Microsoft.Extensions.Configuration;
@@ -105,7 +108,35 @@ public class InfrastructureCompositionTest
 
         // Assert
         var registry = serviceProvider.GetRequiredService<QueryMapRegistry>();
-        registry.Should().NotBeNull();
+        registry.Count.Should().Be(3);
+        registry.IsRegistered<Todo>().Should().BeTrue();
+        registry.IsRegistered<TodoList>().Should().BeTrue();
+        registry.IsRegistered<TodoCategory>().Should().BeTrue();
+    }
+
+    [Fact(DisplayName = "AddInfrastructure should auto-register every query map definition")]
+    public void AddInfrastructure_ShouldAutoRegisterQueryMapDefinitions()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddLogging();
+        var expected = typeof(ApplicationDbContext).Assembly.GetTypes()
+            .Where(type => !type.IsAbstract && typeof(IQueryMapDefinition).IsAssignableFrom(type))
+            .Select(type => type.Name)
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToList();
+
+        // Act
+        services.AddInfrastructure("Host=localhost;Database=test");
+        using ServiceProvider serviceProvider = services.BuildServiceProvider();
+        var registered = serviceProvider.GetServices<IQueryMapDefinition>()
+            .Select(definition => definition.GetType().Name)
+            .OrderBy(name => name, StringComparer.Ordinal)
+            .ToList();
+
+        // Assert
+        expected.Should().NotBeEmpty();
+        registered.Should().Equal(expected);
     }
 
     [Fact(DisplayName = "UseInfrastructure should return the same provider for chaining")]

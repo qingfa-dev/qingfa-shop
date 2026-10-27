@@ -1,3 +1,4 @@
+using Infrastructure.Persistence;
 using Application.Common.Persistence.Capabilities;
 using Application.Common.Persistence.Repositories;
 using Application.Common.Persistence.UnitOfWorks;
@@ -21,7 +22,7 @@ using Testcontainers.PostgreSql;
 namespace Infrastructure.Integration.Tests.Persistence.Todos;
 
 /// <summary>
-/// Boots a real PostgreSQL container with TodoDbContext, repositories, and UnitOfWork
+/// Boots a real PostgreSQL container with ApplicationDbContext, repositories, and UnitOfWork
 /// so integration tests exercise the full Todos persistence pipeline.
 /// </summary>
 public sealed class TodoEfCoreFixture : IAsyncLifetime
@@ -41,7 +42,7 @@ public sealed class TodoEfCoreFixture : IAsyncLifetime
     public IServiceScope? CurrentScope { get; private set; }
 
     /// <summary>The Todo DbContext resolved from the current scope.</summary>
-    public TodoDbContext DbContext => CurrentScope?.ServiceProvider.GetRequiredService<TodoDbContext>() ?? throw new InvalidOperationException("Scope not initialized");
+    public ApplicationDbContext DbContext => CurrentScope?.ServiceProvider.GetRequiredService<ApplicationDbContext>() ?? throw new InvalidOperationException("Scope not initialized");
 
     /// <summary>The repository for Todo.</summary>
     public IPersistentRepository<Todo, Guid> TodoRepository => CurrentScope?.ServiceProvider.GetRequiredService<IPersistentRepository<Todo, Guid>>() ?? throw new InvalidOperationException("Scope not initialized");
@@ -81,8 +82,8 @@ public sealed class TodoEfCoreFixture : IAsyncLifetime
         var services = new ServiceCollection();
         services.AddLogging();
 
-        // Register TodoDbContext
-        services.AddDbContext<TodoDbContext>(options =>
+        // Register ApplicationDbContext
+        services.AddDbContext<ApplicationDbContext>(options =>
             options.UseNpgsql(ConnectionString, npgsql =>
             {
                 npgsql.CommandTimeout(30);
@@ -111,35 +112,35 @@ public sealed class TodoEfCoreFixture : IAsyncLifetime
         // Register Repositories
         services.AddScoped<IPersistentRepository<Todo, Guid>>(sp =>
             new EfCoreRepository<Todo, Guid>(
-                sp.GetRequiredService<TodoDbContext>(),
+                sp.GetRequiredService<ApplicationDbContext>(),
                 sp.GetRequiredService<IQueryTranslator<Todo>>(),
                 sp.GetRequiredService<IQueryMapProvider>(),
                 sp.GetRequiredService<IQueryCapabilities>()));
 
         services.AddScoped<IPersistentRepository<TodoList, Guid>>(sp =>
             new EfCoreRepository<TodoList, Guid>(
-                sp.GetRequiredService<TodoDbContext>(),
+                sp.GetRequiredService<ApplicationDbContext>(),
                 sp.GetRequiredService<IQueryTranslator<TodoList>>(),
                 sp.GetRequiredService<IQueryMapProvider>(),
                 sp.GetRequiredService<IQueryCapabilities>()));
 
         services.AddScoped<IPersistentRepository<TodoCategory, Guid>>(sp =>
             new EfCoreRepository<TodoCategory, Guid>(
-                sp.GetRequiredService<TodoDbContext>(),
+                sp.GetRequiredService<ApplicationDbContext>(),
                 sp.GetRequiredService<IQueryTranslator<TodoCategory>>(),
                 sp.GetRequiredService<IQueryMapProvider>(),
                 sp.GetRequiredService<IQueryCapabilities>()));
 
         // Register UnitOfWork
         services.AddScoped<IUnitOfWork>(sp =>
-            new EfCoreUnitOfWork(sp.GetRequiredService<TodoDbContext>()));
+            new EfCoreUnitOfWork(sp.GetRequiredService<ApplicationDbContext>()));
 
         Services = services.BuildServiceProvider();
 
         // Create the schema using a temporary scope
         using (var scope = Services.CreateScope())
         {
-            var context = scope.ServiceProvider.GetRequiredService<TodoDbContext>();
+            var context = scope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
             await context.Database.EnsureCreatedAsync();
         }
 
@@ -167,7 +168,7 @@ public sealed class TodoEfCoreFixture : IAsyncLifetime
         {
             if (CurrentScope != null)
             {
-                var context = CurrentScope.ServiceProvider.GetRequiredService<TodoDbContext>();
+                var context = CurrentScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
                 context.ChangeTracker.Clear();
             }
 

@@ -168,4 +168,55 @@ public sealed class QueryMapRegistryTest
 
         act.Should().Throw<ArgumentNullException>();
     }
+
+    [Fact(DisplayName = "Constructor With Definitions Should Populate Every Map")]
+    public void Constructor_WithDefinitions_ShouldPopulateRegistry()
+    {
+        // Act
+        var registry = new QueryMapRegistry(
+        [
+            new TargetDefinition(),
+            new OtherTargetDefinition()
+        ]);
+
+        // Assert
+        registry.Count.Should().Be(2);
+        registry.IsRegistered<Target>().Should().BeTrue();
+        registry.IsRegistered<OtherTarget>().Should().BeTrue();
+    }
+
+    [Fact(DisplayName = "Constructor With Duplicate Definitions Should Throw")]
+    public void Constructor_WithDuplicateDefinitions_ShouldThrow()
+    {
+        // Act
+        Action act = () => _ = new QueryMapRegistry(
+        [
+            new TargetDefinition(),
+            new TargetDefinition()
+        ]);
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*Query.Map.AlreadyRegistered*");
+    }
+
+    [Fact(DisplayName = "Constructor With Null Definitions Should Throw")]
+    public void Constructor_WithNullDefinitions_ShouldThrow()
+    {
+        // Act
+        Action act = () => _ = new QueryMapRegistry((IEnumerable<IQueryMapDefinition>)null!);
+
+        // Assert
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    private sealed class TargetDefinition : IQueryMapDefinition
+    {
+        public Result Register(QueryMapRegistry registry) => registry.Register(Map());
+    }
+
+    private sealed class OtherTargetDefinition : IQueryMapDefinition
+    {
+        public Result Register(QueryMapRegistry registry) => registry.Register(OtherMap());
+    }
 }

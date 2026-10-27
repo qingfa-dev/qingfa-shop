@@ -205,7 +205,9 @@ public sealed class InitializationPipelineTest
         var pipeline = new InitializationPipeline(steps);
         var context = CreateContext();
         var reportedSteps = new List<InitializationProgress>();
-        var progress = new Progress<InitializationProgress>(p => reportedSteps.Add(p));
+        // Record: Progress<T> posts callbacks asynchronously, which races the
+        // assertion. This inline implementation records synchronously.
+        var progress = new InlineProgress<InitializationProgress>(reportedSteps.Add);
 
         await pipeline.ExecuteAsync(context.Object, progress);
         reportedSteps.Should().NotBeEmpty();
@@ -267,4 +269,11 @@ public sealed class InitializationPipelineTest
     }
 
     #endregion
+
+    /// <summary>An <see cref="IProgress{T}"/> that reports synchronously.</summary>
+    private sealed class InlineProgress<T>(Action<T> handler) : IProgress<T>
+    {
+        /// <inheritdoc />
+        public void Report(T value) => handler(value);
+    }
 }
