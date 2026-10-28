@@ -1,7 +1,9 @@
+using Application.Common.Events;
 using Application.Common.Persistence.Capabilities;
 using Application.Common.Persistence.UnitOfWorks;
 using Application.Common.Querying.Mapping;
 
+using Infrastructure.Events;
 using Infrastructure.Persistence.EntityFramework.Capabilities;
 using Infrastructure.Persistence.EntityFramework.Contexts;
 using Infrastructure.Persistence.EntityFramework.Interceptors;
@@ -9,10 +11,14 @@ using Infrastructure.Persistence.EntityFramework.Options;
 using Infrastructure.Persistence.EntityFramework.QueryTranslation;
 using Infrastructure.Persistence.EntityFramework.UnitOfWorks;
 
+using MediatR;
+
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
 
 namespace Infrastructure.Persistence.EntityFramework;
 
@@ -56,6 +62,10 @@ public static class EntityFrameworkComposition
         });
         services.TryAddSingleton(setting);
 
+        // Register domain-event publication. MediatR is optional so migration-only hosts
+        // can compose persistence without an application mediator.
+        RegisterDomainEventPublisher(services);
+
         // Register DbContext with provider-specific options
         services.AddDbContext<TContext>(
             (provider, optionsBuilder) =>
@@ -67,10 +77,14 @@ public static class EntityFrameworkComposition
                 optionsBuilder
                     .EnableSensitiveDataLogging(opt.EnableSensitiveDataLogging)
                     .EnableDetailedErrors(opt.EnableDetailedErrors)
-                    .ConfigureWarnings(w => w.Default(WarningBehavior.Throw));
+                    .ConfigureWarnings(w => w
+                        .Default(WarningBehavior.Throw)
+                        .Log(CoreEventId.SensitiveDataLoggingEnabledWarning));
 
-                // Register concern interceptors (lifecycle, versionable, etc.)
-                optionsBuilder.Apply();
+                // Register concern interceptors (lifecycle, versionable, domain events).
+                optionsBuilder.Apply(
+                    provider.GetRequiredService<IDomainEventPublisher>(),
+                    provider.GetService<ILogger<DomainEventInterceptor>>());
 
                 switch (opt.Provider.ToLowerInvariant())
                 {
@@ -139,16 +153,24 @@ public static class EntityFrameworkComposition
 
         services.TryAddSingleton(setting);
 
+        // Register domain-event publication. MediatR is optional so migration-only hosts
+        // can compose persistence without an application mediator.
+        RegisterDomainEventPublisher(services);
+
         services.AddDbContext<TContext>(
             (sp, optionsBuilder) =>
             {
                 optionsBuilder
                     .EnableSensitiveDataLogging(setting.EnableSensitiveDataLogging)
                     .EnableDetailedErrors(setting.EnableDetailedErrors)
-                    .ConfigureWarnings(w => w.Default(WarningBehavior.Throw));
+                    .ConfigureWarnings(w => w
+                        .Default(WarningBehavior.Throw)
+                        .Log(CoreEventId.SensitiveDataLoggingEnabledWarning));
 
-                // Register concern interceptors (lifecycle, versionable, etc.)
-                optionsBuilder.Apply();
+                // Register concern interceptors (lifecycle, versionable, domain events).
+                optionsBuilder.Apply(
+                    sp.GetRequiredService<IDomainEventPublisher>(),
+                    sp.GetService<ILogger<DomainEventInterceptor>>());
 
                 switch (setting.Provider.ToLowerInvariant())
                 {
@@ -187,5 +209,16 @@ public static class EntityFrameworkComposition
         return services;
     }
 
-    
+    /// <summary>
+    /// Registers the domain-event publisher, falling back to a no-op publisher when the host
+    /// did not compose MediatR (for example, a migration-only process).
+    /// </summary>
+    /// <param name="services">The host's service collection.</param>
+    private static void RegisterDomainEventPublisher(IServiceCollection services)
+    {
+        services.TryAddScoped<IDomainEventPublisher>(sp =>
+            sp.GetService<IPublisher>() is { } publisher
+                ? new DomainEventPublisher(publisher)
+                : NullDomainEventPublisher.Instance);
+    }
 }

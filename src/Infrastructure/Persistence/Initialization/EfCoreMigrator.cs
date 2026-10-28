@@ -5,6 +5,8 @@ using Application.Common.Persistence.Initialization.Migrations;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
+using Npgsql;
+
 namespace Infrastructure.Persistence.Initialization;
 
 /// <summary>
@@ -85,7 +87,21 @@ public sealed class EfCoreMigrator<TContext> : IPersistenceMigrator
         IInitializationContext context,
         CancellationToken cancellationToken = default)
     {
-        var pendingMigrations = await _context.Database.GetPendingMigrationsAsync(cancellationToken);
+        IReadOnlyList<string> pendingMigrations;
+        try
+        {
+            pendingMigrations = (await _context.Database.GetPendingMigrationsAsync(cancellationToken)).ToList();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return Result.Fail(MigrationOutcome.Failure.Cancelled(Name));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Could not read pending migrations for '{MigratorName}'.", Name);
+            return Result.Fail(MigrationOutcome.Failure.MigrationFailed(Name));
+        }
+
         if (!pendingMigrations.Any())
         {
             _logger.LogInformation("No pending migrations for '{MigratorName}'.", Name);
@@ -124,7 +140,16 @@ public sealed class EfCoreMigrator<TContext> : IPersistenceMigrator
                     ex,
                     "Transient migration failure for '{MigratorName}' on attempt {Attempt}; retrying in {DelayMs}ms.",
                     Name, attempt, delayMs);
-                await Task.Delay(delayMs, cancellationToken);
+
+                try
+                {
+                    await Task.Delay(delayMs, cancellationToken);
+                }
+                catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+                {
+                    // Translate: cancellation during backoff is still a caller cancellation.
+                    return Result.Fail(MigrationOutcome.Failure.Cancelled(Name));
+                }
             }
             catch (Exception ex)
             {
@@ -149,7 +174,23 @@ public sealed class EfCoreMigrator<TContext> : IPersistenceMigrator
         IInitializationContext context,
         CancellationToken cancellationToken = default)
     {
-        var pendingMigrations = await _context.Database.GetPendingMigrationsAsync(cancellationToken);
+        IReadOnlyList<string> pendingMigrations;
+        try
+        {
+            pendingMigrations = (await _context.Database.GetPendingMigrationsAsync(cancellationToken)).ToList();
+        }
+        catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
+        {
+            return Result<IReadOnlyList<InitializationOperation>>.Fail(
+                MigrationOutcome.Failure.Cancelled(Name));
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Could not preview pending migrations for '{MigratorName}'.", Name);
+            return Result<IReadOnlyList<InitializationOperation>>.Fail(
+                MigrationOutcome.Failure.MigrationFailed(Name));
+        }
+
         var operations = new List<InitializationOperation>();
 
         foreach (var migration in pendingMigrations)
@@ -181,15 +222,33 @@ public sealed class EfCoreMigrator<TContext> : IPersistenceMigrator
     /// <inheritdoc />
     /// <summary>
     /// Determines whether an exception is transient and worth retrying.
-    /// Timeouts and deadlocks are transient; other errors are not.
+    /// Timeouts, PostgreSQL deadlocks/serialization failures, and wrapped equivalents
+    /// are transient; other errors are not.
     /// </summary>
     public bool IsTransient(Exception exception)
     {
-        return exception switch
+        // Walk: provider exceptions are often wrapped by EF Core or another exception.
+        for (Exception? current = exception; current is not null; current = current.InnerException)
         {
-            TimeoutException => true,
-            InvalidOperationException when exception.Message.Contains("deadlock", StringComparison.OrdinalIgnoreCase) => true,
-            _ => false
-        };
+            if (current is TimeoutException)
+                return true;
+
+            if (current is PostgresException
+                {
+                    SqlState: PostgresErrorCodes.DeadlockDetected
+                        or PostgresErrorCodes.SerializationFailure
+                })
+            {
+                return true;
+            }
+
+            if (current is InvalidOperationException &&
+                current.Message.Contains("deadlock", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+
+        return false;
     }
 }

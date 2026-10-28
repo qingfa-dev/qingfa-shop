@@ -1,10 +1,14 @@
+using Application;
 using Application.Common.Caching;
 using Application.Common.Persistence.Initialization;
 
 using Infrastructure.Caching;
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.EntityFramework.Contexts;
+using Infrastructure.Security;
+using Infrastructure.Services;
 
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -18,78 +22,54 @@ namespace Infrastructure;
 public static class InfrastructureComposition
 {
     /// <summary>
-    /// Adds all infrastructure services to the service collection.
-    /// This includes EF Core persistence with ApplicationDbContext, caching, repositories,
-    /// unit of work, and query map registrations.
+    /// Adds all infrastructure services to the web application builder.
     /// </summary>
-    /// <param name="services">The host's service collection.</param>
-    /// <param name="configuration">Configuration holding the EfCore and Caching sections.</param>
-    /// <returns>The same collection, for chaining.</returns>
-    public static IServiceCollection AddInfrastructure(
-        this IServiceCollection services,
-        IConfiguration configuration)
+    /// <param name="builder">The web application builder.</param>
+    /// <returns>The same builder, for chaining.</returns>
+    public static WebApplicationBuilder AddInfrastructure(this WebApplicationBuilder builder)
     {
-        ArgumentNullException.ThrowIfNull(services);
-        ArgumentNullException.ThrowIfNull(configuration);
+        ArgumentNullException.ThrowIfNull(builder);
+        ArgumentNullException.ThrowIfNull(builder.Configuration);
 
         // Register: Persistence services (EF Core, repositories, query maps).
-        services.AddPersistence<ApplicationDbContext>(configuration);
+        builder.Services.AddPersistence<ApplicationDbContext>(builder.Configuration);
 
         // Register: Caching facade (HybridCache over L1/L2 tiers).
-        services.AddCaching(configuration);
+        builder.Services.AddCaching(builder.Configuration);
 
-        return services;
+        // Register: Request-scoped tenant and user contexts.
+        builder.Services.AddSecurity();
+
+        // Register: Cross-aggregate reference cleanup.
+        builder.Services.AddServices();
+
+        return builder;
     }
 
     /// <summary>
-    /// Adds infrastructure services with an explicit connection string (useful for testing).
+    /// Initializes the infrastructure pipeline at startup.
+    /// Warms application services, then applies migrations/seeding when the
+    /// <c>Persistence:AutoMigrate</c> or <c>Persistence:Seed</c> options are enabled.
     /// </summary>
-    /// <param name="services">The service collection.</param>
-    /// <param name="connectionString">The database connection string.</param>
-    /// <param name="provider">The database provider (default: "PostgreSQL").</param>
-    /// <returns>The same collection, for chaining.</returns>
-    public static IServiceCollection AddInfrastructure(
-        this IServiceCollection services,
-        string connectionString,
-        string provider = "PostgreSQL")
-    {
-        ArgumentNullException.ThrowIfNull(services);
-        ArgumentNullException.ThrowIfNullOrWhiteSpace(connectionString);
-
-        // Register: Persistence services (EF Core, repositories, query maps).
-        services.AddPersistence<ApplicationDbContext>(connectionString, provider);
-
-        // Register: Null cache service for testing scenarios.
-        services.TryAddSingleton<ICacheService, Caching.Services.NullCacheService>();
-
-        return services;
-    }
-
-    #region Pipeline Configuration
-
-    /// <summary>
-    /// Initializes Infrastructure layer services at startup.
-    /// Applies pending database migrations and, when requested, runs seeders.
-    /// Call this after building the host to ensure the database is ready.
-    /// </summary>
-    /// <param name="provider">The application's service provider.</param>
-    /// <param name="autoMigrate">Whether to apply pending migrations automatically.</param>
-    /// <param name="seed">Whether to run the registered seeders after migrating.</param>
-    /// <returns>The same provider for chaining.</returns>
+    /// <param name="app">The built web application.</param>
+    /// <returns>The same application for further pipeline configuration.</returns>
     /// <exception cref="InvalidOperationException">Initialization returned a failure.</exception>
-    public static IServiceProvider UseInfrastructure(
-        this IServiceProvider provider,
-        bool autoMigrate = true,
-        bool seed = false)
+    public static WebApplication UseInfrastructure(this WebApplication app)
     {
-        ArgumentNullException.ThrowIfNull(provider);
+        ArgumentNullException.ThrowIfNull(app);
+
+        // Warm up: application services are part of the same startup pipeline.
+        app.UseApplication();
+
+        bool autoMigrate = app.Configuration.GetValue("Persistence:AutoMigrate", false);
+        bool seed = app.Configuration.GetValue("Persistence:Seed", false);
 
         if (!autoMigrate && !seed)
         {
-            return provider;
+            return app;
         }
 
-        using var scope = provider.CreateScope();
+        using var scope = app.Services.CreateScope();
         var initializer = scope.ServiceProvider.GetRequiredService<IPersistenceInitializer>();
         var result = initializer
             .InitializeAsync(runMigrations: autoMigrate, runSeeders: seed)
@@ -102,8 +82,6 @@ public static class InfrastructureComposition
                 $"Database initialization failed: {string.Join("; ", result.Errors.Select(error => error.Message))}");
         }
 
-        return provider;
+        return app;
     }
-
-    #endregion
 }

@@ -143,8 +143,9 @@ public sealed class EfCorePersistenceInitializer<TContext> : IPersistenceInitial
             }
             else
             {
-                var error = result.Errors.FirstOrDefault();
-                PersistenceInitializerLoggers.Failed(_logger, error?.Code ?? "Unknown", error?.Message ?? "Unknown error");
+                // Result guarantees a failed result has at least one error.
+                Error error = result.Errors[0];
+                PersistenceInitializerLoggers.Failed(_logger, error.Code, error.Message);
             }
 
             return result;

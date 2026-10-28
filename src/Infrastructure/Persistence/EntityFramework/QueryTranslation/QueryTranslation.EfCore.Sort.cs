@@ -48,13 +48,25 @@ public sealed partial class QueryTranslationEfCore<T>
                     QueryOutcome.Failure.OrderSyntax($"field '{sort.Field}' is not nullable"));
             }
 
-            // Sort: order by the requested null state first; `field?` puts nulls first,
-            // `field!` puts them last, matching the parser's SortNulls contract.
+            // Sort: order by the requested null state first; `field?` (HasValue) puts
+            // non-nulls first, `field!` (NotHasValue) puts nulls first.
             if (sort.Nulls != SortNulls.None)
             {
+                Expression nullState = BuildNullState(member.Value, sort.Nulls);
+
+                // Guard: a missing navigation means the leaf is null; fold that into the
+                // null-state key instead of reading it through the safe default value.
+                Expression? guard = BuildGuard(member.Value, includeLeaf: false);
+                if (guard is not null)
+                {
+                    nullState = sort.Nulls == SortNulls.HasValue
+                        ? Expression.OrElse(Expression.Not(guard), nullState)
+                        : Expression.AndAlso(guard, nullState);
+                }
+
                 query = ApplyOrder(
                     query,
-                    Expression.Lambda(BuildNullState(key, sort.Nulls), parameter),
+                    Expression.Lambda(nullState, parameter),
                     SortDirection.Ascending,
                     then);
                 then = true;
@@ -96,8 +108,9 @@ public sealed partial class QueryTranslationEfCore<T>
             ? Expression.Property(member, nameof(Nullable<int>.HasValue))
             : Expression.NotEqual(member, Expression.Constant(null, member.Type));
 
-        // Invert: HasValue puts nulls last; NotHasValue puts them first.
-        return nulls == SortNulls.HasValue ? hasValue : Expression.Not(hasValue);
+        // Invert: HasValue means non-null first, so the ascending key is !HasValue;
+        // NotHasValue orders nulls first, so the ascending key is HasValue.
+        return nulls == SortNulls.HasValue ? Expression.Not(hasValue) : hasValue;
     }
 
     /// <summary>

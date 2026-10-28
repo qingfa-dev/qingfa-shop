@@ -33,6 +33,12 @@ public sealed class EfCoreUnitOfWork : IUnitOfWork
             await _context.SaveChangesAsync(cancellationToken);
             return Result.Ok();
         }
+        catch (ResultException ex)
+        {
+            // Preserve: a save interceptor already produced a structured failure
+            // (for example, post-save domain-event dispatch).
+            return Result.Fail(ex.Errors.ToList());
+        }
         catch (Exception ex)
         {
             // SaveChanges failures collapse to a single write error unless the store
@@ -127,6 +133,11 @@ public sealed class EfCoreUnitOfWork : IUnitOfWork
                 ? Result<T>.Fail(saveResult.Errors)
                 : Result<T>.Success(result);
         }
+        catch (ResultException ex)
+        {
+            // Preserve: the work delegate or a save interceptor returned a structured failure.
+            return Result<T>.Fail(ex.Errors.ToList());
+        }
         catch (Exception ex)
         {
             return Result<T>.Fail(TranslateException(ex, cancellationToken));
@@ -200,6 +211,12 @@ public sealed class EfCoreUnitOfWork : IUnitOfWork
             }
 
             return Result<T>.Success(result);
+        }
+        catch (ResultException ex)
+        {
+            // Compensate: rollback and discard tracked state, then preserve the structured failure.
+            await TryRollbackAndClearAsync(transaction);
+            return Result<T>.Fail(ex.Errors.ToList());
         }
         catch (Exception ex)
         {

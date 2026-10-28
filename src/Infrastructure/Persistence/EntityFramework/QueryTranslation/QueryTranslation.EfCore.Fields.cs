@@ -22,6 +22,10 @@ public sealed partial class QueryTranslationEfCore<T>
                 sorting ? QueryOutcome.Failure.NotSortable(name) : QueryOutcome.Failure.NotFilterable(name));
         }
 
+        // Check: collections have no single sort key; reject before building an order expression.
+        if (sorting && field.IsCollection)
+            return Result<QueryField>.Fail(QueryOutcome.Failure.NotSortable(name));
+
         return Result<QueryField>.Success(field);
     }
 

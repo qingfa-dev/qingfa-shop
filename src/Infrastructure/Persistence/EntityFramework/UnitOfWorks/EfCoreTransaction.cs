@@ -86,6 +86,12 @@ public sealed class EfCoreTransaction : ITransaction
             _state = TransactionState.Committed;
             return Result.Ok();
         }
+        catch (ResultException ex)
+        {
+            // Preserve: a save interceptor or handler produced a structured failure.
+            _state = TransactionState.RollbackOnly;
+            return Result.Fail(ex.Errors.ToList());
+        }
         catch (Exception ex)
         {
             // The transaction can no longer be committed; only rollback is valid.

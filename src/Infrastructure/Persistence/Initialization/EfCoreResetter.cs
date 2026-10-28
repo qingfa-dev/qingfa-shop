@@ -158,6 +158,10 @@ public sealed class EfCoreResetter<TContext> : IPersistenceResetter
                     EstimatedRowsAffected = null
                 });
                 break;
+            default:
+                return Task.FromResult(
+                    Result<IReadOnlyList<InitializationOperation>>.Fail(
+                        SchemaResetOutcome.Failure.ResetFailed("Invalid scope")));
         }
 
         return Task.FromResult(Result<IReadOnlyList<InitializationOperation>>.Ok(operations));
@@ -174,7 +178,12 @@ public sealed class EfCoreResetter<TContext> : IPersistenceResetter
         IDbConnection connection = context.Connection;
         if (connection.State != ConnectionState.Open)
         {
-            connection.Open();
+            // Open: use the async path when the provider exposes a DbConnection so
+            // cancellation is honored; fall back to the interface for custom connections.
+            if (connection is DbConnection dbConnection)
+                await dbConnection.OpenAsync(cancellationToken);
+            else
+                connection.Open();
         }
 
         bool isPostgres = IsPostgres();

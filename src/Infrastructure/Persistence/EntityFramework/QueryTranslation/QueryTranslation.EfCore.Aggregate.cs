@@ -192,33 +192,23 @@ public sealed partial class QueryTranslationEfCore<T>
         }
     }
 
-    // Dispatch: compute the aggregate function over the row set.
+    // Dispatch: compute only the requested aggregate. Precomputing Average/Min/Max for
+    // every call would convert string values to decimal and fail Count/Min/Max on text fields.
     private static Result<object?> AggregateCore(
         IEnumerable<T> rows,
         AggregateSpec spec,
         Func<T, object?> selector)
     {
-        // Precompute: evaluate all expensive aggregates once; the switch picks the result.
         object?[] values = rows.Select(selector).ToArray();
-
-        object? avgResult = Average(values);
-        object? minResult = Extreme(values, minimum: true);
-        object? maxResult = Extreme(values, minimum: false);
 
         return spec.Function switch
         {
             AggregateFunction.Count => Result<object?>.Success(values.Length),
             AggregateFunction.DistinctCount => Result<object?>.Success(values.Distinct().Count()),
             AggregateFunction.Sum => Result<object?>.Success(Sum(values)),
-            AggregateFunction.Average => avgResult is not null
-                ? Result<object?>.Success(avgResult)
-                : Result<object?>.Success(0m),
-            AggregateFunction.Minimum => minResult is not null
-                ? Result<object?>.Success(minResult)
-                : Result<object?>.Success(0),
-            AggregateFunction.Maximum => maxResult is not null
-                ? Result<object?>.Success(maxResult)
-                : Result<object?>.Success(0),
+            AggregateFunction.Average => Result<object?>.Success(Average(values) ?? 0m),
+            AggregateFunction.Minimum => Result<object?>.Success(Extreme(values, minimum: true) ?? 0),
+            AggregateFunction.Maximum => Result<object?>.Success(Extreme(values, minimum: false) ?? 0),
             _ => Result<object?>.Fail(QueryOutcome.Failure.AggregateUnsupported(spec.Field)),
         };
     }
