@@ -14,9 +14,9 @@ upward.
 
 | Path | Role | Notes |
 |---|---|---|
-| `common/` | util | `doctor`, `clean`, `structure.check`, `trace.common.sh` (shared command echo) |
-| `backend/` | util | solution restore/build, scoped `dotnet format`, Api/Gateway/AppHost/lib test runners, Api/Gateway publish |
-| `web/` | util | workspace install, per-app Prettier, `vue-tsc`, Vitest, build, publish |
+| `common/` | util | `doctor`, `clean`, `structure.check`, `restore-tools`, `trace.common.sh` (shared command echo), `coverage.common.sh` + `coverage-check.*` (report paths, merge, thresholds) |
+| `backend/` | util | solution restore/build, scoped `dotnet format`, Api/Gateway/AppHost/lib test runners, coverage collectors, Api/Gateway publish |
+| `web/` | util | workspace install, per-app Prettier, `vue-tsc`, Vitest unit/integration, optional Playwright e2e, coverage, build, publish |
 | `infra/` | util | `config`, `build` (six images), `size`, `test`, `up`, `down`, `logs`, `ps`, `smoke` |
 
 ## Boundaries
@@ -36,12 +36,16 @@ Out of scope:
 - `ROOT` is derived from `BASH_SOURCE`, so scripts work from any directory.
 - Every script is executable (`chmod +x`); git records the mode.
 - `CONFIGURATION` defaults to `Release`; `Makefile` exports it.
+- `python3` is available for the coverage threshold checker (standard library
+  only; no third-party packages).
 - The two SPAs are members of the `app/` pnpm workspace and share one lock file.
 
 ## Invariants
 
-- No script calls another script; composition lives in Make. The only shared
-  code is `common/trace.common.sh`, sourced to echo a command before it runs.
+- No script calls another script; composition lives in Make. The exception is
+  the coverage collectors, which deliberately wrap the matching test runner so
+  the suite definition exists once. Shared code is limited to
+  `common/trace.common.sh` and `common/coverage.common.sh`, which are sourced.
 - Every script that runs a tool prints the exact argv via `trace` or
   `trace_exec` first. Trace lines go to stderr so stdout stays capturable.
 - No script runs a git command.
@@ -63,15 +67,20 @@ Environment variables read by scripts:
 | `SERVICES` | `infra/build` | Optional space-separated subset of `gateway api shopfront admin postgres redis` |
 | `SERVICE` | `infra/logs` | Optional Compose service filter |
 | `GATEWAY_URL` | `infra/smoke` | Default `http://localhost:5050` |
+| `COVERAGE_LINES`, `COVERAGE_BRANCHES` | `common/coverage-check`, `web/coverage` | Per-assembly/per-app floors, default `90` / `80` |
+| `COVERAGE_ROOT` | `common/coverage.common.sh` | Report directory, default `artifacts/coverage` |
+| `COVERAGE_GATED`, `COVERAGE_BRANCH_EXEMPT` | `common/coverage-check` | Assemblies to fail on, and assemblies whose branch floor is skipped (`Contract`) |
 
 ## Conventions
 
 - Filename: `<action>.<layer>.sh` — the layer repeats so the file stands alone
   when quoted in a Makefile or a CI log.
-- One action per file; no shared library, because the duplication is smaller than
-  the indirection.
+- One action per file. Shared helpers are limited to `common/trace.common.sh`
+  and `common/coverage.common.sh`; coverage collectors wrap the matching test
+  runner on purpose so the suite list has one owner.
 - Scripts that operate on one app take the workspace directory or package name
-  as their first argument.
+  as their first argument. `test.web.sh` takes an optional second argument:
+  `unit`, `integration`, or `all` (default).
 - Call `trace` for a normal command and `trace_exec` for the final command that
   replaces the shell; both print `$ <argv>` before executing.
 - Diagnostic reporters (`doctor`, `structure.check`, `smoke`, `size`) print
@@ -90,5 +99,12 @@ Environment variables read by scripts:
   paths and both SPA titles. It prints the gateway log tail when readiness fails.
 - `backend/test-gateway` filters the shared AppHost suite to
   `AppHost.Integration.Tests.GatewayRoutingSpec`.
+- `backend/coverage-*` write raw Cobertura under
+  `artifacts/coverage/dotnet/raw/`; `coverage.report` merges every raw file and
+  enforces the gated assemblies. `common/coverage-check.common.py` deliberately
+  uses only the Python standard library so it runs on a bare CI runner.
 - `trace.common.sh` prints `(in <dir>)` when the command runs from a different
   directory than the caller, which matters for the `app/` pnpm commands.
+- `web/e2e.web.sh` is opt-in: it skips unless both a Playwright config and at
+  least one spec exist under `app/<app>/e2e`, so `make test.all` stays green
+  before a browser suite is added.
