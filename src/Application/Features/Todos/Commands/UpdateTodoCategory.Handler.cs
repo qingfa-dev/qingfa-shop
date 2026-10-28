@@ -1,7 +1,7 @@
-using Application.Common.Contexts;
 using Application.Common.Mediators.Commands;
 using Application.Common.Persistence.Repositories;
 using Application.Common.Persistence.UnitOfWorks;
+using Application.Common.Security.Authentication.Contexts;
 using Application.Features.Todos.Mapping;
 
 using Contract.Todos.Models;
@@ -21,7 +21,7 @@ public sealed class UpdateTodoCategoryHandler(
     IPersistentRepository<TodoCategory, Guid> repository,
     IUnitOfWork unitOfWork,
     ITenantContext tenantContext,
-    IActorContext actorContext,
+    IUserContext actorContext,
     TimeProvider clock)
     : ICommandHandler<UpdateTodoCategoryCommand, TodoCategoryModel>
 {
@@ -42,7 +42,7 @@ public sealed class UpdateTodoCategoryHandler(
                     unitOfWork,
                     category,
                     clock.GetUtcNow(),
-                    actorContext.Actor,
+                    actorContext.Actor(),
                     ct),
                 cancellationToken)
             .MapAsync(category => category.ToModel());

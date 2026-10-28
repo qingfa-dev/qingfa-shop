@@ -1,7 +1,7 @@
-using Application.Common.Contexts;
 using Application.Common.Mediators.Commands;
 using Application.Common.Persistence.Repositories;
 using Application.Common.Persistence.UnitOfWorks;
+using Application.Common.Security.Authentication.Contexts;
 using Application.Features.Todos.Mapping;
 
 using Contract.Todos.Models;
@@ -20,7 +20,7 @@ public sealed class CreateTodoListHandler(
     IPersistentRepository<TodoList, Guid> repository,
     IUnitOfWork unitOfWork,
     ITenantContext tenantContext,
-    IActorContext actorContext,
+    IUserContext actorContext,
     TimeProvider clock)
     : ICommandHandler<CreateTodoListCommand, TodoListModel>
 {
@@ -37,7 +37,7 @@ public sealed class CreateTodoListHandler(
                 tenantId: tenantId,
                 name: command.Name,
                 nowUtc: clock.GetUtcNow(),
-                actor: actorContext.Actor,
+                actor: actorContext.Actor(),
                 description: command.Description))
             .BindAsync(
                 (created, ct) => repository.SaveNewAsync(unitOfWork, created, ct),

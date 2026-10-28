@@ -1,7 +1,7 @@
-using Application.Common.Contexts;
 using Application.Common.Mediators.Commands;
 using Application.Common.Persistence.Repositories;
 using Application.Common.Persistence.UnitOfWorks;
+using Application.Common.Security.Authentication.Contexts;
 using Application.Features.Todos.Mapping;
 
 using Contract.Todos.Models;
@@ -20,7 +20,7 @@ public sealed class CompleteTodoHandler(
     IPersistentRepository<Todo, Guid> repository,
     IUnitOfWork unitOfWork,
     ITenantContext tenantContext,
-    IActorContext actorContext,
+    IUserContext actorContext,
     TimeProvider clock)
     : ICommandHandler<CompleteTodoCommand, TodoModel>
 {
@@ -43,7 +43,7 @@ public sealed class CompleteTodoHandler(
                     unitOfWork,
                     todo,
                     nowUtc,
-                    actorContext.Actor,
+                    actorContext.Actor(),
                     ct),
                 cancellationToken)
             .MapAsync(todo => todo.ToModel());

@@ -1,8 +1,8 @@
-using Application.Common.Contexts;
 using Application.Common.Mediators.Queries;
 using Application.Common.Persistence.Repositories;
 using Application.Common.Querying;
 using Application.Common.Querying.Mapping;
+using Application.Common.Security.Authentication.Contexts;
 using Application.Features.Todos.Mapping;
 
 using Contract.Common;

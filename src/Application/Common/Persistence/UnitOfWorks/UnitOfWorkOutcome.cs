@@ -1,29 +1,18 @@
 namespace Application.Common.Persistence.UnitOfWorks;
 
 /// <summary>
-/// Unit of work failures. Covers transaction state, write constraints, store connections,
+/// Unit-of-work failures. Owns work execution, write constraints, store connections,
 /// and exception translation outcomes used by <c>EfCoreUnitOfWork</c>.
 /// </summary>
+/// <remarks>
+/// Transaction lifecycle, deadlock, serialization, and read-only failures belong to
+/// <see cref="TransactionOutcome"/>. Consumers use those members directly instead of
+/// duplicating them here.
+/// </remarks>
 public static class UnitOfWorkOutcome
 {
     public static class Failure
     {
-        // ---- Transaction state ----
-
-        public static Error TransactionNested => Error.Conflict(
-            Codes.TransactionNested, "A transaction is already open.");
-
-        public static Error TransactionRequired => Error.Conflict(
-            Codes.TransactionRequired, "No transaction is open.");
-
-        public static Error TransactionAlreadyCompleted => Error.Conflict(
-            Codes.TransactionAlreadyCompleted,
-            "The transaction has already been committed or rolled back.");
-
-        public static Error TransactionRollbackOnly => Error.Conflict(
-            Codes.TransactionRollbackOnly,
-            "The transaction is marked rollback-only and cannot be committed.");
-
         // ---- Work ----
 
         public static Error WorkRequired => Error.UnprocessableEntity(
@@ -70,13 +59,6 @@ public static class UnitOfWorkOutcome
                 ? $"'{typeof(T).Name}' was modified by another request."
                 : $"'{typeof(T).Name}' with key '{key}' was modified by another request.");
 
-        public static Error DeadlockDetected => Error.Conflict(
-            Codes.DeadlockDetected, "The transaction was deadlocked and cannot proceed.");
-
-        public static Error SerializationFailure => Error.Conflict(
-            Codes.SerializationFailure,
-            "The transaction failed due to a serialization conflict. Retry the operation.");
-
         /// <summary>SaveChanges failed for a non-conflict, non-unique reason</summary>
         public static Error SaveChangesFailed(string reason) => Error.InternalServerError(
             Codes.SaveChangesFailed, $"SaveChanges failed: {reason}");
@@ -119,12 +101,6 @@ public static class UnitOfWorkOutcome
     /// <summary>Stable error codes for logging, contracts, and tests.</summary>
     public static class Codes
     {
-        // ---- Transaction state ----
-        public const string TransactionNested           = "UnitOfWork.Transaction.Nested";
-        public const string TransactionRequired         = "UnitOfWork.Transaction.Required";
-        public const string TransactionAlreadyCompleted = "UnitOfWork.Transaction.AlreadyCompleted";
-        public const string TransactionRollbackOnly     = "UnitOfWork.Transaction.RollbackOnly";
-
         // ---- Work ----
         public const string WorkRequired = "UnitOfWork.Work.Required";
 
@@ -134,8 +110,6 @@ public static class UnitOfWorkOutcome
         public const string CheckConstraintViolation = "UnitOfWork.Entity.CheckConstraintViolation";
         public const string NotNullViolation     = "UnitOfWork.Entity.NotNullViolation";
         public const string ConcurrencyConflict  = "UnitOfWork.Concurrency.Conflict";
-        public const string DeadlockDetected     = "UnitOfWork.Concurrency.Deadlock";
-        public const string SerializationFailure = "UnitOfWork.Concurrency.SerializationFailure";
         public const string SaveChangesFailed    = "UnitOfWork.Write.SaveChangesFailed";
 
         // ---- Store connections ----

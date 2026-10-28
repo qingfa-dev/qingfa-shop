@@ -1,7 +1,7 @@
-using Application.Common.Contexts;
 using Application.Common.Mediators.Commands;
 using Application.Common.Persistence.Repositories;
 using Application.Common.Persistence.UnitOfWorks;
+using Application.Common.Security.Authentication.Contexts;
 using Application.Features.Todos.Abstractions;
 
 using Core.Todos.Lists;
@@ -20,7 +20,7 @@ public sealed class DeleteTodoListHandler(
     ITodoReferenceCleaner cleaner,
     IUnitOfWork unitOfWork,
     ITenantContext tenantContext,
-    IActorContext actorContext,
+    IUserContext actorContext,
     TimeProvider clock)
     : ICommandHandler<DeleteTodoListCommand>
 {
@@ -46,7 +46,7 @@ public sealed class DeleteTodoListHandler(
                         list.TenantId,
                         list.Id,
                         nowUtc,
-                        actorContext.Actor,
+                        actorContext.Actor(),
                         ct))
                     .Map(_ => list),
                 cancellationToken)
@@ -56,7 +56,7 @@ public sealed class DeleteTodoListHandler(
                     list,
                     command.Mode,
                     nowUtc,
-                    actorContext.Actor,
+                    actorContext.Actor(),
                     ct),
                 cancellationToken);
     }

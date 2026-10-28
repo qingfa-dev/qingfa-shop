@@ -1,10 +1,13 @@
 namespace Application.Common.Persistence.Repositories;
 
 /// <summary>
-/// Repository-layer failures. Covers entity, write, delete, query, store, and validation outcomes.
-/// Use <see cref="UnitOfWorks.TransactionOutcome"/> for transaction-specific failures and
-/// <see cref="UnitOfWorks.UnitOfWorkOutcome"/> for unit-of-work-specific failures.
+/// Repository-layer failures. Owns entity, query-contract, and configuration validation outcomes.
 /// </summary>
+/// <remarks>
+/// Write constraints, store connections, and exception translation belong to
+/// <see cref="UnitOfWorks.UnitOfWorkOutcome"/>; transaction lifecycle and concurrency failures
+/// belong to <see cref="UnitOfWorks.TransactionOutcome"/>. Repositories use those members directly.
+/// </remarks>
 public static class RepositoryOutcome
 {
     public static class Failure
@@ -25,57 +28,6 @@ public static class RepositoryOutcome
         /// <summary>Mapping (Dapper: map not registered; EF Core: translation missing)</summary>
         public static Error MappingMissing(Type type) => Error.InternalServerError(
             Codes.MappingMissing, $"No query map is registered for '{type.Name}'.");
-
-        // ---- Write ----
-        public static Error DuplicateKey => Error.Conflict(
-            Codes.DuplicateKey, "The entity conflicts with an existing row.");
-
-        public static Error DuplicateKeyFor(string constraint) => Error.Conflict(
-            Codes.DuplicateKey,
-            $"The entity conflicts with an existing row (constraint '{constraint}').");
-
-        public static Error DuplicateKeyFor<T>() => Error.Conflict(
-            Codes.DuplicateKey, $"'{typeof(T).Name}' conflicts with an existing row.");
-
-        public static Error ForeignKeyViolation => Error.Conflict(
-            Codes.ForeignKeyViolation, "The operation violates a foreign key constraint.");
-
-        public static Error ForeignKeyViolationFor(string constraint) => Error.Conflict(
-            Codes.ForeignKeyViolation,
-            $"The operation violates a foreign key constraint ('{constraint}').");
-
-        public static Error CheckConstraintViolation => Error.Conflict(
-            Codes.CheckConstraintViolation, "The operation violates a check constraint.");
-
-        public static Error CheckConstraintViolationFor(string constraint) => Error.Conflict(
-            Codes.CheckConstraintViolation,
-            $"The operation violates a check constraint ('{constraint}').");
-
-        public static Error NotNullViolation => Error.Conflict(
-            Codes.NotNullViolation, "A required column cannot accept a null value.");
-
-        public static Error NotNullViolationFor(string column) => Error.Conflict(
-            Codes.NotNullViolation, $"The column '{column}' cannot accept a null value.");
-
-        public static Error ConcurrencyConflict => Error.Conflict(
-            Codes.ConcurrencyConflict, "The entity was modified by another request.");
-
-        public static Error ConcurrencyConflictFor<T>(object? key = null) => Error.Conflict(
-            Codes.ConcurrencyConflict,
-            key is null
-                ? $"'{typeof(T).Name}' was modified by another request."
-                : $"'{typeof(T).Name}' with key '{key}' was modified by another request.");
-
-        public static Error DeadlockDetected => Error.Conflict(
-            Codes.DeadlockDetected, "The transaction was deadlocked and cannot proceed.");
-
-        public static Error SerializationFailure => Error.Conflict(
-            Codes.SerializationFailure,
-            "The transaction failed due to a serialization conflict. Retry the operation.");
-
-        /// <summary>SaveChanges failed for a non-conflict, non-unique reason</summary>
-        public static Error SaveChangesFailed(string reason) => Error.InternalServerError(
-            Codes.SaveChangesFailed, $"SaveChanges failed: {reason}");
 
         // ---- Delete ----
         public static Error DeleteSoftDeletable => Error.Conflict(
@@ -114,43 +66,6 @@ public static class RepositoryOutcome
         public static Error ChangeTrackingRequired(Type type) => Error.Conflict(
             Codes.ChangeTrackingRequired,
             $"'{type.Name}' is not tracked; attach it before updating.");
-
-        public static Error ExpressionTranslationFailed(string reason) => Error.InternalServerError(
-            Codes.ExpressionTranslationFailed, $"Could not translate the query expression: {reason}");
-
-        public static Error InvalidOperation => Error.InternalServerError(
-            Codes.InvalidOperation, "The operation is invalid in its current state.");
-
-        public static Error InvalidOperationFor(string reason) => Error.InternalServerError(
-            Codes.InvalidOperation, $"The operation is invalid: {reason}");
-
-        // ---- Store ----
-        public static Error Unavailable => Error.ServiceUnavailable(
-            Codes.StoreUnavailable, "The persistence store is unavailable.");
-
-        public static Error ConnectionFailed => Error.ServiceUnavailable(
-            Codes.ConnectionFailed, "The connection to the persistence store failed.");
-
-        public static Error ConnectionRefused => Error.ServiceUnavailable(
-            Codes.ConnectionRefused, "The persistence store refused the connection.");
-
-        public static Error ConnectionLost => Error.ServiceUnavailable(
-            Codes.ConnectionLost, "The connection to the persistence store was lost.");
-
-        public static Error LoginFailed => Error.ServiceUnavailable(
-            Codes.LoginFailed, "Authentication to the persistence store failed.");
-
-        public static Error Timeout => Error.ServiceUnavailable(
-            Codes.StoreTimeout, "The persistence operation timed out.");
-
-        public static Error StoreCommandTimeout(int seconds) => Error.ServiceUnavailable(
-            Codes.StoreTimeout, $"The command exceeded the {seconds}s timeout.");
-
-        public static Error Cancelled => Error.ServiceUnavailable(
-            Codes.StoreCancelled, "The persistence operation was cancelled.");
-
-        public static Error Unknown => Error.InternalServerError(
-            Codes.StoreUnknown, "The persistence store failed.");
 
         // ---- Validation: Page ----
         public static Error PageSizeTooSmall(string parameterName = "pageSize") => Error.Validation(
@@ -276,16 +191,6 @@ public static class RepositoryOutcome
         public const string EntityRequired = "Repository.Entity.Required";
         public const string MappingMissing = "Repository.Mapping.Missing";
 
-        // ---- Write ----
-        public const string DuplicateKey         = "Repository.Entity.DuplicateKey";
-        public const string ForeignKeyViolation  = "Repository.Entity.ForeignKeyViolation";
-        public const string CheckConstraintViolation = "Repository.Entity.CheckConstraintViolation";
-        public const string NotNullViolation     = "Repository.Entity.NotNullViolation";
-        public const string ConcurrencyConflict  = "Repository.Concurrency.Conflict";
-        public const string DeadlockDetected     = "Repository.Concurrency.Deadlock";
-        public const string SerializationFailure = "Repository.Concurrency.SerializationFailure";
-        public const string SaveChangesFailed    = "Repository.Write.SaveChangesFailed";
-
         // ---- Delete ----
         public const string DeleteSoftDeletable = "Repository.Delete.SoftDeletable";
 
@@ -297,18 +202,6 @@ public static class RepositoryOutcome
         public const string ParameterInvalid          = "Repository.Query.ParameterInvalid";
         public const string ResultSetMismatch         = "Repository.Query.ResultSetMismatch";
         public const string ChangeTrackingRequired    = "Repository.Query.ChangeTrackingRequired";
-        public const string ExpressionTranslationFailed = "Repository.Query.ExpressionTranslationFailed";
-        public const string InvalidOperation          = "Repository.Operation.Invalid";
-
-        // ---- Store ----
-        public const string StoreUnavailable = "Repository.Store.Unavailable";
-        public const string ConnectionFailed = "Repository.Store.ConnectionFailed";
-        public const string ConnectionRefused = "Repository.Store.ConnectionRefused";
-        public const string ConnectionLost = "Repository.Store.ConnectionLost";
-        public const string LoginFailed = "Repository.Store.LoginFailed";
-        public const string StoreTimeout = "Repository.Store.Timeout";
-        public const string StoreCancelled = "Repository.Store.Cancelled";
-        public const string StoreUnknown = "Repository.Store.Unknown";
 
         // ---- Validation: Page ----
         public const string PageSizeTooSmall        = "Repository.PageSize.TooSmall";

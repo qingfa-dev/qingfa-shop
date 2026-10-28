@@ -1,7 +1,7 @@
 using System.Reflection;
 
-using Application.Common.Contexts;
 using Application.Common.Mediators;
+using Application.Common.Security.Authentication.Contexts;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -27,11 +27,6 @@ public static class ApplicationComposition
         // Register: MediatR with pipeline behaviors (logging, validation, exception mapping).
         services.AddMediators();
 
-        // Register: the scoped ambient context the host populates per request.
-        services.TryAddScoped<AmbientExecutionContext>();
-        services.TryAddScoped<ITenantContext>(sp => sp.GetRequiredService<AmbientExecutionContext>());
-        services.TryAddScoped<IActorContext>(sp => sp.GetRequiredService<AmbientExecutionContext>());
-
         return services;
     }
 
@@ -49,11 +44,6 @@ public static class ApplicationComposition
 
         // Register: MediatR with pipeline behaviors (logging, validation, exception mapping).
         services.AddMediators(additionalAssemblies);
-
-        // Register: the scoped ambient context the host populates per request.
-        services.TryAddScoped<AmbientExecutionContext>();
-        services.TryAddScoped<ITenantContext>(sp => sp.GetRequiredService<AmbientExecutionContext>());
-        services.TryAddScoped<IActorContext>(sp => sp.GetRequiredService<AmbientExecutionContext>());
 
         return services;
     }

@@ -1,7 +1,7 @@
-using Application.Common.Contexts;
 using Application.Common.Mediators.Commands;
 using Application.Common.Persistence.Repositories;
 using Application.Common.Persistence.UnitOfWorks;
+using Application.Common.Security.Authentication.Contexts;
 using Application.Features.Todos.Mapping;
 
 using Contract.Todos.Models;
@@ -21,7 +21,7 @@ public sealed class RestoreTodoListHandler(
     IPersistentRepository<TodoList, Guid> repository,
     IUnitOfWork unitOfWork,
     ITenantContext tenantContext,
-    IActorContext actorContext,
+    IUserContext actorContext,
     TimeProvider clock)
     : ICommandHandler<RestoreTodoListCommand, TodoListModel>
 {
@@ -40,13 +40,13 @@ public sealed class RestoreTodoListHandler(
                     ct,
                     includeDeleted: true),
                 cancellationToken)
-            .BindAsync(list => Result<TodoList>.Ok(list).Restore(actorContext.Actor))
+            .BindAsync(list => Result<TodoList>.Ok(list).Restore(actorContext.Actor()))
             .BindAsync(
                 (list, ct) => repository.SaveUpdateAsync(
                     unitOfWork,
                     list,
                     clock.GetUtcNow(),
-                    actorContext.Actor,
+                    actorContext.Actor(),
                     ct),
                 cancellationToken)
             .MapAsync(list => list.ToModel());
