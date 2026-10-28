@@ -11,6 +11,10 @@
     <ProjectReference Include="../Contract/Contract.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
     <ItemGroup>
     <InternalsVisibleTo Include="Application.Unit.Tests" />
   </ItemGroup>
@@ -20,7 +24,5 @@
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
     <PackageReference Include="Scrutor" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
-    <PackageReference Include="Microsoft.Extensions.Logging" />
   </ItemGroup>
 </Project>

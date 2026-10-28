@@ -79,8 +79,10 @@ public static class MediatorComposition
     {
         #region Service Warming
 
-        // Resolve: Warm up the mediator service to ensure readiness
-        provider.GetRequiredService<IMediator>();
+        // Resolve: warm up the mediator inside a scope. MediatR is scoped, and a
+        // web host validates that scoped services are not resolved from the root.
+        using IServiceScope scope = provider.CreateScope();
+        scope.ServiceProvider.GetRequiredService<IMediator>();
 
         #endregion
 
