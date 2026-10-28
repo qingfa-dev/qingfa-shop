@@ -5,7 +5,7 @@ using Application.Features.Todos.Abstractions;
 using Infrastructure.Persistence.EntityFramework;
 using Infrastructure.Persistence.EntityFramework.Contexts;
 using Infrastructure.Persistence.EntityFramework.Repositories;
-using Infrastructure.Persistence.Todos;
+using Infrastructure.Services.Todos;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;

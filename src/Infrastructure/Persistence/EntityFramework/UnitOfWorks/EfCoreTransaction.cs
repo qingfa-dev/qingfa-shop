@@ -25,14 +25,17 @@ public sealed class EfCoreTransaction : ITransaction
     internal EfCoreTransaction(
         EfCoreDbContext context,
         IDbContextTransaction transaction,
-        bool readOnly)
+        bool readOnly,
+        IsolationLevel isolationLevel = IsolationLevel.Unspecified)
     {
         _context = context;
         _transaction = transaction;
         IsReadOnly = readOnly;
 
-        // Captured up front: reading it from a completed/disposed DbTransaction throws.
-        _isolationLevel = transaction.GetDbTransaction().IsolationLevel;
+        // Captured up front: reading it from a completed/disposed transaction throws.
+        // The caller supplies the effective level; providers without a relational
+        // DbTransaction (InMemory, test doubles) report Unspecified.
+        _isolationLevel = isolationLevel;
     }
 
     /// <inheritdoc />
@@ -87,7 +90,7 @@ public sealed class EfCoreTransaction : ITransaction
         {
             // The transaction can no longer be committed; only rollback is valid.
             _state = TransactionState.RollbackOnly;
-            return Result.Fail(PersistenceExceptionTranslator.Translate(ex, cancellationToken));
+            return Result.Fail(PersistenceExceptionTranslator.Classify(ex, cancellationToken).ToOutcome());
         }
     }
 
@@ -105,7 +108,7 @@ public sealed class EfCoreTransaction : ITransaction
         }
         catch (Exception ex)
         {
-            return Result.Fail(PersistenceExceptionTranslator.Translate(ex, cancellationToken));
+            return Result.Fail(PersistenceExceptionTranslator.Classify(ex, cancellationToken).ToOutcome());
         }
     }
 

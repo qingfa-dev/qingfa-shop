@@ -264,7 +264,7 @@ public sealed class EfCoreResetter<TContext> : IPersistenceResetter
             await _context.Database.EnsureCreatedAsync(cancellationToken);
         }
 
-        _logger.LogInformation("Database schema recreated.");
+        PersistenceSchemaResetterLoggers.SchemaRecreated(_logger);
     }
 
     /// <summary>

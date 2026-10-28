@@ -1,4 +1,4 @@
-using Application.Common.Persistence.Repositories;
+using Application.Common.Persistence.UnitOfWorks;
 using Application.Features.Todos.Abstractions;
 
 using Core.Todos.Items;
@@ -7,7 +7,7 @@ using Infrastructure.Persistence.EntityFramework.Contexts;
 
 using Microsoft.EntityFrameworkCore;
 
-namespace Infrastructure.Persistence.Todos;
+namespace Infrastructure.Services.Todos;
 
 /// <summary>
 /// EF Core implementation of <see cref="ITodoReferenceCleaner"/>.
@@ -46,7 +46,7 @@ public sealed class TodoReferenceCleaner(ApplicationDbContext context) : ITodoRe
         {
             // Translate: any unexpected error to a typed persistence outcome.
             return Result<int>.Fail(
-                RepositoryOutcome.Failure.InvalidOperationFor(exception.Message));
+                UnitOfWorkOutcome.Failure.InvalidOperationFor(exception.Message));
         }
     }
 
@@ -85,7 +85,7 @@ public sealed class TodoReferenceCleaner(ApplicationDbContext context) : ITodoRe
         {
             // Translate: any unexpected error to a typed persistence outcome.
             return Result<int>.Fail(
-                RepositoryOutcome.Failure.InvalidOperationFor(exception.Message));
+                UnitOfWorkOutcome.Failure.InvalidOperationFor(exception.Message));
         }
     }
 

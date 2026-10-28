@@ -7,8 +7,6 @@ using Infrastructure.Persistence.EntityFramework.Contexts;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Storage;
 
-using Npgsql;
-
 namespace Infrastructure.Persistence.EntityFramework.UnitOfWorks;
 
 /// <summary>
@@ -37,9 +35,9 @@ public sealed class EfCoreUnitOfWork : IUnitOfWork
         }
         catch (Exception ex)
         {
-            // Single translation path: concurrency, constraint violations, deadlocks,
-            // serialization failures, timeouts and cancellation all map to typed errors.
-            return Result.Fail(TranslateException(ex, cancellationToken));
+            // SaveChanges failures collapse to a single write error unless the store
+            // reports a condition the caller can act on (concurrency, duplicate, timeout).
+            return Result.Fail(TranslateSaveChanges(ex, cancellationToken));
         }
     }
 
@@ -51,7 +49,7 @@ public sealed class EfCoreUnitOfWork : IUnitOfWork
     {
         // Guard: nested transactions are not supported; caller must commit or rollback first.
         if (_context.Database.CurrentTransaction is not null)
-            return Result<ITransaction>.Fail(UnitOfWorkOutcome.Failure.TransactionNested);
+            return Result<ITransaction>.Fail(TransactionOutcome.Failure.TransactionNested);
 
         try
         {
@@ -59,11 +57,33 @@ public sealed class EfCoreUnitOfWork : IUnitOfWork
                 ? await _context.Database.BeginTransactionAsync(isolationLevel.Value, cancellationToken)
                 : await _context.Database.BeginTransactionAsync(cancellationToken);
 
-            return Result<ITransaction>.Success(new EfCoreTransaction(_context, transaction, readOnly));
+            // Use the requested level, or the provider's resolved level when the caller
+            // leaves it to the provider. Non-relational providers expose no DbTransaction.
+            IsolationLevel effective = isolationLevel ?? TryReadIsolationLevel(transaction);
+
+            return Result<ITransaction>.Success(
+                new EfCoreTransaction(_context, transaction, readOnly, effective));
         }
         catch (Exception ex)
         {
             return Result<ITransaction>.Fail(TranslateException(ex, cancellationToken));
+        }
+    }
+
+    /// <summary>
+    /// Reads the isolation level from a relational provider transaction.
+    /// Falls back to <see cref="IsolationLevel.Unspecified"/> when the provider has no
+    /// relational transaction to inspect (for example, InMemory or a test double).
+    /// </summary>
+    private static IsolationLevel TryReadIsolationLevel(IDbContextTransaction transaction)
+    {
+        try
+        {
+            return transaction.GetDbTransaction().IsolationLevel;
+        }
+        catch (InvalidOperationException)
+        {
+            return IsolationLevel.Unspecified;
         }
     }
 
@@ -169,7 +189,7 @@ public sealed class EfCoreUnitOfWork : IUnitOfWork
             if (transaction.State == TransactionState.RollbackOnly)
             {
                 await TryRollbackAndClearAsync(transaction);
-                return Result<T>.Fail(UnitOfWorkOutcome.Failure.TransactionRollbackOnly);
+                return Result<T>.Fail(TransactionOutcome.Failure.TransactionRollbackOnly);
             }
 
             Result commitResult = await transaction.CommitAsync(cancellationToken);
@@ -238,130 +258,27 @@ public sealed class EfCoreUnitOfWork : IUnitOfWork
     // ---------------------------------------------------------------------
 
     /// <summary>
-    /// Translates raw exceptions into typed persistence errors.
-    /// Checks concurrency first (it derives from DbUpdateException), then walks the exception chain
-    /// for PostgresException, DbUpdateException, cancellation, and timeout scenarios.
+    /// Translates exceptions thrown by caller work or general persistence operations
+    /// into the outcome that owns the failure.
     /// </summary>
-    private static Error TranslateException(Exception ex, CancellationToken cancellationToken = default)
-    {
-        // Concurrency first: it derives from DbUpdateException.
-        if (ex is DbUpdateConcurrencyException)
-            return UnitOfWorkOutcome.Failure.ConcurrencyConflict;
-
-        // Walk the whole chain; the PostgresException is not always the direct inner exception.
-        if (FindInChain<PostgresException>(ex) is { } pgEx)
-            return TranslatePostgresException(pgEx);
-
-        if (ex is DbUpdateException dbEx)
-            return TranslateDbUpdateException(dbEx);
-
-        // Cancellation: caller's token => Cancelled, anything else (DB-side cancel) => Timeout.
-        if (ex is OperationCanceledException oce)
-        {
-            return cancellationToken.IsCancellationRequested || oce.CancellationToken.IsCancellationRequested
-                ? UnitOfWorkOutcome.Failure.Cancelled
-                : UnitOfWorkOutcome.Failure.Timeout;
-        }
-
-        // Npgsql wraps command timeouts as NpgsqlException -> TimeoutException.
-        if (FindInChain<TimeoutException>(ex) is not null)
-            return UnitOfWorkOutcome.Failure.Timeout;
-
-        if (ex is InvalidOperationException ioe)
-        {
-            string msg = ioe.Message;
-
-            if (msg.Contains("timeout", StringComparison.OrdinalIgnoreCase))
-                return UnitOfWorkOutcome.Failure.Timeout;
-
-            if (msg.Contains("translate", StringComparison.OrdinalIgnoreCase) ||
-                msg.Contains("LINQ", StringComparison.OrdinalIgnoreCase))
-                return UnitOfWorkOutcome.Failure.ExpressionTranslationFailed(msg);
-
-            return UnitOfWorkOutcome.Failure.InvalidOperationFor(msg);
-        }
-
-        return UnitOfWorkOutcome.Failure.SaveChangesFailed(ex.Message);
-    }
+    private static Error TranslateException(Exception ex, CancellationToken cancellationToken = default) =>
+        PersistenceExceptionTranslator.Classify(ex, cancellationToken).ToOutcome();
 
     /// <summary>
-    /// Walks the InnerException chain to find the first exception of type T.
-    /// Used because PostgresException is often nested deep inside Npgsql wrappers.
+    /// Translates a failed <c>SaveChangesAsync</c>. Only conditions the caller can act on
+    /// keep their specific outcome; every other constraint or state failure is a write failure.
     /// </summary>
-    private static TException? FindInChain<TException>(Exception? ex) where TException : Exception
+    private static Error TranslateSaveChanges(Exception ex, CancellationToken cancellationToken)
     {
-        while (ex is not null)
+        PersistenceFailure failure = PersistenceExceptionTranslator.Classify(ex, cancellationToken);
+
+        return failure.Kind switch
         {
-            if (ex is TException match)
-                return match;
-
-            ex = ex.InnerException;
-        }
-
-        return null;
-    }
-
-    /// <summary>
-    /// Translates PostgreSQL SQLSTATE error codes to typed persistence errors.
-    /// Covers integrity violations, concurrency, timeouts, connection failures, and authentication errors.
-    /// </summary>
-    private static Error TranslatePostgresException(PostgresException ex) => ex.SqlState switch
-    {
-        // Integrity constraint violations (use the constraint/column when Npgsql provides it)
-        PostgresErrorCodes.UniqueViolation => ex.ConstraintName is { } c
-            ? UnitOfWorkOutcome.Failure.DuplicateKeyFor(c)
-            : UnitOfWorkOutcome.Failure.DuplicateKey,
-        PostgresErrorCodes.ForeignKeyViolation => ex.ConstraintName is { } c
-            ? UnitOfWorkOutcome.Failure.ForeignKeyViolationFor(c)
-            : UnitOfWorkOutcome.Failure.ForeignKeyViolation,
-        PostgresErrorCodes.CheckViolation => ex.ConstraintName is { } c
-            ? UnitOfWorkOutcome.Failure.CheckConstraintViolationFor(c)
-            : UnitOfWorkOutcome.Failure.CheckConstraintViolation,
-        PostgresErrorCodes.NotNullViolation => ex.ColumnName is { } col
-            ? UnitOfWorkOutcome.Failure.NotNullViolationFor(col)
-            : UnitOfWorkOutcome.Failure.NotNullViolation,
-
-        // Concurrency
-        PostgresErrorCodes.DeadlockDetected => UnitOfWorkOutcome.Failure.DeadlockDetected,
-        PostgresErrorCodes.SerializationFailure => UnitOfWorkOutcome.Failure.SerializationFailure,
-
-        // Timeouts / cancelled statements (statement_timeout, lock_timeout)
-        PostgresErrorCodes.QueryCanceled => UnitOfWorkOutcome.Failure.Timeout,
-        PostgresErrorCodes.LockNotAvailable => UnitOfWorkOutcome.Failure.Timeout,
-
-        // Connection exceptions
-        PostgresErrorCodes.SqlClientUnableToEstablishSqlConnection => UnitOfWorkOutcome.Failure.ConnectionRefused,
-        PostgresErrorCodes.ConnectionFailure => UnitOfWorkOutcome.Failure.ConnectionLost,
-        PostgresErrorCodes.ConnectionException => UnitOfWorkOutcome.Failure.ConnectionFailed,
-        PostgresErrorCodes.ConnectionDoesNotExist => UnitOfWorkOutcome.Failure.ConnectionLost,
-        PostgresErrorCodes.SqlServerRejectedEstablishmentOfSqlConnection => UnitOfWorkOutcome.Failure.ConnectionFailed,
-        PostgresErrorCodes.AdminShutdown => UnitOfWorkOutcome.Failure.ConnectionFailed,
-        PostgresErrorCodes.CrashShutdown => UnitOfWorkOutcome.Failure.ConnectionFailed,
-        PostgresErrorCodes.CannotConnectNow => UnitOfWorkOutcome.Failure.ConnectionFailed,
-        PostgresErrorCodes.TooManyConnections => UnitOfWorkOutcome.Failure.ConnectionFailed,
-
-        // Authentication
-        PostgresErrorCodes.InvalidAuthorizationSpecification => UnitOfWorkOutcome.Failure.LoginFailed,
-        PostgresErrorCodes.InvalidPassword => UnitOfWorkOutcome.Failure.LoginFailed,
-
-        _ => UnitOfWorkOutcome.Failure.Unknown,
-    };
-
-    /// <summary>
-    /// Fallback for DbUpdateException when no PostgresException is found in the chain.
-    /// Uses message keyword matching to infer the constraint type violated.
-    /// </summary>
-    private static Error TranslateDbUpdateException(DbUpdateException ex)
-    {
-        string message = ex.Message.ToLowerInvariant();
-        if (message.Contains("unique") || message.Contains("duplicate"))
-            return UnitOfWorkOutcome.Failure.DuplicateKey;
-        if (message.Contains("foreign key") || message.Contains("reference constraint"))
-            return UnitOfWorkOutcome.Failure.ForeignKeyViolation;
-        if (message.Contains("check constraint"))
-            return UnitOfWorkOutcome.Failure.CheckConstraintViolation;
-        if (message.Contains("not null") || message.Contains("null value"))
-            return UnitOfWorkOutcome.Failure.NotNullViolation;
-        return UnitOfWorkOutcome.Failure.SaveChangesFailed(ex.Message);
+            PersistenceFailureKind.ConcurrencyConflict
+                or PersistenceFailureKind.DuplicateKey
+                or PersistenceFailureKind.Timeout
+                or PersistenceFailureKind.Cancelled => failure.ToOutcome(),
+            _ => failure.ToSaveChangesError(ex.Message),
+        };
     }
 }

@@ -4,6 +4,7 @@ using Application.Common.Querying.Mapping;
 
 using Infrastructure.Persistence.EntityFramework.Capabilities;
 using Infrastructure.Persistence.EntityFramework.Contexts;
+using Infrastructure.Persistence.EntityFramework.Interceptors;
 using Infrastructure.Persistence.EntityFramework.Options;
 using Infrastructure.Persistence.EntityFramework.QueryTranslation;
 using Infrastructure.Persistence.EntityFramework.UnitOfWorks;
@@ -67,6 +68,9 @@ public static class EntityFrameworkComposition
                     .EnableSensitiveDataLogging(opt.EnableSensitiveDataLogging)
                     .EnableDetailedErrors(opt.EnableDetailedErrors)
                     .ConfigureWarnings(w => w.Default(WarningBehavior.Throw));
+
+                // Register concern interceptors (lifecycle, versionable, etc.)
+                optionsBuilder.Apply();
 
                 switch (opt.Provider.ToLowerInvariant())
                 {
@@ -142,6 +146,9 @@ public static class EntityFrameworkComposition
                     .EnableSensitiveDataLogging(setting.EnableSensitiveDataLogging)
                     .EnableDetailedErrors(setting.EnableDetailedErrors)
                     .ConfigureWarnings(w => w.Default(WarningBehavior.Throw));
+
+                // Register concern interceptors (lifecycle, versionable, etc.)
+                optionsBuilder.Apply();
 
                 switch (setting.Provider.ToLowerInvariant())
                 {
