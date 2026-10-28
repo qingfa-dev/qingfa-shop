@@ -1,7 +1,7 @@
 import { flushPromises, mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest'
-import App from '../App.vue'
-import router from '../router'
+import App from '../../App.vue'
+import router from '../../router'
 
 describe('App', () => {
   let wrapper: VueWrapper
@@ -20,8 +20,8 @@ describe('App', () => {
     vi.restoreAllMocks()
   })
 
-  it('renders the shell with the dashboard heading and a healthy API chip', () => {
-    expect(wrapper.get('[data-test="app-title"]').text()).toBe('Admin dashboard')
+  it('renders the shell with the storefront heading and a healthy API chip', () => {
+    expect(wrapper.get('[data-test="app-title"]').text()).toBe('QingFa.Shop')
     expect(wrapper.get('[data-test="health-chip"]').text()).toContain('healthy')
   })
 
