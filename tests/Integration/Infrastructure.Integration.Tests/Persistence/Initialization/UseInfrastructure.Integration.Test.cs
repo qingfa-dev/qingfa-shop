@@ -1,7 +1,9 @@
-using Infrastructure.Persistence;
-using Infrastructure.Persistence.EntityFramework.Contexts;
+using Application;
 
-using Microsoft.Extensions.DependencyInjection;
+using Infrastructure;
+
+using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Configuration;
 
 namespace Infrastructure.Integration.Tests.Persistence.Initialization;
 
@@ -30,13 +32,13 @@ public sealed class UseInfrastructureIntegrationTest(PersistenceInitializationFi
     public async Task UseInfrastructure_WithAutoMigrateAndSeed_ShouldMigrateAndSeed()
     {
         // Arrange
-        await using var provider = BuildProvider();
+        using WebApplication app = BuildApplication(autoMigrate: true, seed: true);
 
         // Act
-        var result = provider.UseInfrastructure(autoMigrate: true, seed: true);
+        WebApplication result = app.UseInfrastructure();
 
         // Assert
-        result.Should().BeSameAs(provider);
+        result.Should().BeSameAs(app);
         (await _fixture.TableExistsAsync("todos")).Should().BeTrue();
         (await _fixture.CountRowsAsync("todo_categories")).Should().Be(4);
         (await _fixture.CountRowsAsync("todo_lists")).Should().Be(3);
@@ -47,13 +49,13 @@ public sealed class UseInfrastructureIntegrationTest(PersistenceInitializationFi
     public async Task UseInfrastructure_WithAutoMigrateOnly_ShouldNotSeed()
     {
         // Arrange
-        await using var provider = BuildProvider();
+        using WebApplication app = BuildApplication(autoMigrate: true, seed: false);
 
         // Act
-        var result = provider.UseInfrastructure(autoMigrate: true, seed: false);
+        WebApplication result = app.UseInfrastructure();
 
         // Assert
-        result.Should().BeSameAs(provider);
+        result.Should().BeSameAs(app);
         (await _fixture.TableExistsAsync("todos")).Should().BeTrue();
         (await _fixture.CountRowsAsync("todos")).Should().Be(0);
         (await _fixture.CountRowsAsync("__EFMigrationsHistory")).Should().Be(1);
@@ -63,20 +65,32 @@ public sealed class UseInfrastructureIntegrationTest(PersistenceInitializationFi
     public void UseInfrastructure_WithNothingEnabled_ShouldNotTouchTheDatabase()
     {
         // Arrange
-        using var provider = BuildProvider();
+        using WebApplication app = BuildApplication();
 
         // Act
-        var result = provider.UseInfrastructure(autoMigrate: false, seed: false);
+        WebApplication result = app.UseInfrastructure();
 
         // Assert
-        result.Should().BeSameAs(provider);
+        result.Should().BeSameAs(app);
     }
 
-    private ServiceProvider BuildProvider()
+    private WebApplication BuildApplication(bool autoMigrate = false, bool seed = false)
     {
-        var services = new ServiceCollection();
-        services.AddLogging();
-        services.AddPersistence<ApplicationDbContext>(_fixture.ConnectionString);
-        return services.BuildServiceProvider();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder(new WebApplicationOptions
+        {
+            EnvironmentName = "Testing",
+        });
+        builder.Configuration.AddInMemoryCollection(new Dictionary<string, string?>
+        {
+            ["ConnectionStrings:Default"] = _fixture.ConnectionString,
+            ["EfCore:ConnectionStringName"] = "Default",
+            ["EfCore:Provider"] = "PostgreSQL",
+            ["Caching:Enabled"] = "false",
+            ["Persistence:AutoMigrate"] = autoMigrate.ToString(),
+            ["Persistence:Seed"] = seed.ToString(),
+        });
+        builder.AddApplication();
+        builder.AddInfrastructure();
+        return builder.Build();
     }
 }

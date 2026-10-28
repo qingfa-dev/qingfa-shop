@@ -182,6 +182,32 @@ public sealed class EfCoreTransactionExceptionTest
         await transaction.DisposeAsync();
     }
 
+    [Fact(DisplayName = "CommitAsync should preserve a structured save failure")]
+    public async Task CommitAsync_WhenSaveThrowsStructuredFailure_ShouldKeepItsErrors()
+    {
+        // Arrange
+        Error error = Error.InternalServerError("Test.Structured", "the interceptor failed");
+        var options = new DbContextOptionsBuilder()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+        var context = new ResultFailingDbContext(options, new ResultException(Result.Fail(error)));
+        var inner = new Mock<IDbContextTransaction>();
+        inner
+            .Setup(t => t.CommitAsync(It.IsAny<CancellationToken>()))
+            .Returns(Task.CompletedTask);
+        var transaction = new EfCoreTransaction(context, inner.Object, readOnly: false);
+
+        // Act
+        Result result = await transaction.CommitAsync();
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().ContainSingle().Which.Should().Be(error);
+        transaction.State.Should().Be(TransactionState.RollbackOnly);
+
+        await transaction.DisposeAsync();
+    }
+
     #endregion
 
     #region RollbackAsync translation
@@ -255,4 +281,13 @@ public sealed class EfCoreTransactionExceptionTest
     }
 
     #endregion
+
+    /// <summary>Context whose SaveChanges fails with the supplied exception.</summary>
+    private sealed class ResultFailingDbContext(
+        DbContextOptions options,
+        Exception exception) : UowTestDbContext(options)
+    {
+        public override Task<int> SaveChangesAsync(CancellationToken cancellationToken = default) =>
+            Task.FromException<int>(exception);
+    }
 }

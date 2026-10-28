@@ -219,6 +219,60 @@ public sealed class EfCoreUnitOfWorkExceptionTest
         result.Errors[0].Code.Should().Be(UnitOfWorkOutcome.Codes.StoreCancelled);
     }
 
+    [Fact(DisplayName = "SaveChangesAsync should preserve a structured ResultException")]
+    public async Task SaveChangesAsync_WhenStructuredFailure_ShouldKeepItsErrors()
+    {
+        // Arrange
+        Error error = Error.InternalServerError("Test.Structured", "the interceptor failed");
+        var options = new DbContextOptionsBuilder()
+            .UseInMemoryDatabase(databaseName: Guid.NewGuid().ToString())
+            .Options;
+        var context = new SaveFailingDbContext(options, new ResultException(Result.Fail(error)));
+        var unitOfWork = new EfCoreUnitOfWork(context);
+
+        // Act
+        Result result = await unitOfWork.SaveChangesAsync();
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().ContainSingle().Which.Should().Be(error);
+    }
+
+    [Fact(DisplayName = "ExecuteAsync should preserve a structured work failure")]
+    public async Task ExecuteAsync_WhenWorkThrowsStructuredFailure_ShouldKeepItsErrors()
+    {
+        // Arrange
+        Error error = Error.InternalServerError("Test.Work", "the work failed");
+        var context = CreateContext();
+        var unitOfWork = new EfCoreUnitOfWork(context);
+
+        // Act
+        Result<string> result = await unitOfWork.ExecuteAsync<string>(
+            _ => throw new ResultException(Result.Fail(error)));
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().ContainSingle().Which.Should().Be(error);
+    }
+
+    [Fact(DisplayName = "ExecuteInTransactionAsync should preserve a structured work failure")]
+    public async Task ExecuteInTransactionAsync_WhenWorkThrowsStructuredFailure_ShouldKeepItsErrors()
+    {
+        // Arrange
+        Error error = Error.InternalServerError("Test.Work", "the work failed");
+        var context = CreateContext();
+        var unitOfWork = new EfCoreUnitOfWork(context);
+
+        // Act
+        Result<string> result = await unitOfWork.ExecuteInTransactionAsync<string>(
+            (_, _) => throw new ResultException(Result.Fail(error)));
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().ContainSingle().Which.Should().Be(error);
+        context.ChangeTracker.HasChanges().Should().BeFalse();
+    }
+
     [Fact(DisplayName = "ExecuteInTransactionAsync should return the begin-transaction failure")]
     public async Task ExecuteInTransactionAsync_WhenBeginFails_ShouldReturnFailure()
     {

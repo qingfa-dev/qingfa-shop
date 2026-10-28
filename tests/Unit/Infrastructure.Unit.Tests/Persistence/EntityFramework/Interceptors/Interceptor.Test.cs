@@ -1,10 +1,13 @@
+using Application.Common.Events;
+
 using Core.Common.Concerns.Foundation.Versionable;
 using Core.Common.Concerns.Lifecycle.Activatable;
-using Core.Common.Concerns.Lifecycle.Auditable;
 using Core.Common.Concerns.Lifecycle.Creatable;
 using Core.Common.Concerns.Lifecycle.Modifiable;
 using Core.Common.Concerns.Lifecycle.Publishable;
 using Core.Common.Concerns.Lifecycle.SoftDeletable;
+using Core.Common.Domain.Aggregates;
+using Core.Common.Domain.Events;
 
 using Infrastructure.Persistence.EntityFramework.Interceptors;
 
@@ -15,8 +18,8 @@ using Microsoft.EntityFrameworkCore.Infrastructure;
 namespace Infrastructure.Unit.Tests.Persistence.EntityFramework.Interceptors;
 
 /// <summary>
-/// Unit tests for the concern interceptors. Each test registers only the interceptor
-/// under test so state transitions are isolated.
+/// Unit tests for the persistence interceptors. Each lifecycle test registers only the
+/// interceptor under test so state transitions stay isolated.
 /// </summary>
 [Trait("Category", "Unit")]
 [Trait("Module", "Infrastructure")]
@@ -25,13 +28,13 @@ public sealed class InterceptorTest
 {
     private static readonly TimeSpan Tolerance = TimeSpan.FromSeconds(10);
 
-    // ─── Creatable ────────────────────────────────────────────────────────
+    // ─── Lifecycle: Creatable ─────────────────────────────────────────────
 
-    [Fact(DisplayName = "Creatable should stamp CreatedAtUtc on Added entities")]
-    public async Task Creatable_WhenAdded_ShouldStampCreatedAtUtc()
+    [Fact(DisplayName = "Lifecycle should stamp CreatedAtUtc on Added entities")]
+    public async Task Lifecycle_WhenAdded_ShouldStampCreatedAtUtc()
     {
         // Arrange
-        await using var context = CreateContext(new CreatableInterceptor());
+        await using var context = CreateContext(new LifecycleInterceptor());
         var entity = new ConcernEntity { Id = Guid.NewGuid() };
         context.Add(entity);
         var before = DateTimeOffset.UtcNow;
@@ -43,11 +46,11 @@ public sealed class InterceptorTest
         entity.CreatedAtUtc.Should().BeCloseTo(before, Tolerance);
     }
 
-    [Fact(DisplayName = "Creatable should leave CreatedAtUtc untouched on Modified entities")]
-    public async Task Creatable_WhenModified_ShouldNotStampCreatedAtUtc()
+    [Fact(DisplayName = "Lifecycle should leave CreatedAtUtc untouched on Modified entities")]
+    public async Task Lifecycle_WhenModified_ShouldNotStampCreatedAtUtc()
     {
         // Arrange
-        await using var context = CreateContext(new CreatableInterceptor());
+        await using var context = CreateContext(new LifecycleInterceptor());
         var entity = new ConcernEntity { Id = Guid.NewGuid(), Name = "first" };
         context.Add(entity);
         await context.SaveChangesAsync();
@@ -61,13 +64,13 @@ public sealed class InterceptorTest
         entity.CreatedAtUtc.Should().Be(createdAt);
     }
 
-    // ─── Modifiable ───────────────────────────────────────────────────────
+    // ─── Lifecycle: Modifiable ────────────────────────────────────────────
 
-    [Fact(DisplayName = "Modifiable should stamp ModifiedAtUtc on Added entities")]
-    public async Task Modifiable_WhenAdded_ShouldStampModifiedAtUtc()
+    [Fact(DisplayName = "Lifecycle should stamp ModifiedAtUtc on Added entities")]
+    public async Task Lifecycle_WhenAdded_ShouldStampModifiedAtUtc()
     {
         // Arrange
-        await using var context = CreateContext(new ModifiableInterceptor());
+        await using var context = CreateContext(new LifecycleInterceptor());
         var entity = new ConcernEntity { Id = Guid.NewGuid() };
         context.Add(entity);
         var before = DateTimeOffset.UtcNow;
@@ -80,11 +83,11 @@ public sealed class InterceptorTest
         entity.ModifiedAtUtc!.Value.Should().BeCloseTo(before, Tolerance);
     }
 
-    [Fact(DisplayName = "Modifiable should stamp ModifiedAtUtc on Modified entities")]
-    public async Task Modifiable_WhenModified_ShouldStampModifiedAtUtc()
+    [Fact(DisplayName = "Lifecycle should stamp ModifiedAtUtc on Modified entities")]
+    public async Task Lifecycle_WhenModified_ShouldStampModifiedAtUtc()
     {
         // Arrange
-        await using var context = CreateContext(new ModifiableInterceptor());
+        await using var context = CreateContext(new LifecycleInterceptor());
         var entity = new ConcernEntity { Id = Guid.NewGuid(), Name = "first" };
         context.Add(entity);
         await context.SaveChangesAsync();
@@ -100,76 +103,10 @@ public sealed class InterceptorTest
         entity.ModifiedAtUtc!.Value.Should().BeCloseTo(before, Tolerance);
     }
 
-    [Fact(DisplayName = "Modifiable should ignore Deleted entities")]
-    public async Task Modifiable_WhenDeleted_ShouldNotStampModifiedAtUtc()
-    {
-        // Arrange
-        string database = NewDatabaseName();
-        var modifiedAt = new DateTimeOffset(2020, 1, 1, 0, 0, 0, TimeSpan.Zero);
-        Guid id = Guid.NewGuid();
-        await using (var seed = CreateContext(database))
-        {
-            seed.Add(new ConcernEntity { Id = id, ModifiedAtUtc = modifiedAt });
-            await seed.SaveChangesAsync();
-        }
+    // ─── Lifecycle: SoftDeletable ─────────────────────────────────────────
 
-        await using var context = CreateContext(database, new ModifiableInterceptor());
-        ConcernEntity entity = await context.Entities.SingleAsync();
-        context.Remove(entity);
-
-        // Act
-        await context.SaveChangesAsync();
-
-        // Assert
-        entity.ModifiedAtUtc.Should().Be(modifiedAt);
-    }
-
-    // ─── Auditable ────────────────────────────────────────────────────────
-
-    [Fact(DisplayName = "Auditable should stamp creation and modification timestamps on Added entities")]
-    public async Task Auditable_WhenAdded_ShouldStampCreatedAndModifiedAtUtc()
-    {
-        // Arrange
-        await using var context = CreateContext(new AuditableInterceptor());
-        var entity = new ConcernEntity { Id = Guid.NewGuid() };
-        context.Add(entity);
-        var before = DateTimeOffset.UtcNow;
-
-        // Act
-        await context.SaveChangesAsync();
-
-        // Assert
-        entity.CreatedAtUtc.Should().BeCloseTo(before, Tolerance);
-        entity.ModifiedAtUtc.Should().NotBeNull();
-        entity.ModifiedAtUtc!.Value.Should().BeCloseTo(before, Tolerance);
-    }
-
-    [Fact(DisplayName = "Auditable should only stamp ModifiedAtUtc on Modified entities")]
-    public async Task Auditable_WhenModified_ShouldKeepCreatedAtUtcAndStampModifiedAtUtc()
-    {
-        // Arrange
-        await using var context = CreateContext(new AuditableInterceptor());
-        var entity = new ConcernEntity { Id = Guid.NewGuid(), Name = "first" };
-        context.Add(entity);
-        await context.SaveChangesAsync();
-        DateTimeOffset createdAt = entity.CreatedAtUtc;
-        DateTimeOffset? previousModifiedAt = entity.ModifiedAtUtc;
-
-        // Act
-        var before = DateTimeOffset.UtcNow;
-        entity.Name = "second";
-        await context.SaveChangesAsync();
-
-        // Assert
-        entity.CreatedAtUtc.Should().Be(createdAt);
-        entity.ModifiedAtUtc.Should().NotBe(previousModifiedAt);
-        entity.ModifiedAtUtc!.Value.Should().BeCloseTo(before, Tolerance);
-    }
-
-    // ─── SoftDeletable ────────────────────────────────────────────────────
-
-    [Fact(DisplayName = "SoftDeletable should flag and timestamp deleted entities instead of removing them")]
-    public async Task SoftDeletable_WhenDeleted_ShouldSoftDeleteTheRow()
+    [Fact(DisplayName = "Lifecycle should flag and timestamp deleted entities instead of removing them")]
+    public async Task Lifecycle_WhenDeleted_ShouldSoftDeleteTheRow()
     {
         // Arrange
         string database = NewDatabaseName();
@@ -179,7 +116,7 @@ public sealed class InterceptorTest
             await seed.SaveChangesAsync();
         }
 
-        await using var context = CreateContext(database, new SoftDeletableInterceptor());
+        await using var context = CreateContext(database, new LifecycleInterceptor());
         ConcernEntity entity = await context.Entities.SingleAsync();
         context.Remove(entity);
         var before = DateTimeOffset.UtcNow;
@@ -191,17 +128,19 @@ public sealed class InterceptorTest
         entity.IsDeleted.Should().BeTrue();
         entity.DeletedAtUtc.Should().NotBeNull();
         entity.DeletedAtUtc!.Value.Should().BeCloseTo(before, Tolerance);
+        entity.ModifiedAtUtc.Should().NotBeNull();
+        entity.ModifiedAtUtc!.Value.Should().BeCloseTo(before, Tolerance);
         context.ChangeTracker.Clear();
         ConcernEntity reloaded = await context.Entities.AsNoTracking().SingleAsync();
         reloaded.IsDeleted.Should().BeTrue();
         reloaded.DeletedAtUtc.Should().NotBeNull();
     }
 
-    [Fact(DisplayName = "SoftDeletable should turn the Deleted entry into an update")]
-    public async Task SoftDeletable_WhenDeleted_ShouldPersistTheSoftDelete()
+    [Fact(DisplayName = "Lifecycle should turn the Deleted entry into an update")]
+    public async Task Lifecycle_WhenDeleted_ShouldPersistTheSoftDelete()
     {
         // Arrange
-        await using var context = CreateContext(new SoftDeletableInterceptor());
+        await using var context = CreateContext(new LifecycleInterceptor());
         var entity = new ConcernEntity { Id = Guid.NewGuid() };
         context.Add(entity);
         await context.SaveChangesAsync();
@@ -215,11 +154,11 @@ public sealed class InterceptorTest
         entity.IsDeleted.Should().BeTrue();
     }
 
-    [Fact(DisplayName = "SoftDeletable should ignore Added and Modified entities")]
-    public async Task SoftDeletable_WhenAddedOrModified_ShouldLeaveTheFlagsAlone()
+    [Fact(DisplayName = "Lifecycle should ignore Added and Modified entities when soft deleting")]
+    public async Task Lifecycle_WhenAddedOrModified_ShouldLeaveTheDeleteFlagsAlone()
     {
         // Arrange
-        await using var context = CreateContext(new SoftDeletableInterceptor());
+        await using var context = CreateContext(new LifecycleInterceptor());
         var entity = new ConcernEntity { Id = Guid.NewGuid(), Name = "first" };
         context.Add(entity);
         await context.SaveChangesAsync();
@@ -233,13 +172,13 @@ public sealed class InterceptorTest
         entity.DeletedAtUtc.Should().BeNull();
     }
 
-    // ─── Activatable ──────────────────────────────────────────────────────
+    // ─── Lifecycle: Activatable ───────────────────────────────────────────
 
-    [Fact(DisplayName = "Activatable should stamp ActivatedAtUtc when IsActive becomes true")]
-    public async Task Activatable_WhenActivated_ShouldStampActivatedAtUtc()
+    [Fact(DisplayName = "Lifecycle should stamp ActivatedAtUtc when IsActive becomes true")]
+    public async Task Lifecycle_WhenActivated_ShouldStampActivatedAtUtc()
     {
         // Arrange
-        await using var context = CreateContext(new ActivatableInterceptor());
+        await using var context = CreateContext(new LifecycleInterceptor());
         var entity = new ConcernEntity { Id = Guid.NewGuid(), IsActive = false };
         context.Add(entity);
         await context.SaveChangesAsync();
@@ -254,11 +193,11 @@ public sealed class InterceptorTest
         entity.ActivatedAtUtc!.Value.Should().BeCloseTo(before, Tolerance);
     }
 
-    [Fact(DisplayName = "Activatable should not stamp when the entity was already active")]
-    public async Task Activatable_WhenAlreadyActive_ShouldNotStampActivatedAtUtc()
+    [Fact(DisplayName = "Lifecycle should not stamp when the entity was already active")]
+    public async Task Lifecycle_WhenAlreadyActive_ShouldNotStampActivatedAtUtc()
     {
         // Arrange
-        await using var context = CreateContext(new ActivatableInterceptor());
+        await using var context = CreateContext(new LifecycleInterceptor());
         var entity = new ConcernEntity { Id = Guid.NewGuid(), IsActive = true };
         context.Add(entity);
         await context.SaveChangesAsync();
@@ -271,11 +210,11 @@ public sealed class InterceptorTest
         entity.ActivatedAtUtc.Should().BeNull();
     }
 
-    [Fact(DisplayName = "Activatable should not stamp when an active entity is deactivated")]
-    public async Task Activatable_WhenDeactivated_ShouldNotStampActivatedAtUtc()
+    [Fact(DisplayName = "Lifecycle should not stamp when an active entity is deactivated")]
+    public async Task Lifecycle_WhenDeactivated_ShouldNotStampActivatedAtUtc()
     {
         // Arrange
-        await using var context = CreateContext(new ActivatableInterceptor());
+        await using var context = CreateContext(new LifecycleInterceptor());
         var entity = new ConcernEntity { Id = Guid.NewGuid(), IsActive = true };
         context.Add(entity);
         await context.SaveChangesAsync();
@@ -288,11 +227,11 @@ public sealed class InterceptorTest
         entity.ActivatedAtUtc.Should().BeNull();
     }
 
-    [Fact(DisplayName = "Activatable should not stamp on Added or Unchanged entities")]
-    public async Task Activatable_WhenAddedOrUnchanged_ShouldNotStampActivatedAtUtc()
+    [Fact(DisplayName = "Lifecycle should not stamp on Added or Unchanged entities")]
+    public async Task Lifecycle_WhenAddedOrUnchanged_ShouldNotStampActivatedAtUtc()
     {
         // Arrange
-        await using var context = CreateContext(new ActivatableInterceptor());
+        await using var context = CreateContext(new LifecycleInterceptor());
         var entity = new ConcernEntity { Id = Guid.NewGuid(), IsActive = true };
         context.Add(entity);
 
@@ -304,13 +243,13 @@ public sealed class InterceptorTest
         entity.ActivatedAtUtc.Should().BeNull();
     }
 
-    // ─── Publishable ──────────────────────────────────────────────────────
+    // ─── Lifecycle: Publishable ───────────────────────────────────────────
 
-    [Fact(DisplayName = "Publishable should stamp PublishedAtUtc when IsPublished becomes true")]
-    public async Task Publishable_WhenPublished_ShouldStampPublishedAtUtc()
+    [Fact(DisplayName = "Lifecycle should stamp PublishedAtUtc when IsPublished becomes true")]
+    public async Task Lifecycle_WhenPublished_ShouldStampPublishedAtUtc()
     {
         // Arrange
-        await using var context = CreateContext(new PublishableInterceptor());
+        await using var context = CreateContext(new LifecycleInterceptor());
         var entity = new ConcernEntity { Id = Guid.NewGuid(), IsPublished = false };
         context.Add(entity);
         await context.SaveChangesAsync();
@@ -325,11 +264,11 @@ public sealed class InterceptorTest
         entity.PublishedAtUtc!.Value.Should().BeCloseTo(before, Tolerance);
     }
 
-    [Fact(DisplayName = "Publishable should not stamp when the entity was already published")]
-    public async Task Publishable_WhenAlreadyPublished_ShouldNotStampPublishedAtUtc()
+    [Fact(DisplayName = "Lifecycle should not stamp when the entity was already published")]
+    public async Task Lifecycle_WhenAlreadyPublished_ShouldNotStampPublishedAtUtc()
     {
         // Arrange
-        await using var context = CreateContext(new PublishableInterceptor());
+        await using var context = CreateContext(new LifecycleInterceptor());
         var entity = new ConcernEntity { Id = Guid.NewGuid(), IsPublished = true };
         context.Add(entity);
         await context.SaveChangesAsync();
@@ -342,11 +281,11 @@ public sealed class InterceptorTest
         entity.PublishedAtUtc.Should().BeNull();
     }
 
-    [Fact(DisplayName = "Publishable should not stamp when a published entity is unpublished")]
-    public async Task Publishable_WhenUnpublished_ShouldNotStampPublishedAtUtc()
+    [Fact(DisplayName = "Lifecycle should not stamp when a published entity is unpublished")]
+    public async Task Lifecycle_WhenUnpublished_ShouldNotStampPublishedAtUtc()
     {
         // Arrange
-        await using var context = CreateContext(new PublishableInterceptor());
+        await using var context = CreateContext(new LifecycleInterceptor());
         var entity = new ConcernEntity { Id = Guid.NewGuid(), IsPublished = true };
         context.Add(entity);
         await context.SaveChangesAsync();
@@ -359,11 +298,11 @@ public sealed class InterceptorTest
         entity.PublishedAtUtc.Should().BeNull();
     }
 
-    [Fact(DisplayName = "Publishable should not stamp on Added entities")]
-    public async Task Publishable_WhenAdded_ShouldNotStampPublishedAtUtc()
+    [Fact(DisplayName = "Lifecycle should not stamp on Added entities")]
+    public async Task Lifecycle_WhenAdded_ShouldNotStampPublishedAtUtc()
     {
         // Arrange
-        await using var context = CreateContext(new PublishableInterceptor());
+        await using var context = CreateContext(new LifecycleInterceptor());
         var entity = new ConcernEntity { Id = Guid.NewGuid(), IsPublished = true };
         context.Add(entity);
 
@@ -374,7 +313,7 @@ public sealed class InterceptorTest
         entity.PublishedAtUtc.Should().BeNull();
     }
 
-    // ─── Versionable ──────────────────────────────────────────────────────
+    // ─── Foundation: Versionable ──────────────────────────────────────────
 
     [Fact(DisplayName = "Versionable should increment Version on Modified entities")]
     public async Task Versionable_WhenModified_ShouldIncrementVersion()
@@ -408,6 +347,128 @@ public sealed class InterceptorTest
         entity.Version.Should().Be(7);
     }
 
+    // ─── Domain events ────────────────────────────────────────────────────
+
+    [Fact(DisplayName = "Domain events should publish every collected event after a successful save")]
+    public async Task DomainEvents_WhenSaveSucceeds_ShouldPublishEveryEvent()
+    {
+        // Arrange
+        var publisher = new RecordingDomainEventPublisher();
+        await using var context = CreateContext(new DomainEventInterceptor(publisher));
+        var aggregate = new EventAggregate(Guid.NewGuid());
+        var first = new TestDomainEvent("first");
+        var second = new TestDomainEvent("second");
+        aggregate.Raise(first);
+        aggregate.Raise(second);
+        context.Add(aggregate);
+
+        // Act
+        await context.SaveChangesAsync();
+
+        // Assert
+        publisher.Calls.Should().Be(1);
+        publisher.Published.Should().Equal(first, second);
+        aggregate.Events.Should().BeEmpty();
+    }
+
+    [Fact(DisplayName = "Domain events should clear the aggregate after publishing")]
+    public async Task DomainEvents_WhenPublishSucceeds_ShouldClearTheAggregate()
+    {
+        // Arrange
+        var publisher = new RecordingDomainEventPublisher();
+        await using var context = CreateContext(new DomainEventInterceptor(publisher));
+        var aggregate = new EventAggregate(Guid.NewGuid());
+        aggregate.Raise(new TestDomainEvent("only"));
+        context.Add(aggregate);
+
+        // Act
+        await context.SaveChangesAsync();
+
+        // Assert
+        aggregate.Events.Should().BeEmpty();
+    }
+
+    [Fact(DisplayName = "Domain events should not publish when there are no events")]
+    public async Task DomainEvents_WhenNoEventsExist_ShouldNotPublish()
+    {
+        // Arrange
+        var publisher = new RecordingDomainEventPublisher();
+        await using var context = CreateContext(new DomainEventInterceptor(publisher));
+        context.Add(new EventAggregate(Guid.NewGuid()));
+
+        // Act
+        await context.SaveChangesAsync();
+
+        // Assert
+        publisher.Calls.Should().Be(0);
+        publisher.Published.Should().BeEmpty();
+    }
+
+    [Fact(DisplayName = "Domain events should not publish when the save fails")]
+    public async Task DomainEvents_WhenSaveFails_ShouldNotPublish()
+    {
+        // Arrange
+        var publisher = new RecordingDomainEventPublisher();
+        await using var context = CreateContext(
+            new DomainEventInterceptor(publisher),
+            new ThrowingSaveInterceptor());
+        var aggregate = new EventAggregate(Guid.NewGuid());
+        aggregate.Raise(new TestDomainEvent("rejected"));
+        context.Add(aggregate);
+
+        // Act
+        Func<Task> act = () => context.SaveChangesAsync();
+
+        // Assert
+        await act.Should().ThrowAsync<InvalidOperationException>();
+        publisher.Calls.Should().Be(0);
+        aggregate.Events.Should().ContainSingle();
+    }
+
+    [Fact(DisplayName = "Domain events should surface a publication failure and clear dispatched events")]
+    public async Task DomainEvents_WhenPublicationFails_ShouldThrowResultException()
+    {
+        // Arrange
+        var publisher = new RecordingDomainEventPublisher
+        {
+            NextResult = Result.Fail(
+                DomainEventOutcome.Failure.PublishFailed(typeof(TestDomainEvent), "handler failed"))
+        };
+        await using var context = CreateContext(new DomainEventInterceptor(publisher));
+        var aggregate = new EventAggregate(Guid.NewGuid());
+        aggregate.Raise(new TestDomainEvent("failing"));
+        context.Add(aggregate);
+
+        // Act
+        Func<Task> act = () => context.SaveChangesAsync();
+
+        // Assert
+        ResultException exception = (await act.Should().ThrowAsync<ResultException>()).Which;
+        exception.Errors.Should().ContainSingle(error =>
+            error.Code == DomainEventOutcome.Codes.PublishFailed);
+        aggregate.Events.Should().BeEmpty();
+    }
+
+    [Fact(DisplayName = "Domain events should publish on the synchronous save path")]
+    public async Task DomainEvents_WhenSaveChangesIsSynchronous_ShouldPublish()
+    {
+        // Arrange
+        var publisher = new RecordingDomainEventPublisher();
+        await using var context = CreateContext(new DomainEventInterceptor(publisher));
+        var aggregate = new EventAggregate(Guid.NewGuid());
+        var domainEvent = new TestDomainEvent("sync");
+        aggregate.Raise(domainEvent);
+        context.Add(aggregate);
+
+        // Act
+        context.SaveChanges();
+
+        // Assert
+        publisher.Calls.Should().Be(1);
+        publisher.Published.Should().Equal(domainEvent);
+        aggregate.Events.Should().BeEmpty();
+    }
+
     // ─── Synchronous path ─────────────────────────────────────────────────
 
     [Fact(DisplayName = "SaveChanges (sync) should apply every registered interceptor")]
@@ -416,7 +477,7 @@ public sealed class InterceptorTest
         // Arrange
         var builder = new DbContextOptionsBuilder<InterceptorTestContext>()
             .UseInMemoryDatabase(NewDatabaseName());
-        builder.Apply();
+        builder.Apply(new RecordingDomainEventPublisher());
         await using var context = new InterceptorTestContext(builder.Options);
         var entity = new ConcernEntity
         {
@@ -450,14 +511,16 @@ public sealed class InterceptorTest
         // Assert - Activated and published
         entity.ActivatedAtUtc.Should().NotBeNull();
         entity.PublishedAtUtc.Should().NotBeNull();
+        entity.Version.Should().Be(2);
 
         // Act - Soft deleted
         context.Remove(entity);
         context.SaveChanges();
 
-        // Assert - Soft deleted
+        // Assert - Soft deleted; the version also moves because Lifecycle turns the entry into an update.
         entity.IsDeleted.Should().BeTrue();
         entity.DeletedAtUtc.Should().NotBeNull();
+        entity.Version.Should().Be(3);
         context.ChangeTracker.Clear();
         ConcernEntity reloaded = await context.Entities.AsNoTracking().SingleAsync();
         reloaded.IsDeleted.Should().BeTrue();
@@ -465,30 +528,54 @@ public sealed class InterceptorTest
 
     // ─── Registry ─────────────────────────────────────────────────────────
 
-    [Fact(DisplayName = "Apply should register every concern interceptor")]
-    public void Apply_ShouldRegisterEveryConcernInterceptor()
+    [Fact(DisplayName = "Apply should register every persistence interceptor")]
+    public void Apply_ShouldRegisterEveryPersistenceInterceptor()
     {
         // Arrange
         var builder = new DbContextOptionsBuilder<InterceptorTestContext>()
             .UseInMemoryDatabase(NewDatabaseName());
 
         // Act
-        DbContextOptionsBuilder returned = builder.Apply();
+        DbContextOptionsBuilder returned = builder.Apply(new RecordingDomainEventPublisher());
 
         // Assert
         returned.Should().BeSameAs(builder);
-        builder.Options.FindExtension<CoreOptionsExtension>()!
-            .Interceptors.Should().HaveCount(7);
+        IEnumerable<IInterceptor> interceptors = builder.Options
+            .FindExtension<CoreOptionsExtension>()!
+            .Interceptors!;
+        interceptors
+            .Select(interceptor => interceptor.GetType())
+            .Should()
+            .BeEquivalentTo(new[]
+            {
+                typeof(LifecycleInterceptor),
+                typeof(VersionableInterceptor),
+                typeof(DomainEventInterceptor),
+            });
     }
 
     [Fact(DisplayName = "Apply should reject a null options builder")]
-    public void Apply_WhenNull_ShouldThrowArgumentNullException()
+    public void Apply_WhenBuilderIsNull_ShouldThrowArgumentNullException()
     {
         // Arrange
         DbContextOptionsBuilder? builder = null;
 
         // Act
-        Action act = () => builder!.Apply();
+        Action act = () => builder!.Apply(new RecordingDomainEventPublisher());
+
+        // Assert
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact(DisplayName = "Apply should reject a null publisher")]
+    public void Apply_WhenPublisherIsNull_ShouldThrowArgumentNullException()
+    {
+        // Arrange
+        var builder = new DbContextOptionsBuilder<InterceptorTestContext>()
+            .UseInMemoryDatabase(NewDatabaseName());
+
+        // Act
+        Action act = () => builder.Apply(null!);
 
         // Assert
         act.Should().Throw<ArgumentNullException>();
@@ -513,13 +600,43 @@ public sealed class InterceptorTest
 
         return new InterceptorTestContext(builder.Options);
     }
+
+    /// <summary>Records every publication attempt for assertions.</summary>
+    private sealed class RecordingDomainEventPublisher : IDomainEventPublisher
+    {
+        public List<IDomainEvent> Published { get; } = [];
+
+        public int Calls { get; private set; }
+
+        public Result NextResult { get; set; } = Result.Ok();
+
+        public Task<Result> PublishAsync(
+            IEnumerable<IDomainEvent> domainEvents,
+            CancellationToken cancellationToken = default)
+        {
+            Calls++;
+            Published.AddRange(domainEvents);
+
+            return Task.FromResult(NextResult);
+        }
+    }
+
+    /// <summary>Fails the save before EF Core reaches the store.</summary>
+    private sealed class ThrowingSaveInterceptor : SaveChangesInterceptor
+    {
+        public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
+            DbContextEventData eventData,
+            InterceptionResult<int> result,
+            CancellationToken cancellationToken = default)
+            => ValueTask.FromException<InterceptionResult<int>>(
+                new InvalidOperationException("The save was rejected."));
+    }
 }
 
-/// <summary>Entity implementing every lifecycle, foundation, and version concern.</summary>
+/// <summary>Entity implementing every persistence-relevant lifecycle and foundation concern.</summary>
 public sealed class ConcernEntity :
     ICreatable,
     IModifiable,
-    IAuditable,
     ISoftDeletable,
     IActivatable,
     IPublishable,
@@ -543,9 +660,32 @@ public sealed class ConcernEntity :
     public long Version { get; set; }
 }
 
+/// <summary>Aggregate root used to exercise domain-event collection.</summary>
+public sealed class EventAggregate : AggregateRoot<Guid>
+{
+    public EventAggregate()
+        : base(Guid.NewGuid())
+    {
+    }
+
+    public EventAggregate(Guid id)
+        : base(id)
+    {
+    }
+
+    public string? Name { get; set; }
+
+    public void Raise(IDomainEvent domainEvent) => AddEvent(domainEvent);
+}
+
+/// <summary>Simple domain event used by the interceptor tests.</summary>
+public sealed record TestDomainEvent(string Name) : DomainEvent;
+
 /// <summary>Minimal DbContext used to exercise the interceptors.</summary>
 public sealed class InterceptorTestContext(DbContextOptions<InterceptorTestContext> options)
     : Microsoft.EntityFrameworkCore.DbContext(options)
 {
     public DbSet<ConcernEntity> Entities => Set<ConcernEntity>();
+
+    public DbSet<EventAggregate> Aggregates => Set<EventAggregate>();
 }

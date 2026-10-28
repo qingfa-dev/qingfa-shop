@@ -78,4 +78,19 @@ public class MediatorCompositionTest
         // Assert
         action.Should().NotThrow();
     }
+    [Fact(DisplayName = "UseMediators should resolve the scoped mediator when scope validation is on")]
+    public void UseMediators_WithScopeValidation_ShouldResolve()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddMediators();
+        using ServiceProvider serviceProvider = services.BuildServiceProvider(
+            new ServiceProviderOptions { ValidateScopes = true });
+
+        // Act
+        var action = () => serviceProvider.UseMediators();
+
+        // Assert
+        action.Should().NotThrow();
+    }
 }

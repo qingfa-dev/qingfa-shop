@@ -1,13 +1,17 @@
+using Application.Common.Events;
 using Application.Common.Persistence.UnitOfWorks;
 using Application.Common.Querying.Mapping;
 
 using Core.Common.Domain.Entities;
 
+using Infrastructure.Events;
 using Infrastructure.Persistence.EntityFramework;
 using Infrastructure.Persistence.EntityFramework.Contexts;
 using Infrastructure.Persistence.EntityFramework.Options;
 using Infrastructure.Persistence.EntityFramework.QueryTranslation;
 using Infrastructure.Persistence.EntityFramework.UnitOfWorks;
+
+using MediatR;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
@@ -354,6 +358,59 @@ public sealed class EntityFrameworkCompositionTest
         ServiceDescriptor? descriptor = services.FirstOrDefault(d => d.ServiceType == serviceType);
         descriptor.Should().NotBeNull();
         descriptor!.Lifetime.Should().Be(expectedLifetime);
+    }
+
+    #endregion
+
+    #region Domain-event publisher
+
+    [Fact(DisplayName = "AddEfCorePersistence should register the domain-event publisher as scoped")]
+    public void AddEfCorePersistence_ShouldRegisterDomainEventPublisher()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+
+        // Act
+        services.AddEfCorePersistence<CompositionTestDbContext>("Host=localhost;Database=test");
+
+        // Assert
+        ServiceDescriptor? descriptor = services
+            .FirstOrDefault(service => service.ServiceType == typeof(IDomainEventPublisher));
+        descriptor.Should().NotBeNull();
+        descriptor!.Lifetime.Should().Be(ServiceLifetime.Scoped);
+    }
+
+    [Fact(DisplayName = "Domain-event publisher should fall back to a no-op when MediatR is absent")]
+    public void DomainEventPublisher_WithoutMediator_ShouldUseNullPublisher()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddEfCorePersistence<CompositionTestDbContext>("Host=localhost;Database=test");
+        using var provider = services.BuildServiceProvider();
+        using IServiceScope scope = provider.CreateScope();
+
+        // Act
+        IDomainEventPublisher publisher = scope.ServiceProvider.GetRequiredService<IDomainEventPublisher>();
+
+        // Assert
+        publisher.Should().BeSameAs(NullDomainEventPublisher.Instance);
+    }
+
+    [Fact(DisplayName = "Domain-event publisher should use MediatR when the mediator is registered")]
+    public void DomainEventPublisher_WithMediator_ShouldUseMediatRPublisher()
+    {
+        // Arrange
+        var services = new ServiceCollection();
+        services.AddSingleton(Mock.Of<IPublisher>());
+        services.AddEfCorePersistence<CompositionTestDbContext>("Host=localhost;Database=test");
+        using var provider = services.BuildServiceProvider();
+        using IServiceScope scope = provider.CreateScope();
+
+        // Act
+        IDomainEventPublisher publisher = scope.ServiceProvider.GetRequiredService<IDomainEventPublisher>();
+
+        // Assert
+        publisher.Should().BeOfType<DomainEventPublisher>();
     }
 
     #endregion

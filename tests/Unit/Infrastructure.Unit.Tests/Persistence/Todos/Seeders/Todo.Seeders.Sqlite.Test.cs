@@ -30,9 +30,8 @@ public sealed class TodoSeedersSqliteTest : IAsyncLifetime
         _mainPath = Path.Combine(root, $"seed-main-{Guid.NewGuid():N}.db");
         _todoPath = Path.Combine(root, $"seed-todo-{Guid.NewGuid():N}.db");
 
-        _connection = new SqliteConnection($"Data Source={_mainPath}");
+        _connection = new AttachedSqliteConnection($"Data Source={_mainPath}", _todoPath);
         _connection.Open();
-        Execute($"ATTACH DATABASE '{_todoPath.Replace("'", "''", StringComparison.Ordinal)}' AS todo;");
         Execute("""
             CREATE TABLE todo.todo_categories (
                 id TEXT PRIMARY KEY, name TEXT, description TEXT, created_at_utc TEXT,
@@ -180,5 +179,48 @@ public sealed class TodoSeedersSqliteTest : IAsyncLifetime
         categories.Value.Should().ContainSingle().Which.Type.Should().Be(InitializationOperationType.DataCheck);
         lists.Value.Should().ContainSingle().Which.Type.Should().Be(InitializationOperationType.DataCheck);
         todos.Value.Should().ContainSingle().Which.Type.Should().Be(InitializationOperationType.DataCheck);
+    }
+
+    /// <summary>
+    /// SQLite connection that re-attaches the todo database whenever it is reopened, because
+    /// ATTACH is connection-scoped and seeders deliberately reopen the connection.
+    /// </summary>
+    private sealed class AttachedSqliteConnection(
+        string connectionString,
+        string attachedPath) : SqliteConnection(connectionString)
+    {
+        private readonly string _attach =
+            $"ATTACH DATABASE '{attachedPath.Replace("'", "''", StringComparison.Ordinal)}' AS todo;";
+
+        public override void Open()
+        {
+            if (State == ConnectionState.Open)
+                return;
+
+            base.Open();
+
+            // Attach: a pooled connection may keep the alias after Close, so check first.
+            if (IsAttached())
+                return;
+
+            using SqliteCommand command = CreateCommand();
+            command.CommandText = _attach;
+            command.ExecuteNonQuery();
+        }
+
+        private bool IsAttached()
+        {
+            using SqliteCommand command = CreateCommand();
+            command.CommandText = "PRAGMA database_list;";
+
+            using SqliteDataReader reader = command.ExecuteReader();
+            while (reader.Read())
+            {
+                if (string.Equals(reader.GetString(1), "todo", StringComparison.Ordinal))
+                    return true;
+            }
+
+            return false;
+        }
     }
 }
