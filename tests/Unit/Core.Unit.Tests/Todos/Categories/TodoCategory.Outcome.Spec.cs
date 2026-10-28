@@ -1,6 +1,6 @@
 using Core.Todos.Categories;
 
-namespace Core.Unit.Tests.Todos;
+namespace Core.Unit.Tests.Todos.Categories;
 
 /// <summary>Specifications for the todo category failure errors.</summary>
 public sealed class TodoCategoryOutcomeSpec
