@@ -1,144 +1,191 @@
-using Application.Common.Persistence.UnitOfWorks;
-
 using Microsoft.EntityFrameworkCore;
 
 using Npgsql;
 
 namespace Infrastructure.Persistence.EntityFramework.UnitOfWorks;
 
+/// <summary>The category of a persistence failure, independent of the outcome type that reports it.</summary>
+internal enum PersistenceFailureKind
+{
+    ConcurrencyConflict,
+    DuplicateKey,
+    ForeignKeyViolation,
+    CheckConstraintViolation,
+    NotNullViolation,
+    DeadlockDetected,
+    SerializationFailure,
+    ReadOnlyViolation,
+    TransactionRollbackOnly,
+    ConnectionFailed,
+    ConnectionRefused,
+    ConnectionLost,
+    LoginFailed,
+    Timeout,
+    Cancelled,
+    SaveChangesFailed,
+    ExpressionTranslationFailed,
+    InvalidOperation,
+    Unknown,
+}
+
 /// <summary>
-/// Single place that maps EF Core / Npgsql exceptions to typed persistence errors.
-/// Shared by <see cref="EfCoreUnitOfWork"/> and <see cref="EfCoreTransaction"/> so that the
-/// same database condition always yields the same error code, whichever path hit it.
+/// A classified persistence failure. <paramref name="Detail"/> carries the constraint,
+/// column, or provider message when the category has one. The exception type and message
+/// travel with the failure so <see cref="PersistenceOutcome"/> can attach them as metadata.
+/// </summary>
+internal readonly record struct PersistenceFailure(
+    PersistenceFailureKind Kind,
+    string? Detail = null,
+    string? ExceptionType = null,
+    string? ExceptionMessage = null);
+
+/// <summary>
+/// Single place that maps EF Core / Npgsql exceptions to a provider-neutral failure category.
+/// Callers materialize the category through <see cref="PersistenceOutcome"/>, which resolves
+/// each category to its owning outcome type.
 /// </summary>
 internal static class PersistenceExceptionTranslator
 {
-    /// <summary>
-    /// Single entry point: maps any EF Core / Npgsql exception to a typed persistence error.
-    /// Used by both <see cref="EfCoreUnitOfWork"/> and <see cref="EfCoreTransaction"/>
-    /// so the same database condition always yields the same error code.
-    /// </summary>
-    public static Error Translate(Exception ex, CancellationToken cancellationToken = default)
+    /// <summary>Classifies any EF Core / Npgsql exception.</summary>
+    /// <param name="exception">The exception to classify.</param>
+    /// <param name="cancellationToken">The caller's token, used to distinguish cancellation from a timeout.</param>
+    /// <returns>The classified failure, including the originating exception metadata.</returns>
+    public static PersistenceFailure Classify(
+        Exception exception,
+        CancellationToken cancellationToken = default)
+    {
+        PersistenceFailure failure = ClassifyKind(exception, cancellationToken);
+
+        // Trace: keep the originating exception available to the materialized Error.
+        return failure with
+        {
+            ExceptionType = exception.GetType().FullName,
+            ExceptionMessage = exception.Message,
+        };
+    }
+
+    private static PersistenceFailure ClassifyKind(
+        Exception exception,
+        CancellationToken cancellationToken)
     {
         // Priority: concurrency derives from DbUpdateException, check it before walking the chain.
-        if (ex is DbUpdateConcurrencyException)
-            return UnitOfWorkOutcome.Failure.ConcurrencyConflict;
+        if (exception is DbUpdateConcurrencyException)
+            return new(PersistenceFailureKind.ConcurrencyConflict);
 
         // Walk the whole chain; PostgresException is not always the direct inner exception.
-        if (FindInChain<PostgresException>(ex) is { } pgEx)
-            return TranslatePostgres(pgEx);
+        if (FindInChain<PostgresException>(exception) is { } pgEx)
+            return ClassifyPostgres(pgEx);
 
-        if (ex is DbUpdateException dbEx)
-            return TranslateDbUpdate(dbEx);
+        if (exception is DbUpdateException dbEx)
+            return ClassifyDbUpdate(dbEx);
 
         // Cancellation: caller's token => Cancelled; DB-side cancel => Timeout.
-        if (ex is OperationCanceledException oce)
+        if (exception is OperationCanceledException oce)
         {
             return cancellationToken.IsCancellationRequested || oce.CancellationToken.IsCancellationRequested
-                ? UnitOfWorkOutcome.Failure.Cancelled
-                : UnitOfWorkOutcome.Failure.Timeout;
+                ? new(PersistenceFailureKind.Cancelled)
+                : new(PersistenceFailureKind.Timeout);
         }
 
         // Npgsql wraps command timeouts as NpgsqlException -> TimeoutException.
-        if (FindInChain<TimeoutException>(ex) is not null)
-            return UnitOfWorkOutcome.Failure.Timeout;
+        if (FindInChain<TimeoutException>(exception) is not null)
+            return new(PersistenceFailureKind.Timeout);
 
-        if (ex is InvalidOperationException ioe)
+        if (exception is InvalidOperationException ioe)
         {
-            string msg = ioe.Message;
+            string message = ioe.Message;
 
-            if (msg.Contains("timeout", StringComparison.OrdinalIgnoreCase))
-                return UnitOfWorkOutcome.Failure.Timeout;
+            if (message.Contains("timeout", StringComparison.OrdinalIgnoreCase))
+                return new(PersistenceFailureKind.Timeout);
 
-            if (msg.Contains("translate", StringComparison.OrdinalIgnoreCase) ||
-                msg.Contains("LINQ", StringComparison.OrdinalIgnoreCase))
-                return UnitOfWorkOutcome.Failure.ExpressionTranslationFailed(msg);
+            if (message.Contains("translate", StringComparison.OrdinalIgnoreCase) ||
+                message.Contains("LINQ", StringComparison.OrdinalIgnoreCase))
+                return new(PersistenceFailureKind.ExpressionTranslationFailed, message);
 
-            return UnitOfWorkOutcome.Failure.InvalidOperationFor(msg);
+            return new(PersistenceFailureKind.InvalidOperation, message);
         }
 
-        return UnitOfWorkOutcome.Failure.SaveChangesFailed(ex.Message);
+        // Anything unrecognized is an unknown store failure, not a write failure.
+        return new(PersistenceFailureKind.Unknown, exception.Message);
     }
 
     /// <summary>Searches the exception chain for a specific exception type.</summary>
-    private static TException? FindInChain<TException>(Exception? ex) where TException : Exception
+    private static TException? FindInChain<TException>(Exception? exception)
+        where TException : Exception
     {
-        while (ex is not null)
+        while (exception is not null)
         {
-            if (ex is TException match)
+            if (exception is TException match)
                 return match;
 
-            ex = ex.InnerException;
+            exception = exception.InnerException;
         }
 
         return null;
     }
 
     /// <summary>
-    /// Translates PostgreSQL SQLSTATE codes to typed persistence errors.
-    /// Transaction-state codes (ReadOnlySqlTransaction, InFailedSqlTransaction) map to TransactionOutcome
-    /// rather than UnitOfWorkOutcome, because they indicate the transaction itself is in an invalid state,
-    /// not a general persistence failure.
+    /// Translates PostgreSQL SQLSTATE codes to failure categories. Constraint and column
+    /// names are preserved as detail so callers can name the violated rule.
     /// </summary>
-    private static Error TranslatePostgres(PostgresException ex) => ex.SqlState switch
+    private static PersistenceFailure ClassifyPostgres(PostgresException exception) => exception.SqlState switch
     {
-        // Integrity constraint violations (use the constraint/column when Npgsql provides it)
-        PostgresErrorCodes.UniqueViolation => ex.ConstraintName is { } c
-            ? UnitOfWorkOutcome.Failure.DuplicateKeyFor(c)
-            : UnitOfWorkOutcome.Failure.DuplicateKey,
-        PostgresErrorCodes.ForeignKeyViolation => ex.ConstraintName is { } c
-            ? UnitOfWorkOutcome.Failure.ForeignKeyViolationFor(c)
-            : UnitOfWorkOutcome.Failure.ForeignKeyViolation,
-        PostgresErrorCodes.CheckViolation => ex.ConstraintName is { } c
-            ? UnitOfWorkOutcome.Failure.CheckConstraintViolationFor(c)
-            : UnitOfWorkOutcome.Failure.CheckConstraintViolation,
-        PostgresErrorCodes.NotNullViolation => ex.ColumnName is { } col
-            ? UnitOfWorkOutcome.Failure.NotNullViolationFor(col)
-            : UnitOfWorkOutcome.Failure.NotNullViolation,
+        // Integrity constraint violations
+        PostgresErrorCodes.UniqueViolation => new(PersistenceFailureKind.DuplicateKey, exception.ConstraintName),
+        PostgresErrorCodes.ForeignKeyViolation => new(PersistenceFailureKind.ForeignKeyViolation, exception.ConstraintName),
+        PostgresErrorCodes.CheckViolation => new(PersistenceFailureKind.CheckConstraintViolation, exception.ConstraintName),
+        PostgresErrorCodes.NotNullViolation => new(PersistenceFailureKind.NotNullViolation, exception.ColumnName),
 
         // Concurrency
-        PostgresErrorCodes.DeadlockDetected => UnitOfWorkOutcome.Failure.DeadlockDetected,
-        PostgresErrorCodes.SerializationFailure => UnitOfWorkOutcome.Failure.SerializationFailure,
+        PostgresErrorCodes.DeadlockDetected => new(PersistenceFailureKind.DeadlockDetected),
+        PostgresErrorCodes.SerializationFailure => new(PersistenceFailureKind.SerializationFailure),
 
-        // Map: transaction-state codes map to TransactionOutcome (not UnitOfWorkOutcome)
-        // because they indicate the transaction itself is in an invalid state.
-        PostgresErrorCodes.ReadOnlySqlTransaction => TransactionOutcome.Failure.ReadOnlyViolation,
-        PostgresErrorCodes.InFailedSqlTransaction => TransactionOutcome.Failure.TransactionRollbackOnly,
+        // Transaction state
+        PostgresErrorCodes.ReadOnlySqlTransaction => new(PersistenceFailureKind.ReadOnlyViolation),
+        PostgresErrorCodes.InFailedSqlTransaction => new(PersistenceFailureKind.TransactionRollbackOnly),
 
         // Timeouts (statement_timeout, lock_timeout, cancelled statements)
-        PostgresErrorCodes.QueryCanceled => UnitOfWorkOutcome.Failure.Timeout,
-        PostgresErrorCodes.LockNotAvailable => UnitOfWorkOutcome.Failure.Timeout,
+        PostgresErrorCodes.QueryCanceled => new(PersistenceFailureKind.Timeout),
+        PostgresErrorCodes.LockNotAvailable => new(PersistenceFailureKind.Timeout),
 
         // Connection exceptions
-        PostgresErrorCodes.SqlClientUnableToEstablishSqlConnection => UnitOfWorkOutcome.Failure.ConnectionRefused,
-        PostgresErrorCodes.ConnectionFailure => UnitOfWorkOutcome.Failure.ConnectionLost,
-        PostgresErrorCodes.ConnectionDoesNotExist => UnitOfWorkOutcome.Failure.ConnectionLost,
-        PostgresErrorCodes.ConnectionException => UnitOfWorkOutcome.Failure.ConnectionFailed,
-        PostgresErrorCodes.SqlServerRejectedEstablishmentOfSqlConnection => UnitOfWorkOutcome.Failure.ConnectionFailed,
-        PostgresErrorCodes.AdminShutdown => UnitOfWorkOutcome.Failure.ConnectionFailed,
-        PostgresErrorCodes.CrashShutdown => UnitOfWorkOutcome.Failure.ConnectionFailed,
-        PostgresErrorCodes.CannotConnectNow => UnitOfWorkOutcome.Failure.ConnectionFailed,
-        PostgresErrorCodes.TooManyConnections => UnitOfWorkOutcome.Failure.ConnectionFailed,
+        PostgresErrorCodes.SqlClientUnableToEstablishSqlConnection => new(PersistenceFailureKind.ConnectionRefused),
+        PostgresErrorCodes.ConnectionFailure => new(PersistenceFailureKind.ConnectionLost),
+        PostgresErrorCodes.ConnectionDoesNotExist => new(PersistenceFailureKind.ConnectionLost),
+        PostgresErrorCodes.ConnectionException => new(PersistenceFailureKind.ConnectionFailed),
+        PostgresErrorCodes.SqlServerRejectedEstablishmentOfSqlConnection => new(PersistenceFailureKind.ConnectionFailed),
+        PostgresErrorCodes.AdminShutdown => new(PersistenceFailureKind.ConnectionFailed),
+        PostgresErrorCodes.CrashShutdown => new(PersistenceFailureKind.ConnectionFailed),
+        PostgresErrorCodes.CannotConnectNow => new(PersistenceFailureKind.ConnectionFailed),
+        PostgresErrorCodes.TooManyConnections => new(PersistenceFailureKind.ConnectionFailed),
 
         // Authentication
-        PostgresErrorCodes.InvalidAuthorizationSpecification => UnitOfWorkOutcome.Failure.LoginFailed,
-        PostgresErrorCodes.InvalidPassword => UnitOfWorkOutcome.Failure.LoginFailed,
+        PostgresErrorCodes.InvalidAuthorizationSpecification => new(PersistenceFailureKind.LoginFailed),
+        PostgresErrorCodes.InvalidPassword => new(PersistenceFailureKind.LoginFailed),
 
-        _ => UnitOfWorkOutcome.Failure.Unknown,
+        _ => new(PersistenceFailureKind.Unknown),
     };
 
-    /// <summary>Fallback for DbUpdateException when no PostgresException is in the chain.</summary>
-    private static Error TranslateDbUpdate(DbUpdateException ex)
+    /// <summary>
+    /// Fallback for DbUpdateException when no PostgresException is in the chain.
+    /// Keyword matching infers the constraint type violated.
+    /// </summary>
+    private static PersistenceFailure ClassifyDbUpdate(DbUpdateException exception)
     {
-        string message = ex.Message.ToLowerInvariant();
+        string message = exception.Message.ToLowerInvariant();
+
         if (message.Contains("unique") || message.Contains("duplicate"))
-            return UnitOfWorkOutcome.Failure.DuplicateKey;
+            return new(PersistenceFailureKind.DuplicateKey);
+
         if (message.Contains("foreign key") || message.Contains("reference constraint"))
-            return UnitOfWorkOutcome.Failure.ForeignKeyViolation;
+            return new(PersistenceFailureKind.ForeignKeyViolation);
+
         if (message.Contains("check constraint"))
-            return UnitOfWorkOutcome.Failure.CheckConstraintViolation;
+            return new(PersistenceFailureKind.CheckConstraintViolation);
+
         if (message.Contains("not null") || message.Contains("null value"))
-            return UnitOfWorkOutcome.Failure.NotNullViolation;
-        return UnitOfWorkOutcome.Failure.SaveChangesFailed(ex.Message);
+            return new(PersistenceFailureKind.NotNullViolation);
+
+        return new(PersistenceFailureKind.SaveChangesFailed, exception.Message);
     }
 }
