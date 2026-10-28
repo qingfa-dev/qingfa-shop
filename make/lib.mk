@@ -2,13 +2,17 @@
 
 .PHONY: lib.install lib.format lib.format.check lib.lint lib.build lib.test
 
-# Internal: the .NET projects share one solution restore and one solution build.
-# Every backend app target depends on these, so Make runs each exactly once.
+# Internal: the .NET projects share one solution restore, one solution build,
+# and one tool manifest restore. Every backend app target depends on these, so
+# Make runs each exactly once.
 _dotnet.restore:
 	@$(ROOT)/scripts/backend/restore.backend.sh
 
 _dotnet.build: _dotnet.restore
 	@$(ROOT)/scripts/backend/build.backend.sh
+
+_dotnet.tools:
+	@$(ROOT)/scripts/common/restore-tools.common.sh
 
 lib.install: _dotnet.restore ## Restore NuGet packages (locked mode under CI=true)
 

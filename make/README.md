@@ -6,24 +6,26 @@ _config · shared_
 ## Summary
 
 The root `Makefile` is a facade: it computes `ROOT`, pins `CONFIGURATION`, and
-includes nine fragments. Each fragment owns one group — shared libraries, Api,
-Gateway, AppHost, Storefront, Admin, Infra, Quality, or CI/CD — and every
-recipe delegates to one script under [`../scripts/`](../scripts/README.md).
-Nothing builds in the Makefile itself, so the same command works locally and in
-CI.
+includes eleven fragments. Each fragment owns one group — shared libraries, Api,
+Gateway, AppHost, Storefront, Admin, Infra, Quality, Tests, Coverage, or CI/CD —
+and every recipe delegates to one script under
+[`../scripts/`](../scripts/README.md). Nothing builds in the Makefile itself, so
+the same command works locally and in CI.
 
 ## Contains
 
 | Path | Role | Notes |
 |---|---|---|
-| `common.mk` | config | `run` macro plus `##@ Setup` (`help`, `doctor`) and `##@ Quality` aggregates (`install`, `format`, `lint`, `build`, `test`, `test.all`) |
+| `common.mk` | config | `run` macro plus `##@ Setup` (`help`, `doctor`) and `##@ Quality` aggregates (`install`, `format`, `lint`, `build`) |
 | `lib.mk` | config | `##@ Libraries`: shared `src/` and `.NET` test projects |
 | `api.mk` | config | `##@ Api`: install, format, lint, build, test, publish |
 | `gate.mk` | config | `##@ Gateway`: install, format, lint, build, test, publish |
 | `host.mk` | config | `##@ Host`: install, format, lint, build, test |
-| `store.mk` | config | `##@ Store`: install, format, lint, test, build, publish |
-| `admin.mk` | config | `##@ Admin`: install, format, lint, test, build, publish |
+| `store.mk` | config | `##@ Store`: install, format, lint, `test` (`unit` -> `integration`), optional `e2e`, build, publish |
+| `admin.mk` | config | `##@ Admin`: install, format, lint, `test` (`unit` -> `integration`), optional `e2e`, build, publish |
 | `infra.mk` | config | `##@ Infra`: `config`, `build`, `size`, `test`, `up`, `down`, `ps`, `logs`, `smoke` |
+| `test.mk` | config | `##@ Tests`: `test`, `test.all`, and the layered `test.dotnet.*` / `test.web.*` targets |
+| `coverage.mk` | config | `##@ Coverage`: `coverage` (PR gate), per-suite collectors, `coverage.report`, `coverage.all`, `coverage.clean` |
 | `ci.mk` | config | `##@ CI/CD`: `ci`, `ci.full`, `cd` |
 
 ## Boundaries
@@ -40,7 +42,7 @@ Out of scope:
 
 - `SHELL := bash`; recipes rely on bash only for the `ci.full` trap.
 - Fragments are included in this order: common, lib, api, gate, host, store,
-  admin, infra, ci.
+  admin, infra, test, coverage, ci.
 - `ROOT` and `CONFIGURATION` are exported before the includes are read.
 - GNU Make 4+ is required; no POSIX-make portability is attempted.
 
@@ -52,18 +54,28 @@ Out of scope:
   `==> <target>` before the script starts. Internal prerequisites stay quiet.
 - The script prints the exact tool CLI (`$ dotnet ...`, `$ pnpm ...`) to stderr
   immediately before it executes, so the last line is always reproducible.
-- `_dotnet.restore`, `_dotnet.build`, and `_web.install` are internal shared
-  prerequisites, so an aggregate never restores or installs the same tree twice.
+- `_dotnet.restore`, `_dotnet.build`, `_dotnet.tools`, and `_web.install` are
+  internal shared prerequisites, so an aggregate never restores, builds,
+  installs, or restores tools for the same tree twice.
 - Every app group exposes the same verbs where they are meaningful: `install`,
   `format`, `format.check`, `lint`, `build`, `test`; `publish` is added for the
-  Api, Gateway, Storefront, and Admin.
-- `make ci` never touches Docker; `make ci.full` is the only target that does.
+  Api, Gateway, Storefront, and Admin. Web groups add `test.unit`,
+  `test.integration`, and optional `e2e`.
+- `make ci` never starts the Compose stack; `make ci.full` is the only target
+  that does.
+- `make ci` runs `coverage.unit`, the Api integration suite, then
+  `coverage.web`; `make ci.full` adds the merged `coverage.report` gate after
+  every integration collector.
+- Test aggregates live in `test.mk` and run lowest layer first: .NET unit →
+  .NET integration → web unit → web integration → optional e2e.
 - `ci.full` includes the AppHost, infrastructure, and Compose suites.
 - `ci.full` tears the stack down through an `EXIT` trap even when smoke fails.
 
 ## Contracts
 
 - `CONFIGURATION ?= Release` — override with `make CONFIGURATION=Debug`.
+- `COVERAGE_LINES`, `COVERAGE_BRANCHES` — per-assembly/per-app coverage floors,
+  default `90` and `80`.
 - `REGISTRY`, `TAG` — consumed by `make infra.build` and `make cd`.
 - `SERVICE` — forwarded by `make infra.logs`.
 - `make help` is the source of truth for the target list.

@@ -1,6 +1,6 @@
 ##@ Store
 
-.PHONY: store.install store.format store.format.check store.lint store.test store.build store.publish
+.PHONY: store.install store.format store.format.check store.lint store.test store.test.unit store.test.integration store.e2e store.build store.publish
 
 # Internal: both SPAs are workspace members, so one frozen install covers both.
 _web.install:
@@ -17,8 +17,16 @@ store.format.check: _web.install ## Verify storefront formatting without writing
 store.lint: store.format.check ## Type-check the storefront with vue-tsc
 	$(call run,$@,$(ROOT)/scripts/web/lint.web.sh @qingfa/storefront)
 
-store.test: _web.install ## Run the storefront Vitest suite
-	$(call run,$@,$(ROOT)/scripts/web/test.web.sh @qingfa/storefront)
+store.test: store.test.unit store.test.integration ## Storefront unit then integration suites
+
+store.test.unit: _web.install ## Storefront Vitest unit suite
+	$(call run,$@,$(ROOT)/scripts/web/test.web.sh @qingfa/storefront unit)
+
+store.test.integration: _web.install ## Storefront Vitest integration suite
+	$(call run,$@,$(ROOT)/scripts/web/test.web.sh @qingfa/storefront integration)
+
+store.e2e: _web.install ## Optional storefront Playwright suite (skipped when absent)
+	$(call run,$@,$(ROOT)/scripts/web/e2e.web.sh Web.Storefront @qingfa/storefront)
 
 store.build: _web.install ## Production bundle for the storefront
 	$(call run,$@,$(ROOT)/scripts/web/build.web.sh @qingfa/storefront)

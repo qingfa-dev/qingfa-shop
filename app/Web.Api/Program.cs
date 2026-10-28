@@ -12,10 +12,10 @@ WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 builder.AddServiceDefaults();
 
 // Register: Application layer services (MediatR, validators, Mapster).
-builder.Services.AddApplication();
+builder.AddApplication();
 
 // Register: Infrastructure layer services (EF Core, caching, repositories, query maps).
-builder.Services.AddInfrastructure(builder.Configuration);
+builder.AddInfrastructure();
 
 // Initialize: production uses the system clock; TryAdd lets a test host replace it
 // with FakeTimeProvider without touching this composition.
@@ -26,6 +26,9 @@ builder.Services.TryAddSingleton(TimeProvider.System);
 builder.Services.AddProblemDetails();
 
 WebApplication app = builder.Build();
+
+// Initialize: warm application services and run the persistence pipeline when configured.
+app.UseInfrastructure();
 
 app.UseExceptionHandler();
 

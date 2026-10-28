@@ -18,7 +18,7 @@ doctor: ## Check the local toolchain
 
 ##@ Quality
 
-.PHONY: install format format.check structure.check lint build test test.all
+.PHONY: install format format.check structure.check lint build
 
 install: lib.install api.install gate.install host.install store.install admin.install ## Restore .NET and web dependencies
 
@@ -32,7 +32,3 @@ structure.check: ## Verify namespaces match folders and file roles are known
 lint: lib.lint api.lint gate.lint host.lint store.lint admin.lint ## Formatting, structure, and type checks
 
 build: lib.build api.build gate.build host.build store.build admin.build ## Build the solution and both web apps
-
-test: lib.test api.test store.test admin.test ## Fast gate: unit, Api, and web tests
-
-test.all: test gate.test host.test infra.test ## Every suite, including orchestration and containers
