@@ -12,6 +12,7 @@ using Core.Todos.Lists;
 using Infrastructure.Persistence.EntityFramework.Contexts;
 using Infrastructure.Persistence.EntityFramework.QueryTranslation;
 using Infrastructure.Persistence.EntityFramework.Repositories;
+using Infrastructure.Persistence.Schemas.Todos.Queries;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -183,7 +184,7 @@ public static class TodoSqliteTestFixture
     public static EfCoreRepository<Todo, Guid> CreateTodoRepository(TodoSqliteDbContext context)
     {
         var translator = new QueryTranslationEfCore<Todo>();
-        var map = Infrastructure.Persistence.Todos.TodoQueryMap.Create();
+        var map = TodoQueryMap.Create();
         var registry = new QueryMapRegistry();
         registry.Register(map);
         var capabilities = new Infrastructure.Persistence.EntityFramework.Capabilities.EfCoreQueryCapabilities();
@@ -193,7 +194,7 @@ public static class TodoSqliteTestFixture
     public static EfCoreRepository<TodoList, Guid> CreateTodoListRepository(TodoSqliteDbContext context)
     {
         var translator = new QueryTranslationEfCore<TodoList>();
-        var map = Infrastructure.Persistence.Todos.TodoListQueryMap.Create();
+        var map = TodoListQueryMap.Create();
         var registry = new QueryMapRegistry();
         registry.Register(map);
         var capabilities = new Infrastructure.Persistence.EntityFramework.Capabilities.EfCoreQueryCapabilities();
@@ -203,7 +204,7 @@ public static class TodoSqliteTestFixture
     public static EfCoreRepository<TodoCategory, Guid> CreateTodoCategoryRepository(TodoSqliteDbContext context)
     {
         var translator = new QueryTranslationEfCore<TodoCategory>();
-        var map = Infrastructure.Persistence.Todos.TodoCategoryQueryMap.Create();
+        var map = TodoCategoryQueryMap.Create();
         var registry = new QueryMapRegistry();
         registry.Register(map);
         var capabilities = new Infrastructure.Persistence.EntityFramework.Capabilities.EfCoreQueryCapabilities();

@@ -1,6 +1,7 @@
 using Application.Common.Persistence.Initialization;
 using Application.Common.Persistence.Initialization.Migrations;
 
+using Infrastructure.Persistence.EntityFramework.Initialization;
 using Infrastructure.Persistence.Initialization;
 
 using Microsoft.EntityFrameworkCore;

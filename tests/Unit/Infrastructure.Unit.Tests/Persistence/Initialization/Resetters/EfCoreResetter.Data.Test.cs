@@ -4,6 +4,7 @@ using System.Data.Common;
 using Application.Common.Persistence.Initialization.Resetters;
 using Application.Common.Persistence.UnitOfWorks;
 
+using Infrastructure.Persistence.EntityFramework.Initialization;
 using Infrastructure.Persistence.Initialization;
 
 using Microsoft.EntityFrameworkCore;

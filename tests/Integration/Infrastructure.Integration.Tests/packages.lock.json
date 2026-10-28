@@ -1196,6 +1196,7 @@
           "SkiaSharp.NativeAssets.Linux": "[4.153.1, )",
           "StackExchange.Redis": "[2.13.17, )",
           "Stripe.net": "[53.0.0, )",
+          "System.IdentityModel.Tokens.Jwt": "[8.23.0, )",
           "WolverineFx": "[6.52.0, )",
           "WolverineFx.RabbitMQ": "[6.52.0, )",
           "nClam": "[9.0.0, )"

@@ -5,9 +5,6 @@ using Application.Common.Persistence.UnitOfWorks;
 
 using Core.Common.Monad.Results;
 
-using Infrastructure.Persistence.Initialization;
-using Infrastructure.Persistence.Todos.Seeders;
-
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -15,6 +12,8 @@ using Infrastructure.Persistence.EntityFramework.Contexts;
 using Core.Todos.Categories;
 using Core.Todos.Items;
 using Core.Todos.Lists;
+using Infrastructure.Persistence.Schemas.Todos.Seeders;
+using Infrastructure.Persistence.EntityFramework.Initialization;
 
 namespace Infrastructure.Integration.Tests.Persistence.Initialization;
 

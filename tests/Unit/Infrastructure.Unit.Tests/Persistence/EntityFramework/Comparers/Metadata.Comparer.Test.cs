@@ -113,6 +113,21 @@ public sealed class MetadataValueComparerTest
         leftHash.Should().Be(rightHash);
     }
 
+    [Fact(DisplayName = "GetHashCode should ignore insertion order")]
+    public void GetHashCode_WhenInsertionOrderDiffers_ShouldMatch()
+    {
+        // Arrange
+        var left = new DefaultMetadata { ["a"] = 1, ["b"] = 2 };
+        var right = new DefaultMetadata { ["b"] = 2, ["a"] = 1 };
+
+        // Act
+        int leftHash = MetadataValueComparer.Instance.GetHashCode(left);
+        int rightHash = MetadataValueComparer.Instance.GetHashCode(right);
+
+        // Assert
+        leftHash.Should().Be(rightHash);
+    }
+
     [Fact(DisplayName = "GetHashCode should change when a value changes")]
     public void GetHashCode_WhenValueChanges_ShouldDiffer()
     {

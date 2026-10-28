@@ -6,7 +6,7 @@ using Core.Todos.Categories;
 using Core.Todos.Items;
 using Core.Todos.Lists;
 
-using Infrastructure.Persistence.Todos.Seeders;
+using Infrastructure.Persistence.Schemas.Todos.Seeders;
 
 using Microsoft.Extensions.Logging;
 

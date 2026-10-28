@@ -3,6 +3,7 @@ using Application.Common.Persistence.Initialization.Migrations;
 using Application.Common.Persistence.Initialization.Resetters;
 using Application.Common.Persistence.Initialization.Seeders;
 
+using Infrastructure.Persistence.EntityFramework.Initialization;
 using Infrastructure.Persistence.Initialization;
 
 using Microsoft.EntityFrameworkCore;

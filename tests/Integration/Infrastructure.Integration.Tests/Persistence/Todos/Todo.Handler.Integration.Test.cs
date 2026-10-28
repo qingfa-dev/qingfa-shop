@@ -30,7 +30,7 @@ public sealed class TodoHandlerIntegrationTest : IAsyncLifetime
     {
         _fixture.CreateScope();
         _fixture.Ambient.TenantId = TenantId;
-        _fixture.Ambient.Actor = Actor;
+        _fixture.Ambient.UserName = Actor;
         await _fixture.CleanAsync();
     }
 

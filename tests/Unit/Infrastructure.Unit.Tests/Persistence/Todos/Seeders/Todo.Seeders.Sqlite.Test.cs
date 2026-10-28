@@ -2,7 +2,7 @@ using System.Data;
 
 using Application.Common.Persistence.Initialization;
 
-using Infrastructure.Persistence.Todos.Seeders;
+using Infrastructure.Persistence.Schemas.Todos.Seeders;
 
 using Microsoft.Data.Sqlite;
 using Microsoft.Extensions.Logging;

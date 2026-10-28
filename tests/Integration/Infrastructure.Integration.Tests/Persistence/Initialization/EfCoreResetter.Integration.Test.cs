@@ -2,12 +2,13 @@ using Application.Common.Persistence.Initialization.Resetters;
 using Application.Common.Persistence.UnitOfWorks;
 
 using Infrastructure.Persistence.Initialization;
-using Infrastructure.Persistence.Todos.Seeders;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Infrastructure.Persistence.EntityFramework.Contexts;
+using Infrastructure.Persistence.Schemas.Todos.Seeders;
+using Infrastructure.Persistence.EntityFramework.Initialization;
 
 namespace Infrastructure.Integration.Tests.Persistence.Initialization;
 

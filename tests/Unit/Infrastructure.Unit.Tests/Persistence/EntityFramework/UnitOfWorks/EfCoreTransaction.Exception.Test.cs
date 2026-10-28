@@ -57,22 +57,22 @@ public sealed class EfCoreTransactionExceptionTest
 
     public static TheoryData<Exception, string> CommitFailures => new()
     {
-        { new DbUpdateConcurrencyException("conflict"), TransactionOutcome.Codes.ConcurrencyConflict },
-        { new DbUpdateException("unique violation"), TransactionOutcome.Codes.DuplicateKey },
-        { new DbUpdateException("duplicate value"), TransactionOutcome.Codes.DuplicateKey },
-        { new DbUpdateException("foreign key constraint"), TransactionOutcome.Codes.ForeignKeyViolation },
-        { new DbUpdateException("reference constraint"), TransactionOutcome.Codes.ForeignKeyViolation },
-        { new DbUpdateException("check constraint"), TransactionOutcome.Codes.CheckConstraintViolation },
-        { new DbUpdateException("not null column"), TransactionOutcome.Codes.NotNullViolation },
-        { new DbUpdateException("null value"), TransactionOutcome.Codes.NotNullViolation },
-        { new DbUpdateException("something else"), TransactionOutcome.Codes.SaveChangesFailed },
-        { new TimeoutException(), TransactionOutcome.Codes.StoreTimeout },
-        { new OperationCanceledException(), TransactionOutcome.Codes.StoreTimeout },
-        { new InvalidOperationException("command timeout"), TransactionOutcome.Codes.StoreTimeout },
-        { new InvalidOperationException("cannot translate LINQ"), TransactionOutcome.Codes.ExpressionTranslationFailed },
-        { new InvalidOperationException("translate failure"), TransactionOutcome.Codes.ExpressionTranslationFailed },
-        { new InvalidOperationException("broken state"), TransactionOutcome.Codes.InvalidOperation },
-        { new Exception("unexpected"), TransactionOutcome.Codes.StoreUnknown },
+        { new DbUpdateConcurrencyException("conflict"), UnitOfWorkOutcome.Codes.ConcurrencyConflict },
+        { new DbUpdateException("unique violation"), UnitOfWorkOutcome.Codes.DuplicateKey },
+        { new DbUpdateException("duplicate value"), UnitOfWorkOutcome.Codes.DuplicateKey },
+        { new DbUpdateException("foreign key constraint"), UnitOfWorkOutcome.Codes.ForeignKeyViolation },
+        { new DbUpdateException("reference constraint"), UnitOfWorkOutcome.Codes.ForeignKeyViolation },
+        { new DbUpdateException("check constraint"), UnitOfWorkOutcome.Codes.CheckConstraintViolation },
+        { new DbUpdateException("not null column"), UnitOfWorkOutcome.Codes.NotNullViolation },
+        { new DbUpdateException("null value"), UnitOfWorkOutcome.Codes.NotNullViolation },
+        { new DbUpdateException("something else"), UnitOfWorkOutcome.Codes.SaveChangesFailed },
+        { new TimeoutException(), UnitOfWorkOutcome.Codes.StoreTimeout },
+        { new OperationCanceledException(), UnitOfWorkOutcome.Codes.StoreTimeout },
+        { new InvalidOperationException("command timeout"), UnitOfWorkOutcome.Codes.StoreTimeout },
+        { new InvalidOperationException("cannot translate LINQ"), UnitOfWorkOutcome.Codes.ExpressionTranslationFailed },
+        { new InvalidOperationException("translate failure"), UnitOfWorkOutcome.Codes.ExpressionTranslationFailed },
+        { new InvalidOperationException("broken state"), UnitOfWorkOutcome.Codes.InvalidOperation },
+        { new Exception("unexpected"), UnitOfWorkOutcome.Codes.StoreUnknown },
     };
 
     [Theory(DisplayName = "CommitAsync should translate provider exceptions")]
@@ -110,7 +110,7 @@ public sealed class EfCoreTransactionExceptionTest
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Errors[0].Code.Should().Be(TransactionOutcome.Codes.StoreCancelled);
+        result.Errors[0].Code.Should().Be(UnitOfWorkOutcome.Codes.StoreCancelled);
 
         await transaction.DisposeAsync();
     }
@@ -127,7 +127,7 @@ public sealed class EfCoreTransactionExceptionTest
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Errors[0].Code.Should().Be(TransactionOutcome.Codes.DuplicateKey);
+        result.Errors[0].Code.Should().Be(UnitOfWorkOutcome.Codes.DuplicateKey);
 
         await transaction.DisposeAsync();
     }
@@ -143,24 +143,24 @@ public sealed class EfCoreTransactionExceptionTest
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Errors[0].Code.Should().Be(TransactionOutcome.Codes.ForeignKeyViolation);
+        result.Errors[0].Code.Should().Be(UnitOfWorkOutcome.Codes.ForeignKeyViolation);
 
         await transaction.DisposeAsync();
     }
 
     public static TheoryData<string, string> SqlStates => new()
     {
-        { "23505", TransactionOutcome.Codes.DuplicateKey },
-        { "23503", TransactionOutcome.Codes.ForeignKeyViolation },
-        { "23514", TransactionOutcome.Codes.CheckConstraintViolation },
-        { "23502", TransactionOutcome.Codes.NotNullViolation },
+        { "23505", UnitOfWorkOutcome.Codes.DuplicateKey },
+        { "23503", UnitOfWorkOutcome.Codes.ForeignKeyViolation },
+        { "23514", UnitOfWorkOutcome.Codes.CheckConstraintViolation },
+        { "23502", UnitOfWorkOutcome.Codes.NotNullViolation },
         { "40P01", TransactionOutcome.Codes.DeadlockDetected },
         { "40001", TransactionOutcome.Codes.SerializationFailure },
-        { "08001", TransactionOutcome.Codes.ConnectionRefused },
-        { "08006", TransactionOutcome.Codes.ConnectionLost },
-        { "28000", TransactionOutcome.Codes.LoginFailed },
-        { "08004", TransactionOutcome.Codes.ConnectionFailed },
-        { "99999", TransactionOutcome.Codes.StoreUnknown },
+        { "08001", UnitOfWorkOutcome.Codes.ConnectionRefused },
+        { "08006", UnitOfWorkOutcome.Codes.ConnectionLost },
+        { "28000", UnitOfWorkOutcome.Codes.LoginFailed },
+        { "08004", UnitOfWorkOutcome.Codes.ConnectionFailed },
+        { "99999", UnitOfWorkOutcome.Codes.StoreUnknown },
     };
 
     [Theory(DisplayName = "CommitAsync should translate every PostgreSQL SQLSTATE used by the transaction")]
@@ -214,7 +214,7 @@ public sealed class EfCoreTransactionExceptionTest
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Errors[0].Code.Should().Be(TransactionOutcome.Codes.StoreTimeout);
+        result.Errors[0].Code.Should().Be(UnitOfWorkOutcome.Codes.StoreTimeout);
 
         await transaction.DisposeAsync();
     }
@@ -232,7 +232,7 @@ public sealed class EfCoreTransactionExceptionTest
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Errors[0].Code.Should().Be(TransactionOutcome.Codes.StoreCancelled);
+        result.Errors[0].Code.Should().Be(UnitOfWorkOutcome.Codes.StoreCancelled);
 
         await transaction.DisposeAsync();
     }

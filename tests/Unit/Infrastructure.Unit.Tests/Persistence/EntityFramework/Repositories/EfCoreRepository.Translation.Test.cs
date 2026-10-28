@@ -1,4 +1,5 @@
 using Application.Common.Persistence.Repositories;
+using Application.Common.Persistence.UnitOfWorks;
 using Application.Common.Querying.Mapping;
 
 using Infrastructure.Persistence.EntityFramework.Capabilities;
@@ -39,22 +40,22 @@ public sealed class EfCoreRepositoryTranslationTest
 
     public static TheoryData<Exception, string> TranslationCases => new()
     {
-        { new DbUpdateConcurrencyException("conflict"), RepositoryOutcome.Codes.ConcurrencyConflict },
-        { new DbUpdateException("unique violation"), RepositoryOutcome.Codes.DuplicateKey },
-        { new DbUpdateException("duplicate value"), RepositoryOutcome.Codes.DuplicateKey },
-        { new DbUpdateException("foreign key violation"), RepositoryOutcome.Codes.ForeignKeyViolation },
-        { new DbUpdateException("reference constraint violation"), RepositoryOutcome.Codes.ForeignKeyViolation },
-        { new DbUpdateException("check constraint violation"), RepositoryOutcome.Codes.CheckConstraintViolation },
-        { new DbUpdateException("not null violation"), RepositoryOutcome.Codes.NotNullViolation },
-        { new DbUpdateException("null value rejected"), RepositoryOutcome.Codes.NotNullViolation },
-        { new DbUpdateException("something else"), RepositoryOutcome.Codes.SaveChangesFailed },
-        { new TimeoutException(), RepositoryOutcome.Codes.StoreTimeout },
-        { new OperationCanceledException(), RepositoryOutcome.Codes.StoreTimeout },
-        { new InvalidOperationException("command timeout"), RepositoryOutcome.Codes.StoreTimeout },
-        { new InvalidOperationException("cannot translate LINQ"), RepositoryOutcome.Codes.ExpressionTranslationFailed },
-        { new InvalidOperationException("translate failure"), RepositoryOutcome.Codes.ExpressionTranslationFailed },
-        { new InvalidOperationException("broken state"), RepositoryOutcome.Codes.InvalidOperation },
-        { new Exception("unexpected"), RepositoryOutcome.Codes.StoreUnknown },
+        { new DbUpdateConcurrencyException("conflict"), UnitOfWorkOutcome.Codes.ConcurrencyConflict },
+        { new DbUpdateException("unique violation"), UnitOfWorkOutcome.Codes.DuplicateKey },
+        { new DbUpdateException("duplicate value"), UnitOfWorkOutcome.Codes.DuplicateKey },
+        { new DbUpdateException("foreign key violation"), UnitOfWorkOutcome.Codes.ForeignKeyViolation },
+        { new DbUpdateException("reference constraint violation"), UnitOfWorkOutcome.Codes.ForeignKeyViolation },
+        { new DbUpdateException("check constraint violation"), UnitOfWorkOutcome.Codes.CheckConstraintViolation },
+        { new DbUpdateException("not null violation"), UnitOfWorkOutcome.Codes.NotNullViolation },
+        { new DbUpdateException("null value rejected"), UnitOfWorkOutcome.Codes.NotNullViolation },
+        { new DbUpdateException("something else"), UnitOfWorkOutcome.Codes.SaveChangesFailed },
+        { new TimeoutException(), UnitOfWorkOutcome.Codes.StoreTimeout },
+        { new OperationCanceledException(), UnitOfWorkOutcome.Codes.StoreTimeout },
+        { new InvalidOperationException("command timeout"), UnitOfWorkOutcome.Codes.StoreTimeout },
+        { new InvalidOperationException("cannot translate LINQ"), UnitOfWorkOutcome.Codes.ExpressionTranslationFailed },
+        { new InvalidOperationException("translate failure"), UnitOfWorkOutcome.Codes.ExpressionTranslationFailed },
+        { new InvalidOperationException("broken state"), UnitOfWorkOutcome.Codes.InvalidOperation },
+        { new Exception("unexpected"), UnitOfWorkOutcome.Codes.StoreUnknown },
     };
 
     [Theory(DisplayName = "AddAsync should translate every exception shape")]
@@ -75,8 +76,8 @@ public sealed class EfCoreRepositoryTranslationTest
     }
 
     [Theory(DisplayName = "AddAsync with a cancelled token should report cancellation")]
-    [InlineData(true, "Repository.Store.Cancelled")]
-    [InlineData(false, "Repository.Store.Timeout")]
+    [InlineData(true, "UnitOfWork.Store.Cancelled")]
+    [InlineData(false, "UnitOfWork.Store.Timeout")]
     public async Task AddAsync_WhenOperationCancelled_ShouldHonorTheToken(
         bool cancelled, string expectedCode)
     {
@@ -121,17 +122,17 @@ public sealed class EfCoreRepositoryTranslationTest
 
     public static TheoryData<string, string> SqlStates => new()
     {
-        { "23505", RepositoryOutcome.Codes.DuplicateKey },
-        { "23503", RepositoryOutcome.Codes.ForeignKeyViolation },
-        { "23514", RepositoryOutcome.Codes.CheckConstraintViolation },
-        { "23502", RepositoryOutcome.Codes.NotNullViolation },
-        { "40P01", RepositoryOutcome.Codes.DeadlockDetected },
-        { "40001", RepositoryOutcome.Codes.SerializationFailure },
-        { "08001", RepositoryOutcome.Codes.ConnectionRefused },
-        { "08006", RepositoryOutcome.Codes.ConnectionLost },
-        { "28000", RepositoryOutcome.Codes.LoginFailed },
-        { "08004", RepositoryOutcome.Codes.ConnectionFailed },
-        { "99999", RepositoryOutcome.Codes.StoreUnknown },
+        { "23505", UnitOfWorkOutcome.Codes.DuplicateKey },
+        { "23503", UnitOfWorkOutcome.Codes.ForeignKeyViolation },
+        { "23514", UnitOfWorkOutcome.Codes.CheckConstraintViolation },
+        { "23502", UnitOfWorkOutcome.Codes.NotNullViolation },
+        { "40P01", TransactionOutcome.Codes.DeadlockDetected },
+        { "40001", TransactionOutcome.Codes.SerializationFailure },
+        { "08001", UnitOfWorkOutcome.Codes.ConnectionRefused },
+        { "08006", UnitOfWorkOutcome.Codes.ConnectionLost },
+        { "28000", UnitOfWorkOutcome.Codes.LoginFailed },
+        { "08004", UnitOfWorkOutcome.Codes.ConnectionFailed },
+        { "99999", UnitOfWorkOutcome.Codes.StoreUnknown },
     };
 
     [Theory(DisplayName = "AddAsync should translate every PostgreSQL SQLSTATE")]

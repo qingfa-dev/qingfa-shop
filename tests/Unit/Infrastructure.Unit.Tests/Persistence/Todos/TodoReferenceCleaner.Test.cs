@@ -1,7 +1,7 @@
 using Core.Todos.Items;
 
 using Infrastructure.Persistence.EntityFramework.Contexts;
-using Infrastructure.Persistence.Todos;
+using Infrastructure.Services.Todos;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -187,7 +187,7 @@ public sealed class TodoReferenceCleanerTest : IAsyncLifetime
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Errors[0].Code.Should().Be("Repository.Operation.Invalid");
+        result.Errors[0].Code.Should().Be("UnitOfWork.Operation.Invalid");
     }
 
     [Fact(DisplayName = "RemoveCategoryAsync should translate a provider failure")]
@@ -204,7 +204,7 @@ public sealed class TodoReferenceCleanerTest : IAsyncLifetime
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Errors[0].Code.Should().Be("Repository.Operation.Invalid");
+        result.Errors[0].Code.Should().Be("UnitOfWork.Operation.Invalid");
     }
 
     [Fact(DisplayName = "ClearListAsync should observe cancellation")]
@@ -222,6 +222,6 @@ public sealed class TodoReferenceCleanerTest : IAsyncLifetime
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Errors[0].Code.Should().Be("Repository.Operation.Invalid");
+        result.Errors[0].Code.Should().Be("UnitOfWork.Operation.Invalid");
     }
 }

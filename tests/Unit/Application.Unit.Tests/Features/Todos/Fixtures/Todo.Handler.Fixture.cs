@@ -1,7 +1,7 @@
-using Application.Common.Contexts;
 using Application.Common.Persistence.Repositories;
 using Application.Common.Persistence.UnitOfWorks;
 using Application.Common.Querying.Mapping;
+using Application.Common.Security.Authentication.Contexts;
 using Application.Features.Todos.Abstractions;
 
 using Core.Common.Monad.Maybes;
@@ -199,11 +199,26 @@ public sealed class TestTenantContext(Guid tenantId) : ITenantContext
 }
 
 /// <summary>An actor context that can be changed by a test.</summary>
-/// <param name="actor">The initial actor.</param>
-public sealed class TestActorContext(string? actor) : IActorContext
+/// <param name="actor">The initial actor identifier used as UserName.</param>
+public sealed class TestActorContext(string? actor) : IUserContext
 {
     /// <inheritdoc />
-    public string? Actor { get; set; } = actor;
+    public string? UserId { get; set; }
+
+    /// <inheritdoc />
+    public string? UserName { get; set; } = actor;
+
+    /// <inheritdoc />
+    public string? Email { get; set; }
+
+    /// <inheritdoc />
+    public bool IsAuthenticated { get; set; } = true;
+
+    /// <inheritdoc />
+    public string? IpAddress { get; set; }
+
+    /// <inheritdoc />
+    public string? Device { get; set; }
 }
 
 /// <summary>A clock frozen at a controllable instant.</summary>

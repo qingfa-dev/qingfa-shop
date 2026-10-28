@@ -1,15 +1,14 @@
-using Application.Common.Contexts;
 using Application.Common.Persistence.Capabilities;
 using Application.Common.Persistence.Repositories;
 using Application.Common.Persistence.UnitOfWorks;
 using Application.Common.Querying.Mapping;
+using Application.Common.Security.Authentication.Contexts;
 using Application.Features.Todos.Abstractions;
 
 using Infrastructure.Persistence.EntityFramework.Capabilities;
 using Infrastructure.Persistence.EntityFramework.QueryTranslation;
 using Infrastructure.Persistence.EntityFramework.Repositories;
 using Infrastructure.Persistence.EntityFramework.UnitOfWorks;
-using Infrastructure.Persistence.Todos;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,6 +21,7 @@ using Infrastructure.Persistence.EntityFramework.Options;
 using Core.Todos.Categories;
 using Core.Todos.Items;
 using Core.Todos.Lists;
+using Infrastructure.Services.Todos;
 
 namespace Infrastructure.Integration.Tests.Persistence.Todos;
 
@@ -63,8 +63,8 @@ public sealed class TodoEfCoreFixture : IAsyncLifetime
     /// <summary>The cross-aggregate reference cleaner.</summary>
     public ITodoReferenceCleaner ReferenceCleaner => CurrentScope?.ServiceProvider.GetRequiredService<ITodoReferenceCleaner>() ?? throw new InvalidOperationException("Scope not initialized");
 
-    /// <summary>The ambient tenant and actor the handlers read.</summary>
-    public AmbientExecutionContext Ambient { get; } = new();
+    /// <summary>The ambient tenant and user the handlers read.</summary>
+    public IntegrationExecutionContext Ambient { get; } = new();
 
     /// <summary>The frozen clock the handlers read.</summary>
     public IntegrationClock Clock { get; } = new(DateTimeOffset.UtcNow.Date);
@@ -105,9 +105,9 @@ public sealed class TodoEfCoreFixture : IAsyncLifetime
             }));
 
         // Register QueryMaps
-        TodoQueryMap = Infrastructure.Persistence.Todos.TodoQueryMap.Create();
-        TodoListQueryMap = Infrastructure.Persistence.Todos.TodoListQueryMap.Create();
-        TodoCategoryQueryMap = Infrastructure.Persistence.Todos.TodoCategoryQueryMap.Create();
+        TodoQueryMap = Infrastructure.Persistence.Schemas.Todos.Queries.TodoQueryMap.Create();
+        TodoListQueryMap = Infrastructure.Persistence.Schemas.Todos.Queries.TodoListQueryMap.Create();
+        TodoCategoryQueryMap = Infrastructure.Persistence.Schemas.Todos.Queries.TodoCategoryQueryMap.Create();
 
         var registry = new QueryMapRegistry();
         registry.Register(TodoQueryMap);
@@ -215,6 +215,31 @@ public sealed class TodoEfCoreFixture : IAsyncLifetime
 
         await _container.StopAsync();
     }
+}
+
+/// <summary>A tenant and user context that integration tests can change directly.</summary>
+public sealed class IntegrationExecutionContext : ITenantContext, IUserContext
+{
+    /// <inheritdoc />
+    public Guid TenantId { get; set; }
+
+    /// <inheritdoc />
+    public string? UserId { get; set; }
+
+    /// <inheritdoc />
+    public string? UserName { get; set; }
+
+    /// <inheritdoc />
+    public string? Email { get; set; }
+
+    /// <inheritdoc />
+    public bool IsAuthenticated { get; set; } = true;
+
+    /// <inheritdoc />
+    public string? IpAddress { get; set; }
+
+    /// <inheritdoc />
+    public string? Device { get; set; }
 }
 
 /// <summary>A clock frozen at a controllable instant for integration tests.</summary>
