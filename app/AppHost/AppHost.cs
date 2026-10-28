@@ -15,13 +15,17 @@ IResourceBuilder<ProjectResource> api = builder
     .WithReference(db)
     .WaitFor(db)
     .WithReference(redis)
-    .WaitFor(redis);
+    .WaitFor(redis)
+    .WithEnvironment("EfCore__ConnectionStringName", "db")
+    .WithEnvironment("Persistence__AutoMigrate", "true")
+    .WithHttpHealthCheck("/health");
 
 // Enforce: the gateway fronts the Api, so every browser request enters here rather
 // than reaching the Api directly.
 IResourceBuilder<ProjectResource> gateway = builder
     .AddProject<Projects.Gateway>("gateway")
-    .WithReference(api);
+    .WithReference(api)
+    .WithHttpHealthCheck("/health");
 
 // Enforce: the storefront is served at the gateway root. The apps are addressed
 // only through the gateway, so they take API_BASE_URL without referencing it back

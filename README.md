@@ -101,8 +101,10 @@ make install         # restore .NET + install the web workspace
 make build           # .NET solution + both SPA bundles
 make lint            # formatting, structure, and vue-tsc checks
 make format          # write C# and Prettier fixes
-make test            # unit, Api, and web tests
+make test            # .NET unit, Api, then web tests
 make test.all        # every suite, including AppHost and infra
+make coverage        # .NET unit + web coverage gates (line 80 / branch 70)
+make coverage.all    # every suite plus the merged .NET coverage gate
 
 # Libraries
 make lib.install
@@ -138,7 +140,10 @@ make host.test
 make store.install
 make store.format
 make store.lint
-make store.test
+make store.test           # unit then integration
+make store.test.unit
+make store.test.integration
+make store.e2e            # optional Playwright
 make store.build
 make store.publish
 
@@ -146,7 +151,10 @@ make store.publish
 make admin.install
 make admin.format
 make admin.lint
-make admin.test
+make admin.test           # unit then integration
+make admin.test.unit
+make admin.test.integration
+make admin.e2e            # optional Playwright
 make admin.build
 make admin.publish
 
@@ -297,7 +305,7 @@ kubectl apply -f ./manifests/
 | `dotnet format` | C# formatting (EditorConfig) |
 | `Prettier` | TS/Vue/CSS/Markdown formatting |
 | `vue-tsc` | Vue SFC type-checking |
-| `Vitest` | Web unit tests |
+| `Vitest` | Web unit and integration tests |
 
 ## Testing Strategy
 
@@ -306,7 +314,38 @@ kubectl apply -f ./manifests/
 | Unit (C#) | xUnit | `tests/Unit` |
 | Architecture (C#) | xUnit | `tests/Architecture.Tests` |
 | Integration (C#) | xUnit + Testcontainers | `tests/Integration` |
-| Web | Vitest + `@vue/test-utils` | `app/Web.*/src/__tests__` |
+| Web | Vitest + `@vue/test-utils` | `app/Web.*/src/__tests__` (unit + `integration/` for router/API flows) |
+
+### Test order
+
+`make test` runs the fast gate in layer order:
+
+1. **.NET unit** — Core → Contract → Application → Infrastructure → Architecture
+2. **.NET integration** — Api
+3. **Web unit** — Storefront → Admin
+4. **Web integration** — Storefront → Admin
+
+`make test.all` extends this with the full integration and optional browser layers:
+
+1. .NET unit (same five suites)
+2. .NET integration — Api → AppHost/Gateway → Infrastructure
+3. Web unit → web integration
+4. Web e2e — Storefront → Admin (Playwright; skipped when no suite is configured)
+
+### Coverage
+
+`make coverage` is the pull-request gate: .NET unit suites plus both web apps
+must meet **90% line / 80% branch**, enforced per assembly and per app. The
+merged .NET gate (`make coverage.report`) runs on `main` and the nightly
+schedule after the Api, AppHost, and infrastructure coverage jobs upload their
+raw Cobertura files.
+
+- Gated .NET assemblies: `Core`, `Application`, `Contract` (lines only),
+  `Infrastructure`, `Web.Api`.
+- Report-only: `ServiceDefaults`, `Gateway`, `AppHost`, and all `*.Tests`
+  assemblies.
+- Reports land in `artifacts/coverage/` (git-ignored).
+- Override the floors locally: `COVERAGE_LINES=95 COVERAGE_BRANCHES=85 make coverage`.
 
 ## Contributing
 

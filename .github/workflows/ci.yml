@@ -92,7 +92,21 @@ jobs:
       - run: make lib.install
       - run: make lib.lint api.lint gate.lint host.lint
       - run: make lib.build api.build gate.build host.build
-      - run: make lib.test api.test
+      - name: Unit coverage gate
+        run: make coverage.unit
+      - name: Api integration coverage (main/nightly)
+        if: github.event_name != 'pull_request'
+        run: make coverage.api
+      - name: Api integration tests (pull request)
+        if: github.event_name == 'pull_request'
+        run: make api.test
+      - name: Upload .NET coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-dotnet-backend
+          path: artifacts/coverage/dotnet/raw
+          if-no-files-found: ignore
 
   web:
     runs-on: ubuntu-latest
@@ -110,8 +124,20 @@ jobs:
       - run: make store.install
       - run: make store.format.check admin.format.check
       - run: make store.lint admin.lint
-      - run: make store.test admin.test
+      - run: make coverage.web
       - run: make store.build admin.build
+      - name: Optional web e2e (main/nightly)
+        if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+        run: make test.web.e2e
+      - name: Upload web coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-web
+          path: |
+            artifacts/coverage/web-storefront
+            artifacts/coverage/web-admin
+          if-no-files-found: ignore
 
   apphost:
     if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
@@ -133,7 +159,14 @@ jobs:
           cache: pnpm
           cache-dependency-path: app/pnpm-lock.yaml
       - run: make store.install
-      - run: make host.install host.test
+      - run: make coverage.apphost
+      - name: Upload gateway coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-dotnet-apphost
+          path: artifacts/coverage/dotnet/raw
+          if-no-files-found: ignore
 
   compose:
     needs: changes
@@ -159,17 +192,54 @@ jobs:
           global-json-file: global.json
           cache: true
           cache-dependency-path: "**/packages.lock.json"
-      - run: make infra.test
+      - run: make coverage.infra
+      - name: Upload infrastructure coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-dotnet-infra
+          path: artifacts/coverage/dotnet/raw
+          if-no-files-found: ignore
+
+  coverage-report:
+    if: github.ref == 'refs/heads/main' || github.event_name == 'workflow_dispatch' || github.event_name == 'schedule'
+    needs: [backend, apphost, infra]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          global-json-file: global.json
+          cache: true
+          cache-dependency-path: "**/packages.lock.json"
+      - name: Download raw .NET coverage
+        uses: actions/download-artifact@v4
+        with:
+          pattern: coverage-dotnet-*
+          path: artifacts/coverage/dotnet/raw
+          merge-multiple: true
+      - name: Merge and enforce the full .NET gate
+        run: make coverage.report
+      - name: Upload merged .NET coverage
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-dotnet-merged
+          path: |
+            artifacts/coverage/dotnet/coverage.cobertura.xml
+            artifacts/coverage/dotnet/coverage.summary.txt
+          if-no-files-found: ignore
 
   gate:
     if: always()
-    needs: [changes, backend, web, apphost, compose, infra]
+    needs: [changes, backend, web, apphost, compose, infra, coverage-report]
     runs-on: ubuntu-latest
     timeout-minutes: 5
     steps:
       - name: Require every job to succeed or be skipped
         run: |
-          results='${{ needs.changes.result }} ${{ needs.backend.result }} ${{ needs.web.result }} ${{ needs.apphost.result }} ${{ needs.compose.result }} ${{ needs.infra.result }}'
+          results='${{ needs.changes.result }} ${{ needs.backend.result }} ${{ needs.web.result }} ${{ needs.apphost.result }} ${{ needs.compose.result }} ${{ needs.infra.result }} ${{ needs.coverage-report.result }}'
           echo "$results"
           case "$results" in
             *failure*|*cancelled*) exit 1 ;;
