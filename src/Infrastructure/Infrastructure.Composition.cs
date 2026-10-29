@@ -37,8 +37,8 @@ public static class InfrastructureComposition
         // Register: Caching facade (HybridCache over L1/L2 tiers).
         builder.Services.AddCaching(builder.Configuration);
 
-        // Register: Request-scoped tenant and user contexts.
-        builder.Services.AddSecurity();
+        // Register: Request-scoped tenant/user contexts and token services.
+        builder.Services.AddSecurity(builder.Configuration);
 
         // Register: Cross-aggregate reference cleanup.
         builder.Services.AddServices();
