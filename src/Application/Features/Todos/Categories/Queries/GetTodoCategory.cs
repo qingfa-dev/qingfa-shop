@@ -1,7 +1,6 @@
 using Application.Common.Mediators.Queries;
 using Application.Features.Todos.Categories.Mappers;
 using Application.Features.Todos.Categories.Models;
-using Application.Features.Todos.Mapping;
 
 using Core.Todos.Categories;
 

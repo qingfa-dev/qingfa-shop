@@ -5,7 +5,6 @@ using Application.Common.Querying.Pagination;
 using Application.Features.Todos.Categories.Mappers;
 using Application.Features.Todos.Categories.Models;
 using Application.Features.Todos.Common;
-using Application.Features.Todos.Mapping;
 
 using Core.Todos.Categories;
 
@@ -28,7 +27,7 @@ public static class SearchTodoCategories
 
     #region Handler
     public sealed class UseCaseHandler(
-        IPersistentRepository<TodoCategory, Guid> repository,
+        IMappableRepository<TodoCategory, Guid> repository,
         IQueryMapProvider mapProvider,
         ITenantContext tenantContext)
         : IQueryHandler<UseCase, QueryPage<Response>>
@@ -43,24 +42,17 @@ public static class SearchTodoCategories
             Request request = query.Request;
 
             return await tenantContext.RequireTenant()
-                .Bind(tenantId => QueryParser.Parse<TodoCategory>(
-                        request.Parameters,
-                        mapProvider)
-                    .Ensure(
-                        parsed => !parsed.IsTabular,
-                        TodosOutcome.Failure.TabularQueryUnsupported)
-                    .Map(parsed => TodoQueryScope.Apply(
-                        parsed,
-                        tenantId,
-                        request.IncludeDeleted)))
+                .Bind(tenantId => QueryBuilder<TodoCategory>.FromParameters(
+                        mapProvider,
+                        request.Parameters)
+                    .ApplyTodoScope(tenantId, request.IncludeDeleted)
+                    .BuildEntity(TodosOutcome.Failure.TabularQueryUnsupported))
                 .BindAsync(
-                    (parsed, ct) => repository.QueryAsync(parsed, ct),
-                    cancellationToken)
-                .MapAsync(page => new QueryPage<Response>(
-                    [.. page.Items.Select(category => category.ToModel<Response>())],
-                    page.Page,
-                    page.PageSize,
-                    page.TotalCount));
+                    (parsed, ct) => repository.MapAsync(
+                        parsed,
+                        category => category.ToModel<Response>(),
+                        ct),
+                    cancellationToken);
         }
     }
     #endregion

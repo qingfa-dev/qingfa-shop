@@ -1,6 +1,5 @@
 using Application.Features.Todos.Categories.Mappers;
 using Application.Features.Todos.Categories.Models;
-using Application.Features.Todos.Mapping;
 
 using Core.Common.Concerns.Lifecycle.SoftDeletable;
 using Core.Todos.Categories;

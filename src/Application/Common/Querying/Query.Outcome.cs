@@ -148,5 +148,52 @@ public static class QueryOutcome
         public static Error Unsupported(string feature) => Error.BadRequest(
             code: QueryErrorCodes.Unsupported,
             message: $"The selected provider does not support {feature}.");
+
+        // ---- Builder ----
+
+        /// <summary>The expression cannot be translated to a query.</summary>
+        public static Error ExpressionUnsupported(string detail) => Error.BadRequest(
+            code: QueryErrorCodes.BuilderExpressionUnsupported,
+            message: $"The expression cannot be translated to a query: {detail}.");
+
+        /// <summary>More than one mapped field matches the requested path.</summary>
+        public static Error AmbiguousField(string path) => Error.BadRequest(
+            code: QueryErrorCodes.BuilderAmbiguousField,
+            message: $"More than one mapped field matches '{path}'.");
+
+        /// <summary>A projected query was requested without a projection expression.</summary>
+        public static Error ProjectionRequired => Error.BadRequest(
+            code: QueryErrorCodes.BuilderProjectionRequired,
+            message: "A projection expression is required for a projected query.");
+
+        /// <summary>The stored projection does not match the requested response type.</summary>
+        public static Error ProjectionMismatch => Error.BadRequest(
+            code: QueryErrorCodes.BuilderProjectionMismatch,
+            message: "The stored projection does not match the requested response type.");
+
+        /// <summary>The query must return entities but does not.</summary>
+        public static Error EntityShapeRequired => Error.BadRequest(
+            code: QueryErrorCodes.BuilderEntityShapeRequired,
+            message: "The query must return entities.");
+
+        /// <summary>The query must return tabular data but does not.</summary>
+        public static Error TabularShapeRequired => Error.BadRequest(
+            code: QueryErrorCodes.BuilderTabularShapeRequired,
+            message: "The query must return tabular data.");
+
+        /// <summary>The requested build conflicts with the query's stored projection or shape.</summary>
+        public static Error ShapeConflict(string detail) => Error.BadRequest(
+            code: QueryErrorCodes.BuilderShapeConflict,
+            message: $"The query shape conflicts with the requested build: {detail}.");
+
+        /// <summary>The requested max-row cap is not a positive number.</summary>
+        public static Error MaxRowsInvalid => Error.BadRequest(
+            code: QueryErrorCodes.BuilderMaxRowsInvalid,
+            message: "Max rows must be greater than zero.");
+
+        /// <summary>The requested eager-loading path is null, empty, or whitespace.</summary>
+        public static Error IncludeInvalid => Error.BadRequest(
+            code: QueryErrorCodes.BuilderIncludeInvalid,
+            message: "An include path is required.");
     }
 }

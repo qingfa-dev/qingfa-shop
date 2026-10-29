@@ -11,6 +11,11 @@ public static class TodosOutcome
             code: "Todos.Query.TabularUnsupported",
             message: "This use case returns entities, so select, group, and aggregate are not supported.");
 
+        /// <summary>Error returned when a tabular query omits its projection.</summary>
+        public static Error EntityQueryUnsupported => Error.BadRequest(
+            code: "Todos.Query.EntityUnsupported",
+            message: "This use case returns tabular data, so select, group, or aggregate is required.");
+
         /// <summary>Error returned when a sort field is not on the allow list.</summary>
         public static Error SortNotSupported(string field) => Error.BadRequest(
             code: "Todos.Sort.NotSupported",

@@ -1,6 +1,6 @@
 using Application.Features.Todos.Lists.Models;
 using Application.Features.Todos.Lists.Validators;
-using Application.Features.Todos.Mapping;
+using Application.Features.Todos.Lists.Mappings;
 
 using Core.Todos.Lists;
 

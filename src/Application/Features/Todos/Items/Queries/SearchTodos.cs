@@ -27,7 +27,7 @@ public static class SearchTodos
 
     #region Handler
     public sealed class UseCaseHandler(
-        IPersistentRepository<Todo, Guid> repository,
+        IMappableRepository<Todo, Guid> repository,
         IQueryMapProvider mapProvider,
         ITenantContext tenantContext)
         : IQueryHandler<UseCase, QueryPage<Response>>
@@ -42,24 +42,17 @@ public static class SearchTodos
             Request request = query.Request;
 
             return await tenantContext.RequireTenant()
-                .Bind(tenantId => QueryParser.Parse<Todo>(
-                        request.Parameters,
-                        mapProvider)
-                    .Ensure(
-                        parsed => !parsed.IsTabular,
-                        TodosOutcome.Failure.TabularQueryUnsupported)
-                    .Map(parsed => TodoQueryScope.Apply(
-                        parsed,
-                        tenantId,
-                        request.IncludeDeleted)))
+                .Bind(tenantId => QueryBuilder<Todo>.FromParameters(
+                        mapProvider,
+                        request.Parameters)
+                    .ApplyTodoScope(tenantId, request.IncludeDeleted)
+                    .BuildEntity(TodosOutcome.Failure.TabularQueryUnsupported))
                 .BindAsync(
-                    (parsed, ct) => repository.QueryAsync(parsed, ct),
-                    cancellationToken)
-                .MapAsync(page => new QueryPage<Response>(
-                    [.. page.Items.Select(todo => todo.ToSummary<Response>())],
-                    page.Page,
-                    page.PageSize,
-                    page.TotalCount));
+                    (parsed, ct) => repository.MapAsync(
+                        parsed,
+                        todo => todo.ToSummary<Response>(),
+                        ct),
+                    cancellationToken);
         }
     }
     #endregion

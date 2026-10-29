@@ -4,7 +4,7 @@ using Application.Common.Querying.Mapping;
 using Application.Common.Querying.Pagination;
 using Application.Features.Todos.Common;
 using Application.Features.Todos.Lists.Models;
-using Application.Features.Todos.Mapping;
+using Application.Features.Todos.Lists.Mappings;
 
 using Core.Todos.Lists;
 
@@ -27,7 +27,7 @@ public static class SearchTodoLists
 
     #region Handler
     public sealed class UseCaseHandler(
-        IPersistentRepository<TodoList, Guid> repository,
+        IMappableRepository<TodoList, Guid> repository,
         IQueryMapProvider mapProvider,
         ITenantContext tenantContext)
         : IQueryHandler<UseCase, QueryPage<Response>>
@@ -42,24 +42,17 @@ public static class SearchTodoLists
             Request request = query.Request;
 
             return await tenantContext.RequireTenant()
-                .Bind(tenantId => QueryParser.Parse<TodoList>(
-                        request.Parameters,
-                        mapProvider)
-                    .Ensure(
-                        parsed => !parsed.IsTabular,
-                        TodosOutcome.Failure.TabularQueryUnsupported)
-                    .Map(parsed => TodoQueryScope.Apply(
-                        parsed,
-                        tenantId,
-                        request.IncludeDeleted)))
+                .Bind(tenantId => QueryBuilder<TodoList>.FromParameters(
+                        mapProvider,
+                        request.Parameters)
+                    .ApplyTodoScope(tenantId, request.IncludeDeleted)
+                    .BuildEntity(TodosOutcome.Failure.TabularQueryUnsupported))
                 .BindAsync(
-                    (parsed, ct) => repository.QueryAsync(parsed, ct),
-                    cancellationToken)
-                .MapAsync(page => new QueryPage<Response>(
-                    [.. page.Items.Select(list => list.ToModel<Response>())],
-                    page.Page,
-                    page.PageSize,
-                    page.TotalCount));
+                    (parsed, ct) => repository.MapAsync(
+                        parsed,
+                        list => list.ToModel<Response>(),
+                        ct),
+                    cancellationToken);
         }
     }
     #endregion
