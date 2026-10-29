@@ -36,7 +36,6 @@ In scope:
 Out of scope:
 - Domain logic → [`../Core/`](../Core/).
 - Use cases → [`../Application/`](../Application/).
-- Public contracts → [`../Contract/`](../Contract/).
 - Aspire service config → [`../ServiceDefaults/`](../ServiceDefaults/).
 - HTTP endpoints → [`../../app/Web.Api/`](../../app/Web.Api/).
 
@@ -101,7 +100,7 @@ Out of scope:
 ## Related
 
 - Parent: [`../README.md`](../README.md)
-- Upstream: [`../Core/`](../Core/), [`../Application/`](../Application/), [`../Contract/`](../Contract/), [`../ServiceDefaults/`](../ServiceDefaults/)
+- Upstream: [`../Core/`](../Core/), [`../Application/`](../Application/), [`../ServiceDefaults/`](../ServiceDefaults/)
 - Downstream: [`../../app/Web.Api/`](../../app/Web.Api/) (consumes DI), [`../../app/AppHost/`](../../app/AppHost/) (orchestrates)
 - ADR: [`../../docs/adr/0004-infrastructure-adapters.md`](../../docs/adr/0004-infrastructure-adapters.md)
 

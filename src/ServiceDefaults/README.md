@@ -31,7 +31,7 @@ In scope:
 Out of scope:
 - Business logic → [`../Application/`](../Application/).
 - Infrastructure adapters → [`../Infrastructure/`](../Infrastructure/).
-- Domain/Contracts → [`../Core/`](../Core/), [`../Contract/`](../Contract/).
+- Domain/application contracts → [`../Core/`](../Core/), [`../Application/`](../Application/).
 - Application-specific config (connection strings, API keys).
 
 ## Assumptions

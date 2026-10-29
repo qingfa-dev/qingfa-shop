@@ -4,20 +4,19 @@ Use cases — command/query handlers, application services, mappers, policies. _
 
 ## Summary
 
-Application contains **use case orchestration**. It implements handlers for Contract commands/queries, coordinates domain logic (via Core), and delegates to Infrastructure through abstractions. It has no direct external dependencies — only Core, Contract, and Infrastructure abstractions.
+Application contains **use case orchestration**. It implements handlers for application commands/queries, coordinates domain logic (via Core), and delegates to Infrastructure through abstractions. It has no direct external dependencies — only Core and Infrastructure abstractions.
 
 ## Contains
 
 | Path | Role | Notes |
 |---|---|---|
 | `Assembly.Marker.cs` | marker | Anchors assembly for scanning |
-| `Commands/` | handler | `ICommandHandler<TCommand, TResult>` implementations |
-| `Queries/` | handler | `IQueryHandler<TQuery, TResult>` implementations |
-| `Services/` | service | Application services orchestrating multiple handlers |
-| `Mappers/` | mapper | `Mapster` configurations (DTO ↔ Domain) |
-| `Policies/` | policy | Business rule strategies (pricing, discounts, shipping) |
-| `Behaviors/` | behavior | MediatR pipeline behaviors (validation, logging, transactions) |
-| `Composition.cs` | composition | DI registration: `AddApplication()` |
+| `Common/Mediators/` | behavior | MediatR command/query interfaces and pipeline behaviors |
+| `Common/Mapping/` | mapper | `EntityMapperExtensions` create/update/projection helpers |
+| `Common/Persistence/` | service | Repository, initialization, and capability abstractions |
+| `Common/Caching/`, `Common/Events/`, `Common/Security/`, `Common/Validation/` | service | Cross-cutting application contracts |
+| `Features/Todos/` | use-case | Vertical slices for todo lists, items, and categories |
+| `Application.Composition.cs` | composition | DI registration: `AddApplication()` |
 
 ## Boundaries
 
@@ -31,14 +30,13 @@ In scope:
 
 Out of scope:
 - Domain logic → [`../Core/`](../Core/).
-- Public contracts → [`../Contract/`](../Contract/).
 - EF Core, Redis, HTTP clients → [`../Infrastructure/`](../Infrastructure/).
 - Aspire config → [`../ServiceDefaults/`](../ServiceDefaults/).
 - HTTP endpoints → [`../../app/Web.Api/`](../../app/Web.Api/).
 
 ## Assumptions
 
-- Handlers receive commands/queries from Contract; return `Result<T>` from Core.
+- Handlers own their commands/queries under `Common/Mediators`; return `Result<T>` from Core.
 - Domain logic lives in Core aggregates; Application only orchestrates.
 - Transactions managed by `TransactionBehavior` (MediatR pipeline).
 - Validation runs via `ValidationBehavior` (FluentValidation).
@@ -90,7 +88,7 @@ Out of scope:
 ## Related
 
 - Parent: [`../README.md`](../README.md)
-- Upstream: [`../Core/`](../Core/), [`../Contract/`](../Contract/)
+- Upstream: [`../Core/`](../Core/)
 - Downstream: [`../Infrastructure/`](../Infrastructure/) (implements abstractions), [`../../app/Web.Api/`](../../app/Web.Api/) (endpoints)
 - ADR: [`../../docs/adr/0003-vertical-slices.md`](../../docs/adr/0003-vertical-slices.md)
 
@@ -98,7 +96,7 @@ Out of scope:
 
 - Owning team: **Platform**.
 - New use cases require Platform + Domain review.
-- Handler changes require Contract stability guarantee.
+- Handler changes require public API stability guarantee.
 
 ## Notes
 

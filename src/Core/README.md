@@ -29,7 +29,6 @@ In scope:
 Out of scope:
 - Persistence (EF Core) → [`../Infrastructure/`](../Infrastructure/).
 - Application use cases → [`../Application/`](../Application/).
-- External contracts (DTOs) → [`../Contract/`](../Contract/).
 - Infrastructure concerns (caching, messaging, HTTP clients).
 
 ## Assumptions
@@ -74,7 +73,7 @@ Out of scope:
 
 - Parent: [`../README.md`](../README.md)
 - Children: `Primitives/`, `Events/`, `Abstractions/`, `Specifications/`, `Guards/`
-- Downstream: [`../Contract/`](../Contract/), [`../Application/`](../Application/), [`../Infrastructure/`](../Infrastructure/)
+- Downstream: [`../Application/`](../Application/), [`../Infrastructure/`](../Infrastructure/)
 - ADR: [`../../docs/adr/0001-domain-kernel.md`](../../docs/adr/0001-domain-kernel.md)
 
 ## Ownership
