@@ -3,6 +3,7 @@ using Application.Common.Caching;
 using Infrastructure.Caching.Options;
 using Infrastructure.Caching.Services;
 
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Configuration;
@@ -15,18 +16,20 @@ namespace Infrastructure.Caching;
 public static class CachingComposition
 {
     /// <summary>Adds the caching facade to the service collection.</summary>
-    /// <param name="services">The host's service collection.</param>
+    /// <param name="builder">The host builder.</param>
     /// <param name="configuration">Configuration holding the <c>Caching</c> section.</param>
-    /// <returns>The same collection, for chaining.</returns>
+    /// <returns>The same builder, for chaining.</returns>
     /// <exception cref="InvalidOperationException">
     /// The configured settings are invalid or the distributed tier is enabled without a provider.
     /// </exception>
-    public static IServiceCollection AddCaching(
-        this IServiceCollection services,
+    public static WebApplicationBuilder AddCaching(
+        this WebApplicationBuilder builder,
         IConfiguration configuration)
     {
-        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(configuration);
+
+        IServiceCollection services = builder.Services;
 
         CachingSetting setting = configuration
             .GetSection(CachingSettingConstant.SectionName)
@@ -55,7 +58,7 @@ public static class CachingComposition
         if (!setting.Enabled)
         {
             services.TryAddSingleton<ICacheService, NullCacheService>();
-            return services;
+            return builder;
         }
 
         // Validate: enabling L2 without a provider would silently collapse the facade to L1.
@@ -137,6 +140,18 @@ public static class CachingComposition
 
         services.TryAddSingleton<ICacheService, CacheService>();
 
-        return services;
+        return builder;
+    }
+
+    /// <summary>Warms the cache facade and adds any caching pipeline hooks.</summary>
+    /// <param name="app">The host application.</param>
+    /// <returns>The same application, for chaining.</returns>
+    public static WebApplication UseCaching(this WebApplication app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+
+        // Warm: resolve the singleton facade so configuration errors surface at startup.
+        app.Services.GetRequiredService<ICacheService>();
+        return app;
     }
 }

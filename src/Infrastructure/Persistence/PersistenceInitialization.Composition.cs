@@ -4,6 +4,7 @@ using Application.Common.Persistence.Initialization.Seeders;
 using Infrastructure.Persistence.EntityFramework.Contexts;
 using Infrastructure.Persistence.Initialization;
 
+using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -21,19 +22,21 @@ public static class PersistenceInitializationComposition
     /// discovered in the Infrastructure assembly.
     /// Call this after the DbContext and <c>IUnitOfWork</c> are registered.
     /// </summary>
-    /// <param name="services">The host's service collection.</param>
+    /// <param name="builder">The host builder.</param>
     /// <typeparam name="TContext">The derived DbContext type.</typeparam>
-    /// <returns>The same collection, for chaining.</returns>
-    public static IServiceCollection AddPersistenceInitialization<TContext>(
-        this IServiceCollection services)
+    /// <returns>The same builder, for chaining.</returns>
+    public static WebApplicationBuilder AddPersistenceInitialization<TContext>(
+        this WebApplicationBuilder builder)
         where TContext : DbContext
     {
-        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(builder);
+
+        IServiceCollection services = builder.Services;
 
         // Guard: repeated composition calls must not register duplicate seeders.
         if (services.Any(descriptor => descriptor.ServiceType == typeof(IPersistenceInitializer)))
         {
-            return services;
+            return builder;
         }
 
         // Register: non-generic ILogger used by the initializer/resetter/migrator.
@@ -55,6 +58,17 @@ public static class PersistenceInitializationComposition
             .AsImplementedInterfaces()
             .WithScopedLifetime());
 
-        return services;
+        return builder;
+    }
+
+    /// <summary>Adds the initialization pipeline hook for the host.</summary>
+    /// <param name="app">The host application.</param>
+    /// <returns>The same application, for chaining.</returns>
+    public static WebApplication UsePersistenceInitialization(this WebApplication app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+
+        // Initialization runs through UseInfrastructure; this hook keeps composition symmetric.
+        return app;
     }
 }

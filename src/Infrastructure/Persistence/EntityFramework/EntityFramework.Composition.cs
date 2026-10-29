@@ -13,6 +13,7 @@ using Infrastructure.Persistence.EntityFramework.UnitOfWorks;
 
 using MediatR;
 
+using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
@@ -26,20 +27,22 @@ namespace Infrastructure.Persistence.EntityFramework;
 public static class EntityFrameworkComposition
 {
     /// <summary>Adds EF Core persistence services to the service collection.</summary>
-    /// <param name="services">The host's service collection.</param>
+    /// <param name="builder">The host builder.</param>
     /// <param name="configuration">Configuration holding the <c>EfCore</c> section and <c>ConnectionStrings</c>.</param>
     /// <typeparam name="TContext">The derived DbContext type.</typeparam>
-    /// <returns>The same collection, for chaining.</returns>
+    /// <returns>The same builder, for chaining.</returns>
     /// <exception cref="InvalidOperationException">
     /// The connection string name is missing or the named connection string is not found.
     /// </exception>
-    public static IServiceCollection AddEfCorePersistence<TContext>(
-        this IServiceCollection services,
+    public static WebApplicationBuilder AddEfCorePersistence<TContext>(
+        this WebApplicationBuilder builder,
         IConfiguration configuration)
         where TContext : DbContext
     {
-        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(configuration);
+
+        IServiceCollection services = builder.Services;
 
         // Bind settings from configuration section
         PersistenceSetting setting = configuration
@@ -125,26 +128,28 @@ public static class EntityFrameworkComposition
         // Register UnitOfWork
         services.AddScoped<IUnitOfWork, EfCoreUnitOfWork>();
 
-        return services;
+        return builder;
     }
 
     /// <summary>
     /// Configures EF Core DbContext directly with a connection string.
     /// Useful for testing scenarios where configuration is not available.
     /// </summary>
-    /// <param name="services">The service collection.</param>
+    /// <param name="builder">The host builder.</param>
     /// <param name="connectionString">The database connection string.</param>
     /// <param name="provider">The database provider (default: "PostgreSQL").</param>
     /// <typeparam name="TContext">The derived DbContext type.</typeparam>
-    /// <returns>The same collection, for chaining.</returns>
-    public static IServiceCollection AddEfCorePersistence<TContext>(
-        this IServiceCollection services,
+    /// <returns>The same builder, for chaining.</returns>
+    public static WebApplicationBuilder AddEfCorePersistence<TContext>(
+        this WebApplicationBuilder builder,
         string connectionString,
         string provider = "PostgreSQL")
         where TContext : DbContext
     {
-        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNullOrWhiteSpace(connectionString);
+
+        IServiceCollection services = builder.Services;
 
         PersistenceSetting setting = new()
         {
@@ -206,7 +211,18 @@ public static class EntityFrameworkComposition
 
         services.AddScoped<IUnitOfWork, EfCoreUnitOfWork>();
 
-        return services;
+        return builder;
+    }
+
+    /// <summary>Adds the EF Core persistence pipeline hook for the host.</summary>
+    /// <param name="app">The host application.</param>
+    /// <returns>The same application, for chaining.</returns>
+    public static WebApplication UseEfCorePersistence(this WebApplication app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+
+        // DbContexts are request-scoped; no middleware is required for EF Core.
+        return app;
     }
 
     /// <summary>

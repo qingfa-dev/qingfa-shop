@@ -6,6 +6,7 @@ using Infrastructure.Persistence.EntityFramework;
 using Infrastructure.Persistence.EntityFramework.Contexts;
 using Infrastructure.Persistence.EntityFramework.Repositories;
 
+using Microsoft.AspNetCore.Builder;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -24,65 +25,80 @@ public static class PersistenceComposition
     /// This includes EF Core persistence with the specified DbContext, generic repositories,
     /// and query map registrations.
     /// </summary>
-    /// <param name="services">The host's service collection.</param>
+    /// <param name="builder">The host builder.</param>
     /// <param name="configuration">Configuration holding the EfCore section and ConnectionStrings.</param>
     /// <typeparam name="TContext">The derived DbContext type.</typeparam>
-    /// <returns>The same collection, for chaining.</returns>
-    public static IServiceCollection AddPersistence<TContext>(
-        this IServiceCollection services,
+    /// <returns>The same builder, for chaining.</returns>
+    public static WebApplicationBuilder AddPersistence<TContext>(
+        this WebApplicationBuilder builder,
         IConfiguration configuration)
         where TContext : DbContext
     {
-        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(configuration);
+
+        IServiceCollection services = builder.Services;
 
         // Enforce: Query maps must be registered before EF Core so the registry is available
         // when the DbContext is configured and repositories resolve their maps.
         services.RegisterQueryMaps();
 
         // Call: Configure EF Core persistence with the specified DbContext and settings.
-        services.AddEfCorePersistence<TContext>(configuration);
+        builder.AddEfCorePersistence<TContext>(configuration);
 
         // Create: Open-generic repository implementations for all entity types.
         services.RegisterRepositories();
 
         // Create: Database initialization pipeline (migrator + seeders + resetter).
-        services.AddPersistenceInitialization<TContext>();
+        builder.AddPersistenceInitialization<TContext>();
 
-        return services;
+        return builder;
     }
 
     /// <summary>
     /// Adds persistence services with an explicit connection string (useful for testing).
     /// </summary>
-    /// <param name="services">The service collection.</param>
+    /// <param name="builder">The host builder.</param>
     /// <param name="connectionString">The database connection string.</param>
     /// <param name="provider">The database provider (default: "PostgreSQL").</param>
     /// <typeparam name="TContext">The derived DbContext type.</typeparam>
-    /// <returns>The same collection, for chaining.</returns>
-    public static IServiceCollection AddPersistence<TContext>(
-        this IServiceCollection services,
+    /// <returns>The same builder, for chaining.</returns>
+    public static WebApplicationBuilder AddPersistence<TContext>(
+        this WebApplicationBuilder builder,
         string connectionString,
         string provider = "PostgreSQL")
         where TContext : DbContext
     {
-        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNullOrWhiteSpace(connectionString);
+
+        IServiceCollection services = builder.Services;
 
         // Enforce: Query maps must be registered before EF Core so the registry is available
         // when the DbContext is configured and repositories resolve their maps.
         services.RegisterQueryMaps();
 
         // Call: Configure EF Core persistence with explicit connection string and provider.
-        services.AddEfCorePersistence<TContext>(connectionString, provider);
+        builder.AddEfCorePersistence<TContext>(connectionString, provider);
 
         // Create: Open-generic repository implementations for all entity types.
         services.RegisterRepositories();
 
         // Create: Database initialization pipeline (migrator + seeders + resetter).
-        services.AddPersistenceInitialization<TContext>();
+        builder.AddPersistenceInitialization<TContext>();
 
-        return services;
+        return builder;
+    }
+
+    /// <summary>Adds the persistence pipeline hook for the host.</summary>
+    /// <param name="app">The host application.</param>
+    /// <returns>The same application, for chaining.</returns>
+    public static WebApplication UsePersistence(this WebApplication app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+
+        // Persistence is request-scoped; there is no middleware to add here.
+        return app;
     }
 
     /// <summary>
