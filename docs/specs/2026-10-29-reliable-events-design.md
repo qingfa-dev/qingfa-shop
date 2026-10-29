@@ -35,15 +35,16 @@ Deliverables:
 public sealed class OutboxMessage
 {
     public Guid Id { get; init; } = Guid.NewGuid();
-    public OutboxMessageKind Kind { get; init; }
+    public OutboxMessageKind Kind { get; init; } = OutboxMessageKind.Domain;
     public string Type { get; init; } = string.Empty;
     public int Version { get; init; } = 1;
     public string Payload { get; init; } = string.Empty;
     public string Metadata { get; init; } = "{}";
     public OutboxMessageStatus Status { get; set; } = OutboxMessageStatus.Pending;
-    public DateTimeOffset OccurredOnUtc { get; init; }
-    public DateTimeOffset AvailableOnUtc { get; init; }
+    public DateTimeOffset OccurredOnUtc { get; init; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset AvailableOnUtc { get; init; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? LockedUntilUtc { get; set; }
+    public Guid? LeaseId { get; set; }
     public DateTimeOffset? ProcessedOnUtc { get; set; }
     public int Attempts { get; set; }
     public string? LastError { get; set; }
@@ -76,17 +77,20 @@ public interface IOutboxStore
 
     Task<Result> MarkProcessedAsync(
         Guid id,
+        Guid leaseId,
         DateTimeOffset processedOnUtc,
         CancellationToken cancellationToken = default);
 
     Task<Result> MarkFailedAsync(
         Guid id,
+        Guid leaseId,
         string error,
         DateTimeOffset nextAttemptUtc,
         CancellationToken cancellationToken = default);
 
     Task<Result> DeadLetterAsync(
         Guid id,
+        Guid leaseId,
         string error,
         CancellationToken cancellationToken = default);
 
@@ -124,6 +128,7 @@ Stable codes:
 | `Outbox.Serialize.Failed` | Payload could not be serialized |
 | `Outbox.Deserialize.Failed` | Payload could not be deserialized |
 | `Outbox.Publish.Failed` | A handler or the bus rejected the message |
+| `Outbox.Lease.Lost` | The claim lease expired before the row could be marked |
 | `Outbox.DeadLetter.Failed` | Dead-letter transition failed |
 | `Outbox.Batch.Empty` | No work; success, not a failure |
 
@@ -255,6 +260,9 @@ loop over claimed batch:
 - Claim and mark are separate transactions; publishing is outside the claim transaction.
   If the process dies after publish but before mark, the message is redelivered. That is
   the at-least-once contract.
+- Every claim assigns a new `LeaseId`. A mark/dead-letter is conditional on the same
+  `LeaseId` still being present and the lease still unexpired. A stale worker receives
+  `Outbox.Lease.Lost` and must not mutate the row; another worker may republish it.
 - Backoff: exponential from `BackoffSeconds`, capped at `MaxBackoffSeconds`.
 - A batch failure never aborts the whole batch; each row is handled independently.
 - Logging: one structured log per failure with message id, type, attempt and error code.
@@ -314,6 +322,10 @@ public interface IInboxStore
 5. On success → insert the inbox row and commit.
 6. On duplicate insertion caused by a concurrent consumer → treat as already processed
    and return success.
+
+The contract guarantees that the inbox row is written only after the handler returns
+success, in the same transaction as the handler's own writes. A duplicate call returns
+success without invoking the handler. Failure results are never recorded as processed.
 
 The handler’s own writes and the inbox row commit together. A crash after commit is safe:
 redelivery is a no-op. A crash before commit is safe: the message is retried.
@@ -398,6 +410,8 @@ initialization cover it.
 | `OccurredOnUtc` | timestamptz | |
 | `AvailableOnUtc` | timestamptz | |
 | `LockedUntilUtc` | timestamptz | null |
+| `LeaseId` | uuid | null |
+| `LeaseId` | uuid | null |
 | `ProcessedOnUtc` | timestamptz | null |
 | `Attempts` | int | |
 | `LastError` | text | null |
