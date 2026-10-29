@@ -6,7 +6,7 @@ namespace Infrastructure.Caching.Services;
 internal sealed class NullCacheService : ICacheService
 {
     /// <inheritdoc />
-    public ValueTask<T> GetOrCreateAsync<T>(
+    public async ValueTask<Result<T>> GetOrCreateAsync<T>(
         string key,
         Func<CancellationToken, ValueTask<T>> factory,
         CachingEntryOption? options = null,
@@ -14,14 +14,20 @@ internal sealed class NullCacheService : ICacheService
         CancellationToken cancellationToken = default)
         where T : notnull
     {
-        CachingGuard.Key(key);
-        CachingGuard.Factory(factory);
+        Error? validation =
+            CachingGuard.Key(key) ??
+            CachingGuard.Factory(factory) ??
+            CachingGuard.Options(options) ??
+            CachingGuard.Tags(tags?.ToArray());
 
-        return factory(cancellationToken);
+        if (validation is not null)
+            return Result<T>.Fail(validation);
+
+        return Result<T>.Ok(await factory(cancellationToken).ConfigureAwait(false));
     }
 
     /// <inheritdoc />
-    public ValueTask SetAsync<T>(
+    public ValueTask<Result> SetAsync<T>(
         string key,
         T value,
         CachingEntryOption? options = null,
@@ -29,33 +35,50 @@ internal sealed class NullCacheService : ICacheService
         CancellationToken cancellationToken = default)
         where T : notnull
     {
-        CachingGuard.Key(key);
-        CachingGuard.Value(value);
+        Error? validation =
+            CachingGuard.Key(key) ??
+            CachingGuard.Value(value) ??
+            CachingGuard.Options(options) ??
+            CachingGuard.Tags(tags?.ToArray());
 
-        return ValueTask.CompletedTask;
+        return ValueTask.FromResult(validation is null
+            ? Result.Ok()
+            : Result.Fail(validation));
     }
 
     /// <inheritdoc />
-    public ValueTask RemoveAsync(string key, CancellationToken cancellationToken = default)
+    public ValueTask<Result> RemoveAsync(
+        string key,
+        CancellationToken cancellationToken = default)
     {
-        CachingGuard.Key(key);
+        Error? validation = CachingGuard.Key(key);
 
-        return ValueTask.CompletedTask;
+        return ValueTask.FromResult(validation is null
+            ? Result.Ok()
+            : Result.Fail(validation));
     }
 
     /// <inheritdoc />
-    public ValueTask RemoveByTagAsync(
+    public ValueTask<Result> RemoveByTagAsync(
         IEnumerable<string> tags,
         CancellationToken cancellationToken = default)
     {
-        return ValueTask.CompletedTask;
+        Error? validation = CachingGuard.TagsRequired(tags?.ToArray());
+
+        return ValueTask.FromResult(validation is null
+            ? Result.Ok()
+            : Result.Fail(validation));
     }
 
     /// <inheritdoc />
-    public ValueTask RemoveByTagAsync(string tag, CancellationToken cancellationToken = default)
+    public ValueTask<Result> RemoveByTagAsync(
+        string tag,
+        CancellationToken cancellationToken = default)
     {
-        CachingGuard.Tag(tag);
+        Error? validation = CachingGuard.Tag(tag);
 
-        return ValueTask.CompletedTask;
+        return ValueTask.FromResult(validation is null
+            ? Result.Ok()
+            : Result.Fail(validation));
     }
 }

@@ -36,5 +36,29 @@ internal sealed partial class CacheService
             Level = LogLevel.Debug,
             Message = "Cache removed by tag: {Tag}")]
         public static partial void CacheRemovedByTag(ILogger logger, string tag);
+
+        [LoggerMessage(
+            EventId = 199,
+            Level = LogLevel.Error,
+            Message = "Cache read failed for key: {Key}")]
+        public static partial void CacheReadFailed(ILogger logger, string key, Exception exception);
+
+        [LoggerMessage(
+            EventId = 200,
+            Level = LogLevel.Error,
+            Message = "Cache write failed for key: {Key}")]
+        public static partial void CacheWriteFailed(ILogger logger, string key, Exception exception);
+
+        [LoggerMessage(
+            EventId = 201,
+            Level = LogLevel.Error,
+            Message = "Cache remove failed for key: {Key}")]
+        public static partial void CacheRemoveFailed(ILogger logger, string key, Exception exception);
+
+        [LoggerMessage(
+            EventId = 202,
+            Level = LogLevel.Error,
+            Message = "Cache eviction failed for tag(s): {Tag}")]
+        public static partial void CacheEvictFailed(ILogger logger, string tag, Exception exception);
     }
 }
