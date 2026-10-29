@@ -11,7 +11,7 @@ public sealed class OutboxMessage
     public string Metadata { get; init; } = "{}";
     public OutboxMessageStatus Status { get; set; } = OutboxMessageStatus.Pending;
     public DateTimeOffset OccurredOnUtc { get; init; } = DateTimeOffset.UtcNow;
-    public DateTimeOffset AvailableOnUtc { get; init; } = DateTimeOffset.UtcNow;
+    public DateTimeOffset AvailableOnUtc { get; set; } = DateTimeOffset.UtcNow;
     public DateTimeOffset? LockedUntilUtc { get; set; }
     public Guid? LeaseId { get; set; }
     public DateTimeOffset? ProcessedOnUtc { get; set; }

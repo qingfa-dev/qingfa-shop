@@ -23,6 +23,110 @@ namespace Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Application.Common.Messaging.Inbox.InboxMessage", b =>
+                {
+                    b.Property<Guid>("MessageId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("message_id");
+
+                    b.Property<string>("Consumer")
+                        .HasColumnType("text")
+                        .HasColumnName("consumer");
+
+                    b.Property<DateTimeOffset>("ProcessedOnUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("processed_on_utc");
+
+                    b.HasKey("MessageId", "Consumer");
+
+                    b.HasIndex("ProcessedOnUtc");
+
+                    b.ToTable("inbox_messages", "messaging");
+                });
+
+            modelBuilder.Entity("Application.Common.Messaging.Outbox.OutboxMessage", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .HasColumnType("uuid")
+                        .HasColumnName("id");
+
+                    b.Property<int>("Attempts")
+                        .HasColumnType("integer")
+                        .HasColumnName("attempts");
+
+                    b.Property<DateTimeOffset>("AvailableOnUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("available_on_utc");
+
+                    b.Property<Guid?>("CausationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("causation_id");
+
+                    b.Property<Guid?>("CorrelationId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("correlation_id");
+
+                    b.Property<int>("Kind")
+                        .HasColumnType("integer")
+                        .HasColumnName("kind");
+
+                    b.Property<string>("LastError")
+                        .HasColumnType("text")
+                        .HasColumnName("last_error");
+
+                    b.Property<Guid?>("LeaseId")
+                        .IsConcurrencyToken()
+                        .HasColumnType("uuid")
+                        .HasColumnName("lease_id");
+
+                    b.Property<DateTimeOffset?>("LockedUntilUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("locked_until_utc");
+
+                    b.Property<string>("Metadata")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("metadata");
+
+                    b.Property<DateTimeOffset>("OccurredOnUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("occurred_on_utc");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("jsonb")
+                        .HasColumnName("payload");
+
+                    b.Property<DateTimeOffset?>("ProcessedOnUtc")
+                        .HasColumnType("timestamptz")
+                        .HasColumnName("processed_on_utc");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer")
+                        .HasColumnName("status");
+
+                    b.Property<Guid?>("TenantId")
+                        .HasColumnType("uuid")
+                        .HasColumnName("tenant_id");
+
+                    b.Property<string>("Type")
+                        .IsRequired()
+                        .HasColumnType("text")
+                        .HasColumnName("type");
+
+                    b.Property<int>("Version")
+                        .HasColumnType("integer")
+                        .HasColumnName("version");
+
+                    b.HasKey("Id");
+
+                    b.HasIndex("ProcessedOnUtc");
+
+                    b.HasIndex("Status", "AvailableOnUtc", "OccurredOnUtc");
+
+                    b.ToTable("outbox_messages", "messaging");
+                });
+
             modelBuilder.Entity("Application.Common.Security.Authentication.Tokens.Domain.RefreshToken", b =>
                 {
                     b.Property<Guid>("Id")

@@ -16,11 +16,14 @@ public static class PersistenceConstant
         /// <summary>The schema owned by ASP.NET Core Identity.</summary>
         public const string Identity = "identity";
 
+        /// <summary>The schema owned by the messaging outbox and inbox.</summary>
+        public const string Messaging = "messaging";
+
         /// <summary>
         /// Every schema the persistence layer owns, in creation order.
         /// Modules append their schema here so reset and initialization cover them all.
         /// </summary>
-        public static readonly IReadOnlyList<string> Names = [Todo, Identity];
+        public static readonly IReadOnlyList<string> Names = [Todo, Identity, Messaging];
 
         /// <summary>The default schema used when a model does not set one.</summary>
         public const string Default = Todo;

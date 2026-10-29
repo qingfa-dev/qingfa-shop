@@ -90,10 +90,12 @@ public sealed class ApplicationDbContextTest : IAsyncLifetime
             "role_claims",
             "passkeys",
             "passkey_data",
-            "refresh_tokens");
+            "refresh_tokens",
+            "outbox_messages",
+            "inbox_messages");
     }
 
-    [Fact(DisplayName = "ApplicationDbContext should place Todo tables in todo and identity tables in identity")]
+    [Fact(DisplayName = "ApplicationDbContext should place Todo, identity, and messaging tables in their schemas")]
     public void Model_ShouldUseTheTodoSchema()
     {
         // Arrange
@@ -106,7 +108,7 @@ public sealed class ApplicationDbContextTest : IAsyncLifetime
             .ToList();
 
         // Assert
-        schemas.Should().BeEquivalentTo(["identity", "todo"]);
+        schemas.Should().BeEquivalentTo(["identity", "todo", "messaging"]);
     }
 
     [Fact(DisplayName = "ApplicationDbContext should apply every entity configuration in the assembly")]
@@ -185,11 +187,12 @@ public sealed class ApplicationDbContextTest : IAsyncLifetime
         var migrations = context.Database.GetMigrations().ToList();
 
         // Assert
-        migrations.Should().HaveCount(4);
+        migrations.Should().HaveCount(5);
         migrations.Should().Contain(migration => migration.EndsWith("_InitialCreate", StringComparison.Ordinal));
         migrations.Should().Contain(migration => migration.EndsWith("_AddIdentity", StringComparison.Ordinal));
         migrations.Should().Contain(migration => migration.EndsWith("_AlignIdentityDbContext", StringComparison.Ordinal));
         migrations.Should().Contain(migration => migration.EndsWith("_AddAggregateVersion", StringComparison.Ordinal));
+        migrations.Should().Contain(migration => migration.EndsWith("_AddOutboxInbox", StringComparison.Ordinal));
     }
 
     [Fact(DisplayName = "The Persistence assembly should contain one DbContext and one design-time factory")]
