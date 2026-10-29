@@ -4,9 +4,11 @@ using System.Security.Claims;
 
 using Microsoft.AspNetCore.Authorization;
 
+using Application.Common.Security.Authorization;
 using Application.Common.Security.Authorization.Permissions.Services;
+using Application.Common.Security.Authorization.Requirements;
 
-namespace Application.Common.Security.Authorization.Requirements;
+namespace Infrastructure.Security.Authorization.Requirements;
 
 /// <summary>Evaluates permission requirements by resolving effective user permissions through the cache/store pipeline — the admin role bypasses all checks.</summary>
 // Invariant: Admin role always succeeds; unauthenticated requests are skipped; failed resolution denies instead of failing open.

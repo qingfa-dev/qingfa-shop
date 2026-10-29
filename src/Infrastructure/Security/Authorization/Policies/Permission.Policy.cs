@@ -1,10 +1,12 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.Extensions.Options;
 
+using Application.Common.Security.Authorization;
 using Application.Common.Security.Authorization.Domain;
+using Application.Common.Security.Authorization.Policies;
 using Application.Common.Security.Authorization.Requirements;
 
-namespace Application.Common.Security.Authorization.Policies;
+namespace Infrastructure.Security.Authorization.Policies;
 
 /// <summary>Builds permission policies on demand and delegates everything else to the default provider.</summary>
 /// <remarks>

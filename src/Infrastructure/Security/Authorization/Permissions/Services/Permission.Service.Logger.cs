@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-namespace Application.Common.Security.Authorization.Permissions.Services;
+namespace Infrastructure.Security.Authorization.Permissions.Services;
 
 public partial class PermissionService
 {

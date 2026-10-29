@@ -1,9 +1,10 @@
 using Microsoft.Extensions.Logging;
 
 using Application.Common.Security.Authorization.Permissions.Caches;
+using Application.Common.Security.Authorization.Permissions.Services;
 using Application.Common.Security.Authorization.Permissions.Store;
 
-namespace Application.Common.Security.Authorization.Permissions.Services;
+namespace Infrastructure.Security.Authorization.Permissions.Services;
 
 /// <summary>Resolves effective user permissions by merging role-based and direct permissions through a cache-aside pattern.</summary>
 // Invariant: Effective permissions are the union of role permissions + direct user permissions; cache is invalidated on every store mutation.

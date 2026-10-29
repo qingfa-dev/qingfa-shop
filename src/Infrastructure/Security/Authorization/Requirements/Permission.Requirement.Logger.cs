@@ -1,6 +1,6 @@
 using Microsoft.Extensions.Logging;
 
-namespace Application.Common.Security.Authorization.Requirements;
+namespace Infrastructure.Security.Authorization.Requirements;
 
 public partial class PermissionRequirementAuthorizationHandler
 {

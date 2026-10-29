@@ -3,8 +3,9 @@ using Microsoft.Extensions.Options;
 
 using Application.Common.Caching;
 using Application.Common.Security.Authorization.Options;
+using Application.Common.Security.Authorization.Permissions.Caches;
 
-namespace Application.Common.Security.Authorization.Permissions.Caches;
+namespace Infrastructure.Security.Authorization.Permissions.Caches;
 
 /// <summary>Two-tier permission cache (local + distributed) with role-tagged invalidation and configurable TTL.</summary>
 // Invariant: Cache keys follow perm:user|role:{id}; role invalidation cascades to every user tagged with that role.
