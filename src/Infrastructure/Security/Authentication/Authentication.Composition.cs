@@ -16,6 +16,7 @@ using Infrastructure.Security.Identity;
 using Infrastructure.Security.Identity.Services;
 
 using Microsoft.AspNetCore.Authentication;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
@@ -34,18 +35,20 @@ public static class AuthenticationComposition
     /// Adds request contexts, token options, JWT issuance, refresh-token handling,
     /// blacklisting, and rotation.
     /// </summary>
-    /// <param name="services">The host's service collection.</param>
+    /// <param name="builder">The host builder.</param>
     /// <param name="configuration">Configuration holding the token sections.</param>
-    /// <returns>The same collection, for chaining.</returns>
+    /// <returns>The same builder, for chaining.</returns>
     /// <exception cref="ArgumentNullException">
-    /// <paramref name="services"/> or <paramref name="configuration"/> is <c>null</c>.
+    /// <paramref name="builder"/> or <paramref name="configuration"/> is <c>null</c>.
     /// </exception>
-    public static IServiceCollection AddAuthentication(
-        this IServiceCollection services,
+    public static WebApplicationBuilder AddAuthentication(
+        this WebApplicationBuilder builder,
         IConfiguration configuration)
     {
-        ArgumentNullException.ThrowIfNull(services);
+        ArgumentNullException.ThrowIfNull(builder);
         ArgumentNullException.ThrowIfNull(configuration);
+
+        IServiceCollection services = builder.Services;
 
         services.AddHttpContextAccessor();
         services.TryAddScoped<ITenantContext, TenantContext>();
@@ -155,6 +158,18 @@ public static class AuthenticationComposition
             });
         }
 
-        return services;
+        return builder;
+    }
+
+    /// <summary>Adds the authentication middleware to the request pipeline.</summary>
+    /// <param name="app">The host application.</param>
+    /// <returns>The same application, for chaining.</returns>
+    public static WebApplication UseAuthentication(this WebApplication app)
+    {
+        ArgumentNullException.ThrowIfNull(app);
+
+        // Call: the framework middleware registered by AddAuthentication.
+        app.UseAuthentication();
+        return app;
     }
 }
