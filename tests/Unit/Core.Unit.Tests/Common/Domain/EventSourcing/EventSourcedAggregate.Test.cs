@@ -26,6 +26,8 @@ public sealed class EventSourcedAggregateTest
 
         public void Rename(string name) => Raise(new Renamed(name));
 
+        public void Break() => Raise(new Unknown("x"));
+
         protected override void When(IDomainEvent domainEvent)
         {
             switch (domainEvent)
@@ -127,5 +129,60 @@ public sealed class EventSourcedAggregateTest
         // Assert
         aggregate.Version.Should().Be(0);
         aggregate.UncommittedEvents.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void Raise_WhenHandlerThrows_DoesNotAdvanceVersionOrBufferEvent()
+    {
+        // Arrange
+        var aggregate = new TestAggregate();
+
+        // Act
+        Action act = () => aggregate.Break();
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>();
+        aggregate.Version.Should().Be(0);
+        aggregate.UncommittedEvents.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void LoadFromHistory_WithEmptyHistory_KeepsVersion()
+    {
+        // Arrange
+        var aggregate = new TestAggregate();
+
+        // Act
+        aggregate.LoadFromHistory(0, []);
+
+        // Assert
+        aggregate.Version.Should().Be(0);
+        aggregate.UncommittedEvents.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void LoadFromHistory_WithNullHistory_Throws()
+    {
+        // Arrange
+        var aggregate = new TestAggregate();
+
+        // Act
+        Action act = () => aggregate.LoadFromHistory(0, null!);
+
+        // Assert
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void LoadFromHistory_WithNegativeVersion_Throws()
+    {
+        // Arrange
+        var aggregate = new TestAggregate();
+
+        // Act
+        Action act = () => aggregate.LoadFromHistory(-1, []);
+
+        // Assert
+        act.Should().Throw<ArgumentOutOfRangeException>();
     }
 }
