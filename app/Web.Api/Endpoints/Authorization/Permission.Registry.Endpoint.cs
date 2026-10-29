@@ -3,10 +3,7 @@ using Carter;
 using Core.Common.Monad.Errors;
 using Core.Common.Monad.Results;
 
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Http.HttpResults;
-using Microsoft.AspNetCore.Routing;
 
 using Application.Common.Security.Authorization;
 using Application.Common.Security.Authorization.Attributes;
