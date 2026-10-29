@@ -29,6 +29,17 @@
           "AspNetCore.HealthChecks.UI.Core": "9.0.0"
         }
       },
+      "Carter": {
+        "type": "Direct",
+        "requested": "[10.0.0, )",
+        "resolved": "10.0.0",
+        "contentHash": "TMSfoaIwEuQBqDxt0EdUmGLe6yLnkEBwYeWunyDfxhDPmDKtV/o1tDYsNWG5eMO6ontHonFttIMwbsg+ddi8YQ==",
+        "dependencies": {
+          "Carter.Analyzers": "10.0.0",
+          "FluentValidation": "12.1.0",
+          "Microsoft.Extensions.DependencyModel": "10.0.0"
+        }
+      },
       "FluentValidation": {
         "type": "Direct",
         "requested": "[12.2.0, )",
@@ -705,17 +716,6 @@
         "contentHash": "fSqAOkftU8jKemilzLGZDU0zLEJXHjAemU+8Nd29+sUwRxVK04w6/GY3O4f9S1+JIYwEnHDGcW66VK4AZ2kx6g==",
         "dependencies": {
           "AWSSDK.Core": "[4.0.102.13, 5.0.0)"
-        }
-      },
-      "Carter": {
-        "type": "CentralTransitive",
-        "requested": "[10.0.0, )",
-        "resolved": "10.0.0",
-        "contentHash": "TMSfoaIwEuQBqDxt0EdUmGLe6yLnkEBwYeWunyDfxhDPmDKtV/o1tDYsNWG5eMO6ontHonFttIMwbsg+ddi8YQ==",
-        "dependencies": {
-          "Carter.Analyzers": "10.0.0",
-          "FluentValidation": "12.1.0",
-          "Microsoft.Extensions.DependencyModel": "10.0.0"
         }
       },
       "EFCore.NamingConventions": {

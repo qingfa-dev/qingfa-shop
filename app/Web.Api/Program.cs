@@ -1,7 +1,6 @@
 using Carter;
 
 using Application;
-using Application.Common.Security.Authorization;
 
 using Infrastructure;
 
@@ -40,11 +39,6 @@ WebApplication app = builder.Build();
 app.UseInfrastructure();
 
 app.UseExceptionHandler();
-
-// Initialize: authenticate the bearer token, then enforce permission policies declared with
-// [HasPermission] or RequireAuthorization.
-app.UseAuthentication();
-app.UseApplicationAuthorization();
 
 app.MapCarter();
 app.MapDefaultEndpoints();
