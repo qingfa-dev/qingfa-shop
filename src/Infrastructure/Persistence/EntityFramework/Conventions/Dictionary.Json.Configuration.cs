@@ -31,6 +31,10 @@ public static class DictionaryAsJsonConvention
     {
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
+            // Skip: owned value objects are configured through their owner's nested builder.
+            if (entityType.IsOwned())
+                continue;
+
             foreach (var property in entityType.GetProperties())
             {
                 // Skip if already configured with a conversion

@@ -77,10 +77,23 @@ public sealed class ApplicationDbContextTest : IAsyncLifetime
             .ToList();
 
         // Assert
-        tables.Should().BeEquivalentTo("todos", "todo_lists", "todo_categories");
+        tables.Should().BeEquivalentTo(
+            "todos",
+            "todo_lists",
+            "todo_categories",
+            "users",
+            "roles",
+            "user_roles",
+            "user_claims",
+            "user_logins",
+            "user_tokens",
+            "role_claims",
+            "passkeys",
+            "passkey_data",
+            "refresh_tokens");
     }
 
-    [Fact(DisplayName = "ApplicationDbContext should place every Todo table in the todo schema")]
+    [Fact(DisplayName = "ApplicationDbContext should place Todo tables in todo and identity tables in identity")]
     public void Model_ShouldUseTheTodoSchema()
     {
         // Arrange
@@ -93,7 +106,7 @@ public sealed class ApplicationDbContextTest : IAsyncLifetime
             .ToList();
 
         // Assert
-        schemas.Should().BeEquivalentTo(["todo"]);
+        schemas.Should().BeEquivalentTo(["identity", "todo"]);
     }
 
     [Fact(DisplayName = "ApplicationDbContext should apply every entity configuration in the assembly")]
@@ -161,7 +174,9 @@ public sealed class ApplicationDbContextTest : IAsyncLifetime
         var migrations = context.Database.GetMigrations().ToList();
 
         // Assert
-        migrations.Should().ContainSingle().Which.Should().EndWith("_InitialCreate");
+        migrations.Should().HaveCount(2);
+        migrations.Should().Contain(migration => migration.EndsWith("_InitialCreate", StringComparison.Ordinal));
+        migrations.Should().Contain(migration => migration.EndsWith("_AddIdentity", StringComparison.Ordinal));
     }
 
     [Fact(DisplayName = "The Persistence assembly should contain one DbContext and one design-time factory")]

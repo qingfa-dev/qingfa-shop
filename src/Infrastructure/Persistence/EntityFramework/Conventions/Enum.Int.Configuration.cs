@@ -24,6 +24,10 @@ public static class EnumAsIntConvention
     {
         foreach (var entityType in modelBuilder.Model.GetEntityTypes())
         {
+            // Skip: owned value objects are configured through their owner's nested builder.
+            if (entityType.IsOwned())
+                continue;
+
             foreach (var property in entityType.GetProperties())
             {
                 // Determine the underlying enum type (handle nullable enums)

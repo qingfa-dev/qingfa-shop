@@ -10,6 +10,8 @@ using Infrastructure.Persistence;
 using Infrastructure.Persistence.EntityFramework.Contexts;
 using Infrastructure.Persistence.EntityFramework.UnitOfWorks;
 using Infrastructure.Persistence.Initialization;
+using Infrastructure.Security.Identity.Domain.Roles;
+using Infrastructure.Security.Identity.Domain.Users;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
@@ -37,7 +39,7 @@ public sealed class PersistenceInitializationCompositionTest
         initializer.Should().BeOfType<EfCorePersistenceInitializer<ApplicationDbContext>>();
     }
 
-    [Fact(DisplayName = "AddPersistenceInitialization should register the three Todo seeders as steps")]
+    [Fact(DisplayName = "AddPersistenceInitialization should register every seeder as a step")]
     public void AddPersistenceInitialization_ShouldRegisterSeederSteps()
     {
         // Arrange
@@ -48,14 +50,16 @@ public sealed class PersistenceInitializationCompositionTest
         var steps = scope.ServiceProvider.GetServices<IInitializationStep>().ToList();
 
         // Assert
-        steps.Should().HaveCount(3);
+        steps.Should().HaveCount(5);
         steps.Select(step => step.Name).Should().BeEquivalentTo(
+            "seeder:identity-roles",
+            "seeder:identity-users",
             "seeder:todo-categories",
             "seeder:todo-lists",
             "seeder:todos");
     }
 
-    [Fact(DisplayName = "AddPersistenceInitialization should register the Todo seeders as IPersistenceSeeder")]
+    [Fact(DisplayName = "AddPersistenceInitialization should register every persistence seeder")]
     public void AddPersistenceInitialization_ShouldRegisterPersistenceSeeders()
     {
         // Arrange
@@ -66,10 +70,12 @@ public sealed class PersistenceInitializationCompositionTest
         var seeders = scope.ServiceProvider.GetServices<IPersistenceSeeder>().ToList();
 
         // Assert
-        seeders.Should().HaveCount(3);
+        seeders.Should().HaveCount(5);
         seeders.Select(seeder => seeder.EntityType).Should().BeEquivalentTo(
             new[]
             {
+                typeof(Role),
+                typeof(User),
                 typeof(TodoCategory),
                 typeof(TodoList),
                 typeof(Todo)
@@ -104,7 +110,7 @@ public sealed class PersistenceInitializationCompositionTest
         var steps = scope.ServiceProvider.GetServices<IInitializationStep>().ToList();
 
         // Assert
-        steps.Should().HaveCount(3);
+        steps.Should().HaveCount(5);
     }
 
     [Fact(DisplayName = "AddPersistenceInitialization should register the initializer as scoped")]
@@ -177,7 +183,7 @@ public sealed class PersistenceInitializationCompositionTest
 
         // Assert
         initializer.Should().NotBeNull();
-        steps.Should().HaveCount(3);
+        steps.Should().HaveCount(5);
     }
 
     private static ServiceProvider BuildProvider()

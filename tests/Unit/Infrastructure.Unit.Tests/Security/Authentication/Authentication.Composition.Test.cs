@@ -8,8 +8,15 @@ using Application.Common.Security.Authentication.Tokens.Options;
 
 using Infrastructure.Security.Authentication;
 using Infrastructure.Security.Authentication.Contexts;
-using Infrastructure.Security.Authentication.Tokens.Services;
+using Application.Common.Persistence.UnitOfWorks;
 
+using Infrastructure.Persistence.EntityFramework.Contexts;
+using Infrastructure.Persistence.EntityFramework.UnitOfWorks;
+using Infrastructure.Security.Authentication.Tokens.Services;
+using Infrastructure.Security.Identity.Domain.Users;
+
+using Microsoft.AspNetCore.Identity;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -45,6 +52,25 @@ public sealed class AuthenticationCompositionTest
         services.Should().Contain(descriptor =>
             descriptor.ServiceType == typeof(ITokenRotationService) &&
             descriptor.Lifetime == ServiceLifetime.Scoped);
+    }
+
+    [Fact(DisplayName = "AddAuthentication should resolve the complete token and Identity pipeline")]
+    public void AddAuthentication_ShouldResolveFullPipeline()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddDbContext<ApplicationDbContext>(options =>
+            options.UseInMemoryDatabase($"Auth_{Guid.NewGuid():N}"));
+        services.AddScoped<EfCoreDbContext>(provider =>
+            provider.GetRequiredService<ApplicationDbContext>());
+        services.AddScoped<IUnitOfWork, EfCoreUnitOfWork>();
+        services.AddAuthentication(BuildConfiguration());
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+        provider.GetRequiredService<IRefreshTokenService>().Should().NotBeNull();
+        provider.GetRequiredService<ITokenBlacklist>().Should().NotBeNull();
+        provider.GetRequiredService<ITokenRotationService>().Should().NotBeNull();
+        provider.GetRequiredService<UserManager<User>>().Should().NotBeNull();
     }
 
     [Fact(DisplayName = "AddAuthentication should reject null dependencies")]

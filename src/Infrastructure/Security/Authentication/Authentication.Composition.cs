@@ -8,7 +8,10 @@ using Application.Common.Security.Authentication.Tokens.Options;
 
 using Infrastructure.Security.Authentication.Contexts;
 using Infrastructure.Security.Authentication.Tokens.Services;
+using Infrastructure.Security.Authentication.Tokens.Stores;
+using Infrastructure.Security.Identity;
 
+using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -40,6 +43,7 @@ public static class AuthenticationComposition
         services.AddHttpContextAccessor();
         services.TryAddScoped<ITenantContext, TenantContext>();
         services.TryAddScoped<IUserContext, CurrentUser>();
+        services.AddIdentityServices();
 
         // Initialize: keep the system clock replaceable so tests can inject a fake.
         services.TryAddSingleton(TimeProvider.System);
@@ -58,10 +62,14 @@ public static class AuthenticationComposition
                 .GetSection(TokenConstant.Sections.Blacklist)
                 .Get<TokenBlacklistOption>() ?? new TokenBlacklistOption());
 
-        services.TryAddSingleton<ITokenService, JwtTokenService>();
+        // Register: distributed blacklist storage falls back to memory when no L2 cache is configured.
+        if (!services.Any(descriptor => descriptor.ServiceType == typeof(IDistributedCache)))
+            services.AddDistributedMemoryCache();
 
-        // Register: store-backed services; their persistence adapters supply
-        // IRefreshTokenStore and ITokenBlacklistStore before first resolution.
+        services.TryAddScoped<IRefreshTokenStore, EfCoreRefreshTokenStore>();
+        services.TryAddSingleton<ITokenBlacklistStore, DistributedTokenBlacklistStore>();
+
+        services.TryAddSingleton<ITokenService, JwtTokenService>();
         services.TryAddScoped<IRefreshTokenService, RefreshTokenService>();
         services.TryAddScoped<ITokenBlacklist, TokenBlacklistService>();
         services.TryAddScoped<ITokenRotationService, TokenRotationService>();
