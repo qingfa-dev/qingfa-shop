@@ -219,6 +219,8 @@ silently overwrite each other.
 
 4. Add a migration `AddAggregateVersion`:
    - `Todos.Version bigint NOT NULL DEFAULT 0`
+   - `TodoLists.Version bigint NOT NULL DEFAULT 0`
+   - `TodoCategories.Version bigint NOT NULL DEFAULT 0`
    - no other table changes.
 
 5. `EfCoreUnitOfWork` already translates `DbUpdateConcurrencyException` to
