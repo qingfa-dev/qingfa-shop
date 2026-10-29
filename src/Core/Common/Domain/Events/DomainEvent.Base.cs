@@ -9,6 +9,12 @@ public abstract record DomainEvent : IDomainEvent
 {
     #region Properties
     public DefaultMetadata Metadata { get; set; } = DefaultMetadata.Create();
+
+    /// <summary>Gets the stable wire name of the event; defaults to the CLR type name.</summary>
+    public virtual string EventName => GetType().Name;
+
+    /// <summary>Gets the payload version of the event; starts at <c>1</c>.</summary>
+    public virtual int EventVersion => 1;
     #endregion
     #region Contructors
     protected DomainEvent(Guid? eventId = null, DateTimeOffset? occurredOnUtc = null, IMetadata? metadata = null)

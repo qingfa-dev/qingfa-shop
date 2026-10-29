@@ -8,4 +8,9 @@ namespace Core.Common.Domain.Events;
 /// </summary>
 public interface IDomainEvent : INotification, IHasMetadata
 {
+    /// <summary>Gets the stable wire name of the event.</summary>
+    string EventName { get; }
+
+    /// <summary>Gets the payload version of the event.</summary>
+    int EventVersion { get; }
 }
