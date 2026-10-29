@@ -7,7 +7,6 @@
   <Folder Name="/src/">
     <Project Path="src/ServiceDefaults/ServiceDefaults.csproj" />
     <Project Path="src/Core/Core.csproj" />
-    <Project Path="src/Contract/Contract.csproj" />
     <Project Path="src/Application/Application.csproj" />
     <Project Path="src/Infrastructure/Infrastructure.csproj" />
   </Folder>
@@ -16,7 +15,6 @@
     <Project Path="tests/Unit/Core.Unit.Tests/Core.Unit.Tests.csproj" />
     <Project Path="tests/Unit/Infrastructure.Unit.Tests/Infrastructure.Unit.Tests.csproj" />
     <Project Path="tests/Unit/Application.Unit.Tests/Application.Unit.Tests.csproj" />
-    <Project Path="tests/Unit/Contract.Unit.Tests/Contract.Unit.Tests.csproj" />
     <Project Path="tests/Integration/Api.Integration.Tests/Api.Integration.Tests.csproj" />
     <Project Path="tests/Integration/AppHost.Integration.Tests/AppHost.Integration.Tests.csproj" />
     <Project Path="tests/Integration/Infrastructure.Integration.Tests/Infrastructure.Integration.Tests.csproj" />

@@ -34,7 +34,6 @@ QingFa.Shop/
 │   └── Web.Storefront/        # Storefront SPA (Vite)
 ├── src/
 │   ├── Core/                  # Domain models, interfaces
-│   ├── Contract/              # Public request/response contracts
 │   ├── Application/           # Use cases and handlers
 │   ├── Infrastructure/        # EF Core, Redis, external services
 │   └── ServiceDefaults/       # Shared Aspire service config
@@ -320,7 +319,7 @@ kubectl apply -f ./manifests/
 
 `make test` runs the fast gate in layer order:
 
-1. **.NET unit** — Core → Contract → Application → Infrastructure → Architecture
+1. **.NET unit** — Core → Application → Infrastructure → Architecture
 2. **.NET integration** — Api
 3. **Web unit** — Storefront → Admin
 4. **Web integration** — Storefront → Admin
@@ -340,8 +339,7 @@ merged .NET gate (`make coverage.report`) runs on `main` and the nightly
 schedule after the Api, AppHost, and infrastructure coverage jobs upload their
 raw Cobertura files.
 
-- Gated .NET assemblies: `Core`, `Application`, `Contract` (lines only),
-  `Infrastructure`, `Web.Api`.
+- Gated .NET assemblies: `Core`, `Application`, `Infrastructure`, `Web.Api`.
 - Report-only: `ServiceDefaults`, `Gateway`, `AppHost`, and all `*.Tests`
   assemblies.
 - Reports land in `artifacts/coverage/` (git-ignored).

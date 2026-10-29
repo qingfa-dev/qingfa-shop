@@ -3,7 +3,7 @@
 ## Repository map
 
 - .NET 10 Aspire solution. `global.json` pins SDK `10.0.401`; `README.md` still says .NET 9 and Pinia — trust `global.json` and `package.json`.
-- Layers: `src/Core` (no refs) ← `src/Contract` (Core) ← `src/Application` (Core, Contract). `src/Infrastructure` adds Application + ServiceDefaults. `app/Web.Api` is the composition root.
+- Layers: `src/Core` (no refs) ← `src/Application` (Core) ← `src/Infrastructure` (Application + ServiceDefaults). `app/Web.Api` is the composition root.
 - `app/Gateway` is the YARP edge in front of the Api. `app/AppHost` wires Postgres, Redis, Api, Gateway, and both Vite apps. The storefront is served at `/`, admin under `/admin`.
 - `app/Web.Storefront` and `app/Web.Admin` are one pnpm workspace rooted at `app/`, not the repo root.
 - `make` is the public command surface; `make help` is authoritative. `make/*.mk` declares targets, `scripts/**` implements them.
@@ -24,7 +24,7 @@
 
 ## Test layout and order
 
-- .NET unit, base → higher: `tests/Unit/Core.Unit.Tests` → `Contract.Unit.Tests` → `Application.Unit.Tests` → `Infrastructure.Unit.Tests` → `tests/Architecture.Tests` last.
+- .NET unit, base → higher: `tests/Unit/Core.Unit.Tests` → `Application.Unit.Tests` → `Infrastructure.Unit.Tests` → `tests/Architecture.Tests` last.
 - .NET integration: `tests/Integration/Api.Integration.Tests` → `AppHost.Integration.Tests` → `Infrastructure.Integration.Tests`.
 - Web: `app/Web.*/src/__tests__/unit` then `.../integration`; `.../e2e` is optional (Playwright is not installed; the target skips cleanly).
 - Single xUnit test:
@@ -39,8 +39,8 @@
 
 ## Coverage
 
-- Floors: 90% line / 80% branch per assembly and per web app; `Contract` is line-only (branch-exempt).
-- Gated: `Core`, `Application`, `Contract`, `Infrastructure`, `Web.Api`, both SPAs. Report-only: `ServiceDefaults`, `Gateway`, `AppHost`, test assemblies.
+- Floors: 90% line / 80% branch per assembly and per web app.
+- Gated: `Core`, `Application`, `Infrastructure`, `Web.Api`, both SPAs. Report-only: `ServiceDefaults`, `Gateway`, `AppHost`, test assemblies.
 - Reports land in `artifacts/coverage/` (git-ignored). PR CI runs unit + web coverage; main/nightly adds Api/AppHost/Infra raw reports and `coverage.report` merges them.
 - Override locally with `COVERAGE_LINES=… COVERAGE_BRANCHES=… make coverage`.
 
@@ -66,7 +66,7 @@
 - PR: `backend` job runs lint/build/unit coverage + Api tests; `web` job runs web coverage.
 - `main`, nightly, and manual runs add AppHost, Infrastructure, merged coverage, and optional e2e. Compose smoke runs only when Compose/images inputs change.
 - `cd.yml` runs `make ci` before building/tagging images; tags and `main` push it.
-- Docs caveat: `tests/README.md` mentions projects that do not exist (e.g. Contract/Pact tests). Trust the `.csproj` files and `make help`.
+- Docs caveat: older folder READMEs can lag the implementation; trust the `.csproj` files and `make help`.
 
 ## Read next
 
