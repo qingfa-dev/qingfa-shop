@@ -7,6 +7,8 @@ using Core.Common.Domain.Events;
 using Core.Todos.Items;
 
 using Infrastructure.Integrations.Messaging.Serialization;
+using Infrastructure.Security.Identity.Domain.Roles;
+using Infrastructure.Security.Identity.Domain.Users;
 
 namespace Infrastructure.Unit.Tests.Integrations.Messaging.Serialization;
 
@@ -26,7 +28,9 @@ public sealed class JsonMessageSerializerTest
 
     public JsonMessageSerializerTest()
     {
-        var registry = new EventTypeRegistry(typeof(TodoCreated).Assembly);
+        var registry = new EventTypeRegistry(
+            typeof(TodoCreated).Assembly,
+            typeof(RoleCreated).Assembly);
         registry.Register<TestDomainEvent>(nameof(TestDomainEvent), 1);
         registry.Register<TestIntegrationEvent>(IntegrationEventName, IntegrationEventVersion);
 
@@ -82,6 +86,85 @@ public sealed class JsonMessageSerializerTest
         result.GetTimestamp().Should().Be(timestamp);
         result.As<TodoCreated>().TodoId.Should().Be(todoId);
         result.As<TodoCreated>().Title.Should().Be("Buy milk");
+    }
+
+    [Fact(DisplayName = "RoleCreated round-trip should preserve the metadata envelope")]
+    public void DomainEventRoundTrip_WithRoleCreated_ShouldPreserveMetadataEnvelope()
+    {
+        // Arrange
+        Guid roleId = Guid.NewGuid();
+        var created = new RoleCreated(
+            roleId,
+            "Administrator",
+            DefaultMetadata.Create().With("tenant", "acme"));
+        Guid eventId = created.GetEventId()!.Value;
+
+        // Act
+        string payload = _domainSerializer.Serialize(created);
+        IDomainEvent result = _domainSerializer.Deserialize(created.EventName, created.EventVersion, payload);
+
+        // Assert
+        result.Should().BeOfType<RoleCreated>();
+        result.GetEventId().Should().Be(eventId);
+        result.GetTenantId().Should().Be(created.GetTenantId());
+        result.As<RoleCreated>().RoleId.Should().Be(roleId);
+        result.As<RoleCreated>().Name.Should().Be("Administrator");
+    }
+
+    [Fact(DisplayName = "UserCreated round-trip should preserve the metadata envelope")]
+    public void DomainEventRoundTrip_WithUserCreated_ShouldPreserveMetadataEnvelope()
+    {
+        // Arrange
+        Guid userId = Guid.NewGuid();
+        var created = new UserCreated(
+            userId,
+            "ada",
+            "ada@example.com",
+            DefaultMetadata.Create().With("tenant", "acme"));
+        Guid eventId = created.GetEventId()!.Value;
+
+        // Act
+        string payload = _domainSerializer.Serialize(created);
+        IDomainEvent result = _domainSerializer.Deserialize(created.EventName, created.EventVersion, payload);
+
+        // Assert
+        result.Should().BeOfType<UserCreated>();
+        result.GetEventId().Should().Be(eventId);
+        result.GetTenantId().Should().Be(created.GetTenantId());
+        result.As<UserCreated>().UserId.Should().Be(userId);
+        result.As<UserCreated>().UserName.Should().Be("ada");
+    }
+
+    [Fact(DisplayName = "Every identity event should round-trip without a metadata property collision")]
+    public void Serialize_WithEveryIdentityEvent_ShouldRoundTrip()
+    {
+        // Arrange
+        IDomainEvent[] events =
+        [
+            new RoleCreated(Guid.NewGuid(), "Administrator"),
+            new RoleUpdated(Guid.NewGuid(), "Administrator"),
+            new RoleDeleted(Guid.NewGuid()),
+            new UserCreated(Guid.NewGuid(), "ada", "ada@example.com"),
+            new UserUpdated(Guid.NewGuid()),
+            new UserActivated(Guid.NewGuid()),
+            new UserDeactivated(Guid.NewGuid()),
+            new UserLocked(Guid.NewGuid(), DateTimeOffset.UtcNow),
+            new UserUnlocked(Guid.NewGuid()),
+            new UserSignedIn(Guid.NewGuid(), "10.0.0.1")
+        ];
+
+        // Act & Assert
+        foreach (IDomainEvent domainEvent in events)
+        {
+            string payload = _domainSerializer.Serialize(domainEvent);
+            IDomainEvent result = _domainSerializer.Deserialize(
+                domainEvent.EventName,
+                domainEvent.EventVersion,
+                payload);
+
+            result.GetType().Should().Be(domainEvent.GetType());
+            result.GetEventId().Should().NotBeNull();
+        }
     }
 
     [Fact(DisplayName = "Metadata scalars should round-trip as CLR values rather than JsonElement")]

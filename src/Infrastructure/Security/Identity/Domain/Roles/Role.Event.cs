@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 using Core.Common.Domain.Events;
 using Core.Common.Monad.Metadata;
 
@@ -10,7 +12,7 @@ namespace Infrastructure.Security.Identity.Domain.Roles;
 public sealed record RoleCreated(
     Guid RoleId,
     string Name,
-    DefaultMetadata? metadata = null) : DomainEvent(metadata: metadata);
+    [property: JsonIgnore] DefaultMetadata? metadata = null) : DomainEvent(metadata: metadata);
 
 /// <summary>Raised when a role changes.</summary>
 /// <param name="RoleId">The updated role identifier.</param>
@@ -19,10 +21,10 @@ public sealed record RoleCreated(
 public sealed record RoleUpdated(
     Guid RoleId,
     string Name,
-    DefaultMetadata? metadata = null) : DomainEvent(metadata: metadata);
+    [property: JsonIgnore] DefaultMetadata? metadata = null) : DomainEvent(metadata: metadata);
 
 /// <summary>Raised when a role is deleted.</summary>
 /// <param name="RoleId">The deleted role identifier.</param>
 /// <param name="metadata">Optional event metadata.</param>
-public sealed record RoleDeleted(Guid RoleId, DefaultMetadata? metadata = null)
+public sealed record RoleDeleted(Guid RoleId, [property: JsonIgnore] DefaultMetadata? metadata = null)
     : DomainEvent(metadata: metadata);
