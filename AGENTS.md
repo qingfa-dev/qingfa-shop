@@ -7,6 +7,7 @@
 - `app/Gateway` is the YARP edge in front of the Api. `app/AppHost` wires Postgres, Redis, Api, Gateway, and both Vite apps. The storefront is served at `/`, admin under `/admin`.
 - `app/Web.Storefront` and `app/Web.Admin` are one pnpm workspace rooted at `app/`, not the repo root.
 - `make` is the public command surface; `make help` is authoritative. `make/*.mk` declares targets, `scripts/**` implements them.
+- Goals are dotted (`api.test`, `coverage.api`). Bare group names (`api`, `store`, `web`, `integration`) are not targets: `make coverage api` means two goals and fails after `coverage`. Use `make coverage.api` or `make coverage api.test`.
 - AppHost injects `ConnectionStrings__db`, `ConnectionStrings__redis`, and `Persistence__AutoMigrate=true`. The standalone API reads `appsettings*.json` + environment variables; there is no `.env` loader despite the README.
 
 ## Commands
