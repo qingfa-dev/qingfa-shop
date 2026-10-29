@@ -1,7 +1,6 @@
 using Application.Common.Caching;
 
 using Microsoft.Extensions.Caching.Hybrid;
-using Microsoft.Extensions.Logging;
 
 namespace Infrastructure.Caching.Services;
 

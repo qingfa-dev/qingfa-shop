@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging;
-
 namespace Infrastructure.Caching.Services;
 
 internal sealed partial class CacheService
