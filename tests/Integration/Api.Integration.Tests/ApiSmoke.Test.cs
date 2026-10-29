@@ -26,5 +26,15 @@ public sealed class ApiSmokeTest : IntegrationTestBase
         Assert.NotNull(payload);
     }
 
+    [Fact]
+    public async Task GetPermissionCatalog_WithoutToken_ReturnsUnauthorized()
+    {
+        // Act
+        using var response = await Client.GetAsync("/api/authorization/permissions");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
     private sealed record TimeResponse(DateTimeOffset UtcNow);
 }

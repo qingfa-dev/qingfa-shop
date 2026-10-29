@@ -30,7 +30,15 @@ public sealed class IdentitySeederTest
             RoleConstant.Defaults.All);
         db.Set<Role>().Should().OnlyContain(role => role.IsSystem);
         db.Set<Role>().Should().OnlyContain(role => role.CreatedBy == "System");
-        db.Set<RoleClaim>().Should().HaveCount(13);
+        db.Set<RoleClaim>().Should().HaveCount(
+            RoleConstant.RolePermissions.Admin.Count +
+            RoleConstant.RolePermissions.Manager.Count +
+            RoleConstant.RolePermissions.User.Count);
+
+        Role admin = db.Set<Role>().Single(role => role.Name == RoleConstant.Defaults.Admin);
+        db.Set<RoleClaim>()
+            .Where(claim => claim.RoleId == admin.Id)
+            .Should().HaveCount(RoleConstant.RolePermissions.Admin.Count);
     }
 
     [Fact(DisplayName = "RoleSeeder should be idempotent and preview pending work")]
@@ -52,6 +60,40 @@ public sealed class IdentitySeederTest
 
         (await seeder.ExecuteAsync(initialization)).IsSuccess.Should().BeTrue();
         db.Set<Role>().Should().HaveCount(3);
+    }
+
+    [Fact(DisplayName = "RoleSeeder should sync newly introduced permissions into existing roles")]
+    public async Task RoleSeeder_ShouldAddMissingClaimsToExistingRoles()
+    {
+        await using ApplicationDbContext db = CreateContext();
+        var seeder = new RoleSeeder(db);
+        var initialization = Mock.Of<IInitializationContext>();
+
+        await seeder.ExecuteAsync(initialization);
+
+        Role admin = await db.Set<Role>().SingleAsync(
+            role => role.Name == RoleConstant.Defaults.Admin,
+            TestContext.Current.CancellationToken);
+        RoleClaim removed = await db.Set<RoleClaim>().FirstAsync(
+            claim => claim.RoleId == admin.Id,
+            TestContext.Current.CancellationToken);
+        db.Set<RoleClaim>().Remove(removed);
+        await db.SaveChangesAsync(TestContext.Current.CancellationToken);
+
+        Result<IReadOnlyList<InitializationOperation>> preview =
+            await seeder.PreviewAsync(initialization);
+        preview.Value.Should().Contain(operation =>
+            operation.Type == InitializationOperationType.DataChange);
+
+        Result result = await seeder.ExecuteAsync(initialization);
+
+        result.IsSuccess.Should().BeTrue();
+        List<string> values = await db.Set<RoleClaim>()
+            .Where(claim => claim.RoleId == admin.Id)
+            .Select(claim => claim.ClaimValue!)
+            .ToListAsync(TestContext.Current.CancellationToken);
+        values.Should().BeEquivalentTo(
+            RoleConstant.RolePermissions.Admin.Select(permission => permission.Identifier));
     }
 
     [Fact(DisplayName = "UserSeeder should create users linked to default roles")]

@@ -108,11 +108,11 @@ public sealed class CachingCompositionEdgeCasesTest
         using ServiceProvider provider = services.BuildServiceProvider();
         ICacheService cache = provider.GetRequiredService<ICacheService>();
 
-        string value = await cache.GetOrCreateAsync(
+        Result<string> value = await cache.GetOrCreateAsync(
             "key",
             _ => ValueTask.FromResult("factory-value"));
 
-        value.Should().Be("factory-value");
+        value.Value.Should().Be("factory-value");
     }
 
     [Fact(DisplayName = "AddCaching when disabled should allow SetAsync")]
@@ -127,9 +127,9 @@ public sealed class CachingCompositionEdgeCasesTest
         using ServiceProvider provider = services.BuildServiceProvider();
         ICacheService cache = provider.GetRequiredService<ICacheService>();
 
-        Func<Task> act = async () => await cache.SetAsync("key", "value");
+        Result result = await cache.SetAsync("key", "value");
 
-        await act.Should().NotThrowAsync();
+        result.IsSuccess.Should().BeTrue();
     }
 
     [Fact(DisplayName = "AddCaching when disabled should allow RemoveAsync")]
@@ -144,9 +144,9 @@ public sealed class CachingCompositionEdgeCasesTest
         using ServiceProvider provider = services.BuildServiceProvider();
         ICacheService cache = provider.GetRequiredService<ICacheService>();
 
-        Func<Task> act = async () => await cache.RemoveAsync("key");
+        Result result = await cache.RemoveAsync("key");
 
-        await act.Should().NotThrowAsync();
+        result.IsSuccess.Should().BeTrue();
     }
 
     [Fact(DisplayName = "AddCaching when disabled should allow RemoveByTagAsync")]
@@ -161,9 +161,9 @@ public sealed class CachingCompositionEdgeCasesTest
         using ServiceProvider provider = services.BuildServiceProvider();
         ICacheService cache = provider.GetRequiredService<ICacheService>();
 
-        Func<Task> act = async () => await cache.RemoveByTagAsync("tag");
+        Result result = await cache.RemoveByTagAsync("tag");
 
-        await act.Should().NotThrowAsync();
+        result.IsSuccess.Should().BeTrue();
     }
 
     [Fact(DisplayName = "AddCaching should apply custom memory settings")]

@@ -83,7 +83,7 @@ public sealed class PermissionMetadataValidatorTest
         result.Errors.Should().Contain(failure =>
             failure.ErrorCode == "Permission.Domain.TooLong");
         result.Errors.Should().Contain(failure =>
-            failure.ErrorMessage == PermissionMetadataResult.Failure.PartTooLong("Domain", part.Length).Message);
+            failure.ErrorMessage == PermissionMetadataOutcome.Failure.PartTooLong("Domain", part.Length).Message);
     }
 
     [Fact(DisplayName = "Validator should accept hyphen and underscore inside parts")]
@@ -187,6 +187,6 @@ public sealed class PermissionMetadataValidatorTest
 
         result.Errors.Should().Contain(failure =>
             failure.ErrorCode == "Permission.Domain.Required" &&
-            failure.ErrorMessage == PermissionMetadataResult.Failure.PartRequired("Domain").Message);
+            failure.ErrorMessage == PermissionMetadataOutcome.Failure.PartRequired("Domain").Message);
     }
 }

@@ -1,3 +1,5 @@
+using Application.Common.Caching;
+
 using Infrastructure.Caching.Services;
 
 namespace Infrastructure.Unit.Tests.Caching.Services;
@@ -7,127 +9,192 @@ namespace Infrastructure.Unit.Tests.Caching.Services;
 [Trait("Feature", "Caching")]
 public sealed class CachingGuardTest
 {
-    #region Key
-
-    [Fact(DisplayName = "Key with valid key should not throw")]
-    public void Key_WithValidKey_ShouldNotThrow()
+    [Fact(DisplayName = "Key with valid key should return null")]
+    public void Key_WithValidKey_ShouldReturnNull()
     {
-        Action act = () => CachingGuard.Key("valid-key");
-
-        act.Should().NotThrow();
+        CachingGuard.Key("valid-key").Should().BeNull();
     }
 
-    [Theory(DisplayName = "Key with blank value should throw")]
+    [Theory(DisplayName = "Key with blank value should return KeyRequired")]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("  ")]
     [InlineData("\t")]
     [InlineData("\n")]
-    public void Key_WithBlankValue_ShouldThrow(string? value)
+    public void Key_WithBlankValue_ShouldReturnKeyRequired(string? value)
     {
-        Action act = () => CachingGuard.Key(value!);
+        Error? error = CachingGuard.Key(value!);
 
-        act.Should()
-            .Throw<ArgumentException>()
-            .WithParameterName("key")
-            .WithMessage("*Caching.Key.Required*");
+        error.Should().NotBeNull();
+        error!.Code.Should().Be("Caching.Key.Required");
     }
 
-    #endregion
+    [Fact(DisplayName = "Key beyond the maximum length should return KeyTooLong")]
+    public void Key_TooLong_ShouldReturnKeyTooLong()
+    {
+        string key = new('k', CachingConstant.Key.MaxLength + 1);
 
-    #region Factory
+        Error? error = CachingGuard.Key(key);
 
-    [Fact(DisplayName = "Factory with valid factory should not throw")]
-    public void Factory_WithValidFactory_ShouldNotThrow()
+        error.Should().NotBeNull();
+        error!.Code.Should().Be("Caching.Key.TooLong");
+        error.Message.Should().Contain((CachingConstant.Key.MaxLength + 1).ToString());
+    }
+
+    [Fact(DisplayName = "Factory with valid factory should return null")]
+    public void Factory_WithValidFactory_ShouldReturnNull()
     {
         Func<CancellationToken, ValueTask<string>> factory = _ => ValueTask.FromResult("value");
 
-        Action act = () => CachingGuard.Factory(factory);
-
-        act.Should().NotThrow();
+        CachingGuard.Factory(factory).Should().BeNull();
     }
 
-    [Fact(DisplayName = "Factory with null should throw")]
-    public void Factory_WithNull_ShouldThrow()
+    [Fact(DisplayName = "Factory with null should return FactoryRequired")]
+    public void Factory_WithNull_ShouldReturnFactoryRequired()
     {
-        Action act = () => CachingGuard.Factory(null!);
+        Error? error = CachingGuard.Factory(null);
 
-        act.Should()
-            .Throw<ArgumentNullException>()
-            .WithParameterName("factory")
-            .WithMessage("*Caching.Factory.Required*");
+        error.Should().NotBeNull();
+        error!.Code.Should().Be("Caching.Factory.Required");
     }
 
-    #endregion
-
-    #region Value
-
-    [Fact(DisplayName = "Value with valid value should not throw")]
-    public void Value_WithValidValue_ShouldNotThrow()
+    [Fact(DisplayName = "Value with valid value should return null")]
+    public void Value_WithValidValue_ShouldReturnNull()
     {
-        Action act = () => CachingGuard.Value("some-value");
-
-        act.Should().NotThrow();
+        CachingGuard.Value("some-value").Should().BeNull();
     }
 
-    [Fact(DisplayName = "Value with null should throw")]
-    public void Value_WithNull_ShouldThrow()
+    [Fact(DisplayName = "Value with null should return ValueRequired")]
+    public void Value_WithNull_ShouldReturnValueRequired()
     {
-        Action act = () => CachingGuard.Value(null);
+        Error? error = CachingGuard.Value(null);
 
-        act.Should()
-            .Throw<ArgumentNullException>()
-            .WithParameterName("value")
-            .WithMessage("*Caching.Value.Required*");
+        error.Should().NotBeNull();
+        error!.Code.Should().Be("Caching.Value.Required");
     }
 
-    [Fact(DisplayName = "Value with empty string should not throw")]
-    public void Value_WithEmptyString_ShouldNotThrow()
+    [Fact(DisplayName = "Value with empty string should return null")]
+    public void Value_WithEmptyString_ShouldReturnNull()
     {
-        Action act = () => CachingGuard.Value("");
-
-        act.Should().NotThrow();
+        CachingGuard.Value("").Should().BeNull();
     }
 
-    [Fact(DisplayName = "Value with boxed null int should throw")]
-    public void Value_WithBoxedNullInt_ShouldThrow()
+    [Fact(DisplayName = "Value with boxed null int should return ValueRequired")]
+    public void Value_WithBoxedNullInt_ShouldReturnValueRequired()
     {
         int? nullableInt = null;
 
-        Action act = () => CachingGuard.Value(nullableInt);
+        Error? error = CachingGuard.Value(nullableInt);
 
-        act.Should()
-            .Throw<ArgumentNullException>()
-            .WithParameterName("value")
-            .WithMessage("*Caching.Value.Required*");
+        error.Should().NotBeNull();
+        error!.Code.Should().Be("Caching.Value.Required");
     }
 
-    #endregion
-
-    #region Tag
-
-    [Fact(DisplayName = "Tag with valid tag should not throw")]
-    public void Tag_WithValidTag_ShouldNotThrow()
+    [Fact(DisplayName = "Tag with valid tag should return null")]
+    public void Tag_WithValidTag_ShouldReturnNull()
     {
-        Action act = () => CachingGuard.Tag("valid-tag");
-
-        act.Should().NotThrow();
+        CachingGuard.Tag("valid-tag").Should().BeNull();
     }
 
-    [Theory(DisplayName = "Tag with blank value should throw")]
+    [Theory(DisplayName = "Tag with blank value should return TagRequired")]
     [InlineData(null)]
     [InlineData("")]
     [InlineData("  ")]
     [InlineData("\t")]
-    public void Tag_WithBlankValue_ShouldThrow(string? value)
+    public void Tag_WithBlankValue_ShouldReturnTagRequired(string? value)
     {
-        Action act = () => CachingGuard.Tag(value!);
+        Error? error = CachingGuard.Tag(value!);
 
-        act.Should()
-            .Throw<ArgumentException>()
-            .WithParameterName("tag")
-            .WithMessage("*Caching.Tag.Required*");
+        error.Should().NotBeNull();
+        error!.Code.Should().Be("Caching.Tag.Required");
     }
 
-    #endregion
+    [Fact(DisplayName = "Tags with null collection should be treated as no optional tags")]
+    public void Tags_WithNullCollection_ShouldReturnNull()
+    {
+        CachingGuard.Tags(null).Should().BeNull();
+    }
+
+    [Fact(DisplayName = "TagsRequired with null collection should return TagsRequired")]
+    public void TagsRequired_WithNullCollection_ShouldReturnTagsRequired()
+    {
+        Error? error = CachingGuard.TagsRequired(null);
+
+        error.Should().NotBeNull();
+        error!.Code.Should().Be("Caching.Tags.Required");
+    }
+
+    [Fact(DisplayName = "Tags with a blank member should return TagRequired")]
+    public void Tags_WithBlankMember_ShouldReturnTagRequired()
+    {
+        Error? error = CachingGuard.Tags(["valid", " "]);
+
+        error.Should().NotBeNull();
+        error!.Code.Should().Be("Caching.Tag.Required");
+    }
+
+    [Fact(DisplayName = "Tags with valid members should return null")]
+    public void Tags_WithValidMembers_ShouldReturnNull()
+    {
+        CachingGuard.Tags(["tag1", "tag2"]).Should().BeNull();
+    }
+
+    [Fact(DisplayName = "Options with null should return null")]
+    public void Options_WithNull_ShouldReturnNull()
+    {
+        CachingGuard.Options(null).Should().BeNull();
+    }
+
+    [Fact(DisplayName = "Options with a zero expiration should return ExpirationInvalid")]
+    public void Options_WithZeroExpiration_ShouldReturnExpirationInvalid()
+    {
+        CachingEntryOption options = new() { Expiration = TimeSpan.Zero };
+
+        Error? error = CachingGuard.Options(options);
+
+        error.Should().NotBeNull();
+        error!.Code.Should().Be("Caching.Entry.ExpirationInvalid");
+    }
+
+    [Fact(DisplayName = "Options with a zero local expiration should return LocalExpirationInvalid")]
+    public void Options_WithZeroLocalExpiration_ShouldReturnLocalExpirationInvalid()
+    {
+        CachingEntryOption options = new()
+        {
+            Expiration = TimeSpan.FromMinutes(10),
+            LocalCacheExpiration = TimeSpan.Zero,
+        };
+
+        Error? error = CachingGuard.Options(options);
+
+        error.Should().NotBeNull();
+        error!.Code.Should().Be("Caching.Entry.LocalExpirationInvalid");
+    }
+
+    [Fact(DisplayName = "Options where local exceeds absolute should return LocalExpirationExceedsAbsolute")]
+    public void Options_WithLocalExceedingAbsolute_ShouldReturnContradiction()
+    {
+        CachingEntryOption options = new()
+        {
+            Expiration = TimeSpan.FromMinutes(5),
+            LocalCacheExpiration = TimeSpan.FromMinutes(10),
+        };
+
+        Error? error = CachingGuard.Options(options);
+
+        error.Should().NotBeNull();
+        error!.Code.Should().Be("Caching.Entry.LocalExpirationExceedsAbsolute");
+    }
+
+    [Fact(DisplayName = "Options with a valid lifetime should return null")]
+    public void Options_WithValidLifetime_ShouldReturnNull()
+    {
+        CachingEntryOption options = new()
+        {
+            Expiration = TimeSpan.FromMinutes(30),
+            LocalCacheExpiration = TimeSpan.FromMinutes(5),
+        };
+
+        CachingGuard.Options(options).Should().BeNull();
+    }
 }

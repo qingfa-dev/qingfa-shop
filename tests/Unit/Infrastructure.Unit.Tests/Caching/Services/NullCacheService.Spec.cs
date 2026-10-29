@@ -15,19 +15,19 @@ public sealed class NullCacheServiceTest
     public async Task GetOrCreateAsync_ShouldAlwaysInvokeFactory()
     {
         int calls = 0;
-        string first = await _cache.GetOrCreateAsync("key", _ =>
+        Result<string> first = await _cache.GetOrCreateAsync("key", _ =>
         {
             calls++;
             return ValueTask.FromResult("value");
         });
-        string second = await _cache.GetOrCreateAsync("key", _ =>
+        Result<string> second = await _cache.GetOrCreateAsync("key", _ =>
         {
             calls++;
             return ValueTask.FromResult("other");
         });
 
-        first.Should().Be("value");
-        second.Should().Be("other");
+        first.Value.Should().Be("value");
+        second.Value.Should().Be("other");
         calls.Should().Be(2);
     }
 
@@ -36,128 +36,116 @@ public sealed class NullCacheServiceTest
     {
         CancellationTokenSource source = new();
 
-        await _cache.GetOrCreateAsync("key", token =>
+        Result<string> result = await _cache.GetOrCreateAsync("key", token =>
         {
             token.CanBeCanceled.Should().BeTrue();
             token.Should().Be(source.Token);
             return ValueTask.FromResult("value");
         }, cancellationToken: source.Token);
+
+        result.Value.Should().Be("value");
     }
 
-    [Fact(DisplayName = "GetOrCreateAsync with blank key should throw")]
-    public async Task GetOrCreateAsync_WithBlankKey_ShouldThrow()
+    [Fact(DisplayName = "GetOrCreateAsync with blank key should return KeyRequired")]
+    public async Task GetOrCreateAsync_WithBlankKey_ShouldReturnKeyRequired()
     {
-        Func<Task> act = async () => await _cache.GetOrCreateAsync(
+        Result<string> result = await _cache.GetOrCreateAsync(
             "  ",
             _ => ValueTask.FromResult("value"));
 
-        await act.Should()
-            .ThrowAsync<ArgumentException>()
-            .WithMessage("*Caching.Key.Required*");
+        result.IsFailure.Should().BeTrue();
+        result.Errors[0].Code.Should().Be("Caching.Key.Required");
     }
 
-    [Fact(DisplayName = "GetOrCreateAsync with null key should throw")]
-    public async Task GetOrCreateAsync_WithNullKey_ShouldThrow()
+    [Fact(DisplayName = "GetOrCreateAsync with null key should return KeyRequired")]
+    public async Task GetOrCreateAsync_WithNullKey_ShouldReturnKeyRequired()
     {
-        Func<Task> act = async () => await _cache.GetOrCreateAsync(
+        Result<string> result = await _cache.GetOrCreateAsync(
             null!,
             _ => ValueTask.FromResult("value"));
 
-        await act.Should().ThrowAsync<ArgumentException>();
+        result.Errors[0].Code.Should().Be("Caching.Key.Required");
     }
 
-    [Fact(DisplayName = "GetOrCreateAsync with null factory should throw")]
-    public async Task GetOrCreateAsync_WithNullFactory_ShouldThrow()
+    [Fact(DisplayName = "GetOrCreateAsync with null factory should return FactoryRequired")]
+    public async Task GetOrCreateAsync_WithNullFactory_ShouldReturnFactoryRequired()
     {
-        Func<Task> act = async () => await _cache.GetOrCreateAsync<string>(
-            "key",
-            null!);
+        Result<string> result = await _cache.GetOrCreateAsync<string>("key", null!);
 
-        await act.Should()
-            .ThrowAsync<ArgumentNullException>()
-            .WithMessage("*Caching.Factory.Required*");
+        result.Errors[0].Code.Should().Be("Caching.Factory.Required");
     }
 
-    [Fact(DisplayName = "SetAsync should not throw and should be a no-op")]
-    public async Task SetAsync_ShouldNotThrow()
+    [Fact(DisplayName = "SetAsync should succeed as a no-op")]
+    public async Task SetAsync_ShouldSucceed()
     {
-        Func<Task> act = async () => await _cache.SetAsync("key", "value");
+        Result result = await _cache.SetAsync("key", "value");
 
-        await act.Should().NotThrowAsync();
+        result.IsSuccess.Should().BeTrue();
     }
 
-    [Fact(DisplayName = "SetAsync with blank key should throw")]
-    public async Task SetAsync_WithBlankKey_ShouldThrow()
+    [Fact(DisplayName = "SetAsync with blank key should return KeyRequired")]
+    public async Task SetAsync_WithBlankKey_ShouldReturnKeyRequired()
     {
-        Func<Task> act = async () => await _cache.SetAsync("  ", "value");
+        Result result = await _cache.SetAsync("  ", "value");
 
-        await act.Should()
-            .ThrowAsync<ArgumentException>()
-            .WithMessage("*Caching.Key.Required*");
+        result.Errors[0].Code.Should().Be("Caching.Key.Required");
     }
 
-    [Fact(DisplayName = "SetAsync with null value should throw")]
-    public async Task SetAsync_WithNullValue_ShouldThrow()
+    [Fact(DisplayName = "SetAsync with null value should return ValueRequired")]
+    public async Task SetAsync_WithNullValue_ShouldReturnValueRequired()
     {
-        Func<Task> act = async () => await _cache.SetAsync<string>("key", null!);
+        Result result = await _cache.SetAsync<string>("key", null!);
 
-        await act.Should()
-            .ThrowAsync<ArgumentNullException>()
-            .WithMessage("*Caching.Value.Required*");
+        result.Errors[0].Code.Should().Be("Caching.Value.Required");
     }
 
-    [Fact(DisplayName = "RemoveAsync should not throw")]
-    public async Task RemoveAsync_ShouldNotThrow()
+    [Fact(DisplayName = "RemoveAsync should succeed")]
+    public async Task RemoveAsync_ShouldSucceed()
     {
-        Func<Task> act = async () => await _cache.RemoveAsync("key");
+        Result result = await _cache.RemoveAsync("key");
 
-        await act.Should().NotThrowAsync();
+        result.IsSuccess.Should().BeTrue();
     }
 
-    [Fact(DisplayName = "RemoveAsync with blank key should throw")]
-    public async Task RemoveAsync_WithBlankKey_ShouldThrow()
+    [Fact(DisplayName = "RemoveAsync with blank key should return KeyRequired")]
+    public async Task RemoveAsync_WithBlankKey_ShouldReturnKeyRequired()
     {
-        Func<Task> act = async () => await _cache.RemoveAsync("  ");
+        Result result = await _cache.RemoveAsync("  ");
 
-        await act.Should()
-            .ThrowAsync<ArgumentException>()
-            .WithMessage("*Caching.Key.Required*");
+        result.Errors[0].Code.Should().Be("Caching.Key.Required");
     }
 
-    [Fact(DisplayName = "RemoveByTagAsync with single tag should not throw")]
-    public async Task RemoveByTagAsync_WithSingleTag_ShouldNotThrow()
+    [Fact(DisplayName = "RemoveByTagAsync with a single tag should succeed")]
+    public async Task RemoveByTagAsync_WithSingleTag_ShouldSucceed()
     {
-        Func<Task> act = async () => await _cache.RemoveByTagAsync("tag");
+        Result result = await _cache.RemoveByTagAsync("tag");
 
-        await act.Should().NotThrowAsync();
+        result.IsSuccess.Should().BeTrue();
     }
 
-    [Fact(DisplayName = "RemoveByTagAsync with blank single tag should throw")]
-    public async Task RemoveByTagAsync_WithBlankTag_ShouldThrow()
+    [Fact(DisplayName = "RemoveByTagAsync with a blank tag should return TagRequired")]
+    public async Task RemoveByTagAsync_WithBlankTag_ShouldReturnTagRequired()
     {
-        Func<Task> act = async () => await _cache.RemoveByTagAsync("  ");
+        Result result = await _cache.RemoveByTagAsync("  ");
 
-        await act.Should()
-            .ThrowAsync<ArgumentException>()
-            .WithMessage("*Caching.Tag.Required*");
+        result.Errors[0].Code.Should().Be("Caching.Tag.Required");
     }
 
-    [Fact(DisplayName = "RemoveByTagAsync with collection should not throw")]
-    public async Task RemoveByTagAsync_WithCollection_ShouldNotThrow()
+    [Fact(DisplayName = "RemoveByTagAsync with a collection should succeed")]
+    public async Task RemoveByTagAsync_WithCollection_ShouldSucceed()
     {
-        Func<Task> act = async () => await _cache.RemoveByTagAsync(new[] { "tag1", "tag2" });
+        Result result = await _cache.RemoveByTagAsync(["tag1", "tag2"]);
 
-        await act.Should().NotThrowAsync();
+        result.IsSuccess.Should().BeTrue();
     }
 
-    [Fact(DisplayName = "RemoveByTagAsync with empty collection should not throw")]
-    public async Task RemoveByTagAsync_WithEmptyCollection_ShouldNotThrow()
+    [Fact(DisplayName = "RemoveByTagAsync with an empty collection should succeed")]
+    public async Task RemoveByTagAsync_WithEmptyCollection_ShouldSucceed()
     {
-        Func<Task> act = async () => await _cache.RemoveByTagAsync(Array.Empty<string>());
+        Result result = await _cache.RemoveByTagAsync(Array.Empty<string>());
 
-        await act.Should().NotThrowAsync();
+        result.IsSuccess.Should().BeTrue();
     }
-
 
     [Fact(DisplayName = "GetOrCreateAsync should respect custom options")]
     public async Task GetOrCreateAsync_ShouldRespectCustomOptions()
@@ -168,12 +156,12 @@ public sealed class NullCacheServiceTest
             DisableLocalCache = true
         };
 
-        string value = await _cache.GetOrCreateAsync(
+        Result<string> result = await _cache.GetOrCreateAsync(
             "key",
             _ => ValueTask.FromResult("value"),
             options);
 
-        value.Should().Be("value");
+        result.Value.Should().Be("value");
     }
 
     [Fact(DisplayName = "SetAsync should respect custom options and tags")]
@@ -184,6 +172,21 @@ public sealed class NullCacheServiceTest
             Expiration = TimeSpan.FromMinutes(10)
         };
 
-        await _cache.SetAsync("key", "value", options, new[] { "tag1", "tag2" });
+        Result result = await _cache.SetAsync("key", "value", options, ["tag1", "tag2"]);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact(DisplayName = "GetOrCreateAsync should reject invalid entry options")]
+    public async Task GetOrCreateAsync_WithInvalidOptions_ShouldReturnEntryFailure()
+    {
+        CachingEntryOption options = new() { Expiration = TimeSpan.Zero };
+
+        Result<string> result = await _cache.GetOrCreateAsync(
+            "key",
+            _ => ValueTask.FromResult("value"),
+            options);
+
+        result.Errors[0].Code.Should().Be("Caching.Entry.ExpirationInvalid");
     }
 }

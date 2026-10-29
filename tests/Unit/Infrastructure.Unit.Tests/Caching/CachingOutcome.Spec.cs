@@ -11,6 +11,44 @@ namespace Infrastructure.Unit.Tests.Caching;
 [Trait("Feature", "Caching")]
 public sealed class CachingOutcomeTest
 {
+    #region CachingOutcome template
+
+    [Fact(DisplayName = "Code should compose the stable dotted code")]
+    public void Code_ShouldComposeStableCode()
+    {
+        CachingOutcome.Code("Read", "ProviderUnavailable")
+            .Should().Be("Caching.Read.ProviderUnavailable");
+    }
+
+    [Fact(DisplayName = "Invalid should create a caller-contract error")]
+    public void Invalid_ShouldCreateBadRequest()
+    {
+        Error error = CachingOutcome.Invalid("Key", "Required", "A key is required.");
+
+        error.Code.Should().Be("Caching.Key.Required");
+        error.Status.Should().Be(400);
+    }
+
+    [Fact(DisplayName = "Unavailable should create a dependency error")]
+    public void Unavailable_ShouldCreateServiceUnavailable()
+    {
+        Error error = CachingOutcome.Unavailable("Read", "ProviderUnavailable", "Unavailable.");
+
+        error.Code.Should().Be("Caching.Read.ProviderUnavailable");
+        error.Status.Should().Be(503);
+    }
+
+    [Fact(DisplayName = "Fault should create an internal error")]
+    public void Fault_ShouldCreateInternalServerError()
+    {
+        Error error = CachingOutcome.Fault("Serialization", "Failed", "Fault.");
+
+        error.Code.Should().Be("Caching.Serialization.Failed");
+        error.Status.Should().Be(500);
+    }
+
+    #endregion
+
     #region CachingOutcome.Failure
 
     [Fact(DisplayName = "KeyRequired should have correct code and message")]
@@ -20,6 +58,17 @@ public sealed class CachingOutcomeTest
 
         error.Code.Should().Be("Caching.Key.Required");
         error.Message.Should().Contain("key");
+        error.Status.Should().Be(400);
+    }
+
+    [Fact(DisplayName = "KeyTooLong should have correct code and message")]
+    public void KeyTooLong_ShouldHaveCorrectCodeAndMessage()
+    {
+        Error error = CachingOutcome.Failure.KeyTooLong(2048);
+
+        error.Code.Should().Be("Caching.Key.TooLong");
+        error.Message.Should().Contain("2048");
+        error.Status.Should().Be(400);
     }
 
     [Fact(DisplayName = "FactoryRequired should have correct code and message")]
@@ -47,6 +96,69 @@ public sealed class CachingOutcomeTest
 
         error.Code.Should().Be("Caching.Tag.Required");
         error.Message.Should().Contain("tag");
+    }
+
+    [Fact(DisplayName = "TagsRequired should have correct code and message")]
+    public void TagsRequired_ShouldHaveCorrectCodeAndMessage()
+    {
+        Error error = CachingOutcome.Failure.TagsRequired;
+
+        error.Code.Should().Be("Caching.Tags.Required");
+        error.Message.Should().Contain("tag");
+    }
+
+    [Fact(DisplayName = "Entry lifetime failures should have specific codes")]
+    public void EntryLifetimeFailures_ShouldHaveSpecificCodes()
+    {
+        CachingOutcome.Failure.ExpirationInvalid.Code
+            .Should().Be("Caching.Entry.ExpirationInvalid");
+        CachingOutcome.Failure.LocalExpirationInvalid.Code
+            .Should().Be("Caching.Entry.LocalExpirationInvalid");
+        CachingOutcome.Failure.LocalExpirationExceedsAbsolute.Code
+            .Should().Be("Caching.Entry.LocalExpirationExceedsAbsolute");
+    }
+
+    [Fact(DisplayName = "Operation failures should be availability errors with the key")]
+    public void OperationFailures_ShouldBeAvailabilityErrors()
+    {
+        Error read = CachingOutcome.Failure.ReadFailed("user:1");
+        Error write = CachingOutcome.Failure.WriteFailed("user:1");
+        Error remove = CachingOutcome.Failure.RemoveFailed("user:1");
+        Error evict = CachingOutcome.Failure.EvictFailed("group");
+        Error evictAll = CachingOutcome.Failure.EvictFailed(tag: null);
+
+        read.Code.Should().Be("Caching.Read.ProviderUnavailable");
+        read.Message.Should().Contain("user:1");
+        write.Code.Should().Be("Caching.Write.ProviderUnavailable");
+        remove.Code.Should().Be("Caching.Remove.ProviderUnavailable");
+        evict.Code.Should().Be("Caching.Evict.ProviderUnavailable");
+        evict.Message.Should().Contain("group");
+        evictAll.Message.Should().NotContain("group");
+        read.Status.Should().Be(503);
+    }
+
+    [Fact(DisplayName = "Operation failures should include the exception type")]
+    public void OperationFailures_ShouldIncludeExceptionType()
+    {
+        Error error = CachingOutcome.Failure.ReadFailed(
+            "key",
+            new TimeoutException("timed out"));
+
+        error.Message.Should().Contain("TimeoutException");
+    }
+
+    [Fact(DisplayName = "SerializationFailed should be an internal error with key and type")]
+    public void SerializationFailed_ShouldBeInternalError()
+    {
+        Error error = CachingOutcome.Failure.SerializationFailed(
+            "key",
+            typeof(string),
+            new InvalidOperationException());
+
+        error.Code.Should().Be("Caching.Serialization.Failed");
+        error.Message.Should().Contain("key");
+        error.Message.Should().Contain("System.String");
+        error.Status.Should().Be(500);
     }
 
     #endregion

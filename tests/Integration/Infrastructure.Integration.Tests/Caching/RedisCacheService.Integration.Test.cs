@@ -1,3 +1,5 @@
+using Core.Common.Monad.Results;
+
 using Application.Common.Caching;
 
 using Infrastructure.Caching.Services;
@@ -57,12 +59,12 @@ public sealed class RedisCacheServiceIntegrationTest
         }
 
         int calls = 0;
-        string first = await _cache.GetOrCreateAsync("redis:int:getorcreate:once", _ =>
+        string first = await _cache.GetValueAsync("redis:int:getorcreate:once", _ =>
         {
             calls++;
             return ValueTask.FromResult("created-via-redis");
         });
-        string second = await _cache.GetOrCreateAsync("redis:int:getorcreate:once", _ =>
+        string second = await _cache.GetValueAsync("redis:int:getorcreate:once", _ =>
         {
             calls++;
             return ValueTask.FromResult("should-not-run");
@@ -83,7 +85,7 @@ public sealed class RedisCacheServiceIntegrationTest
 
         await _cache.SetAsync("redis:int:set:get", "stored-in-redis");
 
-        string value = await _cache.GetOrCreateAsync(
+        string value = await _cache.GetValueAsync(
             "redis:int:set:get",
             _ => ValueTask.FromResult("factory-should-not-run"));
 
@@ -101,7 +103,7 @@ public sealed class RedisCacheServiceIntegrationTest
         await _cache.SetAsync("redis:int:set:overwrite", "original");
         await _cache.SetAsync("redis:int:set:overwrite", "updated");
 
-        string value = await _cache.GetOrCreateAsync(
+        string value = await _cache.GetValueAsync(
             "redis:int:set:overwrite",
             _ => ValueTask.FromResult("factory-should-not-run"));
 
@@ -119,7 +121,7 @@ public sealed class RedisCacheServiceIntegrationTest
         await _cache.SetAsync("redis:int:remove:entry", "value");
         await _cache.RemoveAsync("redis:int:remove:entry");
 
-        string value = await _cache.GetOrCreateAsync(
+        string value = await _cache.GetValueAsync(
             "redis:int:remove:entry",
             _ => ValueTask.FromResult("factory-after-remove"));
 
@@ -139,10 +141,10 @@ public sealed class RedisCacheServiceIntegrationTest
 
         await _cache.RemoveByTagAsync("redis-evict-group");
 
-        string a = await _cache.GetOrCreateAsync(
+        string a = await _cache.GetValueAsync(
             "redis:int:tag:evict:a",
             _ => ValueTask.FromResult("factory-a"));
-        string b = await _cache.GetOrCreateAsync(
+        string b = await _cache.GetValueAsync(
             "redis:int:tag:evict:b",
             _ => ValueTask.FromResult("factory-b"));
 
@@ -158,7 +160,7 @@ public sealed class RedisCacheServiceIntegrationTest
             Assert.Skip(ContainerRuntime.SkipReason);
         }
 
-        TestRecord? result = await _cache.GetOrCreateAsync("redis:int:complex:obj", _ =>
+        TestRecord? result = await _cache.GetValueAsync("redis:int:complex:obj", _ =>
             ValueTask.FromResult(new TestRecord { Id = 42, Name = "RedisUser" }));
 
         result.Should().NotBeNull();
@@ -178,13 +180,13 @@ public sealed class RedisCacheServiceIntegrationTest
         await _cache.SetAsync("redis:int:indep:b", "beta");
         await _cache.SetAsync("redis:int:indep:c", "gamma");
 
-        string a = await _cache.GetOrCreateAsync(
+        string a = await _cache.GetValueAsync(
             "redis:int:indep:a",
             _ => ValueTask.FromResult("factory-a"));
-        string b = await _cache.GetOrCreateAsync(
+        string b = await _cache.GetValueAsync(
             "redis:int:indep:b",
             _ => ValueTask.FromResult("factory-b"));
-        string c = await _cache.GetOrCreateAsync(
+        string c = await _cache.GetValueAsync(
             "redis:int:indep:c",
             _ => ValueTask.FromResult("factory-c"));
 
@@ -206,7 +208,7 @@ public sealed class RedisCacheServiceIntegrationTest
             Expiration = TimeSpan.FromMinutes(10)
         };
 
-        string value = await _cache.GetOrCreateAsync(
+        string value = await _cache.GetValueAsync(
             "redis:int:options:custom",
             _ => ValueTask.FromResult("redis-option-value"),
             options);
@@ -214,43 +216,39 @@ public sealed class RedisCacheServiceIntegrationTest
         value.Should().Be("redis-option-value");
 
         // Second call should return cached value without invoking factory
-        string cached = await _cache.GetOrCreateAsync(
+        string cached = await _cache.GetValueAsync(
             "redis:int:options:custom",
             _ => ValueTask.FromResult("should-not-run"));
 
         cached.Should().Be("redis-option-value");
     }
 
-    [Fact(DisplayName = "GetOrCreateAsync with blank key should throw with Redis backend")]
-    public async Task GetOrCreateAsync_WithBlankKey_ShouldThrowWithRedis()
+    [Fact(DisplayName = "GetOrCreateAsync with blank key should return KeyRequired with Redis backend")]
+    public async Task GetOrCreateAsync_WithBlankKey_ShouldReturnKeyRequiredWithRedis()
     {
         if (!ContainerRuntime.IsAvailable)
         {
             Assert.Skip(ContainerRuntime.SkipReason);
         }
 
-        Func<Task> act = async () => await _cache.GetOrCreateAsync(
+        Result<string> result = await _cache.GetOrCreateAsync(
             "  ",
             _ => ValueTask.FromResult("value"));
 
-        await act.Should()
-            .ThrowAsync<ArgumentException>()
-            .WithMessage("*Caching.Key.Required*");
+        result.Errors[0].Code.Should().Be("Caching.Key.Required");
     }
 
-    [Fact(DisplayName = "SetAsync with null value should throw with Redis backend")]
-    public async Task SetAsync_WithNullValue_ShouldThrowWithRedis()
+    [Fact(DisplayName = "SetAsync with null value should return ValueRequired with Redis backend")]
+    public async Task SetAsync_WithNullValue_ShouldReturnValueRequiredWithRedis()
     {
         if (!ContainerRuntime.IsAvailable)
         {
             Assert.Skip(ContainerRuntime.SkipReason);
         }
 
-        Func<Task> act = async () => await _cache.SetAsync<string>("key", null!);
+        Result result = await _cache.SetAsync<string>("key", null!);
 
-        await act.Should()
-            .ThrowAsync<ArgumentNullException>()
-            .WithMessage("*Caching.Value.Required*");
+        result.Errors[0].Code.Should().Be("Caching.Value.Required");
     }
 
     /// <summary>Test record for complex object caching.</summary>

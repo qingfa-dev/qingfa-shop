@@ -1,3 +1,5 @@
+using Core.Common.Monad.Results;
+
 using Application.Common.Caching;
 
 namespace Infrastructure.Integration.Tests.Caching;
@@ -25,12 +27,12 @@ public sealed class CacheServiceIntegrationTest
     public async Task GetOrCreateAsync_ShouldCreateOnceAndCache()
     {
         int calls = 0;
-        string first = await _cache.GetOrCreateAsync("int:getorcreate:once", _ =>
+        string first = await _cache.GetValueAsync("int:getorcreate:once", _ =>
         {
             calls++;
             return ValueTask.FromResult("created");
         });
-        string second = await _cache.GetOrCreateAsync("int:getorcreate:once", _ =>
+        string second = await _cache.GetValueAsync("int:getorcreate:once", _ =>
         {
             calls++;
             return ValueTask.FromResult("should-not-run");
@@ -47,12 +49,12 @@ public sealed class CacheServiceIntegrationTest
         int stringCalls = 0;
         int intCalls = 0;
 
-        string str = await _cache.GetOrCreateAsync("int:types:string", _ =>
+        string str = await _cache.GetValueAsync("int:types:string", _ =>
         {
             stringCalls++;
             return ValueTask.FromResult("hello");
         });
-        int num = await _cache.GetOrCreateAsync("int:types:int", _ =>
+        int num = await _cache.GetValueAsync("int:types:int", _ =>
         {
             intCalls++;
             return ValueTask.FromResult(42);
@@ -67,7 +69,7 @@ public sealed class CacheServiceIntegrationTest
     [Fact(DisplayName = "GetOrCreateAsync should cache complex objects")]
     public async Task GetOrCreateAsync_ShouldCacheComplexObjects()
     {
-        TestRecord? result = await _cache.GetOrCreateAsync("int:complex:obj", _ =>
+        TestRecord? result = await _cache.GetValueAsync("int:complex:obj", _ =>
             ValueTask.FromResult(new TestRecord { Id = 1, Name = "Alice" }));
 
         result.Should().NotBeNull();
@@ -75,28 +77,24 @@ public sealed class CacheServiceIntegrationTest
         result.Name.Should().Be("Alice");
     }
 
-    [Fact(DisplayName = "GetOrCreateAsync with blank key should throw")]
-    public async Task GetOrCreateAsync_WithBlankKey_ShouldThrow()
+    [Fact(DisplayName = "GetOrCreateAsync with blank key should return KeyRequired")]
+    public async Task GetOrCreateAsync_WithBlankKey_ShouldReturnKeyRequired()
     {
-        Func<Task> act = async () => await _cache.GetOrCreateAsync(
+        Result<string> result = await _cache.GetOrCreateAsync(
             "  ",
             _ => ValueTask.FromResult("value"));
 
-        await act.Should()
-            .ThrowAsync<ArgumentException>()
-            .WithMessage("*Caching.Key.Required*");
+        result.Errors[0].Code.Should().Be("Caching.Key.Required");
     }
 
-    [Fact(DisplayName = "GetOrCreateAsync with null factory should throw")]
-    public async Task GetOrCreateAsync_WithNullFactory_ShouldThrow()
+    [Fact(DisplayName = "GetOrCreateAsync with null factory should return FactoryRequired")]
+    public async Task GetOrCreateAsync_WithNullFactory_ShouldReturnFactoryRequired()
     {
-        Func<Task> act = async () => await _cache.GetOrCreateAsync(
+        Result<string> result = await _cache.GetOrCreateAsync(
             "key",
             (Func<CancellationToken, ValueTask<string>>)null!);
 
-        await act.Should()
-            .ThrowAsync<ArgumentNullException>()
-            .WithMessage("*Caching.Factory.Required*");
+        result.Errors[0].Code.Should().Be("Caching.Factory.Required");
     }
 
     [Fact(DisplayName = "GetOrCreateAsync should pass a cancellable token to factory")]
@@ -105,7 +103,7 @@ public sealed class CacheServiceIntegrationTest
         CancellationToken? receivedToken = null;
 
         var cts = new CancellationTokenSource();
-        await _cache.GetOrCreateAsync(
+        await _cache.GetValueAsync(
             "int:ct:test",
             token =>
             {
@@ -126,7 +124,7 @@ public sealed class CacheServiceIntegrationTest
             Expiration = TimeSpan.FromMinutes(10)
         };
 
-        string value = await _cache.GetOrCreateAsync(
+        string value = await _cache.GetValueAsync(
             "int:options:custom",
             _ => ValueTask.FromResult("option-value"),
             options);
@@ -134,7 +132,7 @@ public sealed class CacheServiceIntegrationTest
         value.Should().Be("option-value");
 
         // Second call should return cached value without invoking factory
-        string cached = await _cache.GetOrCreateAsync(
+        string cached = await _cache.GetValueAsync(
             "int:options:custom",
             _ => ValueTask.FromResult("should-not-run"));
 
@@ -144,7 +142,7 @@ public sealed class CacheServiceIntegrationTest
     [Fact(DisplayName = "GetOrCreateAsync with tags should cache the value")]
     public async Task GetOrCreateAsync_WithTags_ShouldCache()
     {
-        string value = await _cache.GetOrCreateAsync(
+        string value = await _cache.GetValueAsync(
             "int:tags:create",
             _ => ValueTask.FromResult("tagged-value"),
             tags: ["integration-tag"]);
@@ -161,7 +159,7 @@ public sealed class CacheServiceIntegrationTest
     {
         await _cache.SetAsync("int:set:get", "stored-value");
 
-        string value = await _cache.GetOrCreateAsync(
+        string value = await _cache.GetValueAsync(
             "int:set:get",
             _ => ValueTask.FromResult("factory-should-not-run"));
 
@@ -174,7 +172,7 @@ public sealed class CacheServiceIntegrationTest
         await _cache.SetAsync("int:set:overwrite", "original");
         await _cache.SetAsync("int:set:overwrite", "updated");
 
-        string value = await _cache.GetOrCreateAsync(
+        string value = await _cache.GetValueAsync(
             "int:set:overwrite",
             _ => ValueTask.FromResult("factory-should-not-run"));
 
@@ -186,31 +184,27 @@ public sealed class CacheServiceIntegrationTest
     {
         await _cache.SetAsync("int:set:tags", "tagged", tags: ["group-a", "group-b"]);
 
-        string value = await _cache.GetOrCreateAsync(
+        string value = await _cache.GetValueAsync(
             "int:set:tags",
             _ => ValueTask.FromResult("factory-should-not-run"));
 
         value.Should().Be("tagged");
     }
 
-    [Fact(DisplayName = "SetAsync with blank key should throw")]
-    public async Task SetAsync_WithBlankKey_ShouldThrow()
+    [Fact(DisplayName = "SetAsync with blank key should return KeyRequired")]
+    public async Task SetAsync_WithBlankKey_ShouldReturnKeyRequired()
     {
-        Func<Task> act = async () => await _cache.SetAsync("  ", "value");
+        Result result = await _cache.SetAsync("  ", "value");
 
-        await act.Should()
-            .ThrowAsync<ArgumentException>()
-            .WithMessage("*Caching.Key.Required*");
+        result.Errors[0].Code.Should().Be("Caching.Key.Required");
     }
 
-    [Fact(DisplayName = "SetAsync with null value should throw")]
-    public async Task SetAsync_WithNullValue_ShouldThrow()
+    [Fact(DisplayName = "SetAsync with null value should return ValueRequired")]
+    public async Task SetAsync_WithNullValue_ShouldReturnValueRequired()
     {
-        Func<Task> act = async () => await _cache.SetAsync<string>("key", null!);
+        Result result = await _cache.SetAsync<string>("key", null!);
 
-        await act.Should()
-            .ThrowAsync<ArgumentNullException>()
-            .WithMessage("*Caching.Value.Required*");
+        result.Errors[0].Code.Should().Be("Caching.Value.Required");
     }
 
     #endregion
@@ -223,7 +217,7 @@ public sealed class CacheServiceIntegrationTest
         await _cache.SetAsync("int:remove:entry", "value");
         await _cache.RemoveAsync("int:remove:entry");
 
-        string value = await _cache.GetOrCreateAsync(
+        string value = await _cache.GetValueAsync(
             "int:remove:entry",
             _ => ValueTask.FromResult("factory-after-remove"));
 
@@ -238,14 +232,12 @@ public sealed class CacheServiceIntegrationTest
         await act.Should().NotThrowAsync();
     }
 
-    [Fact(DisplayName = "RemoveAsync with blank key should throw")]
-    public async Task RemoveAsync_WithBlankKey_ShouldThrow()
+    [Fact(DisplayName = "RemoveAsync with blank key should return KeyRequired")]
+    public async Task RemoveAsync_WithBlankKey_ShouldReturnKeyRequired()
     {
-        Func<Task> act = async () => await _cache.RemoveAsync("");
+        Result result = await _cache.RemoveAsync("");
 
-        await act.Should()
-            .ThrowAsync<ArgumentException>()
-            .WithMessage("*Caching.Key.Required*");
+        result.Errors[0].Code.Should().Be("Caching.Key.Required");
     }
 
     #endregion
@@ -260,10 +252,10 @@ public sealed class CacheServiceIntegrationTest
 
         await _cache.RemoveByTagAsync("evict-group");
 
-        string a = await _cache.GetOrCreateAsync(
+        string a = await _cache.GetValueAsync(
             "int:tag:evict:a",
             _ => ValueTask.FromResult("factory-a"));
-        string b = await _cache.GetOrCreateAsync(
+        string b = await _cache.GetValueAsync(
             "int:tag:evict:b",
             _ => ValueTask.FromResult("factory-b"));
 
@@ -279,10 +271,10 @@ public sealed class CacheServiceIntegrationTest
 
         await _cache.RemoveByTagAsync(new[] { "multi-a", "multi-b" });
 
-        string a = await _cache.GetOrCreateAsync(
+        string a = await _cache.GetValueAsync(
             "int:tag:multi:a",
             _ => ValueTask.FromResult("factory-a"));
-        string b = await _cache.GetOrCreateAsync(
+        string b = await _cache.GetValueAsync(
             "int:tag:multi:b",
             _ => ValueTask.FromResult("factory-b"));
 
@@ -298,14 +290,12 @@ public sealed class CacheServiceIntegrationTest
         await act.Should().NotThrowAsync();
     }
 
-    [Fact(DisplayName = "RemoveByTagAsync with blank tag should throw")]
-    public async Task RemoveByTagAsync_WithBlankTag_ShouldThrow()
+    [Fact(DisplayName = "RemoveByTagAsync with blank tag should return TagRequired")]
+    public async Task RemoveByTagAsync_WithBlankTag_ShouldReturnTagRequired()
     {
-        Func<Task> act = async () => await _cache.RemoveByTagAsync("  ");
+        Result result = await _cache.RemoveByTagAsync("  ");
 
-        await act.Should()
-            .ThrowAsync<ArgumentException>()
-            .WithMessage("*Caching.Tag.Required*");
+        result.Errors[0].Code.Should().Be("Caching.Tag.Required");
     }
 
     #endregion
@@ -346,13 +336,13 @@ public sealed class CacheServiceIntegrationTest
         await _cache.SetAsync("int:indep:b", "beta");
         await _cache.SetAsync("int:indep:c", "gamma");
 
-        string a = await _cache.GetOrCreateAsync(
+        string a = await _cache.GetValueAsync(
             "int:indep:a",
             _ => ValueTask.FromResult("factory-a"));
-        string b = await _cache.GetOrCreateAsync(
+        string b = await _cache.GetValueAsync(
             "int:indep:b",
             _ => ValueTask.FromResult("factory-b"));
-        string c = await _cache.GetOrCreateAsync(
+        string c = await _cache.GetValueAsync(
             "int:indep:c",
             _ => ValueTask.FromResult("factory-c"));
 

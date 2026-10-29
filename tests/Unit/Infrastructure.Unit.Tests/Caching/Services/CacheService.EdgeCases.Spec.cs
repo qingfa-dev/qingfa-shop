@@ -21,11 +21,13 @@ public sealed class CacheServiceEdgeCasesTest
         ICacheService cache = CreateCache(provider);
         CancellationTokenSource source = new();
 
-        await cache.GetOrCreateAsync("key", token =>
+        Result<string> result = await cache.GetOrCreateAsync("key", token =>
         {
             token.CanBeCanceled.Should().BeTrue();
             return ValueTask.FromResult("value");
         }, cancellationToken: source.Token);
+
+        result.Value.Should().Be("value");
     }
 
     [Fact(DisplayName = "GetOrCreateAsync with custom options should pass them through")]
@@ -40,12 +42,12 @@ public sealed class CacheServiceEdgeCasesTest
             DisableLocalCache = true
         };
 
-        string value = await cache.GetOrCreateAsync(
+        Result<string> result = await cache.GetOrCreateAsync(
             "key",
             _ => ValueTask.FromResult("value"),
             options);
 
-        value.Should().Be("value");
+        result.Value.Should().Be("value");
     }
 
     [Fact(DisplayName = "GetOrCreateAsync with tags should store them")]
@@ -54,24 +56,24 @@ public sealed class CacheServiceEdgeCasesTest
         using ServiceProvider provider = BuildProvider();
         ICacheService cache = CreateCache(provider);
 
-        string value = await cache.GetOrCreateAsync(
+        Result<string> value = await cache.GetOrCreateAsync(
             "key",
             _ => ValueTask.FromResult("value"),
-            tags: new[] { "tag1", "tag2" });
+            tags: ["tag1", "tag2"]);
 
-        value.Should().Be("value");
+        value.IsSuccess.Should().BeTrue();
 
-        await cache.RemoveByTagAsync("tag1");
+        (await cache.RemoveByTagAsync("tag1")).IsSuccess.Should().BeTrue();
 
-        string valueAfter = await cache.GetOrCreateAsync(
+        Result<string> valueAfter = await cache.GetOrCreateAsync(
             "key",
             _ => ValueTask.FromResult("factory"));
 
-        valueAfter.Should().Be("factory");
+        valueAfter.Value.Should().Be("factory");
     }
 
-    [Fact(DisplayName = "SetAsync with custom options should not throw")]
-    public async Task SetAsync_WithCustomOptions_ShouldNotThrow()
+    [Fact(DisplayName = "SetAsync with custom options should succeed")]
+    public async Task SetAsync_WithCustomOptions_ShouldSucceed()
     {
         using ServiceProvider provider = BuildProvider();
         ICacheService cache = CreateCache(provider);
@@ -83,101 +85,69 @@ public sealed class CacheServiceEdgeCasesTest
             DisableDistributedCache = true
         };
 
-        Func<Task> act = async () => await cache.SetAsync(
-            "key",
-            "value",
-            options,
-            new[] { "tag1" });
+        Result result = await cache.SetAsync("key", "value", options, ["tag1"]);
 
-        await act.Should().NotThrowAsync();
+        result.IsSuccess.Should().BeTrue();
     }
 
-    [Fact(DisplayName = "SetAsync with null value should throw")]
-    public async Task SetAsync_WithNullValue_ShouldThrow()
+    [Fact(DisplayName = "GetOrCreateAsync with a null factory should report the factory contract failure")]
+    public async Task GetOrCreateAsync_WithNullFactory_ShouldReturnFactoryRequired()
     {
         using ServiceProvider provider = BuildProvider();
         ICacheService cache = CreateCache(provider);
 
-        Func<Task> act = async () => await cache.SetAsync<string>("key", null!);
+        Result<string> result = await cache.GetOrCreateAsync<string>("key", null!);
 
-        await act.Should()
-            .ThrowAsync<ArgumentNullException>()
-            .WithMessage("*Caching.Value.Required*");
+        result.IsFailure.Should().BeTrue();
+        result.Errors[0].Code.Should().Be("Caching.Factory.Required");
     }
 
-    [Fact(DisplayName = "GetOrCreateAsync with null factory should throw")]
-    public async Task GetOrCreateAsync_WithNullFactory_ShouldThrow()
+    [Fact(DisplayName = "RemoveByTagAsync with a null tag should report the tag contract failure")]
+    public async Task RemoveByTagAsync_WithNullTag_ShouldReturnTagRequired()
     {
         using ServiceProvider provider = BuildProvider();
         ICacheService cache = CreateCache(provider);
 
-        Func<Task> act = async () => await cache.GetOrCreateAsync<string>(
-            "key",
-            null!);
+        Result result = await cache.RemoveByTagAsync((string)null!);
 
-        await act.Should()
-            .ThrowAsync<ArgumentNullException>()
-            .WithMessage("*Caching.Factory.Required*");
+        result.IsFailure.Should().BeTrue();
+        result.Errors[0].Code.Should().Be("Caching.Tag.Required");
     }
 
-    [Fact(DisplayName = "RemoveByTagAsync with collection should evict tagged entries")]
-    public async Task RemoveByTagAsync_WithCollection_ShouldEvictTaggedEntries()
+    [Fact(DisplayName = "RemoveByTagAsync with a null collection should report the tags contract failure")]
+    public async Task RemoveByTagAsync_WithNullCollection_ShouldReturnTagsRequired()
     {
         using ServiceProvider provider = BuildProvider();
         ICacheService cache = CreateCache(provider);
 
-        await cache.SetAsync("first", "one", tags: new[] { "group" });
-        await cache.SetAsync("second", "two", tags: new[] { "group" });
-        await cache.SetAsync("third", "three", tags: new[] { "other" });
+        Result result = await cache.RemoveByTagAsync((IEnumerable<string>)null!);
 
-        await cache.RemoveByTagAsync(new[] { "group" });
-
-        string first = await cache.GetOrCreateAsync(
-            "first",
-            _ => ValueTask.FromResult("factory-first"));
-        string second = await cache.GetOrCreateAsync(
-            "second",
-            _ => ValueTask.FromResult("factory-second"));
-
-        first.Should().Be("factory-first");
-        second.Should().Be("factory-second");
+        result.IsFailure.Should().BeTrue();
+        result.Errors[0].Code.Should().Be("Caching.Tags.Required");
     }
 
-    [Fact(DisplayName = "RemoveByTagAsync with null tag should throw")]
-    public async Task RemoveByTagAsync_WithNullTag_ShouldThrow()
+    [Fact(DisplayName = "RemoveByTagAsync with a blank member should report the tag contract failure")]
+    public async Task RemoveByTagAsync_WithBlankMember_ShouldReturnTagRequired()
     {
         using ServiceProvider provider = BuildProvider();
         ICacheService cache = CreateCache(provider);
 
-        Func<Task> act = async () => await cache.RemoveByTagAsync((string)null!);
+        Result result = await cache.RemoveByTagAsync(["valid", " "]);
 
-        await act.Should()
-            .ThrowAsync<ArgumentException>()
-            .WithMessage("*Caching.Tag.Required*");
+        result.IsFailure.Should().BeTrue();
+        result.Errors[0].Code.Should().Be("Caching.Tag.Required");
     }
 
-    [Fact(DisplayName = "RemoveByTagAsync with null collection should throw")]
-    public async Task RemoveByTagAsync_WithNullCollection_ShouldThrow()
+    [Fact(DisplayName = "RemoveAsync with a blank key should report the key contract failure")]
+    public async Task RemoveAsync_WithBlankKey_ShouldReturnKeyRequired()
     {
         using ServiceProvider provider = BuildProvider();
         ICacheService cache = CreateCache(provider);
 
-        Func<Task> act = async () => await cache.RemoveByTagAsync((IEnumerable<string>)null!);
+        Result result = await cache.RemoveAsync("  ");
 
-        await act.Should().ThrowAsync<ArgumentNullException>();
-    }
-
-    [Fact(DisplayName = "RemoveAsync with blank key should throw")]
-    public async Task RemoveAsync_WithBlankKey_ShouldThrow()
-    {
-        using ServiceProvider provider = BuildProvider();
-        ICacheService cache = CreateCache(provider);
-
-        Func<Task> act = async () => await cache.RemoveAsync("  ");
-
-        await act.Should()
-            .ThrowAsync<ArgumentException>()
-            .WithMessage("*Caching.Key.Required*");
+        result.IsFailure.Should().BeTrue();
+        result.Errors[0].Code.Should().Be("Caching.Key.Required");
     }
 
     [Fact(DisplayName = "GetOrCreateAsync should handle complex types")]
@@ -186,18 +156,18 @@ public sealed class CacheServiceEdgeCasesTest
         using ServiceProvider provider = BuildProvider();
         ICacheService cache = CreateCache(provider);
 
-        TestObject first = await cache.GetOrCreateAsync(
+        Result<TestObject> first = await cache.GetOrCreateAsync(
             "complex",
             _ => ValueTask.FromResult(new TestObject { Id = 1, Name = "test" }));
 
-        TestObject second = await cache.GetOrCreateAsync(
+        Result<TestObject> second = await cache.GetOrCreateAsync(
             "complex",
             _ => ValueTask.FromResult(new TestObject { Id = 2, Name = "other" }));
 
-        first.Id.Should().Be(1);
-        first.Name.Should().Be("test");
-        second.Id.Should().Be(1);
-        second.Name.Should().Be("test");
+        first.Value.Id.Should().Be(1);
+        first.Value.Name.Should().Be("test");
+        second.Value.Id.Should().Be(1);
+        second.Value.Name.Should().Be("test");
     }
 
     [Fact(DisplayName = "SetAsync and GetOrCreateAsync should handle complex types")]
@@ -208,12 +178,12 @@ public sealed class CacheServiceEdgeCasesTest
 
         await cache.SetAsync("complex", new TestObject { Id = 42, Name = "stored" });
 
-        TestObject value = await cache.GetOrCreateAsync(
+        Result<TestObject> value = await cache.GetOrCreateAsync(
             "complex",
             _ => ValueTask.FromResult(new TestObject { Id = 0, Name = "factory" }));
 
-        value.Id.Should().Be(42);
-        value.Name.Should().Be("stored");
+        value.Value.Id.Should().Be(42);
+        value.Value.Name.Should().Be("stored");
     }
 
     [Fact(DisplayName = "Multiple keys should be independent")]
@@ -225,15 +195,15 @@ public sealed class CacheServiceEdgeCasesTest
         await cache.SetAsync("key1", "value1");
         await cache.SetAsync("key2", "value2");
 
-        string value1 = await cache.GetOrCreateAsync(
+        Result<string> value1 = await cache.GetOrCreateAsync(
             "key1",
             _ => ValueTask.FromResult("factory1"));
-        string value2 = await cache.GetOrCreateAsync(
+        Result<string> value2 = await cache.GetOrCreateAsync(
             "key2",
             _ => ValueTask.FromResult("factory2"));
 
-        value1.Should().Be("value1");
-        value2.Should().Be("value2");
+        value1.Value.Should().Be("value1");
+        value2.Value.Should().Be("value2");
     }
 
     [Fact(DisplayName = "RemoveAsync should not affect other keys")]
@@ -246,15 +216,15 @@ public sealed class CacheServiceEdgeCasesTest
         await cache.SetAsync("key2", "value2");
         await cache.RemoveAsync("key1");
 
-        string value1 = await cache.GetOrCreateAsync(
+        Result<string> value1 = await cache.GetOrCreateAsync(
             "key1",
             _ => ValueTask.FromResult("factory1"));
-        string value2 = await cache.GetOrCreateAsync(
+        Result<string> value2 = await cache.GetOrCreateAsync(
             "key2",
             _ => ValueTask.FromResult("factory2"));
 
-        value1.Should().Be("factory1");
-        value2.Should().Be("value2");
+        value1.Value.Should().Be("factory1");
+        value2.Value.Should().Be("value2");
     }
 
     private static ServiceProvider BuildProvider()

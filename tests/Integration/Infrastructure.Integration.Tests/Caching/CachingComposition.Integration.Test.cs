@@ -108,12 +108,12 @@ public sealed class CachingCompositionIntegrationTest
         var cache = provider.GetRequiredService<ICacheService>();
 
         int calls = 0;
-        string first = await cache.GetOrCreateAsync("disabled:key", _ =>
+        string first = await cache.GetValueAsync("disabled:key", _ =>
         {
             calls++;
             return ValueTask.FromResult("value");
         });
-        string second = await cache.GetOrCreateAsync("disabled:key", _ =>
+        string second = await cache.GetValueAsync("disabled:key", _ =>
         {
             calls++;
             return ValueTask.FromResult("value");

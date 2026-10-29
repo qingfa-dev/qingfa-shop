@@ -72,19 +72,19 @@ public sealed class CachingCompositionTest
         ICacheService cache = provider.GetRequiredService<ICacheService>();
 
         int calls = 0;
-        string first = await cache.GetOrCreateAsync("key", _ =>
+        Result<string> first = await cache.GetOrCreateAsync("key", _ =>
         {
             calls++;
             return ValueTask.FromResult("factory");
         });
-        string second = await cache.GetOrCreateAsync("key", _ =>
+        Result<string> second = await cache.GetOrCreateAsync("key", _ =>
         {
             calls++;
             return ValueTask.FromResult("factory");
         });
 
-        first.Should().Be("factory");
-        second.Should().Be("factory");
+        first.Value.Should().Be("factory");
+        second.Value.Should().Be("factory");
         calls.Should().Be(2);
     }
 
