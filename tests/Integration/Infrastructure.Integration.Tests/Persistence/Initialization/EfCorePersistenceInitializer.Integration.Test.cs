@@ -104,7 +104,7 @@ public sealed class EfCorePersistenceInitializerIntegrationTest(PersistenceIniti
         (await _fixture.CountRowsAsync("todo_categories")).Should().Be(4);
         (await _fixture.CountRowsAsync("todo_lists")).Should().Be(3);
         (await _fixture.CountRowsAsync("todos")).Should().Be(5);
-        (await _fixture.CountRowsAsync("__EFMigrationsHistory")).Should().Be(3);
+        (await _fixture.CountRowsAsync("__EFMigrationsHistory")).Should().Be(4);
     }
 
     [Fact(DisplayName = "InitializeAsync with SchemaOnly reset should reset, migrate, then seed")]
@@ -125,7 +125,7 @@ public sealed class EfCorePersistenceInitializerIntegrationTest(PersistenceIniti
         // Assert
         result.IsSuccess.Should().BeTrue();
         (await _fixture.TableExistsAsync("todos")).Should().BeTrue();
-        (await _fixture.CountRowsAsync("__EFMigrationsHistory")).Should().Be(3);
+        (await _fixture.CountRowsAsync("__EFMigrationsHistory")).Should().Be(4);
         (await _fixture.CountRowsAsync("todo_categories")).Should().Be(4);
         (await _fixture.CountRowsAsync("todo_lists")).Should().Be(3);
         (await _fixture.CountRowsAsync("todos")).Should().Be(5);
@@ -149,7 +149,7 @@ public sealed class EfCorePersistenceInitializerIntegrationTest(PersistenceIniti
         // Assert
         result.IsSuccess.Should().BeTrue();
         (await _fixture.CanConnectAsync()).Should().BeTrue();
-        (await _fixture.CountRowsAsync("__EFMigrationsHistory")).Should().Be(3);
+        (await _fixture.CountRowsAsync("__EFMigrationsHistory")).Should().Be(4);
         (await _fixture.CountRowsAsync("todos")).Should().Be(5);
     }
 
