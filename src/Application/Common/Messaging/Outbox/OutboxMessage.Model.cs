@@ -7,7 +7,7 @@ public sealed class OutboxMessage
     public OutboxMessageKind Kind { get; init; } = OutboxMessageKind.Domain;
     public string Type { get; init; } = string.Empty;
     public int Version { get; init; } = 1;
-    public string Payload { get; init; } = string.Empty;
+    public string Payload { get; init; } = "{}";
     public string Metadata { get; init; } = "{}";
     public OutboxMessageStatus Status { get; set; } = OutboxMessageStatus.Pending;
     public DateTimeOffset OccurredOnUtc { get; init; } = DateTimeOffset.UtcNow;

@@ -15,7 +15,7 @@ public sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<Outbox
     /// <param name="builder">The entity type builder for <see cref="OutboxMessage"/>.</param>
     public void Configure(EntityTypeBuilder<OutboxMessage> builder)
     {
-        // Table: the outbox lives in its own schema so reset and retention scope it alone.
+        // Map: the outbox lives in its own schema so reset and retention scope it alone.
         builder.ToTable("outbox_messages", PersistenceConstant.Schema.Messaging);
 
         builder.HasKey(message => message.Id);
@@ -37,7 +37,7 @@ public sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<Outbox
             .HasColumnName("version")
             .IsRequired();
 
-        // Payload: the serialized event, stored as JSONB for queryability.
+        // Map: the serialized event, stored as JSONB for queryability.
         builder.Property(message => message.Payload)
             .HasColumnName("payload")
             .HasColumnType("jsonb")
@@ -64,7 +64,7 @@ public sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<Outbox
         builder.Property(message => message.LockedUntilUtc)
             .HasColumnName("locked_until_utc");
 
-        // Fence: a mark must not overwrite a lease another worker has since claimed.
+        // Lock: the lease is the fencing token; a tracked update must not overwrite a newer one.
         // The token is model-only; PostgreSQL needs no extra column for it.
         builder.Property(message => message.LeaseId)
             .HasColumnName("lease_id")
@@ -89,7 +89,7 @@ public sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<Outbox
         builder.Property(message => message.TenantId)
             .HasColumnName("tenant_id");
 
-        // Claim: pending rows become available in occurrence order.
+        // Lock: pending rows become available in occurrence order.
         builder.HasIndex(message => new
         {
             message.Status,
@@ -97,7 +97,7 @@ public sealed class OutboxMessageConfiguration : IEntityTypeConfiguration<Outbox
             message.OccurredOnUtc,
         });
 
-        // Retention: delete processed rows by age.
+        // Update: retention deletes processed rows by age.
         builder.HasIndex(message => message.ProcessedOnUtc);
     }
 }

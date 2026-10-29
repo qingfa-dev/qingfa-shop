@@ -51,7 +51,7 @@ public sealed class OutboxStoreIntegrationTest(MessagingFixture fixture) : IAsyn
         claimed.LeaseId.Should().NotBeNull();
         claimed.LockedUntilUtc.Should().BeCloseTo(now.Add(LeaseDuration), TimeSpan.FromMilliseconds(1));
 
-        // Persisted: a fresh context sees the lease, not just the tracked instance.
+        // Check: a fresh context sees the lease, not just the claimed instance.
         OutboxMessage stored = await ReadAsync(message.Id);
         stored.LeaseId.Should().Be(claimed.LeaseId);
         stored.LockedUntilUtc.Should().BeCloseTo(now.Add(LeaseDuration), TimeSpan.FromMilliseconds(1));
@@ -66,7 +66,9 @@ public sealed class OutboxStoreIntegrationTest(MessagingFixture fixture) : IAsyn
 
         using IServiceScope secondScope = _fixture.Services.CreateScope();
         var secondContext = secondScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
-        var secondStore = new EfCoreOutboxStore(secondContext);
+        var secondStore = new EfCoreOutboxStore(
+            secondContext,
+            secondScope.ServiceProvider.GetRequiredService<TimeProvider>());
         DateTimeOffset now = DateTimeOffset.UtcNow;
 
         // Act
@@ -169,7 +171,7 @@ public sealed class OutboxStoreIntegrationTest(MessagingFixture fixture) : IAsyn
         result.IsSuccess.Should().BeTrue();
         OutboxMessage stored = await ReadAsync(claimed.Id);
         stored.Status.Should().Be(OutboxMessageStatus.DeadLettered);
-        stored.Attempts.Should().Be(1);
+        stored.Attempts.Should().Be(0);
         stored.LastError.Should().Be("max attempts reached");
         stored.LeaseId.Should().BeNull();
     }
@@ -191,6 +193,40 @@ public sealed class OutboxStoreIntegrationTest(MessagingFixture fixture) : IAsyn
         OutboxMessage stored = await ReadAsync(claimed.Id);
         stored.Status.Should().Be(OutboxMessageStatus.Pending);
         stored.LeaseId.Should().Be(claimed.LeaseId);
+    }
+
+    [Fact(DisplayName = "A lost lease does not poison the rest of the batch")]
+    public async Task MarkProcessedAsync_AfterLostLease_ShouldNotAffectTheNextMark()
+    {
+        // Arrange
+        await EnqueueAsync(NewMessage(), NewMessage());
+        Result<IReadOnlyList<OutboxMessage>> claimed = await _fixture.OutboxStore.ClaimAsync(
+            2, DateTimeOffset.UtcNow, LeaseDuration);
+        claimed.IsSuccess.Should().BeTrue();
+        claimed.Value.Should().HaveCount(2);
+        OutboxMessage lost = claimed.Value[0];
+        OutboxMessage live = claimed.Value[1];
+
+        // Update: another worker re-claims the first row with a different lease.
+        await _fixture.DbContext.Set<OutboxMessage>()
+            .Where(message => message.Id == lost.Id)
+            .ExecuteUpdateAsync(setters => setters
+                .SetProperty(message => message.LeaseId, Guid.NewGuid()));
+
+        // Act
+        Result lostResult = await _fixture.OutboxStore.MarkProcessedAsync(
+            lost.Id, lost.LeaseId!.Value, DateTimeOffset.UtcNow);
+        Result liveResult = await _fixture.OutboxStore.MarkProcessedAsync(
+            live.Id, live.LeaseId!.Value, DateTimeOffset.UtcNow);
+
+        // Assert
+        lostResult.IsFailure.Should().BeTrue();
+        lostResult.Errors.Should().ContainSingle()
+            .Which.Code.Should().Be(OutboxOutcome.Codes.LeaseLost);
+        liveResult.IsSuccess.Should().BeTrue();
+
+        OutboxMessage stored = await ReadAsync(live.Id);
+        stored.Status.Should().Be(OutboxMessageStatus.Processed);
     }
 
     [Fact(DisplayName = "Retention deletes only processed rows older than the cutoff")]

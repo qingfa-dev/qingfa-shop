@@ -83,10 +83,13 @@ public sealed class MessagingFixture : IAsyncLifetime
 
         services.AddScoped<IUnitOfWork>(sp =>
             new EfCoreUnitOfWork(sp.GetRequiredService<ApplicationDbContext>()));
+        services.AddSingleton(TimeProvider.System);
         services.AddScoped<EfCoreOutboxStore>(sp =>
-            new EfCoreOutboxStore(sp.GetRequiredService<ApplicationDbContext>()));
+            new EfCoreOutboxStore(
+                sp.GetRequiredService<ApplicationDbContext>(),
+                sp.GetRequiredService<TimeProvider>()));
 
-        // Serialize: the same serializer the dispatcher resolves, over the real event assemblies.
+        // Initialize: the same serializer the dispatcher resolves, over the real event assemblies.
         var eventTypes = new EventTypeRegistry(
             typeof(TodoCreated).Assembly,
             typeof(Infrastructure.AssemblyMarker).Assembly);
@@ -122,31 +125,23 @@ public sealed class MessagingFixture : IAsyncLifetime
         CurrentScope = Services.CreateScope();
     }
 
-    /// <summary>Cleans every messaging and todo row and clears the current change tracker.</summary>
+    /// <summary>Disposes the current scope and cleans every messaging and todo row.</summary>
     public async Task CleanAsync()
     {
-        try
-        {
-            if (CurrentScope is not null)
-            {
-                ApplicationDbContext context = CurrentScope.ServiceProvider
-                    .GetRequiredService<ApplicationDbContext>();
-                context.ChangeTracker.Clear();
-            }
+        CurrentScope?.Dispose();
+        CurrentScope = null;
 
-            using var connection = new Npgsql.NpgsqlConnection(ConnectionString);
-            await connection.OpenAsync();
-            await Respawner.ResetAsync(connection);
-        }
-        catch
-        {
-            // Ignore: cleanup failures must not mask the actual test result.
-        }
+        using var connection = new Npgsql.NpgsqlConnection(ConnectionString);
+        await connection.OpenAsync();
+        await Respawner.ResetAsync(connection);
     }
 
     /// <inheritdoc />
     public async ValueTask DisposeAsync()
     {
+        CurrentScope?.Dispose();
+        CurrentScope = null;
+
         if (Services is IAsyncDisposable asyncDisposable)
         {
             await asyncDisposable.DisposeAsync();

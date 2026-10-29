@@ -25,6 +25,8 @@ public sealed class MessagingContractTest
     {
         OutboxOutcome.Codes.EnqueueFailed.Should().Be("Outbox.Enqueue.Failed");
         OutboxOutcome.Codes.ClaimFailed.Should().Be("Outbox.Claim.Failed");
+        OutboxOutcome.Codes.QueryFailed.Should().Be("Outbox.Query.Failed");
+        OutboxOutcome.Codes.RetentionFailed.Should().Be("Outbox.Retention.Failed");
         OutboxOutcome.Codes.SerializeFailed.Should().Be("Outbox.Serialize.Failed");
         OutboxOutcome.Codes.DeserializeFailed.Should().Be("Outbox.Deserialize.Failed");
         OutboxOutcome.Codes.PublishFailed.Should().Be("Outbox.Publish.Failed");

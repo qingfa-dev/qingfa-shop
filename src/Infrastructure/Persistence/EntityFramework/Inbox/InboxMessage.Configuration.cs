@@ -13,10 +13,10 @@ public sealed class InboxMessageConfiguration : IEntityTypeConfiguration<InboxMe
     /// <param name="builder">The entity type builder for <see cref="InboxMessage"/>.</param>
     public void Configure(EntityTypeBuilder<InboxMessage> builder)
     {
-        // Table: the inbox shares the messaging schema with the outbox.
+        // Map: the inbox shares the messaging schema with the outbox.
         builder.ToTable("inbox_messages", PersistenceConstant.Schema.Messaging);
 
-        // Key: a message is processed once per consumer.
+        // Map: a message is processed once per consumer.
         builder.HasKey(message => new { message.MessageId, message.Consumer });
 
         builder.Property(message => message.MessageId)
@@ -31,7 +31,7 @@ public sealed class InboxMessageConfiguration : IEntityTypeConfiguration<InboxMe
             .HasColumnName("processed_on_utc")
             .IsRequired();
 
-        // Retention: delete processed rows by age.
+        // Update: retention deletes processed rows by age.
         builder.HasIndex(message => message.ProcessedOnUtc);
     }
 }

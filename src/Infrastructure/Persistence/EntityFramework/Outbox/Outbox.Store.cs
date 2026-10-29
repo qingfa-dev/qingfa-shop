@@ -2,7 +2,6 @@ using Application.Common.Messaging.Outbox;
 using Application.Common.Persistence;
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Infrastructure.Persistence.EntityFramework.Outbox;
 
@@ -10,24 +9,32 @@ namespace Infrastructure.Persistence.EntityFramework.Outbox;
 /// <remarks>
 /// <see cref="EnqueueAsync"/> only stages rows so the caller's unit of work commits them with the
 /// state change. Claims lock rows with <c>FOR UPDATE SKIP LOCKED</c> and every claim mints a fresh
-/// lease, so marks from a stale worker cannot overwrite a row another worker now owns.
+/// lease. Marks are set-based conditional updates, so a stale worker cannot overwrite a row another
+/// worker now owns and cannot leave a poisoned entity in the change tracker.
 /// </remarks>
 public sealed class EfCoreOutboxStore : IOutboxStore
 {
-    // Claim: the exact spec predicate. Column names mirror OutboxMessageConfiguration.
+    // Lock: the spec predicate. Column names mirror OutboxMessageConfiguration.
     private const string ClaimSql =
-        "SELECT * FROM " + PersistenceConstant.Schema.Messaging + ".outbox_messages " +
+        "WITH claimed AS (" +
+        "SELECT id FROM " + PersistenceConstant.Schema.Messaging + ".outbox_messages " +
         "WHERE status = {0} AND available_on_utc <= {1} " +
         "AND (locked_until_utc IS NULL OR locked_until_utc < {1}) " +
-        "ORDER BY occurred_on_utc LIMIT {2} FOR UPDATE SKIP LOCKED";
+        "ORDER BY occurred_on_utc LIMIT {2} FOR UPDATE SKIP LOCKED) " +
+        "UPDATE " + PersistenceConstant.Schema.Messaging + ".outbox_messages " +
+        "SET lease_id = gen_random_uuid(), locked_until_utc = {3} " +
+        "WHERE id IN (SELECT id FROM claimed) RETURNING *";
 
     private readonly DbContext _context;
+    private readonly TimeProvider _timeProvider;
 
-    /// <summary>Creates an outbox store over the supplied context.</summary>
+    /// <summary>Creates an outbox store over the supplied context and clock.</summary>
     /// <param name="context">The context that stages and claims outbox rows.</param>
-    public EfCoreOutboxStore(DbContext context)
+    /// <param name="timeProvider">The clock used to evaluate lease expiry.</param>
+    public EfCoreOutboxStore(DbContext context, TimeProvider timeProvider)
     {
         _context = context ?? throw new ArgumentNullException(nameof(context));
+        _timeProvider = timeProvider ?? throw new ArgumentNullException(nameof(timeProvider));
     }
 
     private DbSet<OutboxMessage> Messages => _context.Set<OutboxMessage>();
@@ -41,7 +48,7 @@ public sealed class EfCoreOutboxStore : IOutboxStore
 
         try
         {
-            // Stage only: the transaction that owns the state change saves these rows.
+            // Enqueue: stage only; the transaction that owns the state change saves these rows.
             if (messages.Count > 0)
                 Messages.AddRange(messages);
 
@@ -66,97 +73,125 @@ public sealed class EfCoreOutboxStore : IOutboxStore
 
         try
         {
-            await using IDbContextTransaction transaction =
-                await _context.Database.BeginTransactionAsync(cancellationToken);
-
+            // Lock: one statement claims, re-leases, and returns the rows; nothing stays tracked.
             List<OutboxMessage> claimed = await Messages
-                .FromSqlRaw(ClaimSql, (int)OutboxMessageStatus.Pending, nowUtc, batchSize)
+                .FromSqlRaw(
+                    ClaimSql,
+                    (int)OutboxMessageStatus.Pending,
+                    nowUtc,
+                    batchSize,
+                    nowUtc.Add(leaseDuration))
+                .AsNoTracking()
                 .ToListAsync(cancellationToken);
-
-            DateTimeOffset lockedUntilUtc = nowUtc.Add(leaseDuration);
-            foreach (OutboxMessage message in claimed)
-            {
-                // Lease: every claim mints a new fencing token for this worker.
-                message.LeaseId = Guid.NewGuid();
-                message.LockedUntilUtc = lockedUntilUtc;
-            }
-
-            if (claimed.Count > 0)
-                await _context.SaveChangesAsync(cancellationToken);
-
-            await transaction.CommitAsync(cancellationToken);
 
             return Result<IReadOnlyList<OutboxMessage>>.Success(claimed);
         }
-        catch (Exception exception)
+        catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            // Dispose: leaving the scope rolls back the claim transaction.
             return Result<IReadOnlyList<OutboxMessage>>.Fail(
                 OutboxOutcome.Failure.ClaimFailed(exception));
         }
     }
 
     /// <inheritdoc />
-    public Task<Result> MarkProcessedAsync(
+    public async Task<Result> MarkProcessedAsync(
         Guid id,
         Guid leaseId,
         DateTimeOffset processedOnUtc,
         CancellationToken cancellationToken = default)
-        => MarkAsync(
-            id,
-            leaseId,
-            message =>
-            {
-                message.Status = OutboxMessageStatus.Processed;
-                message.ProcessedOnUtc = processedOnUtc;
-                message.LeaseId = null;
-                message.LockedUntilUtc = null;
-                message.LastError = null;
-            },
-            exception => OutboxOutcome.Failure.MarkFailed(id, exception.Message),
-            cancellationToken);
+    {
+        DateTimeOffset nowUtc = _timeProvider.GetUtcNow();
+
+        try
+        {
+            // Update: the lease predicate makes the mark atomic; no tracked entity is mutated.
+            int affected = await Messages
+                .Where(message => message.Id == id
+                    && message.LeaseId == leaseId
+                    && message.LockedUntilUtc > nowUtc)
+                .ExecuteUpdateAsync(
+                    setters => setters
+                        .SetProperty(message => message.Status, OutboxMessageStatus.Processed)
+                        .SetProperty(message => message.ProcessedOnUtc, processedOnUtc)
+                        .SetProperty(message => message.LeaseId, (Guid?)null)
+                        .SetProperty(message => message.LockedUntilUtc, (DateTimeOffset?)null)
+                        .SetProperty(message => message.LastError, (string?)null),
+                    cancellationToken);
+
+            return await FinishMarkAsync(id, affected, cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return Result.Fail(OutboxOutcome.Failure.MarkFailed(id, exception.Message));
+        }
+    }
 
     /// <inheritdoc />
-    public Task<Result> MarkFailedAsync(
+    public async Task<Result> MarkFailedAsync(
         Guid id,
         Guid leaseId,
         string error,
         DateTimeOffset nextAttemptUtc,
         CancellationToken cancellationToken = default)
-        => MarkAsync(
-            id,
-            leaseId,
-            message =>
-            {
-                message.Status = OutboxMessageStatus.Pending;
-                message.Attempts++;
-                message.LastError = error;
-                message.AvailableOnUtc = nextAttemptUtc;
-                message.LeaseId = null;
-                message.LockedUntilUtc = null;
-            },
-            exception => OutboxOutcome.Failure.MarkFailed(id, exception.Message),
-            cancellationToken);
+    {
+        DateTimeOffset nowUtc = _timeProvider.GetUtcNow();
+
+        try
+        {
+            // Update: lease-fenced retry state; the dispatcher owns the attempt count.
+            int affected = await Messages
+                .Where(message => message.Id == id
+                    && message.LeaseId == leaseId
+                    && message.LockedUntilUtc > nowUtc)
+                .ExecuteUpdateAsync(
+                    setters => setters
+                        .SetProperty(message => message.Status, OutboxMessageStatus.Pending)
+                        .SetProperty(message => message.Attempts, message => message.Attempts + 1)
+                        .SetProperty(message => message.LastError, error)
+                        .SetProperty(message => message.AvailableOnUtc, nextAttemptUtc)
+                        .SetProperty(message => message.LeaseId, (Guid?)null)
+                        .SetProperty(message => message.LockedUntilUtc, (DateTimeOffset?)null),
+                    cancellationToken);
+
+            return await FinishMarkAsync(id, affected, cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return Result.Fail(OutboxOutcome.Failure.MarkFailed(id, exception.Message));
+        }
+    }
 
     /// <inheritdoc />
-    public Task<Result> DeadLetterAsync(
+    public async Task<Result> DeadLetterAsync(
         Guid id,
         Guid leaseId,
         string error,
         CancellationToken cancellationToken = default)
-        => MarkAsync(
-            id,
-            leaseId,
-            message =>
-            {
-                message.Status = OutboxMessageStatus.DeadLettered;
-                message.Attempts++;
-                message.LastError = error;
-                message.LeaseId = null;
-                message.LockedUntilUtc = null;
-            },
-            exception => OutboxOutcome.Failure.DeadLetterFailed(id, exception.Message),
-            cancellationToken);
+    {
+        DateTimeOffset nowUtc = _timeProvider.GetUtcNow();
+
+        try
+        {
+            // Update: the terminal transition does not touch the dispatcher-owned attempt count.
+            int affected = await Messages
+                .Where(message => message.Id == id
+                    && message.LeaseId == leaseId
+                    && message.LockedUntilUtc > nowUtc)
+                .ExecuteUpdateAsync(
+                    setters => setters
+                        .SetProperty(message => message.Status, OutboxMessageStatus.DeadLettered)
+                        .SetProperty(message => message.LastError, error)
+                        .SetProperty(message => message.LeaseId, (Guid?)null)
+                        .SetProperty(message => message.LockedUntilUtc, (DateTimeOffset?)null),
+                    cancellationToken);
+
+            return await FinishMarkAsync(id, affected, cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            return Result.Fail(OutboxOutcome.Failure.DeadLetterFailed(id, exception.Message));
+        }
+    }
 
     /// <inheritdoc />
     public async Task<Result<int>> CountPendingAsync(CancellationToken cancellationToken = default)
@@ -169,9 +204,9 @@ public sealed class EfCoreOutboxStore : IOutboxStore
 
             return Result<int>.Success(count);
         }
-        catch (Exception exception)
+        catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            return Result<int>.Fail(TranslateQueryFailure(exception));
+            return Result<int>.Fail(OutboxOutcome.Failure.QueryFailed(exception));
         }
     }
 
@@ -189,9 +224,9 @@ public sealed class EfCoreOutboxStore : IOutboxStore
 
             return Result<DateTimeOffset?>.Success(oldest);
         }
-        catch (Exception exception)
+        catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            return Result<DateTimeOffset?>.Fail(TranslateQueryFailure(exception));
+            return Result<DateTimeOffset?>.Fail(OutboxOutcome.Failure.QueryFailed(exception));
         }
     }
 
@@ -209,67 +244,30 @@ public sealed class EfCoreOutboxStore : IOutboxStore
 
             return Result<int>.Success(deleted);
         }
-        catch (Exception exception)
+        catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            return Result<int>.Fail(TranslateQueryFailure(exception));
+            return Result<int>.Fail(OutboxOutcome.Failure.RetentionFailed(exception));
         }
     }
 
     /// <summary>
-    /// Applies a mark only while the caller still owns a live lease; every other case is classified
-    /// as lease lost or not found so the caller never sees a silent success.
+    /// Classifies a zero-row mark: the row exists but this worker no longer owns a live lease, or the
+    /// id never existed. The check is untracked, so it cannot poison a later mark in the same batch.
     /// </summary>
-    private async Task<Result> MarkAsync(
+    private async Task<Result> FinishMarkAsync(
         Guid id,
-        Guid leaseId,
-        Action<OutboxMessage> mutate,
-        Func<Exception, Error> translate,
+        int affected,
         CancellationToken cancellationToken)
     {
-        try
-        {
-            DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
-
-            OutboxMessage? message = await Messages.FirstOrDefaultAsync(
-                candidate => candidate.Id == id
-                    && candidate.LeaseId == leaseId
-                    && candidate.LockedUntilUtc > nowUtc,
-                cancellationToken);
-
-            if (message is null)
-                return Result.Fail(await ClassifyMissAsync(id, cancellationToken));
-
-            mutate(message);
-            await _context.SaveChangesAsync(cancellationToken);
-
+        if (affected > 0)
             return Result.Ok();
-        }
-        catch (DbUpdateConcurrencyException)
-        {
-            // Fence: another worker re-claimed the row between the load and the save.
-            return Result.Fail(OutboxOutcome.Failure.LeaseLost(id));
-        }
-        catch (Exception exception)
-        {
-            return Result.Fail(translate(exception));
-        }
-    }
 
-    /// <summary>Distinguishes an unknown message from a message owned by another lease.</summary>
-    private async Task<Error> ClassifyMissAsync(Guid id, CancellationToken cancellationToken)
-    {
         bool exists = await Messages.AnyAsync(
             message => message.Id == id,
             cancellationToken);
 
-        return exists
+        return Result.Fail(exists
             ? OutboxOutcome.Failure.LeaseLost(id)
-            : OutboxOutcome.Failure.NotFound(id);
+            : OutboxOutcome.Failure.NotFound(id));
     }
-
-    /// <summary>
-    /// Translate: read-only outbox queries have no dedicated stable code, so the exception identity
-    /// is preserved instead of inventing a new outcome.
-    /// </summary>
-    private static Error TranslateQueryFailure(Exception exception) => Error.FromException(exception);
 }

@@ -11,6 +11,12 @@ public static class OutboxOutcome
         public static Error ClaimFailed(Exception exception) => Error.FromException(
             exception, Codes.ClaimFailed);
 
+        public static Error QueryFailed(Exception exception) => Error.FromException(
+            exception, Codes.QueryFailed);
+
+        public static Error RetentionFailed(Exception exception) => Error.FromException(
+            exception, Codes.RetentionFailed);
+
         public static Error SerializeFailed(Exception exception) => Error.FromException(
             exception, Codes.SerializeFailed);
 
@@ -37,6 +43,8 @@ public static class OutboxOutcome
     {
         public const string EnqueueFailed = "Outbox.Enqueue.Failed";
         public const string ClaimFailed = "Outbox.Claim.Failed";
+        public const string QueryFailed = "Outbox.Query.Failed";
+        public const string RetentionFailed = "Outbox.Retention.Failed";
         public const string SerializeFailed = "Outbox.Serialize.Failed";
         public const string DeserializeFailed = "Outbox.Deserialize.Failed";
         public const string PublishFailed = "Outbox.Publish.Failed";
