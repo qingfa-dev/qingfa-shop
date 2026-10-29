@@ -36,7 +36,7 @@ In scope:
 Out of scope:
 - Persistence and EF Core mapping → [`../../Infrastructure/`](../../Infrastructure/README.md).
 - Use-case orchestration and event handlers → [`../../Application/`](../../Application/README.md).
-- Wire shapes → [`../../Contracts/`](../../Contracts/README.md).
+- Wire shapes → application handlers under [`../../Application/`](../../Application/README.md).
 - Reminders, recurrence, subtasks, attachments, and comments.
 
 ## Assumptions
