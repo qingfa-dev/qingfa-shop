@@ -5,6 +5,7 @@ using Infrastructure.Caching;
 using Infrastructure.Integrations;
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.EntityFramework.Contexts;
+using Infrastructure.Persistence.EntityFramework.Outbox;
 using Infrastructure.Security;
 using Infrastructure.Services;
 
@@ -41,6 +42,9 @@ public static class InfrastructureComposition
 
         // Register: Cross-aggregate reference cleanup.
         builder.AddServices();
+
+        // Register: durable outbox dispatcher, worker, inbox, and health check.
+        builder.AddOutbox(builder.Configuration);
 
         // Register: outbound integrations, observability, background jobs, and OpenAPI.
         builder.AddIntegration();

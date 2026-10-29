@@ -41,6 +41,7 @@ public sealed class ShopApiFactory : WebApplicationFactory<Web.Api.AssemblyMarke
         // WebApplication.CreateBuilder, so the test host sees them in time.
         Environment.SetEnvironmentVariable("ConnectionStrings__db", DatabaseConnectionString);
         Environment.SetEnvironmentVariable("ConnectionStrings__redis", RedisConnectionString);
+        Environment.SetEnvironmentVariable("Outbox__Enabled", "false");
 
         return base.CreateHost(builder);
     }
