@@ -1,5 +1,7 @@
 using Application.Common.Querying;
+using Application.Common.Querying.Filtering;
 using Application.Common.Querying.Pagination;
+using Application.Features.Todos.Items.Mappings;
 using Application.Features.Todos.Items.Queries;
 using Application.Unit.Tests.Features.Todos.Fixtures;
 
@@ -11,7 +13,12 @@ namespace Application.Unit.Tests.Features.Todos.Items.Queries;
 public sealed class SearchTodosTest
 {
     private static SearchTodos.UseCaseHandler CreateHandler(TodoHandlerFixture fixture) =>
-        new(fixture.TodoRepository.Object, fixture.Registry, fixture.Tenant);
+        new(fixture.TodoMapperRepository.Object, fixture.Registry, fixture.Tenant);
+
+    private static IEnumerable<FilterNode> Flatten(FilterNode node) =>
+        node is FilterGroup group
+            ? group.Children.SelectMany(Flatten)
+            : [node];
 
     [Fact(DisplayName = "Search should map matching todos into a page")]
     public async Task Handle_WithResults_ShouldMapPage()
@@ -21,11 +28,20 @@ public sealed class SearchTodosTest
         fixture.RegisterTodoMap();
         Todo first = fixture.CreateTodo("First");
         Todo second = fixture.CreateTodo("Second");
-        fixture.TodoRepository
-            .Setup(repository => repository.QueryAsync(
-                It.IsAny<Query<Todo>>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<QueryPage<Todo>>.Success(
-                new QueryPage<Todo>([first, second], 1, 10, 2)));
+        fixture.TodoMapperRepository
+            .Setup(repository => repository.MapAsync(
+                It.IsAny<Query<Todo>>(),
+                It.IsAny<Func<Todo, SearchTodos.Response>>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<QueryPage<SearchTodos.Response>>.Success(
+                new QueryPage<SearchTodos.Response>(
+                    [
+                        first.ToSummary<SearchTodos.Response>(),
+                        second.ToSummary<SearchTodos.Response>(),
+                    ],
+                    1,
+                    10,
+                    2)));
 
         // Act
         Result<QueryPage<SearchTodos.Response>> result = await CreateHandler(fixture).Handle(
@@ -39,6 +55,50 @@ public sealed class SearchTodosTest
         result.Value.Items[0].Title.Should().Be("First");
         result.Value.TotalCount.Should().Be(2);
         result.Value.Page.Should().Be(1);
+    }
+
+    [Fact(DisplayName = "Search should pass the composed filter, order, and page to the repository")]
+    public async Task Handle_WithFilterOrderAndPaging_ShouldPassComposedQuery()
+    {
+        // Arrange
+        var fixture = new TodoHandlerFixture();
+        fixture.RegisterTodoMap();
+        Query<Todo>? captured = null;
+        fixture.TodoMapperRepository
+            .Setup(repository => repository.MapAsync(
+                It.IsAny<Query<Todo>>(),
+                It.IsAny<Func<Todo, SearchTodos.Response>>(),
+                It.IsAny<CancellationToken>()))
+            .Callback<Query<Todo>, Func<Todo, SearchTodos.Response>, CancellationToken>(
+                (query, _, _) => captured = query)
+            .ReturnsAsync(Result<QueryPage<SearchTodos.Response>>.Success(
+                new QueryPage<SearchTodos.Response>([], 1, 10, 0)));
+
+        // Act
+        Result<QueryPage<SearchTodos.Response>> result = await CreateHandler(fixture).Handle(
+            new SearchTodos.UseCase(
+                new SearchTodos.Request(new QueryParameters
+                {
+                    Filter = "title=First",
+                    OrderBy = "id",
+                    Page = 1,
+                    PageSize = 10,
+                })),
+            CancellationToken.None);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        captured.Should().NotBeNull();
+        captured!.Filter.Should().NotBeNull();
+
+        IEnumerable<FilterCondition> conditions = Flatten(captured.Filter!).OfType<FilterCondition>();
+        conditions.Should().Contain(condition =>
+            condition.Field == "tenantId" && Equals(condition.Value, fixture.Tenant.TenantId));
+        conditions.Should().Contain(condition =>
+            condition.Field == "isDeleted" && Equals(condition.Value, false));
+
+        captured.OrderBy.Should().ContainSingle().Which.Field.Should().Be("id");
+        captured.Page.Should().Be(new PageRequest(1, 10));
     }
 
     [Fact(DisplayName = "Search should reject a tabular projection")]
@@ -57,8 +117,11 @@ public sealed class SearchTodosTest
         // Assert
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().Contain(error => error.Code == "Todos.Query.TabularUnsupported");
-        fixture.TodoRepository.Verify(
-            repository => repository.QueryAsync(It.IsAny<Query<Todo>>(), It.IsAny<CancellationToken>()),
+        fixture.TodoMapperRepository.Verify(
+            repository => repository.MapAsync(
+                It.IsAny<Query<Todo>>(),
+                It.IsAny<Func<Todo, SearchTodos.Response>>(),
+                It.IsAny<CancellationToken>()),
             Times.Never);
     }
 

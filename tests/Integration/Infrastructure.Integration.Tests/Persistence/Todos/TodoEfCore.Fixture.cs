@@ -51,17 +51,38 @@ public sealed class TodoEfCoreFixture : IAsyncLifetime
     /// <summary>The repository for Todo.</summary>
     public IPersistentRepository<Todo, Guid> TodoRepository => CurrentScope?.ServiceProvider.GetRequiredService<IPersistentRepository<Todo, Guid>>() ?? throw new InvalidOperationException("Scope not initialized");
 
+    /// <summary>The mapping repository for Todo.</summary>
+    public IMappableRepository<Todo, Guid> TodoMapperRepository => CurrentScope?.ServiceProvider.GetRequiredService<IMappableRepository<Todo, Guid>>() ?? throw new InvalidOperationException("Scope not initialized");
+
+    /// <summary>The projection repository for Todo.</summary>
+    public IProjectionRepository<Todo, Guid> TodoProjectionRepository => CurrentScope?.ServiceProvider.GetRequiredService<IProjectionRepository<Todo, Guid>>() ?? throw new InvalidOperationException("Scope not initialized");
+
     /// <summary>The repository for TodoList.</summary>
     public IPersistentRepository<TodoList, Guid> TodoListRepository => CurrentScope?.ServiceProvider.GetRequiredService<IPersistentRepository<TodoList, Guid>>() ?? throw new InvalidOperationException("Scope not initialized");
 
+    /// <summary>The mapping repository for TodoList.</summary>
+    public IMappableRepository<TodoList, Guid> TodoListMapperRepository => CurrentScope?.ServiceProvider.GetRequiredService<IMappableRepository<TodoList, Guid>>() ?? throw new InvalidOperationException("Scope not initialized");
+
+    /// <summary>The projection repository for TodoList.</summary>
+    public IProjectionRepository<TodoList, Guid> TodoListProjectionRepository => CurrentScope?.ServiceProvider.GetRequiredService<IProjectionRepository<TodoList, Guid>>() ?? throw new InvalidOperationException("Scope not initialized");
+
     /// <summary>The repository for TodoCategory.</summary>
     public IPersistentRepository<TodoCategory, Guid> TodoCategoryRepository => CurrentScope?.ServiceProvider.GetRequiredService<IPersistentRepository<TodoCategory, Guid>>() ?? throw new InvalidOperationException("Scope not initialized");
+
+    /// <summary>The mapping repository for TodoCategory.</summary>
+    public IMappableRepository<TodoCategory, Guid> TodoCategoryMapperRepository => CurrentScope?.ServiceProvider.GetRequiredService<IMappableRepository<TodoCategory, Guid>>() ?? throw new InvalidOperationException("Scope not initialized");
+
+    /// <summary>The projection repository for TodoCategory.</summary>
+    public IProjectionRepository<TodoCategory, Guid> TodoCategoryProjectionRepository => CurrentScope?.ServiceProvider.GetRequiredService<IProjectionRepository<TodoCategory, Guid>>() ?? throw new InvalidOperationException("Scope not initialized");
 
     /// <summary>The UnitOfWork.</summary>
     public IUnitOfWork UnitOfWork => CurrentScope?.ServiceProvider.GetRequiredService<IUnitOfWork>() ?? throw new InvalidOperationException("Scope not initialized");
 
     /// <summary>The cross-aggregate reference cleaner.</summary>
     public ITodoReferenceCleaner ReferenceCleaner => CurrentScope?.ServiceProvider.GetRequiredService<ITodoReferenceCleaner>() ?? throw new InvalidOperationException("Scope not initialized");
+
+    /// <summary>The query map provider used by search handlers.</summary>
+    public IQueryMapProvider QueryMapProvider => CurrentScope?.ServiceProvider.GetRequiredService<IQueryMapProvider>() ?? throw new InvalidOperationException("Scope not initialized");
 
     /// <summary>The ambient tenant and user the handlers read.</summary>
     public IntegrationExecutionContext Ambient { get; } = new();
@@ -145,6 +166,22 @@ public sealed class TodoEfCoreFixture : IAsyncLifetime
                 sp.GetRequiredService<IQueryTranslator<TodoCategory>>(),
                 sp.GetRequiredService<IQueryMapProvider>(),
                 sp.GetRequiredService<IQueryCapabilities>()));
+
+        // Register: the same EF Core repository satisfies the mapping and projection contracts.
+        services.AddScoped<IMappableRepository<Todo, Guid>>(sp =>
+            (IMappableRepository<Todo, Guid>)sp.GetRequiredService<IPersistentRepository<Todo, Guid>>());
+        services.AddScoped<IProjectionRepository<Todo, Guid>>(sp =>
+            (IProjectionRepository<Todo, Guid>)sp.GetRequiredService<IPersistentRepository<Todo, Guid>>());
+
+        services.AddScoped<IMappableRepository<TodoList, Guid>>(sp =>
+            (IMappableRepository<TodoList, Guid>)sp.GetRequiredService<IPersistentRepository<TodoList, Guid>>());
+        services.AddScoped<IProjectionRepository<TodoList, Guid>>(sp =>
+            (IProjectionRepository<TodoList, Guid>)sp.GetRequiredService<IPersistentRepository<TodoList, Guid>>());
+
+        services.AddScoped<IMappableRepository<TodoCategory, Guid>>(sp =>
+            (IMappableRepository<TodoCategory, Guid>)sp.GetRequiredService<IPersistentRepository<TodoCategory, Guid>>());
+        services.AddScoped<IProjectionRepository<TodoCategory, Guid>>(sp =>
+            (IProjectionRepository<TodoCategory, Guid>)sp.GetRequiredService<IPersistentRepository<TodoCategory, Guid>>());
 
         // Register UnitOfWork
         services.AddScoped<IUnitOfWork>(sp =>

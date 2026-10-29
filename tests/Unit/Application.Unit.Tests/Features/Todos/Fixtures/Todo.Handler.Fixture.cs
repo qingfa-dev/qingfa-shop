@@ -25,11 +25,29 @@ public sealed class TodoHandlerFixture
     /// <summary>Gets the todo repository mock.</summary>
     public Mock<IPersistentRepository<Todo, Guid>> TodoRepository { get; } = new();
 
+    /// <summary>Gets the todo mapping repository mock.</summary>
+    public Mock<IMappableRepository<Todo, Guid>> TodoMapperRepository { get; } = new();
+
+    /// <summary>Gets the todo projection repository mock.</summary>
+    public Mock<IProjectionRepository<Todo, Guid>> TodoProjectionRepository { get; } = new();
+
     /// <summary>Gets the list repository mock.</summary>
     public Mock<IPersistentRepository<TodoList, Guid>> ListRepository { get; } = new();
 
+    /// <summary>Gets the list mapping repository mock.</summary>
+    public Mock<IMappableRepository<TodoList, Guid>> ListMapperRepository { get; } = new();
+
+    /// <summary>Gets the list projection repository mock.</summary>
+    public Mock<IProjectionRepository<TodoList, Guid>> ListProjectionRepository { get; } = new();
+
     /// <summary>Gets the category repository mock.</summary>
     public Mock<IPersistentRepository<TodoCategory, Guid>> CategoryRepository { get; } = new();
+
+    /// <summary>Gets the category mapping repository mock.</summary>
+    public Mock<IMappableRepository<TodoCategory, Guid>> CategoryMapperRepository { get; } = new();
+
+    /// <summary>Gets the category projection repository mock.</summary>
+    public Mock<IProjectionRepository<TodoCategory, Guid>> CategoryProjectionRepository { get; } = new();
 
     /// <summary>Gets the unit-of-work mock.</summary>
     public Mock<IUnitOfWork> UnitOfWork { get; } = new();
@@ -165,28 +183,31 @@ public sealed class TodoHandlerFixture
     /// <summary>Registers the minimal todo query map used by search tests.</summary>
     public void RegisterTodoMap() =>
         Registry.Register(QueryMapBuilder<Todo>.Create()
-            .Map("tenantId", todo => todo.TenantId, field => field.Filterable())
+            .Map("id", todo => todo.Id, field => field.Filterable().Sortable().Groupable())
+            .Map("tenantId", todo => todo.TenantId, field => field.Filterable().Sortable().Groupable())
             .Map("isDeleted", todo => todo.IsDeleted, field => field.Filterable())
             .Map("createdAtUtc", todo => todo.CreatedAtUtc, field => field.Filterable().Sortable())
-            .Map("title", todo => todo.Title, field => field.Filterable().Searchable())
+            .Map("title", todo => todo.Title, field => field.Filterable().Searchable().Groupable())
             .Build().Value);
 
     /// <summary>Registers the minimal list query map used by search tests.</summary>
     public void RegisterListMap() =>
         Registry.Register(QueryMapBuilder<TodoList>.Create()
-            .Map("tenantId", list => list.TenantId, field => field.Filterable())
+            .Map("id", list => list.Id, field => field.Filterable().Sortable().Groupable())
+            .Map("tenantId", list => list.TenantId, field => field.Filterable().Sortable().Groupable())
             .Map("isDeleted", list => list.IsDeleted, field => field.Filterable())
             .Map("createdAtUtc", list => list.CreatedAtUtc, field => field.Filterable().Sortable())
-            .Map("name", list => list.Name, field => field.Filterable().Searchable())
+            .Map("name", list => list.Name, field => field.Filterable().Searchable().Groupable())
             .Build().Value);
 
     /// <summary>Registers the minimal category query map used by search tests.</summary>
     public void RegisterCategoryMap() =>
         Registry.Register(QueryMapBuilder<TodoCategory>.Create()
-            .Map("tenantId", category => category.TenantId, field => field.Filterable())
+            .Map("id", category => category.Id, field => field.Filterable().Sortable().Groupable())
+            .Map("tenantId", category => category.TenantId, field => field.Filterable().Sortable().Groupable())
             .Map("isDeleted", category => category.IsDeleted, field => field.Filterable())
             .Map("createdAtUtc", category => category.CreatedAtUtc, field => field.Filterable().Sortable())
-            .Map("name", category => category.Name, field => field.Filterable().Searchable())
+            .Map("name", category => category.Name, field => field.Filterable().Searchable().Groupable())
             .Build().Value);
 }
 
