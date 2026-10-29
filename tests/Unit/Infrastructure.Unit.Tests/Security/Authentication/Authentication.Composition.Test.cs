@@ -1,5 +1,4 @@
 using Application.Common.Security.Authentication.Contexts;
-using Application.Common.Security.Authentication.Tokens;
 using Application.Common.Security.Authentication.Tokens.Abstractions.Blacklist;
 using Application.Common.Security.Authentication.Tokens.Abstractions.Jwt;
 using Application.Common.Security.Authentication.Tokens.Abstractions.Refresh;

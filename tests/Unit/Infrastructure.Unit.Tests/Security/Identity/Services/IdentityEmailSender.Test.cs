@@ -1,5 +1,3 @@
-using Application.Common.Security.Authentication.Identity;
-
 using Infrastructure.Security.Identity.Services;
 
 using Microsoft.Extensions.Logging.Abstractions;

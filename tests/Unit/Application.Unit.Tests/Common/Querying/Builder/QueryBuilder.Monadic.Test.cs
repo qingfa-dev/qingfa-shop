@@ -2,8 +2,6 @@ using Application.Common.Querying;
 using Application.Common.Querying.Mapping;
 using Application.Common.Querying.Pagination;
 
-using Core.Common.Monad.Errors;
-
 namespace Application.Unit.Tests.Common.Querying.Builder;
 
 public sealed class QueryBuilderMonadicTest

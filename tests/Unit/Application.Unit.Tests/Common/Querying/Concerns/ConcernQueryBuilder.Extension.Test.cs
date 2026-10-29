@@ -2,7 +2,6 @@ using Application.Common.Querying;
 using Application.Common.Querying.Concerns;
 using Application.Common.Querying.Filtering;
 using Application.Common.Querying.Mapping;
-using Application.Common.Querying.Sorting;
 
 using Core.Common.Concerns.Content.Localizable;
 using Core.Common.Concerns.Content.MediaAttachable;

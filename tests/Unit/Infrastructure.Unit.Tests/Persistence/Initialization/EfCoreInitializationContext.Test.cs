@@ -4,7 +4,6 @@ using Application.Common.Persistence.Initialization;
 using Application.Common.Persistence.UnitOfWorks;
 
 using Infrastructure.Persistence.EntityFramework.Initialization;
-using Infrastructure.Persistence.Initialization;
 
 using Microsoft.Extensions.Logging;
 

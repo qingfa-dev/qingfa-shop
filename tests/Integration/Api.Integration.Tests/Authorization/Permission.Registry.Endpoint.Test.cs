@@ -3,7 +3,6 @@ using Microsoft.AspNetCore.Http;
 using Core.Common.Monad.Errors;
 using Core.Common.Monad.Results;
 
-using Application.Common.Security.Authorization;
 using Application.Common.Security.Authorization.Domain;
 using Application.Common.Security.Authorization.Permissions.Services;
 using Application.Common.Security.Authorization.Registry;

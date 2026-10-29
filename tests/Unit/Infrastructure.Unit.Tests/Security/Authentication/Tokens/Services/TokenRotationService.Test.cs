@@ -1,5 +1,6 @@
-using Application.Common.Security.Authentication.Tokens;
 using Application.Common.Security.Authentication.Tokens.Abstractions.Refresh;
+
+using Application.Common.Security.Authentication.Tokens;
 using Application.Common.Security.Authentication.Tokens.Abstractions.Rotation;
 using Application.Common.Security.Authentication.Tokens.Domain;
 

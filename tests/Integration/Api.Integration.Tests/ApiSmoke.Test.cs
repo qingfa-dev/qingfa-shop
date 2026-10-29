@@ -27,6 +27,26 @@ public sealed class ApiSmokeTest : IntegrationTestBase
     }
 
     [Fact]
+    public async Task GetOpenApiDocument_ReturnsSuccess()
+    {
+        // Act
+        using var response = await Client.GetAsync("/openapi/v1.json");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetLiveHealth_ReturnsSuccess()
+    {
+        // Act
+        using var response = await Client.GetAsync("/health/live");
+
+        // Assert
+        Assert.Equal(HttpStatusCode.OK, response.StatusCode);
+    }
+
+    [Fact]
     public async Task GetPermissionCatalog_WithoutToken_ReturnsUnauthorized()
     {
         // Act

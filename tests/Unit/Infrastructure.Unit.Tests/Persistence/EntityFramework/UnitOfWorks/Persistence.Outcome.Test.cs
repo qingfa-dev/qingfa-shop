@@ -1,7 +1,5 @@
 using Application.Common.Persistence.UnitOfWorks;
 
-using Core.Common.Monad.Errors;
-
 using Infrastructure.Persistence.EntityFramework.UnitOfWorks;
 
 namespace Infrastructure.Unit.Tests.Persistence.EntityFramework.UnitOfWorks;

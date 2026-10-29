@@ -1,4 +1,3 @@
-using Core.Common.Monad.Metadata;
 using Core.Todos.Items;
 
 using Infrastructure.Persistence.EntityFramework.Contexts;

@@ -21,6 +21,15 @@ public sealed class IntegrationCompositionTest
         builder.Services.Any(service =>
             service.ServiceType.FullName?.Contains("OpenApi", StringComparison.Ordinal) == true)
             .Should().BeTrue();
+        builder.Services.Should().Contain(descriptor =>
+            descriptor.ServiceType.FullName != null &&
+            descriptor.ServiceType.FullName.Contains("INotificationService", StringComparison.Ordinal));
+        builder.Services.Should().Contain(descriptor =>
+            descriptor.ServiceType.FullName != null &&
+            descriptor.ServiceType.FullName.Contains("IStorageService", StringComparison.Ordinal));
+        builder.Services.Should().Contain(descriptor =>
+            descriptor.ServiceType.FullName != null &&
+            descriptor.ServiceType.FullName.Contains("CorrelationIdPropagationHandler", StringComparison.Ordinal));
     }
 
     [Fact(DisplayName = "UseIntegration should return the same application")]
@@ -33,6 +42,16 @@ public sealed class IntegrationCompositionTest
         WebApplication result = app.UseIntegration();
 
         result.Should().BeSameAs(app);
+    }
+
+    [Fact(DisplayName = "AddIntegration should reject a null builder")]
+    public void AddIntegration_WithNullBuilder_ShouldThrow()
+    {
+        WebApplicationBuilder? builder = null;
+
+        Action act = () => builder!.AddIntegration();
+
+        act.Should().Throw<ArgumentNullException>();
     }
 
     [Fact(DisplayName = "UseIntegration should reject a null application")]

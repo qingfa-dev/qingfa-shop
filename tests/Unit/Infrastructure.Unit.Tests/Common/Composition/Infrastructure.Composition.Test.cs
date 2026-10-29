@@ -42,6 +42,12 @@ public class InfrastructureCompositionTest
         returned.Should().BeSameAs(builder);
         serviceProvider.GetService<QueryMapRegistry>().Should().NotBeNull();
         serviceProvider.GetService<ICacheService>().Should().BeOfType<NullCacheService>();
+        builder.Services.Should().Contain(descriptor =>
+            descriptor.ServiceType.FullName != null &&
+            descriptor.ServiceType.FullName.Contains("INotificationService", StringComparison.Ordinal));
+        builder.Services.Should().Contain(descriptor =>
+            descriptor.ServiceType.FullName != null &&
+            descriptor.ServiceType.FullName.Contains("IStorageService", StringComparison.Ordinal));
     }
 
     [Fact(DisplayName = "AddInfrastructure should throw when builder is null")]

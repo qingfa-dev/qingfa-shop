@@ -4,8 +4,6 @@ using Infrastructure.Persistence.EntityFramework.Contexts;
 using Infrastructure.Persistence.EntityFramework.UnitOfWorks;
 using Infrastructure.Security.Authentication.Tokens.Stores;
 
-using Core.Common.Monad.Maybes;
-
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Unit.Tests.Security.Authentication.Tokens.Stores;

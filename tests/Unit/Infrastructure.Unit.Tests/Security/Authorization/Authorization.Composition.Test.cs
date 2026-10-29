@@ -3,16 +3,11 @@ using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
 
-using Application.Common.Security.Authorization;
 using Application.Common.Security.Authorization.Options;
 using Application.Common.Security.Authorization.Permissions.Caches;
 using Application.Common.Security.Authorization.Permissions.Services;
-using Application.Common.Security.Authorization.Policies;
-using Application.Common.Security.Authorization.Requirements;
 
 using Infrastructure.Security.Authorization;
-using Infrastructure.Security.Authorization.Permissions.Caches;
-using Infrastructure.Security.Authorization.Permissions.Services;
 using Infrastructure.Security.Authorization.Policies;
 using Infrastructure.Security.Authorization.Requirements;
 

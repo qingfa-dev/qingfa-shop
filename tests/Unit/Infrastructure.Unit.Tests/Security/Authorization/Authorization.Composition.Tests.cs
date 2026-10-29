@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
 
 using Application.Common.Security.Authorization.Permissions.Store;
 using Application.Common.Security.Authorization.Registry;

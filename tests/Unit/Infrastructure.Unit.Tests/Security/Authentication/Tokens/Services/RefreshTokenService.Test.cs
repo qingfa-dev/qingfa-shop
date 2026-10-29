@@ -3,8 +3,6 @@ using Application.Common.Security.Authentication.Tokens.Abstractions.Refresh;
 using Application.Common.Security.Authentication.Tokens.Domain;
 using Application.Common.Security.Authentication.Tokens.Options;
 
-using Core.Common.Monad.Maybes;
-
 using Infrastructure.Security.Authentication.Tokens.Services;
 
 namespace Infrastructure.Unit.Tests.Security.Authentication.Tokens.Services;

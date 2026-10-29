@@ -1,6 +1,5 @@
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Authorization.Infrastructure;
-using Microsoft.Extensions.Options;
 
 using Application.Common.Security.Authorization;
 using Application.Common.Security.Authorization.Policies;
