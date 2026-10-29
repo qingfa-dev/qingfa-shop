@@ -1,6 +1,5 @@
 using Application.Common.Persistence.Repositories;
 using Application.Common.Querying.Mapping;
-using Application.Features.Todos.Abstractions;
 
 using Infrastructure.Persistence.EntityFramework;
 using Infrastructure.Persistence.EntityFramework.Contexts;

@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging;
-
 namespace Infrastructure.Persistence.EntityFramework.Interceptors;
 
 /// <summary>Structured log events for domain-event publication.</summary>

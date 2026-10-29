@@ -4,7 +4,6 @@ using Application.Common.Querying.Mapping;
 
 using Core.Common.Domain.Entities;
 
-using Infrastructure.Persistence.EntityFramework.Contexts;
 using Infrastructure.Persistence.EntityFramework.QueryTranslation;
 using Infrastructure.Persistence.EntityFramework.UnitOfWorks;
 

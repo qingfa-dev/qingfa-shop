@@ -7,7 +7,6 @@ using Application.Common.Persistence.Initialization;
 using Application.Common.Persistence.Initialization.Resetters;
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
 using Npgsql;
 

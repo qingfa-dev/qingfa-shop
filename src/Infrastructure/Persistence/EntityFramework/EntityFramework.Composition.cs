@@ -5,7 +5,6 @@ using Application.Common.Querying.Mapping;
 
 using Infrastructure.Events;
 using Infrastructure.Persistence.EntityFramework.Capabilities;
-using Infrastructure.Persistence.EntityFramework.Contexts;
 using Infrastructure.Persistence.EntityFramework.Interceptors;
 using Infrastructure.Persistence.EntityFramework.Options;
 using Infrastructure.Persistence.EntityFramework.QueryTranslation;
@@ -19,7 +18,6 @@ using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
-using Microsoft.Extensions.Logging;
 
 namespace Infrastructure.Persistence.EntityFramework;
 

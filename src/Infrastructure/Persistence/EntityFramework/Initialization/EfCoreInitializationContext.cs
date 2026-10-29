@@ -3,8 +3,6 @@ using System.Data;
 using Application.Common.Persistence.Initialization;
 using Application.Common.Persistence.UnitOfWorks;
 
-using Microsoft.Extensions.Logging;
-
 namespace Infrastructure.Persistence.EntityFramework.Initialization;
 
 /// <summary>

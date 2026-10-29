@@ -1,8 +1,6 @@
 using Application.Common.Events;
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.Extensions.Logging;
 
 namespace Infrastructure.Persistence.EntityFramework.Interceptors;
 

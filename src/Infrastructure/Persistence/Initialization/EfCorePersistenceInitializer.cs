@@ -6,7 +6,6 @@ using Application.Common.Persistence.UnitOfWorks;
 using Infrastructure.Persistence.EntityFramework.Initialization;
 
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Logging;
 
 namespace Infrastructure.Persistence.Initialization;
 

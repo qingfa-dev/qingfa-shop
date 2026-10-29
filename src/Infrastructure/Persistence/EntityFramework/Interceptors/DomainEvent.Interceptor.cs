@@ -5,7 +5,6 @@ using Core.Common.Domain.Events;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
-using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Infrastructure.Persistence.EntityFramework.Interceptors;
