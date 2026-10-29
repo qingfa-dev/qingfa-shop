@@ -8,7 +8,6 @@
 
   <ItemGroup>
     <ProjectReference Include="../../../src/Application/Application.csproj" />
-    <ProjectReference Include="../../../src/Contract/Contract.csproj" />
     <ProjectReference Include="../../../src/Core/Core.csproj" />
   </ItemGroup>
 

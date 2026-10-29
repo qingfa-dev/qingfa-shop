@@ -10,9 +10,6 @@ public sealed class AssemblyMarker
     /// <summary>Ensures the Application layer assembly is referenced.</summary>
     public static readonly System.Reflection.Assembly ApplicationAssembly = typeof(global::Application.AssemblyMarker).Assembly;
 
-    /// <summary>Ensures the Contract layer assembly is referenced.</summary>
-    public static readonly System.Reflection.Assembly ContractAssembly = typeof(global::Contract.AssemblyMarker).Assembly;
-
     /// <summary>Ensures the Core layer assembly is referenced.</summary>
     public static readonly System.Reflection.Assembly CoreAssembly = typeof(global::Core.AssemblyMarker).Assembly;
 }
