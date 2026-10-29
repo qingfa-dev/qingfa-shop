@@ -1,25 +1,25 @@
 # Architecture.Tests
 
-Architectural fitness functions — NetArchTest rules for layers, slices, naming, comments. _test · architecture_
+Architectural fitness functions — layer, slice, naming, and comment-label rules. _test · architecture_
 
 ## Summary
 
-Architecture.Tests encodes **architectural constraints as executable tests** using NetArchTest. These run on every `dotnet build` and fail CI if violated. They replace manual code reviews for structural rules: layer dependencies, vertical slice isolation, naming conventions, and comment label vocabulary.
+Architecture.Tests encodes **architectural constraints as executable tests** using reflection-based fitness checks. They run as part of `make lib.test` (after the unit suites) and fail CI if violated. NetArchTest rules are still being filled in; the current checks document the intended dependency graph and enforce what reflection can verify.
 
 ## Contains
 
 | Path | Role | Notes |
 |---|---|---|
 | `Assembly.Marker.cs` | marker | Anchors assembly for scanning |
-| `LayerArchitectureTests.cs` | spec | Layer dependency rules (Core → Contract → App → Infra) |
-| `VerticalSliceArchitectureTests.cs` | spec | Feature isolation, handler/validator co-location |
-| `NamingConventionTests.cs` | spec | Dotted file naming (PascalCase, .Interface, .Base, .Validator, etc.) |
-| `CodeCommentLabelTests.cs` | spec | Documents approved comment label vocabulary |
+| `LayerArchitecture.Tests.cs` | spec | Layer dependency rules (Core → Application → Infrastructure) |
+| `VerticalSliceArchitecture.Tests.cs` | spec | Feature isolation, handler/validator co-location |
+| `NamingConvention.Tests.cs` | spec | Dotted file naming (PascalCase, .Interface, .Base, .Validator, etc.) |
+| `CodeCommentLabel.Tests.cs` | spec | Documents approved comment label vocabulary |
 
 ## Boundaries
 
 In scope:
-- NetArchTest rules for all production assemblies.
+- Reflection checks for all production assemblies.
 - Layer dependency graph validation.
 - Vertical slice structure enforcement.
 - Naming convention compliance (C# PascalCase, suffixes).
@@ -27,23 +27,20 @@ In scope:
 
 Out of scope:
 - Runtime behavior tests → [`../Integration/`](../Integration/), [`../Unit/`](../Unit/).
-- Contract tests → [`../Contract/`](../Contract/).
 - Code formatting → `.editorconfig`, `dotnet format`.
 - Business logic correctness → unit/integration tests.
 
 ## Assumptions
 
-- All production assemblies have `AssemblyMarker` type for reliable scanning.
-- NetArchTest runs at build time via package reference (no separate tool install).
-- Rules are **strict** — violations fail the build.
-- New rules added here must pass on current codebase before merging.
+- All production assemblies have an `AssemblyMarker` type for reliable scanning.
+- Checks run through the test runner, not during `dotnet build`.
+- New rules added here must pass on the current codebase before merging.
 
 ## Invariants
 
 - **Core** has zero project references.
-- **Contract** depends only on Core.
-- **Application** depends on Core + Contract; NOT Infrastructure.
-- **Infrastructure** depends on Core + Contract + Application + ServiceDefaults.
+- **Application** depends on Core; NOT Infrastructure.
+- **Infrastructure** depends on Core + Application + ServiceDefaults.
 - **ServiceDefaults** has zero project references.
 - **Web.Api** depends on all layers (composition root).
 - No circular dependencies between any layers.
@@ -68,15 +65,15 @@ Out of scope:
 
 ## Reading Order
 
-1. `LayerArchitectureTests.cs` — core layer rules.
-2. `VerticalSliceArchitectureTests.cs` — feature isolation.
-3. `NamingConventionTests.cs` — naming conventions.
-4. `CodeCommentLabelTests.cs` — comment labels.
+1. `LayerArchitecture.Tests.cs` — core layer rules.
+2. `VerticalSliceArchitecture.Tests.cs` — feature isolation.
+3. `NamingConvention.Tests.cs` — naming conventions.
+4. `CodeCommentLabel.Tests.cs` — comment labels.
 
 ## Related
 
 - Parent: [`../README.md`](../README.md)
-- Siblings: [`../Unit/`](../Unit/), [`../Integration/`](../Integration/), [`../Contract/`](../Contract/), [`../Testing/`](../Testing/)
+- Siblings: [`../Unit/`](../Unit/), [`../Integration/`](../Integration/), [`../Testing/`](../Testing/)
 - Guides: [`../../guide/dotted-file-naming-guide.md`](../../guide/dotted-file-naming-guide.md), [`../../guide/code-comment-style-guide.md`](../../guide/code-comment-style-guide.md)
 - ADR: [`../../docs/adr/0008-architecture-tests.md`](../../docs/adr/0008-architecture-tests.md)
 

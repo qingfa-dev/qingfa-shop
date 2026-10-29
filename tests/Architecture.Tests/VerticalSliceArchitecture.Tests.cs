@@ -7,7 +7,7 @@ namespace QingFa.Shop.Architecture.Tests;
 /// Each vertical slice (feature) should be self-contained:
 /// - Commands/Queries/Handlers/Validators in the same namespace
 /// - No direct dependencies between slices
-/// - Shared code only via Core, Contract, Application.Services
+/// - Shared code only via Core, Application.Services
 /// 
 /// Note: Full NetArchTest rules are documented here but require NetArchTest API compatibility.
 /// Current version uses simplified compile-time checks.
