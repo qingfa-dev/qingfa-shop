@@ -1,12 +1,17 @@
 using Application.Common.Events;
+using Application.Common.Messaging.Serialization;
 using Application.Common.Persistence.Capabilities;
 using Application.Common.Persistence.UnitOfWorks;
 using Application.Common.Querying.Mapping;
 
+using Core.Common.Domain.Events;
+
 using Infrastructure.Events;
+using Infrastructure.Integrations.Messaging.Serialization;
 using Infrastructure.Persistence.EntityFramework.Capabilities;
 using Infrastructure.Persistence.EntityFramework.Interceptors;
 using Infrastructure.Persistence.EntityFramework.Options;
+using Infrastructure.Persistence.EntityFramework.Outbox;
 using Infrastructure.Persistence.EntityFramework.QueryTranslation;
 using Infrastructure.Persistence.EntityFramework.UnitOfWorks;
 
@@ -66,6 +71,7 @@ public static class EntityFrameworkComposition
         // Register domain-event publication. MediatR is optional so migration-only hosts
         // can compose persistence without an application mediator.
         RegisterDomainEventPublisher(services);
+        RegisterEventSerialization(services);
 
         // Register DbContext with provider-specific options
         services.AddDbContext<TContext>(
@@ -84,8 +90,8 @@ public static class EntityFrameworkComposition
 
                 // Register concern interceptors (lifecycle, versionable, domain events).
                 optionsBuilder.Apply(
-                    provider.GetRequiredService<IDomainEventPublisher>(),
-                    provider.GetService<ILogger<DomainEventInterceptor>>());
+                    provider.GetRequiredService<IDomainEventSerializer>(),
+                    provider.GetService<ILogger<OutboxInterceptor>>());
 
                 switch (opt.Provider.ToLowerInvariant())
                 {
@@ -159,6 +165,7 @@ public static class EntityFrameworkComposition
         // Register domain-event publication. MediatR is optional so migration-only hosts
         // can compose persistence without an application mediator.
         RegisterDomainEventPublisher(services);
+        RegisterEventSerialization(services);
 
         services.AddDbContext<TContext>(
             (sp, optionsBuilder) =>
@@ -172,8 +179,8 @@ public static class EntityFrameworkComposition
 
                 // Register concern interceptors (lifecycle, versionable, domain events).
                 optionsBuilder.Apply(
-                    sp.GetRequiredService<IDomainEventPublisher>(),
-                    sp.GetService<ILogger<DomainEventInterceptor>>());
+                    sp.GetRequiredService<IDomainEventSerializer>(),
+                    sp.GetService<ILogger<OutboxInterceptor>>());
 
                 switch (setting.Provider.ToLowerInvariant())
                 {
@@ -221,6 +228,16 @@ public static class EntityFrameworkComposition
 
         // DbContexts are request-scoped; no middleware is required for EF Core.
         return app;
+    }
+
+    /// <summary>Registers the event serializers and the type registry used by the outbox.</summary>
+    /// <param name="services">The host's service collection.</param>
+    private static void RegisterEventSerialization(IServiceCollection services)
+    {
+        services.TryAddSingleton<IEventTypeRegistry>(_ => new EventTypeRegistry(typeof(DomainEvent).Assembly));
+        services.TryAddSingleton<JsonMessageSerializer>();
+        services.TryAddSingleton<IDomainEventSerializer>(sp => sp.GetRequiredService<JsonMessageSerializer>());
+        services.TryAddSingleton<IIntegrationEventSerializer>(sp => sp.GetRequiredService<JsonMessageSerializer>());
     }
 
     /// <summary>

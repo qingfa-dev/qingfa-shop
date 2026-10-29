@@ -79,13 +79,23 @@ public sealed class MessagingFixture : IAsyncLifetime
         var services = new ServiceCollection();
         services.AddLogging();
 
+        // Initialize: the same serializer and outbox interceptor the dispatcher resolves.
+        var eventTypes = new EventTypeRegistry(
+            typeof(TodoCreated).Assembly,
+            typeof(Infrastructure.AssemblyMarker).Assembly);
+        var serializer = new JsonMessageSerializer(eventTypes);
+
         services.AddDbContext<ApplicationDbContext>(options =>
+        {
             options.UseNpgsql(ConnectionString, npgsql =>
             {
                 npgsql
                     .UsePersistenceMigrationHistory()
                     .CommandTimeout(30);
-            }));
+            });
+
+            options.AddInterceptors(new OutboxInterceptor(serializer, TimeProvider.System));
+        });
 
         services.AddScoped<IUnitOfWork>(sp =>
             new EfCoreUnitOfWork(sp.GetRequiredService<ApplicationDbContext>()));
@@ -100,11 +110,6 @@ public sealed class MessagingFixture : IAsyncLifetime
                 sp.GetRequiredService<IUnitOfWork>(),
                 sp.GetRequiredService<TimeProvider>()));
 
-        // Initialize: the same serializer the dispatcher resolves, over the real event assemblies.
-        var eventTypes = new EventTypeRegistry(
-            typeof(TodoCreated).Assembly,
-            typeof(Infrastructure.AssemblyMarker).Assembly);
-        var serializer = new JsonMessageSerializer(eventTypes);
         services.AddSingleton<IEventTypeRegistry>(eventTypes);
         services.AddSingleton(serializer);
         services.AddSingleton<IDomainEventSerializer>(serializer);

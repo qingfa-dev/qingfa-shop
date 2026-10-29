@@ -1,5 +1,3 @@
-using Application.Common.Events;
-
 using Core.Common.Concerns.Foundation.Versionable;
 using Core.Common.Concerns.Lifecycle.Activatable;
 using Core.Common.Concerns.Lifecycle.Creatable;
@@ -9,7 +7,11 @@ using Core.Common.Concerns.Lifecycle.SoftDeletable;
 using Core.Common.Domain.Aggregates;
 using Core.Common.Domain.Events;
 
+using Application.Common.Messaging.Serialization;
+
+using Infrastructure.Integrations.Messaging.Serialization;
 using Infrastructure.Persistence.EntityFramework.Interceptors;
+using Infrastructure.Persistence.EntityFramework.Outbox;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
@@ -347,128 +349,6 @@ public sealed class InterceptorTest
         entity.Version.Should().Be(7);
     }
 
-    // ─── Domain events ────────────────────────────────────────────────────
-
-    [Fact(DisplayName = "Domain events should publish every collected event after a successful save")]
-    public async Task DomainEvents_WhenSaveSucceeds_ShouldPublishEveryEvent()
-    {
-        // Arrange
-        var publisher = new RecordingDomainEventPublisher();
-        await using var context = CreateContext(new DomainEventInterceptor(publisher));
-        var aggregate = new EventAggregate(Guid.NewGuid());
-        var first = new TestDomainEvent("first");
-        var second = new TestDomainEvent("second");
-        aggregate.Raise(first);
-        aggregate.Raise(second);
-        context.Add(aggregate);
-
-        // Act
-        await context.SaveChangesAsync();
-
-        // Assert
-        publisher.Calls.Should().Be(1);
-        publisher.Published.Should().Equal(first, second);
-        aggregate.Events.Should().BeEmpty();
-    }
-
-    [Fact(DisplayName = "Domain events should clear the aggregate after publishing")]
-    public async Task DomainEvents_WhenPublishSucceeds_ShouldClearTheAggregate()
-    {
-        // Arrange
-        var publisher = new RecordingDomainEventPublisher();
-        await using var context = CreateContext(new DomainEventInterceptor(publisher));
-        var aggregate = new EventAggregate(Guid.NewGuid());
-        aggregate.Raise(new TestDomainEvent("only"));
-        context.Add(aggregate);
-
-        // Act
-        await context.SaveChangesAsync();
-
-        // Assert
-        aggregate.Events.Should().BeEmpty();
-    }
-
-    [Fact(DisplayName = "Domain events should not publish when there are no events")]
-    public async Task DomainEvents_WhenNoEventsExist_ShouldNotPublish()
-    {
-        // Arrange
-        var publisher = new RecordingDomainEventPublisher();
-        await using var context = CreateContext(new DomainEventInterceptor(publisher));
-        context.Add(new EventAggregate(Guid.NewGuid()));
-
-        // Act
-        await context.SaveChangesAsync();
-
-        // Assert
-        publisher.Calls.Should().Be(0);
-        publisher.Published.Should().BeEmpty();
-    }
-
-    [Fact(DisplayName = "Domain events should not publish when the save fails")]
-    public async Task DomainEvents_WhenSaveFails_ShouldNotPublish()
-    {
-        // Arrange
-        var publisher = new RecordingDomainEventPublisher();
-        await using var context = CreateContext(
-            new DomainEventInterceptor(publisher),
-            new ThrowingSaveInterceptor());
-        var aggregate = new EventAggregate(Guid.NewGuid());
-        aggregate.Raise(new TestDomainEvent("rejected"));
-        context.Add(aggregate);
-
-        // Act
-        Func<Task> act = () => context.SaveChangesAsync();
-
-        // Assert
-        await act.Should().ThrowAsync<InvalidOperationException>();
-        publisher.Calls.Should().Be(0);
-        aggregate.Events.Should().ContainSingle();
-    }
-
-    [Fact(DisplayName = "Domain events should surface a publication failure and clear dispatched events")]
-    public async Task DomainEvents_WhenPublicationFails_ShouldThrowResultException()
-    {
-        // Arrange
-        var publisher = new RecordingDomainEventPublisher
-        {
-            NextResult = Result.Fail(
-                DomainEventOutcome.Failure.PublishFailed(typeof(TestDomainEvent), "handler failed"))
-        };
-        await using var context = CreateContext(new DomainEventInterceptor(publisher));
-        var aggregate = new EventAggregate(Guid.NewGuid());
-        aggregate.Raise(new TestDomainEvent("failing"));
-        context.Add(aggregate);
-
-        // Act
-        Func<Task> act = () => context.SaveChangesAsync();
-
-        // Assert
-        ResultException exception = (await act.Should().ThrowAsync<ResultException>()).Which;
-        exception.Errors.Should().ContainSingle(error =>
-            error.Code == DomainEventOutcome.Codes.PublishFailed);
-        aggregate.Events.Should().BeEmpty();
-    }
-
-    [Fact(DisplayName = "Domain events should publish on the synchronous save path")]
-    public async Task DomainEvents_WhenSaveChangesIsSynchronous_ShouldPublish()
-    {
-        // Arrange
-        var publisher = new RecordingDomainEventPublisher();
-        await using var context = CreateContext(new DomainEventInterceptor(publisher));
-        var aggregate = new EventAggregate(Guid.NewGuid());
-        var domainEvent = new TestDomainEvent("sync");
-        aggregate.Raise(domainEvent);
-        context.Add(aggregate);
-
-        // Act
-        context.SaveChanges();
-
-        // Assert
-        publisher.Calls.Should().Be(1);
-        publisher.Published.Should().Equal(domainEvent);
-        aggregate.Events.Should().BeEmpty();
-    }
-
     // ─── Synchronous path ─────────────────────────────────────────────────
 
     [Fact(DisplayName = "SaveChanges (sync) should apply every registered interceptor")]
@@ -477,7 +357,7 @@ public sealed class InterceptorTest
         // Arrange
         var builder = new DbContextOptionsBuilder<InterceptorTestContext>()
             .UseInMemoryDatabase(NewDatabaseName());
-        builder.Apply(new RecordingDomainEventPublisher());
+        builder.Apply(CreateSerializer());
         await using var context = new InterceptorTestContext(builder.Options);
         var entity = new ConcernEntity
         {
@@ -536,7 +416,7 @@ public sealed class InterceptorTest
             .UseInMemoryDatabase(NewDatabaseName());
 
         // Act
-        DbContextOptionsBuilder returned = builder.Apply(new RecordingDomainEventPublisher());
+        DbContextOptionsBuilder returned = builder.Apply(CreateSerializer());
 
         // Assert
         returned.Should().BeSameAs(builder);
@@ -550,7 +430,7 @@ public sealed class InterceptorTest
             {
                 typeof(LifecycleInterceptor),
                 typeof(VersionableInterceptor),
-                typeof(DomainEventInterceptor),
+                typeof(OutboxInterceptor),
             });
     }
 
@@ -561,14 +441,14 @@ public sealed class InterceptorTest
         DbContextOptionsBuilder? builder = null;
 
         // Act
-        Action act = () => builder!.Apply(new RecordingDomainEventPublisher());
+        Action act = () => builder!.Apply(CreateSerializer());
 
         // Assert
         act.Should().Throw<ArgumentNullException>();
     }
 
-    [Fact(DisplayName = "Apply should reject a null publisher")]
-    public void Apply_WhenPublisherIsNull_ShouldThrowArgumentNullException()
+    [Fact(DisplayName = "Apply should reject a null serializer")]
+    public void Apply_WhenSerializerIsNull_ShouldThrowArgumentNullException()
     {
         // Arrange
         var builder = new DbContextOptionsBuilder<InterceptorTestContext>()
@@ -582,6 +462,9 @@ public sealed class InterceptorTest
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────
+
+    private static IDomainEventSerializer CreateSerializer()
+        => new JsonMessageSerializer(new EventTypeRegistry(typeof(DomainEvent).Assembly));
 
     private static string NewDatabaseName() => $"interceptors_{Guid.NewGuid():N}";
 
@@ -599,26 +482,6 @@ public sealed class InterceptorTest
         }
 
         return new InterceptorTestContext(builder.Options);
-    }
-
-    /// <summary>Records every publication attempt for assertions.</summary>
-    private sealed class RecordingDomainEventPublisher : IDomainEventPublisher
-    {
-        public List<IDomainEvent> Published { get; } = [];
-
-        public int Calls { get; private set; }
-
-        public Result NextResult { get; set; } = Result.Ok();
-
-        public Task<Result> PublishAsync(
-            IEnumerable<IDomainEvent> domainEvents,
-            CancellationToken cancellationToken = default)
-        {
-            Calls++;
-            Published.AddRange(domainEvents);
-
-            return Task.FromResult(NextResult);
-        }
     }
 
     /// <summary>Fails the save before EF Core reaches the store.</summary>
