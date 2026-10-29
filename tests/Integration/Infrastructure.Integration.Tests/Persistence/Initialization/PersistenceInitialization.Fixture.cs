@@ -50,7 +50,7 @@ public sealed class PersistenceInitializationFixture : IAsyncLifetime
                 .UsePersistenceMigrationHistory()
                 .CommandTimeout(30)));
 
-        services.AddScoped<EfCoreDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
+        services.AddScoped<DbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
         services.AddScoped<IUnitOfWork>(sp => new EfCoreUnitOfWork(sp.GetRequiredService<ApplicationDbContext>()));
 
         // Register: the persistence initializer and module seeders through the same

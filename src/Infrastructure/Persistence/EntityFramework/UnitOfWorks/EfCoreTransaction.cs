@@ -15,7 +15,7 @@ namespace Infrastructure.Persistence.EntityFramework.UnitOfWorks;
 /// </summary>
 public sealed class EfCoreTransaction : ITransaction
 {
-    private readonly EfCoreDbContext _context;
+    private readonly DbContext _context;
     private readonly IDbContextTransaction _transaction;
     private readonly IsolationLevel _isolationLevel;
 
@@ -23,7 +23,7 @@ public sealed class EfCoreTransaction : ITransaction
     private bool _disposed;
 
     internal EfCoreTransaction(
-        EfCoreDbContext context,
+        DbContext context,
         IDbContextTransaction transaction,
         bool readOnly,
         IsolationLevel isolationLevel = IsolationLevel.Unspecified)

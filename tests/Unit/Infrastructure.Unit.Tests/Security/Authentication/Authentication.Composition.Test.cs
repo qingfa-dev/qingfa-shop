@@ -61,7 +61,7 @@ public sealed class AuthenticationCompositionTest
         services.AddLogging();
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseInMemoryDatabase($"Auth_{Guid.NewGuid():N}"));
-        services.AddScoped<EfCoreDbContext>(provider =>
+        services.AddScoped<DbContext>(provider =>
             provider.GetRequiredService<ApplicationDbContext>());
         services.AddScoped<IUnitOfWork, EfCoreUnitOfWork>();
         services.AddAuthentication(BuildConfiguration());

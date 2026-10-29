@@ -1,7 +1,4 @@
-using Application.Common.Persistence;
-
 using Infrastructure.Persistence.EntityFramework.Conventions;
-using Infrastructure.Persistence.EntityFramework.Providers;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -24,17 +21,6 @@ public abstract class EfCoreDbContext : DbContext
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
-
-        // Schema: module tables live in their own schema; the default keeps
-        // unconfigured entities from leaking into "public".
-        modelBuilder.HasDefaultSchema(PersistenceConstant.Schema.Default);
-
-        // Detect the database provider for provider-specific conventions.
-        PersistenceProviderKind providerKind = PersistenceProviderDetector.Detect(Database.ProviderName);
-
-        // Apply: entity configurations first so conventions can see every entity type.
-        // Configurations own explicit mappings; conventions only fill the gaps.
-        modelBuilder.ApplyConfigurationsFromAssembly(typeof(EfCoreDbContext).Assembly);
-        modelBuilder.ApplyDefaultConventions(providerKind);
+        modelBuilder.ApplyPersistenceConventions(Database.ProviderName);
     }
 }

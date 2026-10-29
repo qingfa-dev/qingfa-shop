@@ -6,6 +6,7 @@ using Infrastructure.Persistence.EntityFramework;
 using Infrastructure.Persistence.EntityFramework.Contexts;
 using Infrastructure.Persistence.EntityFramework.Repositories;
 
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -30,7 +31,7 @@ public static class PersistenceComposition
     public static IServiceCollection AddPersistence<TContext>(
         this IServiceCollection services,
         IConfiguration configuration)
-        where TContext : EfCoreDbContext
+        where TContext : DbContext
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
@@ -63,7 +64,7 @@ public static class PersistenceComposition
         this IServiceCollection services,
         string connectionString,
         string provider = "PostgreSQL")
-        where TContext : EfCoreDbContext
+        where TContext : DbContext
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNullOrWhiteSpace(connectionString);

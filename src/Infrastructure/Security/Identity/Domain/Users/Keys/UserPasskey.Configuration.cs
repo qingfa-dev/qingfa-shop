@@ -22,8 +22,8 @@ public sealed class UserPasskeyConfiguration : IEntityTypeConfiguration<UserPass
             .HasForeignKey(p => p.UserId)
             .OnDelete(DeleteBehavior.Cascade);
 
-        // Own: passkey payload is a value object, not a separate keyed entity.
         builder.OwnsOne(passkey => passkey.Data, data =>
             data.ToTable(IdentitySchema.TableNames.PasskeyData, IdentitySchema.Name));
+
     }
 }

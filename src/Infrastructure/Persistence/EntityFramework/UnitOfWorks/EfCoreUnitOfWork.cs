@@ -15,9 +15,9 @@ namespace Infrastructure.Persistence.EntityFramework.UnitOfWorks;
 /// </summary>
 public sealed class EfCoreUnitOfWork : IUnitOfWork
 {
-    private readonly EfCoreDbContext _context;
+    private readonly DbContext _context;
 
-    public EfCoreUnitOfWork(EfCoreDbContext context)
+    public EfCoreUnitOfWork(DbContext context)
     {
         _context = context;
     }

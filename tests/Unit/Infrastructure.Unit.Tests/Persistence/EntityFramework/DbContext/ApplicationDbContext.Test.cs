@@ -174,9 +174,10 @@ public sealed class ApplicationDbContextTest : IAsyncLifetime
         var migrations = context.Database.GetMigrations().ToList();
 
         // Assert
-        migrations.Should().HaveCount(2);
+        migrations.Should().HaveCount(3);
         migrations.Should().Contain(migration => migration.EndsWith("_InitialCreate", StringComparison.Ordinal));
         migrations.Should().Contain(migration => migration.EndsWith("_AddIdentity", StringComparison.Ordinal));
+        migrations.Should().Contain(migration => migration.EndsWith("_AlignIdentityDbContext", StringComparison.Ordinal));
     }
 
     [Fact(DisplayName = "The Persistence assembly should contain one DbContext and one design-time factory")]

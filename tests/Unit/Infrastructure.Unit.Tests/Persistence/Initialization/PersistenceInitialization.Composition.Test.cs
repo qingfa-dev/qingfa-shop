@@ -199,7 +199,7 @@ public sealed class PersistenceInitializationCompositionTest
         services.AddLogging();
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseNpgsql("Host=127.0.0.1;Port=1;Database=qingfa;Username=qingfa;Password=qingfa;Timeout=1"));
-        services.AddScoped<EfCoreDbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
+        services.AddScoped<DbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
         services.AddScoped<IUnitOfWork, EfCoreUnitOfWork>();
         return services;
     }

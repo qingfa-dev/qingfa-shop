@@ -1,3 +1,6 @@
+using Application.Common.Persistence;
+
+using Infrastructure.Persistence.EntityFramework.Contexts;
 using Infrastructure.Persistence.EntityFramework.Providers;
 
 using Microsoft.EntityFrameworkCore;
@@ -9,6 +12,24 @@ namespace Infrastructure.Persistence.EntityFramework.Conventions;
 /// </summary>
 public static class ModelBuilderConventionExtensions
 {
+    /// <summary>
+    /// Applies the repository's schema, explicit entity configurations, and provider conventions.
+    /// </summary>
+    /// <param name="modelBuilder">The model builder to configure.</param>
+    /// <param name="providerName">The EF Core provider name, when a context is available.</param>
+    public static void ApplyPersistenceConventions(
+        this ModelBuilder modelBuilder,
+        string? providerName)
+    {
+        ArgumentNullException.ThrowIfNull(modelBuilder);
+
+        modelBuilder.HasDefaultSchema(PersistenceConstant.Schema.Default);
+
+        PersistenceProviderKind providerKind = PersistenceProviderDetector.Detect(providerName);
+        modelBuilder.ApplyConfigurationsFromAssembly(typeof(EfCoreDbContext).Assembly);
+        modelBuilder.ApplyDefaultConventions(providerKind);
+    }
+
     /// <summary>
     /// Applies all default conventions to the model builder.
     /// </summary>

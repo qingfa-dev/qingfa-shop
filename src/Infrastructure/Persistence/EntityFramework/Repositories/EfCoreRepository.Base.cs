@@ -23,7 +23,7 @@ namespace Infrastructure.Persistence.EntityFramework.Repositories;
 public partial class EfCoreRepository<TEntity, TKey> : IPersistentRepository<TEntity, TKey>
     where TEntity : class, IEntity<TKey>
 {
-    protected readonly EfCoreDbContext _context;
+    protected readonly DbContext _context;
     private readonly IQueryTranslator<TEntity> _translator;
     private readonly QueryMap<TEntity> _map;
 
@@ -34,7 +34,7 @@ public partial class EfCoreRepository<TEntity, TKey> : IPersistentRepository<TEn
     public IQueryCapabilities Capabilities { get; }
 
     public EfCoreRepository(
-        EfCoreDbContext context,
+        DbContext context,
         IQueryTranslator<TEntity> translator,
         IQueryMapProvider mapProvider,
         IQueryCapabilities capabilities)

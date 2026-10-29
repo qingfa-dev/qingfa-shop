@@ -36,7 +36,7 @@ public static class EntityFrameworkComposition
     public static IServiceCollection AddEfCorePersistence<TContext>(
         this IServiceCollection services,
         IConfiguration configuration)
-        where TContext : EfCoreDbContext
+        where TContext : DbContext
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
@@ -120,7 +120,7 @@ public static class EntityFrameworkComposition
         services.TryAddSingleton<IQueryCapabilities, EfCoreQueryCapabilities>();
 
         // Register: Base DbContext type so EfCoreUnitOfWork can resolve it.
-        services.AddScoped<EfCoreDbContext>(sp => sp.GetRequiredService<TContext>());
+        services.AddScoped<DbContext>(sp => sp.GetRequiredService<TContext>());
 
         // Register UnitOfWork
         services.AddScoped<IUnitOfWork, EfCoreUnitOfWork>();
@@ -141,7 +141,7 @@ public static class EntityFrameworkComposition
         this IServiceCollection services,
         string connectionString,
         string provider = "PostgreSQL")
-        where TContext : EfCoreDbContext
+        where TContext : DbContext
     {
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNullOrWhiteSpace(connectionString);
@@ -195,7 +195,7 @@ public static class EntityFrameworkComposition
             ServiceLifetime.Scoped);
 
         // Register: Base DbContext type so EfCoreUnitOfWork can resolve it.
-        services.AddScoped<EfCoreDbContext>(sp => sp.GetRequiredService<TContext>());
+        services.AddScoped<DbContext>(sp => sp.GetRequiredService<TContext>());
 
         services.TryAddSingleton<QueryMapRegistry>();
         services.TryAddSingleton<IQueryMapProvider>(sp => sp.GetRequiredService<QueryMapRegistry>());

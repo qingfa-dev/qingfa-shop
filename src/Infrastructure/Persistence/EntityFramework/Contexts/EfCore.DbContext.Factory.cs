@@ -7,7 +7,7 @@ namespace Infrastructure.Persistence.EntityFramework.Contexts;
 /// Use this for short-lived contexts in request-scoped operations.
 /// </remarks>
 public sealed class EfCoreDbContextFactory<TContext> : IDbContextFactory<TContext>
-    where TContext : EfCoreDbContext
+    where TContext : DbContext
 {
     private readonly DbContextOptions<TContext> _options;
 

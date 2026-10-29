@@ -4,6 +4,7 @@ using Application.Common.Persistence.Initialization.Seeders;
 using Infrastructure.Persistence.EntityFramework.Contexts;
 using Infrastructure.Persistence.Initialization;
 
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Microsoft.Extensions.Logging;
@@ -25,7 +26,7 @@ public static class PersistenceInitializationComposition
     /// <returns>The same collection, for chaining.</returns>
     public static IServiceCollection AddPersistenceInitialization<TContext>(
         this IServiceCollection services)
-        where TContext : EfCoreDbContext
+        where TContext : DbContext
     {
         ArgumentNullException.ThrowIfNull(services);
 
