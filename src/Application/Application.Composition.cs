@@ -1,5 +1,8 @@
+using System.Reflection;
+
 using Application.Common.Mediators;
-using Application.Common.Security.Authorization;
+
+using FluentValidation;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
@@ -16,16 +19,23 @@ public static class ApplicationComposition
     /// Adds all application services to the web application builder.
     /// </summary>
     /// <param name="builder">The web application builder.</param>
+    /// <param name="additionalAssemblies">Additional assemblies to scan for handlers and validators.</param>
     /// <returns>The same builder, for chaining.</returns>
-    public static WebApplicationBuilder AddApplication(this WebApplicationBuilder builder)
+    public static WebApplicationBuilder AddApplication(
+        this WebApplicationBuilder builder,
+        params Assembly[] additionalAssemblies)
     {
         ArgumentNullException.ThrowIfNull(builder);
 
         // Register: MediatR with pipeline behaviors (logging, validation, exception mapping).
-        builder.Services.AddMediators();
+        builder.AddMediators(additionalAssemblies);
 
-        // Register: Permission cache, policy provider, and authorization handler.
-        builder.AddApplicationAuthorization();
+        // Subscribe: register validators from the host and this assembly.
+        builder.Services.AddValidatorsFromAssembly(Assembly.GetEntryAssembly());
+        builder.Services.AddValidatorsFromAssembly(Assembly.GetExecutingAssembly());
+
+        foreach (Assembly assembly in additionalAssemblies)
+            builder.Services.AddValidatorsFromAssembly(assembly);
 
         return builder;
     }
@@ -41,7 +51,7 @@ public static class ApplicationComposition
         ArgumentNullException.ThrowIfNull(app);
 
         // Warm up: MediatR services to catch configuration errors early.
-        app.Services.UseMediators();
+        app.UseMediators();
 
         return app;
     }

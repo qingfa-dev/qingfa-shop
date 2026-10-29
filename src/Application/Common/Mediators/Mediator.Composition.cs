@@ -8,6 +8,7 @@ using FluentValidation;
 
 using MediatR;
 
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Application.Common.Mediators;
@@ -22,13 +23,17 @@ public static class MediatorComposition
     /// <summary>
     /// Registers MediatR services along with logging, validation, and exception mapping behaviors.
     /// </summary>
-    /// <param name="services">The service collection to add services to.</param>
+    /// <param name="builder">The host builder to add services to.</param>
     /// <param name="additionalAssemblies">Additional assemblies to scan for validators and handlers.</param>
-    /// <returns>The service collection for method chaining.</returns>
-    public static IServiceCollection AddMediators(
-        this IServiceCollection services,
+    /// <returns>The same builder, for chaining.</returns>
+    public static WebApplicationBuilder AddMediators(
+        this WebApplicationBuilder builder,
         params Assembly[] additionalAssemblies)
     {
+        ArgumentNullException.ThrowIfNull(builder);
+
+        IServiceCollection services = builder.Services;
+
         #region MediatR Configuration
 
         // Initialize: register the validators the validation behavior resolves.
@@ -63,7 +68,7 @@ public static class MediatorComposition
 
         #endregion
 
-        return services;
+        return builder;
     }
 
     #endregion
@@ -73,20 +78,22 @@ public static class MediatorComposition
     /// <summary>
     /// Initializes MediatR services for the application, ensuring services are warmed up.
     /// </summary>
-    /// <param name="provider">The service provider to configure.</param>
-    /// <returns>The service provider for method chaining.</returns>
-    public static IServiceProvider UseMediators(this IServiceProvider provider)
+    /// <param name="app">The host application to configure.</param>
+    /// <returns>The same application, for chaining.</returns>
+    public static WebApplication UseMediators(this WebApplication app)
     {
+        ArgumentNullException.ThrowIfNull(app);
+
         #region Service Warming
 
         // Resolve: warm up the mediator inside a scope. MediatR is scoped, and a
         // web host validates that scoped services are not resolved from the root.
-        using IServiceScope scope = provider.CreateScope();
+        using IServiceScope scope = app.Services.CreateScope();
         scope.ServiceProvider.GetRequiredService<IMediator>();
 
         #endregion
 
-        return provider;
+        return app;
     }
 
     #endregion
