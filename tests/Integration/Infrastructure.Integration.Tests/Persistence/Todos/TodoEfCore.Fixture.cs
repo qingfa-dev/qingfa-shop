@@ -9,7 +9,6 @@ using Core.Todos.Categories;
 using Core.Todos.Items;
 using Core.Todos.Lists;
 
-using Infrastructure.Events;
 using Infrastructure.Persistence.EntityFramework.Capabilities;
 using Infrastructure.Persistence.EntityFramework.Contexts;
 using Infrastructure.Persistence.EntityFramework.Interceptors;
@@ -21,7 +20,6 @@ using Infrastructure.Services.Todos;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging.Abstractions;
 
 using Respawn;
 
@@ -92,13 +90,7 @@ public sealed class TodoEfCoreFixture : IAsyncLifetime
     public IntegrationExecutionContext Ambient { get; } = new();
 
     /// <summary>The frozen clock the handlers read.</summary>
-    /// <remarks>
-    /// Slightly ahead of wall clock: the lifecycle interceptor stamps creation with
-    /// <see cref="DateTimeOffset.UtcNow"/>, so a handler clock at midnight would make every
-    /// later modification look older than creation. The lead stays inside
-    /// <c>LifecycleConstant.Constraints.Timestamp.MaxFutureSkewSeconds</c>.
-    /// </remarks>
-    public IntegrationClock Clock { get; } = new(DateTimeOffset.UtcNow.AddMinutes(1));
+    public IntegrationClock Clock { get; } = new(DateTimeOffset.UtcNow.Date);
 
     /// <summary>The query map for Todo.</summary>
     public QueryMap<Todo> TodoQueryMap { get; private set; } = null!;
@@ -136,8 +128,9 @@ public sealed class TodoEfCoreFixture : IAsyncLifetime
                     .CommandTimeout(30);
             });
 
-            // Mirror: production composes lifecycle, version-token, and domain-event interceptors.
-            options.Apply(NullDomainEventPublisher.Instance, NullLogger<DomainEventInterceptor>.Instance);
+            // Mirror: register only the version-token interceptor; lifecycle and domain-event
+            // behavior stays out of this shared fixture (see the delete-semantics tests).
+            options.AddInterceptors(new VersionableInterceptor());
         });
 
         // Register QueryMaps
