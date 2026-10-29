@@ -1,8 +1,6 @@
 
 using System.Data;
 
-using Application.Common.Persistence.UnitOfWorks;
-
 using Microsoft.Extensions.Logging;
 
 namespace Application.Common.Persistence.Initialization;

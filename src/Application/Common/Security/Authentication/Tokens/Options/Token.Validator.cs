@@ -1,7 +1,5 @@
 using System.Security.Claims;
 
-using Application.Common.Security.Authentication.Tokens;
-
 namespace Application.Common.Security.Authentication.Tokens.Options;
 
 /// <summary>Validates token options and service inputs without mutating them.</summary>

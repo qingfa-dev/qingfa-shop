@@ -5,7 +5,6 @@ using Application.Common.Mediators;
 using FluentValidation;
 
 using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.DependencyInjection;
 
 namespace Application;
 

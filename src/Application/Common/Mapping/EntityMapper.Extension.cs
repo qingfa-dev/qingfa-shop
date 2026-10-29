@@ -1,5 +1,3 @@
-using Core.Common.Monad.Results;
-
 namespace Application.Common.Mapping;
 
 /// <summary>

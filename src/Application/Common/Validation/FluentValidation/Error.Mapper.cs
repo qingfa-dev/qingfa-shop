@@ -1,6 +1,5 @@
 using Core.Common.Monad.Metadata;
 
-using FluentValidation;
 using FluentValidation.Results;
 
 using ValidationSeverity = FluentValidation.Severity;

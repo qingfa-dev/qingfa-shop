@@ -1,7 +1,6 @@
 using Core.Common.Concerns.Foundation.Tenantable;
 using Core.Common.Concerns.Lifecycle.SoftDeletable;
 using Core.Common.Domain.Entities;
-using Core.Common.Monad.Maybes;
 
 namespace Application.Common.Persistence.Repositories;
 

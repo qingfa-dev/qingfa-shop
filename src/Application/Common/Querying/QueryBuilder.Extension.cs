@@ -2,7 +2,6 @@ using System.Linq.Expressions;
 
 using Application.Common.Querying.Aggregation;
 using Application.Common.Querying.Filtering;
-using Application.Common.Querying.Mapping;
 using Application.Common.Querying.Pagination;
 using Application.Common.Querying.Projection;
 using Application.Common.Querying.Searching;
