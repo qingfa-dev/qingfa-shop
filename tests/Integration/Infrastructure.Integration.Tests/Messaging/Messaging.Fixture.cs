@@ -5,6 +5,7 @@ using Core.Todos.Items;
 
 using Infrastructure.Integrations.Messaging.Serialization;
 using Infrastructure.Persistence.EntityFramework.Contexts;
+using Infrastructure.Persistence.EntityFramework.Inbox;
 using Infrastructure.Persistence.EntityFramework.Options;
 using Infrastructure.Persistence.EntityFramework.Outbox;
 using Infrastructure.Persistence.EntityFramework.UnitOfWorks;
@@ -48,6 +49,11 @@ public sealed class MessagingFixture : IAsyncLifetime
         .GetRequiredService<EfCoreOutboxStore>()
         ?? throw new InvalidOperationException("Scope not initialized");
 
+    /// <summary>The inbox store resolved from the current scope.</summary>
+    public EfCoreInboxStore InboxStore => CurrentScope?.ServiceProvider
+        .GetRequiredService<EfCoreInboxStore>()
+        ?? throw new InvalidOperationException("Scope not initialized");
+
     /// <summary>The unit of work resolved from the current scope.</summary>
     public IUnitOfWork UnitOfWork => CurrentScope?.ServiceProvider
         .GetRequiredService<IUnitOfWork>()
@@ -87,6 +93,11 @@ public sealed class MessagingFixture : IAsyncLifetime
         services.AddScoped<EfCoreOutboxStore>(sp =>
             new EfCoreOutboxStore(
                 sp.GetRequiredService<ApplicationDbContext>(),
+                sp.GetRequiredService<TimeProvider>()));
+        services.AddScoped<EfCoreInboxStore>(sp =>
+            new EfCoreInboxStore(
+                sp.GetRequiredService<ApplicationDbContext>(),
+                sp.GetRequiredService<IUnitOfWork>(),
                 sp.GetRequiredService<TimeProvider>()));
 
         // Initialize: the same serializer the dispatcher resolves, over the real event assemblies.
