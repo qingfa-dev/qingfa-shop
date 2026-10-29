@@ -1,4 +1,5 @@
 using Application.Common.Mediators;
+using Application.Common.Security.Authorization;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
@@ -22,6 +23,9 @@ public static class ApplicationComposition
 
         // Register: MediatR with pipeline behaviors (logging, validation, exception mapping).
         builder.Services.AddMediators();
+
+        // Register: Permission cache, policy provider, and authorization handler.
+        builder.AddApplicationAuthorization();
 
         return builder;
     }

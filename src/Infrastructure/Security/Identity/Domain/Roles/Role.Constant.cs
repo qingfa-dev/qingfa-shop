@@ -1,4 +1,6 @@
+using Application.Common.Security.Authorization;
 using Application.Common.Security.Authorization.Domain;
+using Application.Common.Security.Authorization.Registry;
 
 namespace Infrastructure.Security.Identity.Domain.Roles;
 
@@ -12,7 +14,7 @@ public static class RoleConstant
     /// </summary>
     public static class Defaults
     {
-        public const string Admin = "Admin";
+        public const string Admin = AuthorizationConstant.Defaults.AdminRole;
         public const string Manager = "Manager";
         public const string User = "User";
 
@@ -68,29 +70,8 @@ public static class RoleConstant
 
     public static class RolePermissions
     {
-        public static readonly IReadOnlyList<PermissionMetadata> Admin =
-        [
-            PermissionMetadata.Create("identity", "users", "all", "manage"),
-            PermissionMetadata.Create("identity", "users", "all", "read"),
-            PermissionMetadata.Create("identity", "roles", "all", "manage"),
-            PermissionMetadata.Create("identity", "roles", "all", "read"),
-            PermissionMetadata.Create("identity", "permissions", "all", "manage"),
-            PermissionMetadata.Create("identity", "profile", "self", "read"),
-            PermissionMetadata.Create("identity", "profile", "self", "update")
-        ];
-
-        public static readonly IReadOnlyList<PermissionMetadata> Manager =
-        [
-            PermissionMetadata.Create("identity", "users", "all", "read"),
-            PermissionMetadata.Create("identity", "roles", "all", "read"),
-            PermissionMetadata.Create("identity", "profile", "self", "read"),
-            PermissionMetadata.Create("identity", "profile", "self", "update")
-        ];
-
-        public static readonly IReadOnlyList<PermissionMetadata> User =
-        [
-            PermissionMetadata.Create("identity", "profile", "self", "read"),
-            PermissionMetadata.Create("identity", "profile", "self", "update")
-        ];
+        public static readonly IReadOnlyList<PermissionMetadata> Admin = PermissionContext.Admin;
+        public static readonly IReadOnlyList<PermissionMetadata> Manager = PermissionContext.Manager;
+        public static readonly IReadOnlyList<PermissionMetadata> User = PermissionContext.User;
     }
 }
