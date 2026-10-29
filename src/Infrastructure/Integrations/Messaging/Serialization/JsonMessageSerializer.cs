@@ -17,6 +17,8 @@ namespace Infrastructure.Integrations.Messaging.Serialization;
 /// </remarks>
 public sealed class JsonMessageSerializer : IDomainEventSerializer, IIntegrationEventSerializer
 {
+    private const string MetadataPropertyName = "metadata";
+
     private readonly IEventTypeRegistry _registry;
     private readonly JsonSerializerOptions _options;
 
@@ -58,7 +60,18 @@ public sealed class JsonMessageSerializer : IDomainEventSerializer, IIntegration
 
     // Explicit: both contracts differ only by return type, so implicit implementation would collide.
     IDomainEvent IDomainEventSerializer.Deserialize(string eventName, int eventVersion, string payload)
-        => (IDomainEvent)Deserialize(ResolveDomainType(eventName, eventVersion), payload);
+    {
+        Type eventType = ResolveDomainType(eventName, eventVersion);
+
+        // Validate: a stray assembly-qualified name must not smuggle a non-domain type in.
+        if (!typeof(IDomainEvent).IsAssignableFrom(eventType))
+        {
+            throw new InvalidOperationException(
+                $"Event '{eventName}' resolved to '{eventType.FullName}', which is not an {nameof(IDomainEvent)}.");
+        }
+
+        return (IDomainEvent)Deserialize(eventType, payload);
+    }
 
     IIntegrationEvent IIntegrationEventSerializer.Deserialize(string eventName, int eventVersion, string payload)
         => (IIntegrationEvent)Deserialize(_registry.Resolve(eventName, eventVersion), payload);
@@ -67,10 +80,37 @@ public sealed class JsonMessageSerializer : IDomainEventSerializer, IIntegration
     {
         ArgumentNullException.ThrowIfNull(payload);
 
+        using JsonDocument document = JsonDocument.Parse(payload);
+
         // Fail: a null payload means the stored outbox row cannot be replayed.
-        return JsonSerializer.Deserialize(payload, eventType, _options)
+        object message = document.RootElement.Deserialize(eventType, _options)
             ?? throw new InvalidOperationException(
                 $"The payload for '{eventType.FullName}' deserialized to null.");
+
+        RestoreMetadata(message, document.RootElement);
+
+        return message;
+    }
+
+    private void RestoreMetadata(object message, JsonElement root)
+    {
+        // Rehydrate: event constructors mint a fresh event id and timestamp, so the wire envelope wins.
+        if (message is not IHasMetadata hasMetadata ||
+            root.ValueKind != JsonValueKind.Object ||
+            !root.TryGetProperty(MetadataPropertyName, out JsonElement metadataElement) ||
+            metadataElement.ValueKind != JsonValueKind.Object)
+        {
+            return;
+        }
+
+        DefaultMetadata metadata =
+            metadataElement.Deserialize<DefaultMetadata>(_options) ?? DefaultMetadata.Create();
+
+        hasMetadata.Metadata.Clear();
+        foreach ((string key, object value) in metadata)
+        {
+            hasMetadata.Metadata[key] = value;
+        }
     }
 
     private Type ResolveDomainType(string eventName, int eventVersion)

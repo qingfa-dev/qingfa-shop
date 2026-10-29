@@ -10,7 +10,7 @@ public sealed record TodoCreated : DomainEvent
     /// <param name="tenantId">The tenant the todo belongs to.</param>
     /// <param name="title">The title of the todo.</param>
     /// <param name="metadata">The optional metadata to merge with this event.</param>
-    public TodoCreated(Guid todoId, Guid tenantId, string title, IMetadata? metadata = null)
+    public TodoCreated(Guid todoId, Guid tenantId, string title, DefaultMetadata? metadata = null)
         : base(metadata: metadata)
     {
         TodoId = todoId;
@@ -35,7 +35,7 @@ public sealed record TodoStarted : DomainEvent
     /// <param name="todoId">The identifier of the todo.</param>
     /// <param name="tenantId">The tenant the todo belongs to.</param>
     /// <param name="metadata">The optional metadata to merge with this event.</param>
-    public TodoStarted(Guid todoId, Guid tenantId, IMetadata? metadata = null)
+    public TodoStarted(Guid todoId, Guid tenantId, DefaultMetadata? metadata = null)
         : base(metadata: metadata)
     {
         TodoId = todoId;
@@ -57,7 +57,7 @@ public sealed record TodoCompleted : DomainEvent
     /// <param name="tenantId">The tenant the todo belongs to.</param>
     /// <param name="completedAtUtc">The UTC date the todo was completed.</param>
     /// <param name="metadata">The optional metadata to merge with this event.</param>
-    public TodoCompleted(Guid todoId, Guid tenantId, DateTimeOffset completedAtUtc, IMetadata? metadata = null)
+    public TodoCompleted(Guid todoId, Guid tenantId, DateTimeOffset completedAtUtc, DefaultMetadata? metadata = null)
         : base(metadata: metadata)
     {
         TodoId = todoId;
@@ -82,7 +82,7 @@ public sealed record TodoCancelled : DomainEvent
     /// <param name="todoId">The identifier of the todo.</param>
     /// <param name="tenantId">The tenant the todo belongs to.</param>
     /// <param name="metadata">The optional metadata to merge with this event.</param>
-    public TodoCancelled(Guid todoId, Guid tenantId, IMetadata? metadata = null)
+    public TodoCancelled(Guid todoId, Guid tenantId, DefaultMetadata? metadata = null)
         : base(metadata: metadata)
     {
         TodoId = todoId;
@@ -103,7 +103,7 @@ public sealed record TodoReopened : DomainEvent
     /// <param name="todoId">The identifier of the todo.</param>
     /// <param name="tenantId">The tenant the todo belongs to.</param>
     /// <param name="metadata">The optional metadata to merge with this event.</param>
-    public TodoReopened(Guid todoId, Guid tenantId, IMetadata? metadata = null)
+    public TodoReopened(Guid todoId, Guid tenantId, DefaultMetadata? metadata = null)
         : base(metadata: metadata)
     {
         TodoId = todoId;

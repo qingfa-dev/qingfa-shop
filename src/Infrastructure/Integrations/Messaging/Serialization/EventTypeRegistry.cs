@@ -33,6 +33,10 @@ public sealed class EventTypeRegistry : IEventTypeRegistry
                 if (type.IsAbstract || type.IsInterface)
                     continue;
 
+                // Skip: an open generic cannot be materialised from a payload.
+                if (type.IsGenericTypeDefinition || type.ContainsGenericParameters)
+                    continue;
+
                 if (typeof(IDomainEvent).IsAssignableFrom(type))
                     Register(type, type.Name, DefaultDomainEventVersion);
             }
@@ -56,7 +60,17 @@ public sealed class EventTypeRegistry : IEventTypeRegistry
         ArgumentException.ThrowIfNullOrWhiteSpace(eventName);
         ArgumentOutOfRangeException.ThrowIfNegativeOrZero(eventVersion);
 
-        _types[Key(eventName, eventVersion)] = type;
+        string key = Key(eventName, eventVersion);
+
+        // Enforce: a stable identity must map to exactly one payload type across the process.
+        if (_types.TryGetValue(key, out Type? existing) && existing != type)
+        {
+            throw new InvalidOperationException(
+                $"Event '{eventName}' version {eventVersion} is already registered for " +
+                $"'{existing.FullName}' and cannot be remapped to '{type.FullName}'.");
+        }
+
+        _types[key] = type;
     }
 
     /// <inheritdoc />

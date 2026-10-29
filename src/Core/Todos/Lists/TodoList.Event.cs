@@ -10,7 +10,7 @@ public sealed record TodoListCreated : DomainEvent
     /// <param name="tenantId">The tenant the list belongs to.</param>
     /// <param name="name">The name of the list.</param>
     /// <param name="metadata">The optional metadata to merge with this event.</param>
-    public TodoListCreated(Guid listId, Guid tenantId, string name, IMetadata? metadata = null)
+    public TodoListCreated(Guid listId, Guid tenantId, string name, DefaultMetadata? metadata = null)
         : base(metadata: metadata)
     {
         ListId = listId;
@@ -36,7 +36,7 @@ public sealed record TodoListRenamed : DomainEvent
     /// <param name="tenantId">The tenant the list belongs to.</param>
     /// <param name="name">The new name of the list.</param>
     /// <param name="metadata">The optional metadata to merge with this event.</param>
-    public TodoListRenamed(Guid listId, Guid tenantId, string name, IMetadata? metadata = null)
+    public TodoListRenamed(Guid listId, Guid tenantId, string name, DefaultMetadata? metadata = null)
         : base(metadata: metadata)
     {
         ListId = listId;

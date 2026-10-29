@@ -10,7 +10,7 @@ public sealed record TodoCategoryCreated : DomainEvent
     /// <param name="tenantId">The tenant the category belongs to.</param>
     /// <param name="name">The name of the category.</param>
     /// <param name="metadata">The optional metadata to merge with this event.</param>
-    public TodoCategoryCreated(Guid categoryId, Guid tenantId, string name, IMetadata? metadata = null)
+    public TodoCategoryCreated(Guid categoryId, Guid tenantId, string name, DefaultMetadata? metadata = null)
         : base(metadata: metadata)
     {
         CategoryId = categoryId;
@@ -36,7 +36,7 @@ public sealed record TodoCategoryRenamed : DomainEvent
     /// <param name="tenantId">The tenant the category belongs to.</param>
     /// <param name="name">The new name of the category.</param>
     /// <param name="metadata">The optional metadata to merge with this event.</param>
-    public TodoCategoryRenamed(Guid categoryId, Guid tenantId, string name, IMetadata? metadata = null)
+    public TodoCategoryRenamed(Guid categoryId, Guid tenantId, string name, DefaultMetadata? metadata = null)
         : base(metadata: metadata)
     {
         CategoryId = categoryId;

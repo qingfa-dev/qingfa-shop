@@ -4,6 +4,7 @@ using Application.Common.Messaging.Bus;
 using Application.Common.Messaging.Serialization;
 
 using Core.Common.Domain.Events;
+using Core.Todos.Items;
 
 using Infrastructure.Integrations.Messaging.Serialization;
 
@@ -25,7 +26,8 @@ public sealed class JsonMessageSerializerTest
 
     public JsonMessageSerializerTest()
     {
-        var registry = new EventTypeRegistry(typeof(JsonMessageSerializerTest).Assembly);
+        var registry = new EventTypeRegistry(typeof(TodoCreated).Assembly);
+        registry.Register<TestDomainEvent>(nameof(TestDomainEvent), 1);
         registry.Register<TestIntegrationEvent>(IntegrationEventName, IntegrationEventVersion);
 
         var serializer = new JsonMessageSerializer(registry);
@@ -51,13 +53,60 @@ public sealed class JsonMessageSerializerTest
 
         // Assert
         result.Should().BeOfType<TestDomainEvent>();
-        result.EventName.Should().Be("TestDomainEvent");
+        result.EventName.Should().Be(nameof(TestDomainEvent));
         result.EventVersion.Should().Be(1);
-        result.Metadata.Should().ContainKey("tenant");
-        result.Metadata["tenant"].Should().BeOfType<JsonElement>()
-            .Which.GetString().Should().Be("acme");
+        result.Metadata["tenant"].Should().Be("acme");
         result.As<TestDomainEvent>().Name.Should().Be("order-placed");
         result.As<TestDomainEvent>().Priority.Should().Be(TestPriority.High);
+    }
+
+    [Fact(DisplayName = "Real TodoCreated round-trip should preserve the metadata envelope")]
+    public void DomainEventRoundTrip_WithTodoCreated_ShouldPreserveMetadataEnvelope()
+    {
+        // Arrange
+        Guid todoId = Guid.NewGuid();
+        Guid tenantId = Guid.NewGuid();
+        var created = new TodoCreated(todoId, tenantId, "Buy milk");
+        created.SetTenantId(tenantId);
+        Guid eventId = created.GetEventId()!.Value;
+        DateTimeOffset timestamp = created.GetTimestamp()!.Value;
+
+        // Act
+        string payload = _domainSerializer.Serialize(created);
+        IDomainEvent result = _domainSerializer.Deserialize(created.EventName, created.EventVersion, payload);
+
+        // Assert
+        result.Should().BeOfType<TodoCreated>();
+        result.GetEventId().Should().Be(eventId);
+        result.GetTenantId().Should().Be(tenantId);
+        result.GetTimestamp().Should().Be(timestamp);
+        result.As<TodoCreated>().TodoId.Should().Be(todoId);
+        result.As<TodoCreated>().Title.Should().Be("Buy milk");
+    }
+
+    [Fact(DisplayName = "Metadata scalars should round-trip as CLR values rather than JsonElement")]
+    public void DomainEventRoundTrip_ShouldNormalizeMetadataScalars()
+    {
+        // Arrange
+        var domainEvent = new TestDomainEvent("order-placed", TestPriority.Low)
+        {
+            Metadata = DefaultMetadata.Create()
+                .With("tenant", "acme")
+                .With("attempts", 3)
+                .With("enabled", true)
+        };
+
+        // Act
+        string payload = _domainSerializer.Serialize(domainEvent);
+        IDomainEvent result = _domainSerializer.Deserialize(
+            domainEvent.EventName,
+            domainEvent.EventVersion,
+            payload);
+
+        // Assert
+        result.Metadata["tenant"].Should().Be("acme");
+        result.Metadata["attempts"].Should().BeOfType<long>().Which.Should().Be(3L);
+        result.Metadata["enabled"].Should().Be(true);
     }
 
     [Fact(DisplayName = "Integration event round-trip should preserve the envelope and metadata")]
@@ -84,8 +133,7 @@ public sealed class JsonMessageSerializerTest
         result.MessageId.Should().Be(integrationEvent.MessageId);
         result.EventName.Should().Be(IntegrationEventName);
         result.Version.Should().Be(IntegrationEventVersion);
-        result.Metadata["tenant"].Should().BeOfType<JsonElement>()
-            .Which.GetString().Should().Be("acme");
+        result.Metadata["tenant"].Should().Be("acme");
         result.As<TestIntegrationEvent>().Recipient.Should().Be("recipient@example.com");
     }
 
@@ -97,6 +145,16 @@ public sealed class JsonMessageSerializerTest
 
         // Assert
         act.Should().Throw<InvalidOperationException>().WithMessage("*unknown.event*");
+    }
+
+    [Fact(DisplayName = "Deserialize should throw when the resolved type is not a domain event")]
+    public void Deserialize_WithNonDomainEventName_ShouldThrowInvalidOperationException()
+    {
+        // Act
+        Action act = () => _domainSerializer.Deserialize(typeof(string).AssemblyQualifiedName!, 1, "\"text\"");
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>().WithMessage("*IDomainEvent*");
     }
 
     [Fact(DisplayName = "Metadata should serialize as a JSON object map without a dictionary wrapper")]
