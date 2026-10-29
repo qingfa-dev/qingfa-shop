@@ -145,6 +145,7 @@ public sealed class SpecificationTest
 
         // Assert
         matches.Should().BeFalse();
+        specification.IsSatisfiedBy(new Item(4, "beta")).Should().BeFalse();
     }
 
     [Fact]
@@ -194,6 +195,19 @@ public sealed class SpecificationTest
 
         // Act
         Action act = () => query.Where((ISpecification<Item>)null!);
+
+        // Assert
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Any_WithNullQuery_Throws()
+    {
+        // Arrange
+        IQueryable<Item> query = null!;
+
+        // Act
+        Action act = () => query.Any(new GreaterThan(1));
 
         // Assert
         act.Should().Throw<ArgumentNullException>();

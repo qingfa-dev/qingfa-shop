@@ -301,6 +301,9 @@ composition switch rejects unknown providers. Contracts contain no Npgsql types.
   `EventStore.Append.Conflict`.
 - The conflict maps to `UnitOfWorkOutcome.Failure.ConcurrencyConflict` at the handler
   boundary.
+- Stream version is the event count, while the row `Version` is an optimistic concurrency
+  token; they are different concepts, and `TodoReadModel` must not inherit `IVersionable`
+  concurrency semantics.
 
 ### Snapshot state
 
@@ -477,6 +480,11 @@ The backfill is idempotent and can be re-run.
 - The `Todos` table is untouched by the event store; rolling back the app restores the
   state-based path.
 - Event streams remain; a later retry reuses them.
+
+### Release note
+
+- Deploy all instances together when the concurrency token is introduced, because old
+  instances do not bump it.
 
 ## 9. Configuration
 

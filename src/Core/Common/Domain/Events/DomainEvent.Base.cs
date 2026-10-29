@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Core.Common.Domain.Events;
 
 /// <summary>
@@ -11,9 +13,13 @@ public abstract record DomainEvent : IDomainEvent
     public DefaultMetadata Metadata { get; set; } = DefaultMetadata.Create();
 
     /// <summary>Gets the stable wire name of the event; defaults to the CLR type name.</summary>
+    /// <remarks>The serialized envelope carries the name separately, so the payload omits it.</remarks>
+    [JsonIgnore]
     public virtual string EventName => GetType().Name;
 
     /// <summary>Gets the payload version of the event; starts at <c>1</c>.</summary>
+    /// <remarks>The serialized envelope carries the version separately, so the payload omits it.</remarks>
+    [JsonIgnore]
     public virtual int EventVersion => 1;
     #endregion
     #region Contructors

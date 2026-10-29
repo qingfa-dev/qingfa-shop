@@ -97,6 +97,24 @@ public sealed class EfCoreMigratorIntegrationTest(PersistenceInitializationFixtu
         dataTypes.Should().BeEquivalentTo(["category_ids:jsonb", "metadata:jsonb"]);
     }
 
+    [Fact(DisplayName = "MigrateAsync should add the version column to every aggregate table")]
+    public async Task MigrateAsync_ShouldAddVersionColumnsToAggregateTables()
+    {
+        // Act
+        await _fixture.MigrateAsync();
+
+        // Assert
+        string? columnCount = await _fixture.ScalarAsync("""
+            SELECT COUNT(*)
+            FROM information_schema.columns
+            WHERE table_schema = 'todo'
+              AND column_name = 'version'
+              AND table_name IN ('todos', 'todo_lists', 'todo_categories');
+            """);
+
+        columnCount.Should().Be("3");
+    }
+
     [Fact(DisplayName = "MigrateAsync should be idempotent")]
     public async Task MigrateAsync_WhenCalledTwice_ShouldBeIdempotent()
     {

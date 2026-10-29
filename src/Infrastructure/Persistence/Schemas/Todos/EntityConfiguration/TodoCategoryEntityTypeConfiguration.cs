@@ -76,7 +76,7 @@ public sealed class TodoCategoryEntityTypeConfiguration : IEntityTypeConfigurati
             .HasColumnName("metadata")
             .HasMetadataConversion();
 
-        // Concurrency: Optimistic token bumped on every update.
+        // Enforce: Optimistic token bumped on every update.
         builder.Property(t => t.Version)
             .HasColumnName("version");
 

@@ -6,5 +6,15 @@ namespace Core.Common.Domain.Policies;
 public interface IDomainPolicy<in TContext, TResult>
 {
     /// <summary>Evaluates the policy without side effects.</summary>
+    /// <param name="context">The inputs the decision needs.</param>
+    /// <returns>
+    /// A success carrying the decision value, or a failure with a stable code for an
+    /// expected business outcome.
+    /// </returns>
+    /// <remarks>
+    /// Implementations must reject a <see langword="null"/> context with
+    /// <see cref="ArgumentNullException"/>: a missing context is a programming error,
+    /// never a business failure.
+    /// </remarks>
     Result<TResult> Evaluate(TContext context);
 }

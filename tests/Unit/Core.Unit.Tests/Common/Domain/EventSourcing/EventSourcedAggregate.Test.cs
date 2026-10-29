@@ -185,4 +185,72 @@ public sealed class EventSourcedAggregateTest
         // Assert
         act.Should().Throw<ArgumentOutOfRangeException>();
     }
+
+    [Fact]
+    public void LoadFromHistory_WhenCalledTwice_Throws()
+    {
+        // Arrange
+        var aggregate = new TestAggregate();
+        aggregate.LoadFromHistory(1, [new Created(Guid.NewGuid(), "first")]);
+
+        // Act
+        Action act = () => aggregate.LoadFromHistory(1, [new Created(Guid.NewGuid(), "second")]);
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*once*");
+    }
+
+    [Fact]
+    public void LoadFromHistory_WhenAggregateHasUncommittedEvents_Throws()
+    {
+        // Arrange
+        TestAggregate aggregate = TestAggregate.Create(Guid.NewGuid(), "first");
+
+        // Act
+        Action act = () => aggregate.LoadFromHistory(1, [new Created(Guid.NewGuid(), "second")]);
+
+        // Assert
+        act.Should().Throw<InvalidOperationException>();
+    }
+
+    [Fact]
+    public void LoadFromHistory_WhenVersionBelowEventCount_Throws()
+    {
+        // Arrange
+        var aggregate = new TestAggregate();
+        var history = new IDomainEvent[]
+        {
+            new Created(Guid.NewGuid(), "first"),
+            new Renamed("second"),
+        };
+
+        // Act
+        Action act = () => aggregate.LoadFromHistory(1, history);
+
+        // Assert
+        act.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Fact]
+    public void Raise_AfterLoadFromHistory_ContinuesFromStreamVersion()
+    {
+        // Arrange
+        var aggregate = new TestAggregate();
+        var history = new IDomainEvent[]
+        {
+            new Created(Guid.NewGuid(), "first"),
+            new Renamed("second"),
+        };
+        aggregate.LoadFromHistory(2, history);
+
+        // Act
+        aggregate.Rename("third");
+
+        // Assert
+        aggregate.Version.Should().Be(3);
+        aggregate.UncommittedEvents.Should().ContainSingle()
+            .Which.Should().BeOfType<Renamed>()
+            .Which.Name.Should().Be("third");
+    }
 }

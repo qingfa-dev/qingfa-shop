@@ -5,23 +5,27 @@ using Application.Common.Querying.Mapping;
 using Application.Common.Security.Authentication.Contexts;
 using Application.Features.Todos.Abstractions;
 
+using Core.Todos.Categories;
+using Core.Todos.Items;
+using Core.Todos.Lists;
+
+using Infrastructure.Events;
 using Infrastructure.Persistence.EntityFramework.Capabilities;
+using Infrastructure.Persistence.EntityFramework.Contexts;
+using Infrastructure.Persistence.EntityFramework.Interceptors;
+using Infrastructure.Persistence.EntityFramework.Options;
 using Infrastructure.Persistence.EntityFramework.QueryTranslation;
 using Infrastructure.Persistence.EntityFramework.Repositories;
 using Infrastructure.Persistence.EntityFramework.UnitOfWorks;
+using Infrastructure.Services.Todos;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 
 using Respawn;
 
 using Testcontainers.PostgreSql;
-using Infrastructure.Persistence.EntityFramework.Contexts;
-using Infrastructure.Persistence.EntityFramework.Options;
-using Core.Todos.Categories;
-using Core.Todos.Items;
-using Core.Todos.Lists;
-using Infrastructure.Services.Todos;
 
 namespace Infrastructure.Integration.Tests.Persistence.Todos;
 
@@ -88,7 +92,13 @@ public sealed class TodoEfCoreFixture : IAsyncLifetime
     public IntegrationExecutionContext Ambient { get; } = new();
 
     /// <summary>The frozen clock the handlers read.</summary>
-    public IntegrationClock Clock { get; } = new(DateTimeOffset.UtcNow.Date);
+    /// <remarks>
+    /// Slightly ahead of wall clock: the lifecycle interceptor stamps creation with
+    /// <see cref="DateTimeOffset.UtcNow"/>, so a handler clock at midnight would make every
+    /// later modification look older than creation. The lead stays inside
+    /// <c>LifecycleConstant.Constraints.Timestamp.MaxFutureSkewSeconds</c>.
+    /// </remarks>
+    public IntegrationClock Clock { get; } = new(DateTimeOffset.UtcNow.AddMinutes(1));
 
     /// <summary>The query map for Todo.</summary>
     public QueryMap<Todo> TodoQueryMap { get; private set; } = null!;
@@ -118,12 +128,17 @@ public sealed class TodoEfCoreFixture : IAsyncLifetime
 
         // Register ApplicationDbContext
         services.AddDbContext<ApplicationDbContext>(options =>
+        {
             options.UseNpgsql(ConnectionString, npgsql =>
             {
                 npgsql
                     .UsePersistenceMigrationHistory()
                     .CommandTimeout(30);
-            }));
+            });
+
+            // Mirror: production composes lifecycle, version-token, and domain-event interceptors.
+            options.Apply(NullDomainEventPublisher.Instance, NullLogger<DomainEventInterceptor>.Instance);
+        });
 
         // Register QueryMaps
         TodoQueryMap = Infrastructure.Persistence.Schemas.Todos.Queries.TodoQueryMap.Create();

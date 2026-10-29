@@ -33,8 +33,6 @@ public sealed class VersionableConfigurationTest
         {
             builder.HasKey(entity => entity.Id);
             builder.Property(entity => entity.Id).ValueGeneratedNever();
-
-            // Arrange
             builder.Property(entity => entity.Version);
         });
 
@@ -57,8 +55,6 @@ public sealed class VersionableConfigurationTest
         {
             builder.HasKey(entity => entity.Id);
             builder.Property(entity => entity.Id).ValueGeneratedNever();
-
-            // Arrange
             builder.Property(entity => entity.Version);
         });
 

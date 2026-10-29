@@ -1,15 +1,12 @@
+using Application.Common.Persistence.Repositories;
 using Application.Common.Persistence.UnitOfWorks;
 
 using Core.Common.Monad.Results;
 using Core.Todos.Items;
 
 using Infrastructure.Integration.Tests.Persistence.Todos;
-using Infrastructure.Persistence.EntityFramework.Contexts;
-using Infrastructure.Persistence.EntityFramework.Interceptors;
-using Infrastructure.Persistence.EntityFramework.Options;
-using Infrastructure.Persistence.EntityFramework.UnitOfWorks;
 
-using Microsoft.EntityFrameworkCore;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace Infrastructure.Integration.Tests.Persistence;
 
@@ -34,53 +31,73 @@ public sealed class ConcurrencyTest(TodoEfCoreFixture fixture) : IAsyncLifetime
     {
         // Arrange
         Guid tenantId = Guid.NewGuid();
+        DateTimeOffset nowUtc = DateTimeOffset.UtcNow;
         Todo todo = Todo.Create(
             Guid.NewGuid(),
             tenantId,
             "concurrency",
-            DateTimeOffset.UtcNow).Value;
+            nowUtc).Value;
 
-        using var context1 = CreateContext();
-        using var context2 = CreateContext();
+        using IServiceScope createScope = fixture.Services.CreateScope();
+        var createRepository = createScope.ServiceProvider
+            .GetRequiredService<IPersistentRepository<Todo, Guid>>();
+        var createUnitOfWork = createScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
 
-        context1.Add(todo);
-        await context1.SaveChangesAsync();
-        context1.ChangeTracker.Clear();
+        Result<Todo> created = await createRepository.SaveNewAsync(
+            createUnitOfWork,
+            todo,
+            CancellationToken.None);
+        created.IsSuccess.Should().BeTrue();
 
-        Todo first = await context1.Set<Todo>().SingleAsync(entity => entity.Id == todo.Id);
-        Todo second = await context2.Set<Todo>().SingleAsync(entity => entity.Id == todo.Id);
+        using IServiceScope firstScope = fixture.Services.CreateScope();
+        using IServiceScope secondScope = fixture.Services.CreateScope();
 
-        // Act: the versionable interceptor moves the first writer's row to version 1.
+        var firstRepository = firstScope.ServiceProvider
+            .GetRequiredService<IPersistentRepository<Todo, Guid>>();
+        var secondRepository = secondScope.ServiceProvider
+            .GetRequiredService<IPersistentRepository<Todo, Guid>>();
+        var firstUnitOfWork = firstScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+        var secondUnitOfWork = secondScope.ServiceProvider.GetRequiredService<IUnitOfWork>();
+
+        Todo first = (await firstRepository.GetByIdAsync(todo.Id)).Value;
+        Todo second = (await secondRepository.GetByIdAsync(todo.Id)).Value;
+        DateTimeOffset updateNowUtc = nowUtc.AddMinutes(1);
+
+        // Act: the first writer commits and the versionable interceptor moves its row to version 1.
         first.Title = "first";
-        await context1.SaveChangesAsync();
+        Result<Todo> firstUpdate = await firstRepository.SaveUpdateAsync(
+            firstUnitOfWork,
+            first,
+            updateNowUtc,
+            "first-writer",
+            CancellationToken.None);
 
         // Assert: the interceptor, not the test, produced the new version.
+        firstUpdate.IsSuccess.Should().BeTrue(
+            string.Join(", ", firstUpdate.Errors.Select(error => $"{error.Code}: {error.Message}")));
         first.Version.Should().Be(1);
 
         // Act: the second writer still believes it is version 0.
         second.Title = "second";
-        var unitOfWork = new EfCoreUnitOfWork(context2);
-        Result result = await unitOfWork.SaveChangesAsync();
+        Result<Todo> staleUpdate = await secondRepository.SaveUpdateAsync(
+            secondUnitOfWork,
+            second,
+            updateNowUtc,
+            "second-writer",
+            CancellationToken.None);
 
-        // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Errors.Should().ContainSingle()
+        // Assert: the stale write fails instead of overwriting.
+        staleUpdate.IsFailure.Should().BeTrue();
+        staleUpdate.Errors.Should().ContainSingle()
             .Which.Code.Should().Be(UnitOfWorkOutcome.Codes.ConcurrencyConflict);
-    }
 
-    /// <summary>
-    /// Builds a context with the same provider options and the versionable interceptor the
-    /// production registration applies, so the test exercises the real version bump.
-    /// </summary>
-    private ApplicationDbContext CreateContext()
-    {
-        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseNpgsql(fixture.ConnectionString, npgsql => npgsql
-                .UsePersistenceMigrationHistory()
-                .CommandTimeout(30))
-            .AddInterceptors(new VersionableInterceptor())
-            .Options;
+        // Assert: a fresh read still sees the first writer's row.
+        using IServiceScope verificationScope = fixture.Services.CreateScope();
+        var verificationRepository = verificationScope.ServiceProvider
+            .GetRequiredService<IPersistentRepository<Todo, Guid>>();
+        Todo persisted = (await verificationRepository.GetByIdAsync(todo.Id)).Value;
 
-        return new ApplicationDbContext(options);
+        persisted.Title.Should().Be("first");
+        persisted.Version.Should().Be(1);
     }
 }

@@ -54,12 +54,14 @@ public abstract class Specification<T> : ISpecification<T>
     public bool IsSatisfiedBy(T candidate)
         => ToExpression().Compile()(candidate);
 
-    public ISpecification<T> And(ISpecification<T> other);
-    public ISpecification<T> Or(ISpecification<T> other);
-    public ISpecification<T> Not();
+    public Specification<T> And(ISpecification<T> other);
+    public Specification<T> Or(ISpecification<T> other);
+    public Specification<T> Not();
 }
 ```
 
+- `And`/`Or`/`Not` return `Specification<T>` so chaining keeps working on the base class;
+  an `ISpecification<T>`-typed reference cannot chain unless it is a `Specification<T>`.
 - `And`/`Or`/`Not` return composite specifications that preserve expression trees.
 - Composites are internal nested types; no public surface beyond the interface.
 - `IsSatisfiedBy` compiles once per call. It is for in-memory rules, not query paths.
@@ -228,9 +230,14 @@ silently overwrite each other.
 
 ### Rules
 
-- A new aggregate starts at version 0; its first successful save becomes 1.
+- A new aggregate persists at version 0. The first successful update becomes 1. The token
+  protects updates; an insert does not need it.
 - A stale update must fail, never overwrite.
 - API models do not expose `Version` unless a use case explicitly opts in.
+
+> Row `Version` (the optimistic token guarded by the `WHERE` clause) and
+> `IEventSourcedAggregate.Version` (the stream position) are different concepts. They can
+> hold different values for the same aggregate and must not be treated as interchangeable.
 
 ### Tests
 
@@ -266,7 +273,7 @@ public interface IEventSourcedAggregate<out TKey>
 ```csharp
 public abstract class EventSourcedAggregate<TKey> : IEventSourcedAggregate<TKey>
 {
-    public TKey Id { get; protected init; } = default!;
+    public TKey Id { get; protected set; } = default!;
     public long Version { get; private set; }
     public IReadOnlyList<IDomainEvent> UncommittedEvents { get; }
 

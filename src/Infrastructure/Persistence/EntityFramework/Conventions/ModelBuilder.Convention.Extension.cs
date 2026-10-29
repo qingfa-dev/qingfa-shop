@@ -88,5 +88,8 @@ public static class ModelBuilderConventionExtensions
 
         if (applyDecimalConvention)
             DecimalConvention.Apply(modelBuilder, providerKind);
+
+        // Enforce: the concurrency token is a persistence invariant, not an optional convention.
+        VersionableConfiguration.Apply(modelBuilder);
     }
 }
