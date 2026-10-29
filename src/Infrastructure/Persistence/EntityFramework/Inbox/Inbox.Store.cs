@@ -7,14 +7,19 @@ namespace Infrastructure.Persistence.EntityFramework.Inbox;
 
 /// <summary>EF Core implementation of <see cref="IInboxStore"/>.</summary>
 /// <remarks>
+/// <para>
 /// The duplicate check, the handler, and the processed marker share one transaction, so the
 /// marker commits only with the effects it guards. A duplicate delivery is a no-op, and a
 /// failed handler leaves no marker behind so the message can be retried.
+/// </para>
+/// <para>
+/// The store clears the change tracker when it rolls back, so it requires a dedicated scoped
+/// context. Sharing the context with unrelated tracked work would discard that work whenever a
+/// delivery fails.
+/// </para>
 /// </remarks>
 public sealed class EfCoreInboxStore : IInboxStore
 {
-    private const string ExecutionFailed = "Inbox.Execution.Failed";
-
     private readonly DbContext _context;
     private readonly IUnitOfWork _unitOfWork;
     private readonly TimeProvider _timeProvider;
@@ -88,10 +93,20 @@ public sealed class EfCoreInboxStore : IInboxStore
             {
                 await RollbackAsync(transaction);
 
-                // Fallback: a concurrent consumer committed the same marker first.
-                return saved.Errors.Any(error => error.Code == UnitOfWorkOutcome.Codes.DuplicateKey)
-                    ? Result.Ok()
-                    : Result.Fail(saved.Errors);
+                if (saved.Errors.Any(error => error.Code == UnitOfWorkOutcome.Codes.DuplicateKey))
+                {
+                    // Check: only a marker written by a competing consumer makes the duplicate benign.
+                    bool recorded = await Messages
+                        .AsNoTracking()
+                        .AnyAsync(
+                            message => message.MessageId == messageId
+                                && message.Consumer == consumer,
+                            cancellationToken);
+
+                    return recorded ? Result.Ok() : Result.Fail(saved.Errors);
+                }
+
+                return Result.Fail(saved.Errors);
             }
 
             Result committed = await transaction.CommitAsync(cancellationToken);
@@ -106,6 +121,9 @@ public sealed class EfCoreInboxStore : IInboxStore
         }
         catch (OperationCanceledException)
         {
+            // Compensate: cancellation must still discard the handler's staged writes.
+            await RollbackAsync(transaction);
+
             // Escalate: cancellation keeps its own meaning and never becomes an internal failure.
             throw;
         }
@@ -113,7 +131,7 @@ public sealed class EfCoreInboxStore : IInboxStore
         {
             // Catch: any other failure must leave no marker behind.
             await RollbackAsync(transaction);
-            return Result.Fail(Error.FromException(exception, ExecutionFailed));
+            return Result.Fail(InboxOutcome.Failure.ExecutionFailed(exception));
         }
         finally
         {

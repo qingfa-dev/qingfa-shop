@@ -119,7 +119,7 @@ public sealed class InboxStoreTest
         // Assert
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().ContainSingle()
-            .Which.Code.Should().Be("Inbox.Execution.Failed");
+            .Which.Code.Should().Be(InboxOutcome.Codes.ExecutionFailed);
         result.StatusCode.Should().Be(500);
         (await database.Context.Set<InboxMessage>().CountAsync()).Should().Be(0);
     }
@@ -138,10 +138,16 @@ public sealed class InboxStoreTest
         Func<Task> act = () => store.ExecuteOnceAsync(
             Guid.NewGuid(),
             "projection",
-            _ => throw new OperationCanceledException());
+            _ =>
+            {
+                // Handle: cancellation must still discard any write staged before it.
+                database.Context.Set<InboxMessage>().Add(NewMarker(Guid.NewGuid(), "projection"));
+                throw new OperationCanceledException();
+            });
 
         // Assert
         await act.Should().ThrowAsync<OperationCanceledException>();
+        database.Context.ChangeTracker.HasChanges().Should().BeFalse();
     }
 
     [Fact(DisplayName = "A null consumer is rejected")]
@@ -206,8 +212,43 @@ public sealed class InboxStoreTest
         calls.Should().Be(0);
     }
 
-    [Fact(DisplayName = "A duplicate-key save is treated as already processed")]
-    public async Task ExecuteOnceAsync_WhenSaveReportsDuplicateKey_ShouldReturnSuccess()
+    [Fact(DisplayName = "A duplicate-key save with a competing marker is treated as processed")]
+    public async Task ExecuteOnceAsync_WhenSaveReportsDuplicateKeyWithMarker_ShouldReturnSuccess()
+    {
+        // Arrange
+        var options = new DbContextOptionsBuilder<InboxTestContext>()
+            .UseInMemoryDatabase(Guid.NewGuid().ToString())
+            .Options;
+        await using var context = new InboxTestContext(options);
+        var transaction = CreateTransaction();
+        var unitOfWork = CreateUnitOfWork(transaction);
+        unitOfWork.Setup(uow => uow.SaveChangesAsync(It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Fail(UnitOfWorkOutcome.Failure.DuplicateKey));
+        var store = new EfCoreInboxStore(
+            context, unitOfWork.Object, new FixedTimeProvider(Now));
+        Guid messageId = Guid.NewGuid();
+
+        // Act
+        Result result = await store.ExecuteOnceAsync(messageId, "projection", async _ =>
+        {
+            // Handle: a competing consumer commits the same marker after the existence check.
+            await using var competitor = new InboxTestContext(options);
+            competitor.Add(NewMarker(messageId, "projection"));
+            await competitor.SaveChangesAsync();
+
+            return Result.Ok();
+        });
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        transaction.Verify(tx => tx.RollbackAsync(It.IsAny<CancellationToken>()), Times.Once);
+        transaction.Verify(tx => tx.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
+        context.ChangeTracker.HasChanges().Should().BeFalse();
+        (await context.Set<InboxMessage>().CountAsync()).Should().Be(1);
+    }
+
+    [Fact(DisplayName = "A duplicate-key save without a marker is a failure")]
+    public async Task ExecuteOnceAsync_WhenSaveReportsDuplicateKeyWithoutMarker_ShouldReturnFailure()
     {
         // Arrange
         await using SqliteInbox database = await SqliteInbox.CreateAsync();
@@ -223,9 +264,10 @@ public sealed class InboxStoreTest
             Guid.NewGuid(), "projection", _ => Task.FromResult(Result.Ok()));
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().ContainSingle()
+            .Which.Code.Should().Be(UnitOfWorkOutcome.Codes.DuplicateKey);
         transaction.Verify(tx => tx.RollbackAsync(It.IsAny<CancellationToken>()), Times.Once);
-        transaction.Verify(tx => tx.CommitAsync(It.IsAny<CancellationToken>()), Times.Never);
         database.Context.ChangeTracker.HasChanges().Should().BeFalse();
     }
 

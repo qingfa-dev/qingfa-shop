@@ -2,6 +2,7 @@ using Application.Common.Messaging.Inbox;
 
 using Core.Common.Monad.Errors;
 using Core.Common.Monad.Results;
+using Core.Todos.Items;
 
 using Infrastructure.Persistence.EntityFramework.Contexts;
 
@@ -183,9 +184,18 @@ public sealed class InboxStoreIntegrationTest(MessagingFixture fixture) : IAsync
             });
 
         await entered.Task.WaitAsync(TimeSpan.FromSeconds(10));
-        await InsertAsync(messageId, Consumer);
-        release.TrySetResult();
-        Result result = await execution;
+
+        try
+        {
+            await InsertAsync(messageId, Consumer);
+        }
+        finally
+        {
+            // Release: the handler must never wait for a failed competitor insert.
+            release.TrySetResult();
+        }
+
+        Result result = await execution.WaitAsync(TimeSpan.FromSeconds(10));
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -208,10 +218,97 @@ public sealed class InboxStoreIntegrationTest(MessagingFixture fixture) : IAsync
         // Assert
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().ContainSingle()
-            .Which.Code.Should().Be("Inbox.Execution.Failed");
+            .Which.Code.Should().Be(InboxOutcome.Codes.ExecutionFailed);
         result.StatusCode.Should().Be(500);
         (await CountAsync()).Should().Be(0);
     }
+
+    [Fact(DisplayName = "A successful handler commits its write with the marker")]
+    public async Task ExecuteOnceAsync_WithHandlerWrite_ShouldCommitBoth()
+    {
+        // Arrange
+        Guid messageId = Guid.NewGuid();
+        Todo todo = NewTodo();
+
+        // Act
+        Result result = await _fixture.InboxStore.ExecuteOnceAsync(
+            messageId,
+            Consumer,
+            _ =>
+            {
+                // Handle: the write is staged on the same context, inside the store's transaction.
+                _fixture.DbContext.Set<Todo>().Add(todo);
+                return Task.FromResult(Result.Ok());
+            });
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        (await CountAsync()).Should().Be(1);
+        (await TodoExistsAsync(todo.Id)).Should().BeTrue();
+    }
+
+    [Fact(DisplayName = "A failed handler rolls back its write with the marker")]
+    public async Task ExecuteOnceAsync_WithHandlerWriteAndFailure_ShouldRollBackBoth()
+    {
+        // Arrange
+        Guid messageId = Guid.NewGuid();
+        Todo todo = NewTodo();
+        Result failedResult = Result.Fail(
+            Error.UnprocessableEntity("Test.Inbox.HandlerFailed", "write rejected"));
+
+        // Act
+        Result result = await _fixture.InboxStore.ExecuteOnceAsync(
+            messageId,
+            Consumer,
+            _ =>
+            {
+                _fixture.DbContext.Set<Todo>().Add(todo);
+                return Task.FromResult(failedResult);
+            });
+
+        // Assert
+        result.Should().BeSameAs(failedResult);
+        (await CountAsync()).Should().Be(0);
+        (await TodoExistsAsync(todo.Id)).Should().BeFalse();
+    }
+
+    [Fact(DisplayName = "The same message runs once per consumer")]
+    public async Task ExecuteOnceAsync_WithDifferentConsumer_ShouldRunAgain()
+    {
+        // Arrange
+        Guid messageId = Guid.NewGuid();
+        int calls = 0;
+
+        // Act
+        Result first = await _fixture.InboxStore.ExecuteOnceAsync(
+            messageId,
+            Consumer,
+            _ =>
+            {
+                calls++;
+                return Task.FromResult(Result.Ok());
+            });
+        Result second = await _fixture.InboxStore.ExecuteOnceAsync(
+            messageId,
+            "todo-notifier",
+            _ =>
+            {
+                calls++;
+                return Task.FromResult(Result.Ok());
+            });
+
+        // Assert
+        first.IsSuccess.Should().BeTrue();
+        second.IsSuccess.Should().BeTrue();
+        calls.Should().Be(2);
+        (await CountAsync()).Should().Be(2);
+    }
+
+    private static Todo NewTodo() => Todo.Create(
+        Guid.NewGuid(),
+        Guid.NewGuid(),
+        "inbox integration",
+        DateTimeOffset.UtcNow).Value;
 
     private Task<InboxMessage> ReadAsync(Guid messageId, string consumer) => QueryAsync(context =>
         context.Set<InboxMessage>()
@@ -220,6 +317,9 @@ public sealed class InboxStoreIntegrationTest(MessagingFixture fixture) : IAsync
 
     private Task<int> CountAsync() => QueryAsync(context =>
         context.Set<InboxMessage>().CountAsync());
+
+    private Task<bool> TodoExistsAsync(Guid todoId) => QueryAsync(context =>
+        context.Set<Todo>().AsNoTracking().AnyAsync(todo => todo.Id == todoId));
 
     private async Task InsertAsync(Guid messageId, string consumer)
     {
