@@ -1,8 +1,8 @@
 using Application;
-using Application.Common.Caching;
 using Application.Common.Persistence.Initialization;
 
 using Infrastructure.Caching;
+using Infrastructure.Integrations;
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.EntityFramework.Contexts;
 using Infrastructure.Security;
@@ -11,7 +11,6 @@ using Infrastructure.Services;
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Infrastructure;
 
@@ -43,6 +42,9 @@ public static class InfrastructureComposition
         // Register: Cross-aggregate reference cleanup.
         builder.AddServices();
 
+        // Register: outbound integrations, observability, background jobs, and OpenAPI.
+        builder.AddIntegration();
+
         return builder;
     }
 
@@ -64,6 +66,7 @@ public static class InfrastructureComposition
         app.UsePersistence();
         app.UsePersistenceInitialization();
         app.UseServices();
+        app.UseIntegration();
 
         bool autoMigrate = app.Configuration.GetValue("Persistence:AutoMigrate", false);
         bool seed = app.Configuration.GetValue("Persistence:Seed", false);

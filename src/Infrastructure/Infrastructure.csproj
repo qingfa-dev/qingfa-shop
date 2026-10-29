@@ -42,6 +42,10 @@
     <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
     <PackageReference Include="WolverineFx" />
     <PackageReference Include="WolverineFx.RabbitMQ" />
+    <PackageReference Include="Hangfire.AspNetCore" />
+    <PackageReference Include="Hangfire.Redis.StackExchange" />
+    <PackageReference Include="Hangfire.InMemory" />
+    <PackageReference Include="Sinch" />
     <PackageReference Include="Stripe.net" />
     <PackageReference Include="FluentEmail.Core" />
     <PackageReference Include="FluentEmail.SendGrid" />

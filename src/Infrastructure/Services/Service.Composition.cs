@@ -3,7 +3,6 @@ using Application.Features.Todos.Abstractions;
 using Infrastructure.Services.Todos;
 
 using Microsoft.AspNetCore.Builder;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Infrastructure.Services;
