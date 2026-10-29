@@ -1,3 +1,4 @@
+using Core.Common.Concerns.Foundation.Versionable;
 using Core.Common.Domain.Events;
 
 namespace Core.Common.Domain.Aggregates;
@@ -5,7 +6,7 @@ namespace Core.Common.Domain.Aggregates;
 /// <summary>
 /// Defines a marker interface of an Aggregate as specified in Domain Driven Design.
 /// </summary>
-public interface IAggregate : IHasMetadata
+public interface IAggregate : IHasMetadata, IVersionable
 {
 }
 
@@ -19,7 +20,6 @@ public interface IAggregate<out TEvent> : IAggregate
     /// <summary>
     /// Gets the events that was added to the Aggregate.
     /// </summary>
-    /// <value>The events added to the Aggregate.</value>
     IReadOnlyList<TEvent> Events { get; }
 
     /// <summary>

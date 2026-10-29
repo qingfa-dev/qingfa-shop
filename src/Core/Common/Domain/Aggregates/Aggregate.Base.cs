@@ -45,6 +45,11 @@ public abstract class Aggregate<TKey, TEvent> : Entity<TKey>, IAggregate<TEvent>
     public DefaultMetadata Metadata { get; } = new DefaultMetadata();
 
     /// <summary>
+    /// Gets or sets the optimistic concurrency version. New aggregates start at zero.
+    /// </summary>
+    public long Version { get; set; }
+
+    /// <summary>
     /// Adds an event to the Aggregate.
     /// </summary>
     /// <param name="e">The event to be added to the end of <see cref="Events"/>.</param>

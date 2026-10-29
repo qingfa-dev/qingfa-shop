@@ -1,3 +1,4 @@
+using Core.Common.Concerns.Foundation.Versionable;
 using Core.Common.Domain.Aggregates;
 using Core.Common.Domain.Events;
 
@@ -112,5 +113,33 @@ public class AggregateSpec
         events.Should().BeEmpty();
         marker.Metadata.Should().NotBeNull();
         withEvents.Should().BeAssignableTo<IHasMetadata>();
+    }
+
+    [Fact]
+    public void Version_ShouldStartAtZeroAndBeWritable()
+    {
+        // Arrange
+        var aggregate = new TestAggregate();
+
+        // Act
+        long initial = aggregate.Version;
+        aggregate.Version = 4;
+
+        // Assert
+        initial.Should().Be(0);
+        aggregate.Version.Should().Be(4);
+    }
+
+    [Fact]
+    public void Aggregate_ShouldImplementVersionable()
+    {
+        // Arrange
+        var aggregate = new TestAggregate();
+
+        // Act
+        IVersionable versionable = aggregate;
+
+        // Assert
+        versionable.Version.Should().Be(0);
     }
 }

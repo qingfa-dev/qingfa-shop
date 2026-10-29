@@ -42,6 +42,7 @@ public static class ModelBuilderConventionExtensions
     ///   <item><description>Enum properties are stored as their underlying integer type</description></item>
     ///   <item><description>Dictionary and DefaultMetadata properties are stored as JSON</description></item>
     ///   <item><description>Decimal properties get precision 18 and scale 6</description></item>
+    ///   <item><description>Versionable aggregates use their version property as an EF Core concurrency token</description></item>
     /// </list>
     /// Conventions skip properties that are already explicitly configured.
     /// </remarks>
@@ -54,6 +55,7 @@ public static class ModelBuilderConventionExtensions
         EnumAsIntConvention.Apply(modelBuilder, providerKind);
         DictionaryAsJsonConvention.Apply(modelBuilder, providerKind);
         DecimalConvention.Apply(modelBuilder, providerKind);
+        VersionableConfiguration.Apply(modelBuilder);
     }
 
     /// <summary>
