@@ -1,10 +1,15 @@
+using Carter;
+
 using Application;
+using Application.Common.Security.Authorization;
 
 using Infrastructure;
 
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using ServiceDefaults;
+
+using Web.Api.Endpoints.Authorization;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -16,6 +21,10 @@ builder.AddApplication();
 
 // Register: Infrastructure layer services (EF Core, caching, repositories, query maps).
 builder.AddInfrastructure();
+
+// Register: Carter endpoint modules (the permission catalog and checks).
+builder.Services.AddCarter(configurator: configurator =>
+    configurator.WithModule<PermissionRegistryEndpoint>());
 
 // Initialize: production uses the system clock; TryAdd lets a test host replace it
 // with FakeTimeProvider without touching this composition.
@@ -32,6 +41,12 @@ app.UseInfrastructure();
 
 app.UseExceptionHandler();
 
+// Initialize: authenticate the bearer token, then enforce permission policies declared with
+// [HasPermission] or RequireAuthorization.
+app.UseAuthentication();
+app.UseApplicationAuthorization();
+
+app.MapCarter();
 app.MapDefaultEndpoints();
 
 // Handle: /time exposes the injected TimeProvider so integration tests can prove the
