@@ -47,28 +47,38 @@ public sealed class OutboxInterceptorTest
         aggregate.Events.Should().BeEmpty();
     }
 
-    [Fact(DisplayName = "Outbox interceptor should not stage the same event twice")]
-    public async Task SavingChanges_WhenSavedAgain_ShouldNotDuplicateRows()
+    [Fact(DisplayName = "Outbox interceptor should stage each new event exactly once")]
+    public async Task SavingChanges_WhenANewEventIsRaised_ShouldNotDuplicateRows()
     {
         // Arrange
         await using OutboxTestContext context = CreateContext();
         var aggregate = new EventAggregate(Guid.NewGuid());
-        aggregate.Raise(new TestDomainEvent("once"));
+        var first = new TestDomainEvent("first");
+        aggregate.Raise(first);
         context.Add(aggregate);
         await context.SaveChangesAsync();
 
+        var second = new TestDomainEvent("second");
+        aggregate.Raise(second);
+
         // Act
         await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
 
         // Assert
-        (await context.Messages.AsNoTracking().CountAsync()).Should().Be(1);
+        List<OutboxMessage> messages = await context.Messages.AsNoTracking().ToListAsync();
+        messages.Should().HaveCount(2);
+        messages.Select(message => message.Id)
+            .Should().BeEquivalentTo(new[] { first.GetEventId()!.Value, second.GetEventId()!.Value });
+        messages.Count(message => message.Id == first.GetEventId()!.Value).Should().Be(1);
     }
 
-    [Fact(DisplayName = "Outbox interceptor should leave events on the aggregate when the save fails")]
+    [Fact(DisplayName = "Outbox interceptor should leave events and no rows when the save fails")]
     public async Task SavingChanges_WhenSaveFails_ShouldLeaveEventsAndNoRows()
     {
         // Arrange
-        await using OutboxTestContext context = CreateContext(new ThrowingSaveInterceptor());
+        var throwing = new ThrowingSaveInterceptor();
+        await using OutboxTestContext context = CreateContext(throwing);
         var aggregate = new EventAggregate(Guid.NewGuid());
         aggregate.Raise(new TestDomainEvent("rejected"));
         context.Add(aggregate);
@@ -80,6 +90,31 @@ public sealed class OutboxInterceptorTest
         await act.Should().ThrowAsync<InvalidOperationException>();
         (await context.Messages.AsNoTracking().CountAsync()).Should().Be(0);
         aggregate.Events.Should().ContainSingle();
+    }
+
+    [Fact(DisplayName = "Outbox interceptor should recover a failed save without orphaning rows")]
+    public async Task SavingChanges_WhenRetriedAfterFailure_ShouldStageOnceAndNotOrphan()
+    {
+        // Arrange
+        var throwing = new ThrowingSaveInterceptor();
+        await using OutboxTestContext context = CreateContext(throwing);
+        var aggregate = new EventAggregate(Guid.NewGuid());
+        aggregate.Raise(new TestDomainEvent("retry"));
+        context.Add(aggregate);
+
+        Func<Task> failed = () => context.SaveChangesAsync();
+        await failed.Should().ThrowAsync<InvalidOperationException>();
+
+        // Act: a caller retry after clearing the failed tracking state.
+        context.ChangeTracker.Clear();
+        context.Add(aggregate);
+        throwing.ShouldThrow = false;
+        await context.SaveChangesAsync();
+        context.ChangeTracker.Clear();
+
+        // Assert
+        (await context.Messages.AsNoTracking().CountAsync()).Should().Be(1);
+        aggregate.Events.Should().BeEmpty();
     }
 
     [Fact(DisplayName = "Outbox interceptor should do nothing when there are no aggregate events")]
@@ -152,11 +187,15 @@ public sealed class OutboxInterceptorTest
     /// <summary>Fails the save after the outbox interceptor has staged rows.</summary>
     private sealed class ThrowingSaveInterceptor : SaveChangesInterceptor
     {
+        public bool ShouldThrow { get; set; } = true;
+
         public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
             DbContextEventData eventData,
             InterceptionResult<int> result,
             CancellationToken cancellationToken = default)
-            => ValueTask.FromException<InterceptionResult<int>>(
-                new InvalidOperationException("The save was rejected."));
+            => ShouldThrow
+                ? ValueTask.FromException<InterceptionResult<int>>(
+                    new InvalidOperationException("The save was rejected."))
+                : base.SavingChangesAsync(eventData, result, cancellationToken);
     }
 }

@@ -31,6 +31,7 @@ public sealed class OutboxInterceptor : SaveChangesInterceptor
     private readonly ILogger _logger;
     private readonly HashSet<Guid> _stagedEventIds = [];
     private readonly List<IAggregate<IDomainEvent>> _stagedAggregates = [];
+    private readonly List<OutboxMessage> _stagedMessages = [];
 
     /// <summary>Creates an outbox interceptor.</summary>
     /// <param name="serializer">The serializer used for event payloads and metadata.</param>
@@ -87,6 +88,7 @@ public sealed class OutboxInterceptor : SaveChangesInterceptor
     /// <inheritdoc />
     public override void SaveChangesFailed(DbContextErrorEventData eventData)
     {
+        DetachStaged(eventData.Context);
         Reset();
         base.SaveChangesFailed(eventData);
     }
@@ -96,6 +98,7 @@ public sealed class OutboxInterceptor : SaveChangesInterceptor
         DbContextErrorEventData eventData,
         CancellationToken cancellationToken = default)
     {
+        DetachStaged(eventData.Context);
         Reset();
         return base.SaveChangesFailedAsync(eventData, cancellationToken);
     }
@@ -106,6 +109,9 @@ public sealed class OutboxInterceptor : SaveChangesInterceptor
     {
         if (context is null)
             return;
+
+        // Recover: a previous save may have failed before SaveChangesFailed ran; never orphan its rows.
+        DetachStaged(context);
 
         List<IAggregate<IDomainEvent>> aggregates = context.ChangeTracker
             .Entries<IAggregate<IDomainEvent>>()
@@ -123,6 +129,9 @@ public sealed class OutboxInterceptor : SaveChangesInterceptor
             foreach (IDomainEvent domainEvent in aggregate.Events)
             {
                 Guid eventId = domainEvent.GetEventId() ?? Guid.NewGuid();
+                if (domainEvent.GetEventId() is null)
+                    domainEvent.SetEventId(eventId);
+
                 if (!_stagedEventIds.Add(eventId))
                     continue;
 
@@ -138,6 +147,7 @@ public sealed class OutboxInterceptor : SaveChangesInterceptor
 
         // Publish: stage in the current save so the outbox row and state change commit together.
         context.Set<OutboxMessage>().AddRange(messages);
+        _stagedMessages.AddRange(messages);
         OutboxInterceptorLoggers.Staged(_logger, messages.Count);
     }
 
@@ -177,6 +187,25 @@ public sealed class OutboxInterceptor : SaveChangesInterceptor
                 aggregate.RemoveAllEvents();
         }
 
+        _stagedMessages.Clear();
+        Reset();
+    }
+
+    /// <summary>Detaches rows from a save that did not complete.</summary>
+    /// <param name="context">The context that owns the staged rows.</param>
+    private void DetachStaged(DbContext? context)
+    {
+        if (context is null || _stagedMessages.Count == 0)
+            return;
+
+        foreach (OutboxMessage message in _stagedMessages)
+        {
+            var entry = context.Entry(message);
+            if (entry.State == EntityState.Added)
+                entry.State = EntityState.Detached;
+        }
+
+        _stagedMessages.Clear();
         Reset();
     }
 

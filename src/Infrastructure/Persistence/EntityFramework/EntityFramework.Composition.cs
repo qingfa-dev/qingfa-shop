@@ -234,7 +234,8 @@ public static class EntityFrameworkComposition
     /// <param name="services">The host's service collection.</param>
     private static void RegisterEventSerialization(IServiceCollection services)
     {
-        services.TryAddSingleton<IEventTypeRegistry>(_ => new EventTypeRegistry(typeof(DomainEvent).Assembly));
+        services.TryAddSingleton<EventTypeRegistry>(_ => new EventTypeRegistry(typeof(DomainEvent).Assembly));
+        services.TryAddSingleton<IEventTypeRegistry>(sp => sp.GetRequiredService<EventTypeRegistry>());
         services.TryAddSingleton<JsonMessageSerializer>();
         services.TryAddSingleton<IDomainEventSerializer>(sp => sp.GetRequiredService<JsonMessageSerializer>());
         services.TryAddSingleton<IIntegrationEventSerializer>(sp => sp.GetRequiredService<JsonMessageSerializer>());
