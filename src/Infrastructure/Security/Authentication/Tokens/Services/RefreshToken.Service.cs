@@ -7,8 +7,6 @@ using Application.Common.Security.Authentication.Tokens.Domain;
 
 using Application.Common.Security.Authentication.Tokens.Options;
 
-using Core.Common.Monad.Maybes;
-
 namespace Infrastructure.Security.Authentication.Tokens.Services;
 
 /// <summary>

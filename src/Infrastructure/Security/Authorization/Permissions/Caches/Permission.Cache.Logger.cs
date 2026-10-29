@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging;
-
 namespace Infrastructure.Security.Authorization.Permissions.Caches;
 
 public partial class PermissionCache

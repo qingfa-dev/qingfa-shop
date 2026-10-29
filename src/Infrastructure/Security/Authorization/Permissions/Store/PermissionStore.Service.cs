@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging;
-
 using Application.Common.Security.Authorization.Domain;
 using Application.Common.Security.Authorization.Permissions.Store;
 

@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging;
-
 namespace Infrastructure.Security.Authorization.Permissions.Store;
 
 public partial class PermissionStoreService

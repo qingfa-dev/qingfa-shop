@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging;
-
 using Application.Common.Security.Authorization.Permissions.Caches;
 using Application.Common.Security.Authorization.Permissions.Services;
 using Application.Common.Security.Authorization.Permissions.Store;

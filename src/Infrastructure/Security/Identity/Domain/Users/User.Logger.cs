@@ -1,5 +1,3 @@
-using Microsoft.Extensions.Logging;
-
 namespace Infrastructure.Security.Identity.Domain.Users;
 
 public static partial class UserLoggers

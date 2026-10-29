@@ -1,7 +1,5 @@
 using Application.Common.Security.Authentication.Identity;
 
-using Microsoft.Extensions.Logging;
-
 namespace Infrastructure.Security.Identity.Services;
 
 /// <summary>

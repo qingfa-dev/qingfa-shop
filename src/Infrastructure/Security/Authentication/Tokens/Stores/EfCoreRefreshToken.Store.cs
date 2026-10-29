@@ -2,8 +2,6 @@ using Application.Common.Persistence.UnitOfWorks;
 using Application.Common.Security.Authentication.Tokens.Abstractions.Refresh;
 using Application.Common.Security.Authentication.Tokens.Domain;
 
-using Core.Common.Monad.Maybes;
-
 using Infrastructure.Persistence.EntityFramework.Contexts;
 
 using Microsoft.EntityFrameworkCore;
