@@ -106,11 +106,12 @@ public sealed class ResetterBranchTest : IAsyncLifetime
             context,
             new Mock<ILogger>().Object,
             ResetScope.DataOnly,
-            targets: ["todo.todos", "todo_lists", "missing"]);
+            targets: ["todo.todos", "todo.todo_lists", "missing"]);
 
         Result result = await resetter.ExecuteAsync(CreateContext(connection.Connection));
 
-        result.IsSuccess.Should().BeTrue();
+        result.IsSuccess.Should().BeTrue(
+            string.Join("; ", result.Errors.Select(error => $"{error.Code}: {error.Message}")));
         connection.Command.NonQueryCalls.Should().Be(4);
     }
 
@@ -158,6 +159,12 @@ public sealed class ResetterBranchTest : IAsyncLifetime
     /// <summary>A fake PostgreSQL-shaped connection that returns table metadata.</summary>
     private static PostgresConnection CreatePostgresConnection(params string[] tables)
     {
+        var command = new FakeCommand(() => CreateReader(tables));
+        return new PostgresConnection(new FakeConnection(command), command);
+    }
+
+    private static DbDataReader CreateReader(params string[] tables)
+    {
         var reader = new Mock<DbDataReader>();
         var readSequence = reader.SetupSequence(value => value.ReadAsync(It.IsAny<CancellationToken>()));
         foreach (string _ in tables)
@@ -168,8 +175,7 @@ public sealed class ResetterBranchTest : IAsyncLifetime
         foreach (string table in tables)
             nameSequence = nameSequence.Returns(table);
 
-        var command = new FakeCommand(reader.Object);
-        return new PostgresConnection(new FakeConnection(command), command);
+        return reader.Object;
     }
 
     /// <summary>The concrete fake connection and command, exposed for verification.</summary>
@@ -218,7 +224,7 @@ public sealed class ResetterBranchTest : IAsyncLifetime
     }
 
     /// <summary>Minimal DbCommand that reads tables and records non-query calls.</summary>
-    private sealed class FakeCommand(DbDataReader reader) : DbCommand
+    private sealed class FakeCommand(Func<DbDataReader> readerFactory) : DbCommand
     {
         private readonly FakeParameterCollection _parameters = new();
 
@@ -247,7 +253,7 @@ public sealed class ResetterBranchTest : IAsyncLifetime
 
         protected override DbParameter CreateDbParameter() => new FakeParameter();
 
-        protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior) => reader;
+        protected override DbDataReader ExecuteDbDataReader(CommandBehavior behavior) => readerFactory();
 
         public override int ExecuteNonQuery()
         {

@@ -106,6 +106,10 @@ public sealed class EfCoreResetter<TContext> : IPersistenceResetter
                     return Result.Fail(SchemaResetOutcome.Failure.ResetFailed("Invalid scope"));
             }
 
+            // Reset: a reset invalidates every tracked entity; prevent stale rows from
+            // being reused by seeders that run later in the same scope.
+            _context.ChangeTracker.Clear();
+
             _logger.LogInformation("Database reset completed successfully for '{ResetterName}'.", Name);
             return Result.Ok();
         }
@@ -447,6 +451,16 @@ public sealed class EfCoreResetter<TContext> : IPersistenceResetter
     [
         "todos",
         "todo_lists",
-        "todo_categories"
+        "todo_categories",
+        "refresh_tokens",
+        "passkey_data",
+        "passkeys",
+        "user_tokens",
+        "user_logins",
+        "user_roles",
+        "user_claims",
+        "role_claims",
+        "roles",
+        "users"
     ];
 }

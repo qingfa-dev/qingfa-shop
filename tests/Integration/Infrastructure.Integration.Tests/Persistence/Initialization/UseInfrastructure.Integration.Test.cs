@@ -58,7 +58,7 @@ public sealed class UseInfrastructureIntegrationTest(PersistenceInitializationFi
         result.Should().BeSameAs(app);
         (await _fixture.TableExistsAsync("todos")).Should().BeTrue();
         (await _fixture.CountRowsAsync("todos")).Should().Be(0);
-        (await _fixture.CountRowsAsync("__EFMigrationsHistory")).Should().Be(1);
+        (await _fixture.CountRowsAsync("__EFMigrationsHistory")).Should().Be(3);
     }
 
     [Fact(DisplayName = "UseInfrastructure with both flags false should not touch the database")]

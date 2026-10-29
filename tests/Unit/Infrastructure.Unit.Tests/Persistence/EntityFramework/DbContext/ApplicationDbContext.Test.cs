@@ -164,6 +164,17 @@ public sealed class ApplicationDbContextTest : IAsyncLifetime
         indexes.Should().Contain("TenantId,IsDeleted");
     }
 
+    [Fact(DisplayName = "ApplicationDbContext should not have pending model changes")]
+    public void Model_ShouldNotHavePendingChanges()
+    {
+        var options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseNpgsql("Host=localhost;Database=qingfa_shop;Username=postgres;Password=postgres")
+            .Options;
+        using var context = new ApplicationDbContext(options);
+
+        context.Database.HasPendingModelChanges().Should().BeFalse();
+    }
+
     [Fact(DisplayName = "ApplicationDbContext should discover migrations from its assembly")]
     public void Database_ShouldDiscoverMigrations()
     {

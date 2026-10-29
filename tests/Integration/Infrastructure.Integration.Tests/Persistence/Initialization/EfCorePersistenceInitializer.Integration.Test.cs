@@ -99,11 +99,12 @@ public sealed class EfCorePersistenceInitializerIntegrationTest(PersistenceIniti
             resetScope: ResetScope.DataOnly);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
+        result.IsSuccess.Should().BeTrue(
+            string.Join("; ", result.Errors.Select(error => $"{error.Code}: {error.Message}")));
         (await _fixture.CountRowsAsync("todo_categories")).Should().Be(4);
         (await _fixture.CountRowsAsync("todo_lists")).Should().Be(3);
         (await _fixture.CountRowsAsync("todos")).Should().Be(5);
-        (await _fixture.CountRowsAsync("__EFMigrationsHistory")).Should().Be(1);
+        (await _fixture.CountRowsAsync("__EFMigrationsHistory")).Should().Be(3);
     }
 
     [Fact(DisplayName = "InitializeAsync with SchemaOnly reset should reset, migrate, then seed")]
@@ -124,7 +125,7 @@ public sealed class EfCorePersistenceInitializerIntegrationTest(PersistenceIniti
         // Assert
         result.IsSuccess.Should().BeTrue();
         (await _fixture.TableExistsAsync("todos")).Should().BeTrue();
-        (await _fixture.CountRowsAsync("__EFMigrationsHistory")).Should().Be(1);
+        (await _fixture.CountRowsAsync("__EFMigrationsHistory")).Should().Be(3);
         (await _fixture.CountRowsAsync("todo_categories")).Should().Be(4);
         (await _fixture.CountRowsAsync("todo_lists")).Should().Be(3);
         (await _fixture.CountRowsAsync("todos")).Should().Be(5);
@@ -148,7 +149,7 @@ public sealed class EfCorePersistenceInitializerIntegrationTest(PersistenceIniti
         // Assert
         result.IsSuccess.Should().BeTrue();
         (await _fixture.CanConnectAsync()).Should().BeTrue();
-        (await _fixture.CountRowsAsync("__EFMigrationsHistory")).Should().Be(1);
+        (await _fixture.CountRowsAsync("__EFMigrationsHistory")).Should().Be(3);
         (await _fixture.CountRowsAsync("todos")).Should().Be(5);
     }
 
@@ -186,9 +187,11 @@ public sealed class EfCorePersistenceInitializerIntegrationTest(PersistenceIniti
         // Assert
         result.IsSuccess.Should().BeTrue();
         reports.Should().NotBeEmpty();
-        reports.Should().OnlyContain(report => report.TotalSteps == 4);
+        reports.Should().OnlyContain(report => report.TotalSteps == 6);
         reports.Select(report => report.CurrentStepName)
             .Should().Contain("migrator:efcore")
+            .And.Contain("seeder:identity-roles")
+            .And.Contain("seeder:identity-users")
             .And.Contain("seeder:todo-categories")
             .And.Contain("seeder:todo-lists")
             .And.Contain("seeder:todos");
@@ -222,14 +225,16 @@ public sealed class EfCorePersistenceInitializerIntegrationTest(PersistenceIniti
         var steps = initializer.GetPipeline().GetOrderedSteps();
 
         // Assert
-        steps.Should().HaveCount(4);
+        steps.Should().HaveCount(6);
         steps[0].Should().BeAssignableTo<IPersistenceMigrator>();
         steps.Skip(1).Should().AllBeAssignableTo<IPersistenceSeeder>();
         steps.Select(step => step.Name).Should().ContainInOrder(
             "migrator:efcore",
             "seeder:todo-categories",
             "seeder:todo-lists",
-            "seeder:todos");
+            "seeder:identity-roles",
+            "seeder:todos",
+            "seeder:identity-users");
     }
 
     [Fact(DisplayName = "GetPipeline preview should describe migrations and seed inserts")]
@@ -255,7 +260,9 @@ public sealed class EfCorePersistenceInitializerIntegrationTest(PersistenceIniti
             "migrator:efcore",
             "seeder:todo-categories",
             "seeder:todo-lists",
-            "seeder:todos");
+            "seeder:identity-roles",
+            "seeder:todos",
+            "seeder:identity-users");
         result.Value.Operations.Should().Contain(op => op.Type == InitializationOperationType.SchemaCheck);
         result.Value.Operations.Should().Contain(op => op.Type == InitializationOperationType.DataChange);
     }

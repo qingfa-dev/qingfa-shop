@@ -48,7 +48,6 @@ public static class IdentityExtensions
             options.SignIn.RequireConfirmedEmail = IdentitySettingConstant.SignIn.RequireConfirmedEmail;
             options.SignIn.RequireConfirmedAccount = IdentitySettingConstant.SignIn.RequireConfirmedAccount;
 
-            options.Stores.SchemaVersion = IdentitySchemaVersions.Version2;
         })
         .AddRoles<Role>()
         .AddEntityFrameworkStores<ApplicationDbContext>()

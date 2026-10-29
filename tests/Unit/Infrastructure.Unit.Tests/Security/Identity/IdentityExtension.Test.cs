@@ -54,6 +54,20 @@ public sealed class IdentityExtensionTest
         options.User.RequireUniqueEmail.Should().BeTrue();
     }
 
+    [Fact(DisplayName = "AddIdentityServices should not change the EF model")]
+    public void AddIdentityServices_ShouldNotChangeModel()
+    {
+        var services = new ServiceCollection();
+        services.AddLogging();
+        services.AddDbContext<ApplicationDbContext>(options =>
+            options.UseNpgsql("Host=localhost;Database=qingfa_shop;Username=postgres;Password=postgres"));
+        services.AddIdentityServices();
+        using ServiceProvider provider = services.BuildServiceProvider();
+
+        ApplicationDbContext context = provider.GetRequiredService<ApplicationDbContext>();
+        context.Database.HasPendingModelChanges().Should().BeFalse();
+    }
+
     [Fact(DisplayName = "AddIdentityServices should reject null services")]
     public void AddIdentityServices_ShouldRejectNull()
     {
