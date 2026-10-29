@@ -6,6 +6,7 @@ using Infrastructure.Caching.Services;
 
 using Microsoft.Extensions.Caching.Hybrid;
 using Microsoft.Extensions.Caching.Memory;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -21,16 +22,17 @@ public sealed class CachingCompositionTest
     [Fact(DisplayName = "AddCaching when enabled should register the cache stack")]
     public void AddCaching_WhenEnabled_ShouldRegisterTheCacheStack()
     {
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         services.AddLogging();
         services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
 
-        IServiceCollection result = services.AddCaching(Configuration(new Dictionary<string, string?>
+        WebApplicationBuilder result = builder.AddCaching(Configuration(new Dictionary<string, string?>
         {
             ["Caching:Distributed:Enabled"] = "false"
         }));
 
-        result.Should().BeSameAs(services);
+        result.Should().BeSameAs(builder);
 
         using ServiceProvider provider = services.BuildServiceProvider();
 
@@ -42,10 +44,11 @@ public sealed class CachingCompositionTest
     [Fact(DisplayName = "AddCaching should bind the caching section")]
     public void AddCaching_ShouldBindTheCachingSection()
     {
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
 
-        services.AddCaching(Configuration(new Dictionary<string, string?>
+        builder.AddCaching(Configuration(new Dictionary<string, string?>
         {
             ["Caching:Distributed:Enabled"] = "false",
             ["Caching:Memory:DefaultExpirationMinutes"] = "5",
@@ -62,8 +65,9 @@ public sealed class CachingCompositionTest
     [Fact(DisplayName = "AddCaching when disabled should register a no-op facade")]
     public async Task AddCaching_WhenDisabled_ShouldRegisterANoOpFacade()
     {
-        var services = new ServiceCollection();
-        services.AddCaching(Configuration(new Dictionary<string, string?>
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
+        builder.AddCaching(Configuration(new Dictionary<string, string?>
         {
             ["Caching:Enabled"] = "false"
         }));
@@ -92,10 +96,11 @@ public sealed class CachingCompositionTest
     [Fact(DisplayName = "AddCaching when distributed is enabled without a provider should throw")]
     public void AddCaching_WhenDistributedEnabledWithoutProvider_ShouldThrow()
     {
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
 
-        Action act = () => services.AddCaching(Configuration(new Dictionary<string, string?>
+        Action act = () => builder.AddCaching(Configuration(new Dictionary<string, string?>
         {
             ["Caching:Distributed:Provider"] = "unknown"
         }));
@@ -107,11 +112,12 @@ public sealed class CachingCompositionTest
     [Fact(DisplayName = "AddCaching when memory is disabled should still register HybridCache")]
     public void AddCaching_WhenMemoryDisabled_ShouldStillRegisterHybridCache()
     {
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         services.AddLogging();
         services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
 
-        services.AddCaching(Configuration(new Dictionary<string, string?>
+        builder.AddCaching(Configuration(new Dictionary<string, string?>
         {
             ["Caching:Memory:Enabled"] = "false"
         }));
@@ -125,10 +131,11 @@ public sealed class CachingCompositionTest
     [Fact(DisplayName = "AddCaching should register ICacheService as a singleton")]
     public void AddCaching_ShouldRegisterICacheServiceAsSingleton()
     {
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
 
-        services.AddCaching(Configuration(new Dictionary<string, string?>
+        builder.AddCaching(Configuration(new Dictionary<string, string?>
         {
             ["Caching:Distributed:Enabled"] = "false"
         }));

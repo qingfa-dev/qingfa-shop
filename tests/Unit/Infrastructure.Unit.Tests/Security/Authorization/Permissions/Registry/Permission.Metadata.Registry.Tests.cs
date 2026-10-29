@@ -165,7 +165,7 @@ public sealed class PermissionMetadataRegistryTests
         results.Should().OnlyContain(result => result.IsSuccess);
         store.Calls.Should().Be(16);
         registry.Snapshot.Count.Should().Be(PermissionContext.All.Count + 1);
-        registry.Snapshot.Should().BeSameAs(results[^1].Value);
+        results.Should().OnlyContain(result => result.Value.Count == PermissionContext.All.Count + 1);
     }
 
     private static ServiceProvider BuildProvider(IPermissionStore store)

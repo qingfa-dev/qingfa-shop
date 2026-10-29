@@ -7,7 +7,9 @@ using Application.Common.Security.Authorization;
 using Application.Common.Security.Authorization.Permissions.Services;
 using Application.Common.Security.Authorization.Requirements;
 
-namespace Application.Unit.Tests.Common.Security.Authorization.Requirements;
+using Infrastructure.Security.Authorization.Requirements;
+
+namespace Infrastructure.Unit.Tests.Security.Authorization.Requirements;
 
 [Trait("Category", "Unit")]
 [Trait("Module", "Shared")]

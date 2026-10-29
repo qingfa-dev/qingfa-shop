@@ -4,6 +4,7 @@ using Infrastructure.Caching;
 using Infrastructure.Caching.Options;
 using Infrastructure.Caching.Services;
 
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -83,8 +84,9 @@ public sealed class CachingCompositionIntegrationTest
     [Fact(DisplayName = "Disabled caching should register NullCacheService")]
     public void DisabledCaching_ShouldRegisterNullCacheService()
     {
-        var services = new ServiceCollection();
-        services.AddCaching(BuildConfig(new Dictionary<string, string?>
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
+        builder.AddCaching(BuildConfig(new Dictionary<string, string?>
         {
             ["Caching:Enabled"] = "false"
         }));
@@ -98,8 +100,9 @@ public sealed class CachingCompositionIntegrationTest
     [Fact(DisplayName = "Disabled caching should still allow GetOrCreateAsync")]
     public async Task DisabledCaching_ShouldAllowGetOrCreateAsync()
     {
-        var services = new ServiceCollection();
-        services.AddCaching(BuildConfig(new Dictionary<string, string?>
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
+        builder.AddCaching(BuildConfig(new Dictionary<string, string?>
         {
             ["Caching:Enabled"] = "false"
         }));
@@ -127,9 +130,10 @@ public sealed class CachingCompositionIntegrationTest
     [Fact(DisplayName = "Distributed enabled without provider should throw")]
     public void DistributedEnabledWithoutProvider_ShouldThrow()
     {
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
 
-        Action act = () => services.AddCaching(BuildConfig(new Dictionary<string, string?>
+        Action act = () => builder.AddCaching(BuildConfig(new Dictionary<string, string?>
         {
             ["Caching:Distributed:Provider"] = null,
             ["Caching:Distributed:ConnectionStringName"] = null
@@ -143,9 +147,10 @@ public sealed class CachingCompositionIntegrationTest
     [Fact(DisplayName = "Memory-only mode should register CacheService")]
     public void MemoryOnlyMode_ShouldRegisterCacheService()
     {
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         services.AddLogging();
-        services.AddCaching(BuildConfig(new Dictionary<string, string?>
+        builder.AddCaching(BuildConfig(new Dictionary<string, string?>
         {
             ["Caching:Memory:Enabled"] = "true",
             ["Caching:Distributed:Enabled"] = "false"
@@ -160,10 +165,11 @@ public sealed class CachingCompositionIntegrationTest
     [Fact(DisplayName = "Distributed-only mode should register CacheService")]
     public void DistributedOnlyMode_ShouldRegisterCacheService()
     {
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         services.AddLogging();
         services.AddDistributedMemoryCache();
-        services.AddCaching(BuildConfig(new Dictionary<string, string?>
+        builder.AddCaching(BuildConfig(new Dictionary<string, string?>
         {
             ["Caching:Memory:Enabled"] = "false",
             ["Caching:Distributed:Enabled"] = "true",
@@ -181,10 +187,11 @@ public sealed class CachingCompositionIntegrationTest
     [Fact(DisplayName = "Custom settings should bind correctly")]
     public void CustomSettings_ShouldBindCorrectly()
     {
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         services.AddLogging();
         services.AddDistributedMemoryCache();
-        services.AddCaching(BuildConfig(new Dictionary<string, string?>
+        builder.AddCaching(BuildConfig(new Dictionary<string, string?>
         {
             ["Caching:Memory:DefaultExpirationMinutes"] = "15",
             ["Caching:Memory:CompactionPercentage"] = "25",
@@ -211,18 +218,19 @@ public sealed class CachingCompositionIntegrationTest
     [Fact(DisplayName = "AddCaching should return the same service collection")]
     public void AddCaching_ShouldReturnSameCollection()
     {
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         services.AddDistributedMemoryCache();
 
-        IServiceCollection result = services.AddCaching(BuildConfig());
+        WebApplicationBuilder result = builder.AddCaching(BuildConfig());
 
-        result.Should().BeSameAs(services);
+        result.Should().BeSameAs(builder);
     }
 
     [Fact(DisplayName = "AddCaching with null services should throw")]
     public void AddCaching_WithNullServices_ShouldThrow()
     {
-        Action act = () => ((IServiceCollection)null!).AddCaching(BuildConfig());
+        Action act = () => ((WebApplicationBuilder)null!).AddCaching(BuildConfig());
 
         act.Should().Throw<ArgumentNullException>();
     }
@@ -230,9 +238,10 @@ public sealed class CachingCompositionIntegrationTest
     [Fact(DisplayName = "AddCaching with null configuration should throw")]
     public void AddCaching_WithNullConfiguration_ShouldThrow()
     {
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
 
-        Action act = () => services.AddCaching((IConfiguration)null!);
+        Action act = () => builder.AddCaching((IConfiguration)null!);
 
         act.Should().Throw<ArgumentNullException>();
     }
@@ -240,11 +249,12 @@ public sealed class CachingCompositionIntegrationTest
     [Fact(DisplayName = "Validation should require at least one tier")]
     public void Validation_ShouldRequireAtLeastOneTier()
     {
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         services.AddLogging();
         services.AddDistributedMemoryCache();
 
-        Action act = () => services.AddCaching(BuildConfig(new Dictionary<string, string?>
+        Action act = () => builder.AddCaching(BuildConfig(new Dictionary<string, string?>
         {
             ["Caching:Memory:Enabled"] = "false",
             ["Caching:Distributed:Enabled"] = "false",
@@ -260,11 +270,12 @@ public sealed class CachingCompositionIntegrationTest
     [Fact(DisplayName = "Validation should reject inverted expiration")]
     public void Validation_ShouldRejectInvertedExpiration()
     {
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         services.AddLogging();
         services.AddDistributedMemoryCache();
 
-        Action act = () => services.AddCaching(BuildConfig(new Dictionary<string, string?>
+        Action act = () => builder.AddCaching(BuildConfig(new Dictionary<string, string?>
         {
             ["Caching:Memory:DefaultExpirationMinutes"] = "60",
             ["Caching:Distributed:DefaultExpirationMinutes"] = "5",

@@ -12,6 +12,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.WebUtilities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Configuration;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -256,7 +257,8 @@ public sealed class IdentityServiceTest
         public static async Task<TestHost> CreateAsync()
         {
             var email = new FakeEmailSender();
-            var services = new ServiceCollection();
+            WebApplicationBuilder builder = WebApplication.CreateBuilder();
+            IServiceCollection services = builder.Services;
             services.AddLogging();
             services.AddSingleton<IIdentityEmailSender>(email);
             services.AddDbContext<ApplicationDbContext>(options =>
@@ -264,7 +266,7 @@ public sealed class IdentityServiceTest
             services.AddScoped<DbContext>(provider =>
                 provider.GetRequiredService<ApplicationDbContext>());
             services.AddScoped<IUnitOfWork, EfCoreUnitOfWork>();
-            services.AddAuthentication(BuildConfiguration());
+            builder.AddAuthentication(BuildConfiguration());
 
             ServiceProvider provider = services.BuildServiceProvider();
             IServiceScope scope = provider.CreateScope();

@@ -3,6 +3,7 @@ using Application.Common.Caching;
 using Infrastructure.Caching;
 using Infrastructure.Caching.Options;
 
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Options;
@@ -45,13 +46,14 @@ public sealed class RedisCachingFixture : IAsyncLifetime
         await redisContainer.StartAsync();
         string redisConnectionString = redisContainer.GetConnectionString();
 
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         services.AddLogging();
         services.AddStackExchangeRedisCache(options =>
         {
             options.Configuration = redisConnectionString;
         });
-        services.AddCaching(BuildConfiguration());
+        builder.AddCaching(BuildConfiguration());
 
         Services = services.BuildServiceProvider();
 

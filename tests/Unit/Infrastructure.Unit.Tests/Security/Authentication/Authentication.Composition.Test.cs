@@ -17,6 +17,7 @@ using Infrastructure.Security.Identity.Domain.Users;
 
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -33,9 +34,10 @@ public sealed class AuthenticationCompositionTest
     public void AddAuthentication_ShouldRegisterServices()
     {
         IConfiguration configuration = BuildConfiguration();
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
 
-        services.AddAuthentication(configuration);
+        builder.AddAuthentication(configuration);
 
         using ServiceProvider provider = services.BuildServiceProvider();
         provider.GetRequiredService<ITenantContext>().Should().BeOfType<TenantContext>();
@@ -57,14 +59,15 @@ public sealed class AuthenticationCompositionTest
     [Fact(DisplayName = "AddAuthentication should resolve the complete token and Identity pipeline")]
     public void AddAuthentication_ShouldResolveFullPipeline()
     {
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         services.AddLogging();
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseInMemoryDatabase($"Auth_{Guid.NewGuid():N}"));
         services.AddScoped<DbContext>(provider =>
             provider.GetRequiredService<ApplicationDbContext>());
         services.AddScoped<IUnitOfWork, EfCoreUnitOfWork>();
-        services.AddAuthentication(BuildConfiguration());
+        builder.AddAuthentication(BuildConfiguration());
 
         using ServiceProvider provider = services.BuildServiceProvider();
         provider.GetRequiredService<IRefreshTokenService>().Should().NotBeNull();
@@ -77,11 +80,11 @@ public sealed class AuthenticationCompositionTest
     public void AddAuthentication_ShouldRejectNullDependencies()
     {
         IConfiguration configuration = BuildConfiguration();
-        IServiceCollection? services = null;
+        WebApplicationBuilder? builder = null;
 
-        Assert.Throws<ArgumentNullException>(() => services!.AddAuthentication(configuration));
+        Assert.Throws<ArgumentNullException>(() => builder!.AddAuthentication(configuration));
         Assert.Throws<ArgumentNullException>(
-            () => new ServiceCollection().AddAuthentication((IConfiguration)null!));
+            () => WebApplication.CreateBuilder().AddAuthentication((IConfiguration)null!));
     }
 
     private static IConfiguration BuildConfiguration() =>

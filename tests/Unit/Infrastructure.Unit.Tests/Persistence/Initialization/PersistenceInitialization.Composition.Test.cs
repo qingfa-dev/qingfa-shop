@@ -14,6 +14,7 @@ using Infrastructure.Security.Identity.Domain.Roles;
 using Infrastructure.Security.Identity.Domain.Users;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -99,9 +100,10 @@ public sealed class PersistenceInitializationCompositionTest
     public void AddPersistenceInitialization_CalledTwice_ShouldNotDuplicateSteps()
     {
         // Arrange
-        var services = CreateServices();
-        services.AddPersistenceInitialization<ApplicationDbContext>();
-        services.AddPersistenceInitialization<ApplicationDbContext>();
+        WebApplicationBuilder builder = CreateBuilder();
+        IServiceCollection services = builder.Services;
+        builder.AddPersistenceInitialization<ApplicationDbContext>();
+        builder.AddPersistenceInitialization<ApplicationDbContext>();
 
         using var provider = services.BuildServiceProvider();
         using var scope = provider.CreateScope();
@@ -152,26 +154,27 @@ public sealed class PersistenceInitializationCompositionTest
         registered.Should().Equal(expected);
     }
 
-    [Fact(DisplayName = "AddPersistenceInitialization should throw when services is null")]
-    public void AddPersistenceInitialization_WithNullServices_ShouldThrow()
+    [Fact(DisplayName = "AddPersistenceInitialization should throw when the builder is null")]
+    public void AddPersistenceInitialization_WithNullBuilder_ShouldThrow()
     {
         // Arrange
-        IServiceCollection? services = null;
+        WebApplicationBuilder? builder = null;
 
         // Act
-        var act = () => services!.AddPersistenceInitialization<ApplicationDbContext>();
+        var act = () => builder!.AddPersistenceInitialization<ApplicationDbContext>();
 
         // Assert
-        act.Should().Throw<ArgumentNullException>().And.ParamName.Should().Be("services");
+        act.Should().Throw<ArgumentNullException>().And.ParamName.Should().Be("builder");
     }
 
     [Fact(DisplayName = "AddPersistence should register the initializer and seeders")]
     public void AddPersistence_ShouldRegisterInitializerAndSeeders()
     {
         // Arrange
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         services.AddLogging();
-        services.AddPersistence<ApplicationDbContext>(
+        builder.AddPersistence<ApplicationDbContext>(
             "Host=127.0.0.1;Port=1;Database=qingfa;Username=qingfa;Password=qingfa;Timeout=1");
 
         using var provider = services.BuildServiceProvider();
@@ -188,19 +191,21 @@ public sealed class PersistenceInitializationCompositionTest
 
     private static ServiceProvider BuildProvider()
     {
-        var services = CreateServices();
-        services.AddPersistenceInitialization<ApplicationDbContext>();
+        WebApplicationBuilder builder = CreateBuilder();
+        IServiceCollection services = builder.Services;
+        builder.AddPersistenceInitialization<ApplicationDbContext>();
         return services.BuildServiceProvider();
     }
 
-    private static ServiceCollection CreateServices()
+    private static WebApplicationBuilder CreateBuilder()
     {
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         services.AddLogging();
         services.AddDbContext<ApplicationDbContext>(options =>
             options.UseNpgsql("Host=127.0.0.1;Port=1;Database=qingfa;Username=qingfa;Password=qingfa;Timeout=1"));
         services.AddScoped<DbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
         services.AddScoped<IUnitOfWork, EfCoreUnitOfWork>();
-        return services;
+        return builder;
     }
 }

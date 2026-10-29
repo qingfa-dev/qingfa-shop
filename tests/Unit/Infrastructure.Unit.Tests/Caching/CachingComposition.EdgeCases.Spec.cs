@@ -4,6 +4,7 @@ using Infrastructure.Caching;
 using Infrastructure.Caching.Options;
 using Infrastructure.Caching.Services;
 
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -19,12 +20,13 @@ public sealed class CachingCompositionEdgeCasesTest
     [Fact(DisplayName = "AddCaching with distributed only should register cache stack")]
     public void AddCaching_WithDistributedOnly_ShouldRegisterCacheStack()
     {
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         services.AddLogging();
         services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
         services.AddDistributedMemoryCache();
 
-        services.AddCaching(Configuration(new Dictionary<string, string?>
+        builder.AddCaching(Configuration(new Dictionary<string, string?>
         {
             ["Caching:Memory:Enabled"] = "false",
             ["Caching:Distributed:Enabled"] = "true"
@@ -38,11 +40,12 @@ public sealed class CachingCompositionEdgeCasesTest
     [Fact(DisplayName = "AddCaching with memory only should register cache stack")]
     public void AddCaching_WithMemoryOnly_ShouldRegisterCacheStack()
     {
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         services.AddLogging();
         services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
 
-        services.AddCaching(Configuration(new Dictionary<string, string?>
+        builder.AddCaching(Configuration(new Dictionary<string, string?>
         {
             ["Caching:Memory:Enabled"] = "true",
             ["Caching:Distributed:Enabled"] = "false"
@@ -56,8 +59,9 @@ public sealed class CachingCompositionEdgeCasesTest
     [Fact(DisplayName = "AddCaching when disabled should not register HybridCache")]
     public void AddCaching_WhenDisabled_ShouldNotRegisterHybridCache()
     {
-        var services = new ServiceCollection();
-        services.AddCaching(Configuration(new Dictionary<string, string?>
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
+        builder.AddCaching(Configuration(new Dictionary<string, string?>
         {
             ["Caching:Enabled"] = "false"
         }));
@@ -70,18 +74,19 @@ public sealed class CachingCompositionEdgeCasesTest
     [Fact(DisplayName = "AddCaching should return the same service collection")]
     public void AddCaching_ShouldReturnSameCollection()
     {
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         services.AddDistributedMemoryCache();
 
-        IServiceCollection result = services.AddCaching(Configuration());
+        WebApplicationBuilder result = builder.AddCaching(Configuration());
 
-        result.Should().BeSameAs(services);
+        result.Should().BeSameAs(builder);
     }
 
     [Fact(DisplayName = "AddCaching with null services should throw")]
     public void AddCaching_WithNullServices_ShouldThrow()
     {
-        Action act = () => ((IServiceCollection)null!).AddCaching(Configuration());
+        Action act = () => ((WebApplicationBuilder)null!).AddCaching(Configuration());
 
         act.Should().Throw<ArgumentNullException>();
     }
@@ -89,9 +94,10 @@ public sealed class CachingCompositionEdgeCasesTest
     [Fact(DisplayName = "AddCaching with null configuration should throw")]
     public void AddCaching_WithNullConfiguration_ShouldThrow()
     {
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
 
-        Action act = () => services.AddCaching((IConfiguration)null!);
+        Action act = () => builder.AddCaching((IConfiguration)null!);
 
         act.Should().Throw<ArgumentNullException>();
     }
@@ -99,8 +105,9 @@ public sealed class CachingCompositionEdgeCasesTest
     [Fact(DisplayName = "AddCaching when disabled should allow GetOrCreateAsync")]
     public async Task AddCaching_WhenDisabled_ShouldAllowGetOrCreateAsync()
     {
-        var services = new ServiceCollection();
-        services.AddCaching(Configuration(new Dictionary<string, string?>
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
+        builder.AddCaching(Configuration(new Dictionary<string, string?>
         {
             ["Caching:Enabled"] = "false"
         }));
@@ -118,8 +125,9 @@ public sealed class CachingCompositionEdgeCasesTest
     [Fact(DisplayName = "AddCaching when disabled should allow SetAsync")]
     public async Task AddCaching_WhenDisabled_ShouldAllowSetAsync()
     {
-        var services = new ServiceCollection();
-        services.AddCaching(Configuration(new Dictionary<string, string?>
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
+        builder.AddCaching(Configuration(new Dictionary<string, string?>
         {
             ["Caching:Enabled"] = "false"
         }));
@@ -135,8 +143,9 @@ public sealed class CachingCompositionEdgeCasesTest
     [Fact(DisplayName = "AddCaching when disabled should allow RemoveAsync")]
     public async Task AddCaching_WhenDisabled_ShouldAllowRemoveAsync()
     {
-        var services = new ServiceCollection();
-        services.AddCaching(Configuration(new Dictionary<string, string?>
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
+        builder.AddCaching(Configuration(new Dictionary<string, string?>
         {
             ["Caching:Enabled"] = "false"
         }));
@@ -152,8 +161,9 @@ public sealed class CachingCompositionEdgeCasesTest
     [Fact(DisplayName = "AddCaching when disabled should allow RemoveByTagAsync")]
     public async Task AddCaching_WhenDisabled_ShouldAllowRemoveByTagAsync()
     {
-        var services = new ServiceCollection();
-        services.AddCaching(Configuration(new Dictionary<string, string?>
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
+        builder.AddCaching(Configuration(new Dictionary<string, string?>
         {
             ["Caching:Enabled"] = "false"
         }));
@@ -169,12 +179,13 @@ public sealed class CachingCompositionEdgeCasesTest
     [Fact(DisplayName = "AddCaching should apply custom memory settings")]
     public void AddCaching_ShouldApplyCustomMemorySettings()
     {
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         services.AddLogging();
         services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
         services.AddDistributedMemoryCache();
 
-        services.AddCaching(Configuration(new Dictionary<string, string?>
+        builder.AddCaching(Configuration(new Dictionary<string, string?>
         {
             ["Caching:Distributed:Enabled"] = "false",
             ["Caching:Memory:DefaultExpirationMinutes"] = "15",
@@ -193,12 +204,13 @@ public sealed class CachingCompositionEdgeCasesTest
     [Fact(DisplayName = "AddCaching should apply custom hybrid settings")]
     public void AddCaching_ShouldApplyCustomHybridSettings()
     {
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         services.AddLogging();
         services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
         services.AddDistributedMemoryCache();
 
-        services.AddCaching(Configuration(new Dictionary<string, string?>
+        builder.AddCaching(Configuration(new Dictionary<string, string?>
         {
             ["Caching:Distributed:Enabled"] = "false",
             ["Caching:Hybrid:MaximumPayloadBytes"] = "5242880",
@@ -215,12 +227,13 @@ public sealed class CachingCompositionEdgeCasesTest
     [Fact(DisplayName = "AddCaching should apply custom distributed settings")]
     public void AddCaching_ShouldApplyCustomDistributedSettings()
     {
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         services.AddLogging();
         services.AddSingleton<ILoggerFactory>(NullLoggerFactory.Instance);
         services.AddDistributedMemoryCache();
 
-        services.AddCaching(Configuration(new Dictionary<string, string?>
+        builder.AddCaching(Configuration(new Dictionary<string, string?>
         {
             ["Caching:Distributed:Enabled"] = "false",
             ["Caching:Distributed:DefaultExpirationMinutes"] = "60"

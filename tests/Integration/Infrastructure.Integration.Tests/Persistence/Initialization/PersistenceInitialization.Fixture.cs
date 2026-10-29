@@ -7,6 +7,7 @@ using Infrastructure.Persistence.EntityFramework.Options;
 using Infrastructure.Persistence.EntityFramework.UnitOfWorks;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 
 using Npgsql;
@@ -42,7 +43,8 @@ public sealed class PersistenceInitializationFixture : IAsyncLifetime
         await _container.StartAsync();
         ConnectionString = _container.GetConnectionString();
 
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         services.AddLogging();
 
         services.AddDbContext<ApplicationDbContext>(options =>
@@ -55,7 +57,7 @@ public sealed class PersistenceInitializationFixture : IAsyncLifetime
 
         // Register: the persistence initializer and module seeders through the same
         // composition root production uses, so wiring defects surface here too.
-        services.AddPersistenceInitialization<ApplicationDbContext>();
+        builder.AddPersistenceInitialization<ApplicationDbContext>();
 
         Services = services.BuildServiceProvider();
     }

@@ -6,7 +6,9 @@ using Application.Unit.Tests.Common.Mediators.Fixtures;
 
 using MediatR;
 
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Hosting;
 
 namespace Application.Unit.Tests.Common.Mediators;
 
@@ -19,18 +21,18 @@ public class MediatorCompositionTest
     public void AddMediators_ShouldRegisterRequiredServices()
     {
         // Arrange
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
 
         // Act
-        services.AddMediators();
-        using ServiceProvider serviceProvider = services.BuildServiceProvider();
+        builder.AddMediators();
+        using ServiceProvider serviceProvider = builder.Services.BuildServiceProvider();
 
         // Assert
         // 1. Check MediatR
         serviceProvider.GetService<IMediator>().Should().NotBeNull();
 
         // 2. Check Behaviors
-        var behaviors = services
+        var behaviors = builder.Services
             .Where(s => s.ServiceType == typeof(IPipelineBehavior<,>))
             .Select(s => s.ImplementationType)
             .ToList();
@@ -44,22 +46,22 @@ public class MediatorCompositionTest
     public void AddMediators_WithAdditionalAssemblies_ShouldRegisterHandlers()
     {
         // Arrange
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
         var additionalAssembly = typeof(TestRequestHandler).Assembly;
 
         // Act
-        services.AddMediators(additionalAssembly);
-        using ServiceProvider serviceProvider = services.BuildServiceProvider();
+        builder.AddMediators(additionalAssembly);
+        using ServiceProvider serviceProvider = builder.Services.BuildServiceProvider();
 
         // Assert
         serviceProvider.GetService<IMediator>().Should().NotBeNull();
 
-        services.Should().Contain(s =>
+        builder.Services.Should().Contain(s =>
             s.ServiceType == typeof(IRequestHandler<TestRequest, Result>));
 
         // Validate: the host relies on a scoped mediator so it shares the
         // request scope with scoped handler dependencies.
-        services.Should().Contain(s =>
+        builder.Services.Should().Contain(s =>
             s.ServiceType == typeof(IMediator) &&
             s.Lifetime == ServiceLifetime.Scoped);
     }
@@ -68,12 +70,12 @@ public class MediatorCompositionTest
     public void UseMediators_ShouldWarmUpMediator()
     {
         // Arrange
-        var services = new ServiceCollection();
-        services.AddMediators();
-        using ServiceProvider serviceProvider = services.BuildServiceProvider();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        builder.AddMediators();
+        using WebApplication app = builder.Build();
 
         // Act
-        var action = () => serviceProvider.UseMediators();
+        var action = () => app.UseMediators();
 
         // Assert
         action.Should().NotThrow();
@@ -82,13 +84,13 @@ public class MediatorCompositionTest
     public void UseMediators_WithScopeValidation_ShouldResolve()
     {
         // Arrange
-        var services = new ServiceCollection();
-        services.AddMediators();
-        using ServiceProvider serviceProvider = services.BuildServiceProvider(
-            new ServiceProviderOptions { ValidateScopes = true });
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        builder.Host.UseDefaultServiceProvider(options => options.ValidateScopes = true);
+        builder.AddMediators();
+        using WebApplication app = builder.Build();
 
         // Act
-        var action = () => serviceProvider.UseMediators();
+        var action = () => app.UseMediators();
 
         // Assert
         action.Should().NotThrow();

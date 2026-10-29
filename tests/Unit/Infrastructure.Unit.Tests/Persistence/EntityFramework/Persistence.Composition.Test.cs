@@ -14,6 +14,7 @@ using Infrastructure.Persistence.EntityFramework.UnitOfWorks;
 using MediatR;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -51,7 +52,8 @@ public sealed class EntityFrameworkCompositionTest
     public void AddEfCorePersistence_WithConfig_ShouldRegisterServices()
     {
         // Arrange
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -62,10 +64,10 @@ public sealed class EntityFrameworkCompositionTest
             .Build();
 
         // Act
-        IServiceCollection result = services.AddEfCorePersistence<CompositionTestDbContext>(config);
+        WebApplicationBuilder result = builder.AddEfCorePersistence<CompositionTestDbContext>(config);
 
         // Assert
-        result.Should().BeSameAs(services);
+        result.Should().BeSameAs(builder);
         
         // Verify PersistenceSetting is registered
         using var provider = services.BuildServiceProvider();
@@ -78,7 +80,8 @@ public sealed class EntityFrameworkCompositionTest
     public void AddEfCorePersistence_ShouldRegisterIUnitOfWork()
     {
         // Arrange
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -88,7 +91,7 @@ public sealed class EntityFrameworkCompositionTest
             .Build();
 
         // Act
-        services.AddEfCorePersistence<CompositionTestDbContext>(config);
+        builder.AddEfCorePersistence<CompositionTestDbContext>(config);
 
         // Assert
         ServiceDescriptor? uowDescriptor = services
@@ -102,7 +105,8 @@ public sealed class EntityFrameworkCompositionTest
     public void AddEfCorePersistence_ShouldRegisterQueryMapRegistry()
     {
         // Arrange
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -112,7 +116,7 @@ public sealed class EntityFrameworkCompositionTest
             .Build();
 
         // Act
-        services.AddEfCorePersistence<CompositionTestDbContext>(config);
+        builder.AddEfCorePersistence<CompositionTestDbContext>(config);
 
         // Assert
         ServiceDescriptor? registryDescriptor = services
@@ -125,7 +129,8 @@ public sealed class EntityFrameworkCompositionTest
     public void AddEfCorePersistence_ShouldRegisterQueryTranslator()
     {
         // Arrange
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -135,7 +140,7 @@ public sealed class EntityFrameworkCompositionTest
             .Build();
 
         // Act
-        services.AddEfCorePersistence<CompositionTestDbContext>(config);
+        builder.AddEfCorePersistence<CompositionTestDbContext>(config);
 
         // Assert: registered as open generic IQueryTranslator<> -> QueryTranslationEfCore<>
         ServiceDescriptor? translatorDescriptor = services
@@ -149,22 +154,23 @@ public sealed class EntityFrameworkCompositionTest
     public void AddEfCorePersistence_WithoutConnectionString_ShouldThrow()
     {
         // Arrange
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>())
             .Build();
 
         // Act & Assert
-        Action act = () => services.AddEfCorePersistence<CompositionTestDbContext>(config);
+        Action act = () => builder.AddEfCorePersistence<CompositionTestDbContext>(config);
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*ConnectionStringName*");
     }
 
-    [Fact(DisplayName = "AddEfCorePersistence with null services should throw")]
-    public void AddEfCorePersistence_WithNullServices_ShouldThrow()
+    [Fact(DisplayName = "AddEfCorePersistence with null builder should throw")]
+    public void AddEfCorePersistence_WithNullBuilder_ShouldThrow()
     {
         // Arrange
-        IServiceCollection? services = null!;
+        WebApplicationBuilder? builder = null;
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -173,7 +179,7 @@ public sealed class EntityFrameworkCompositionTest
             .Build();
 
         // Act & Assert
-        Action act = () => services.AddEfCorePersistence<CompositionTestDbContext>(config);
+        Action act = () => builder!.AddEfCorePersistence<CompositionTestDbContext>(config);
         act.Should().Throw<ArgumentNullException>();
     }
 
@@ -181,11 +187,12 @@ public sealed class EntityFrameworkCompositionTest
     public void AddEfCorePersistence_WithNullConfig_ShouldThrow()
     {
         // Arrange
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         IConfiguration? config = null!;
 
         // Act & Assert
-        Action act = () => services.AddEfCorePersistence<CompositionTestDbContext>(config);
+        Action act = () => builder.AddEfCorePersistence<CompositionTestDbContext>(config);
         act.Should().Throw<ArgumentNullException>();
     }
 
@@ -197,14 +204,15 @@ public sealed class EntityFrameworkCompositionTest
     public void AddEfCorePersistence_WithConnectionString_ShouldRegisterServices()
     {
         // Arrange
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         string connectionString = "Host=localhost;Database=test;Username=test;Password=test";
 
         // Act
-        IServiceCollection result = services.AddEfCorePersistence<CompositionTestDbContext>(connectionString);
+        WebApplicationBuilder result = builder.AddEfCorePersistence<CompositionTestDbContext>(connectionString);
 
         // Assert
-        result.Should().BeSameAs(services);
+        result.Should().BeSameAs(builder);
         
         using var provider = services.BuildServiceProvider();
         PersistenceSetting setting = provider.GetRequiredService<PersistenceSetting>();
@@ -217,11 +225,12 @@ public sealed class EntityFrameworkCompositionTest
     public void AddEfCorePersistence_WithCustomProvider_ShouldUseIt(string provider)
     {
         // Arrange
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         string connectionString = "Host=localhost;Database=test";
 
         // Act
-        services.AddEfCorePersistence<CompositionTestDbContext>(connectionString, provider: provider);
+        builder.AddEfCorePersistence<CompositionTestDbContext>(connectionString, provider: provider);
 
         // Assert
         using var sp = services.BuildServiceProvider();
@@ -233,11 +242,12 @@ public sealed class EntityFrameworkCompositionTest
     public void AddEfCorePersistence_WithNullConnectionString_ShouldThrow()
     {
         // Arrange
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         string? connectionString = null;
 
         // Act & Assert
-        Action act = () => services.AddEfCorePersistence<CompositionTestDbContext>(connectionString!);
+        Action act = () => builder.AddEfCorePersistence<CompositionTestDbContext>(connectionString!);
         act.Should().Throw<ArgumentNullException>();
     }
 
@@ -245,11 +255,12 @@ public sealed class EntityFrameworkCompositionTest
     public void AddEfCorePersistence_WithEmptyConnectionString_ShouldThrow()
     {
         // Arrange
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
 
         // Act & Assert
         // ArgumentNullException.ThrowIfNullOrWhiteSpace throws ArgumentException for empty string
-        Action act = () => services.AddEfCorePersistence<CompositionTestDbContext>("");
+        Action act = () => builder.AddEfCorePersistence<CompositionTestDbContext>("");
         act.Should().Throw<ArgumentException>();
     }
 
@@ -257,11 +268,12 @@ public sealed class EntityFrameworkCompositionTest
     public void AddEfCorePersistence_WithWhitespaceConnectionString_ShouldThrow()
     {
         // Arrange
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
 
         // Act & Assert
         // ArgumentNullException.ThrowIfNullOrWhiteSpace throws ArgumentException for whitespace
-        Action act = () => services.AddEfCorePersistence<CompositionTestDbContext>("   ");
+        Action act = () => builder.AddEfCorePersistence<CompositionTestDbContext>("   ");
         act.Should().Throw<ArgumentException>();
     }
 
@@ -273,7 +285,8 @@ public sealed class EntityFrameworkCompositionTest
     public void AddEfCorePersistence_WithInvalidCommandTimeout_ShouldThrow()
     {
         // Arrange
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -285,7 +298,7 @@ public sealed class EntityFrameworkCompositionTest
             .Build();
 
         // Act & Assert
-        Action act = () => services.AddEfCorePersistence<CompositionTestDbContext>(config);
+        Action act = () => builder.AddEfCorePersistence<CompositionTestDbContext>(config);
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*CommandTimeout*");
     }
@@ -294,7 +307,8 @@ public sealed class EntityFrameworkCompositionTest
     public void AddEfCorePersistence_WithUnsupportedProvider_ShouldThrow()
     {
         // Arrange
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -305,7 +319,7 @@ public sealed class EntityFrameworkCompositionTest
             .Build();
 
         // Act & Assert
-        Action act = () => services.AddEfCorePersistence<CompositionTestDbContext>(config);
+        Action act = () => builder.AddEfCorePersistence<CompositionTestDbContext>(config);
         act.Should().Throw<InvalidOperationException>()
             .WithMessage("*Provider*");
     }
@@ -314,7 +328,8 @@ public sealed class EntityFrameworkCompositionTest
     public void AddEfCorePersistence_WithMultipleInvalidOptions_ShouldThrowWithAllErrors()
     {
         // Arrange
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -326,7 +341,7 @@ public sealed class EntityFrameworkCompositionTest
             .Build();
 
         // Act & Assert
-        Action act = () => services.AddEfCorePersistence<CompositionTestDbContext>(config);
+        Action act = () => builder.AddEfCorePersistence<CompositionTestDbContext>(config);
         act.Should().Throw<InvalidOperationException>();
     }
 
@@ -341,7 +356,8 @@ public sealed class EntityFrameworkCompositionTest
     public void AddEfCorePersistence_ShouldRegisterServicesWithCorrectLifetimes(Type serviceType, ServiceLifetime expectedLifetime)
     {
         // Arrange
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -352,7 +368,7 @@ public sealed class EntityFrameworkCompositionTest
             .Build();
 
         // Act
-        services.AddEfCorePersistence<CompositionTestDbContext>(config);
+        builder.AddEfCorePersistence<CompositionTestDbContext>(config);
 
         // Assert
         ServiceDescriptor? descriptor = services.FirstOrDefault(d => d.ServiceType == serviceType);
@@ -368,10 +384,11 @@ public sealed class EntityFrameworkCompositionTest
     public void AddEfCorePersistence_ShouldRegisterDomainEventPublisher()
     {
         // Arrange
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
 
         // Act
-        services.AddEfCorePersistence<CompositionTestDbContext>("Host=localhost;Database=test");
+        builder.AddEfCorePersistence<CompositionTestDbContext>("Host=localhost;Database=test");
 
         // Assert
         ServiceDescriptor? descriptor = services
@@ -384,8 +401,9 @@ public sealed class EntityFrameworkCompositionTest
     public void DomainEventPublisher_WithoutMediator_ShouldUseNullPublisher()
     {
         // Arrange
-        var services = new ServiceCollection();
-        services.AddEfCorePersistence<CompositionTestDbContext>("Host=localhost;Database=test");
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
+        builder.AddEfCorePersistence<CompositionTestDbContext>("Host=localhost;Database=test");
         using var provider = services.BuildServiceProvider();
         using IServiceScope scope = provider.CreateScope();
 
@@ -400,9 +418,10 @@ public sealed class EntityFrameworkCompositionTest
     public void DomainEventPublisher_WithMediator_ShouldUseMediatRPublisher()
     {
         // Arrange
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         services.AddSingleton(Mock.Of<IPublisher>());
-        services.AddEfCorePersistence<CompositionTestDbContext>("Host=localhost;Database=test");
+        builder.AddEfCorePersistence<CompositionTestDbContext>("Host=localhost;Database=test");
         using var provider = services.BuildServiceProvider();
         using IServiceScope scope = provider.CreateScope();
 
@@ -421,7 +440,8 @@ public sealed class EntityFrameworkCompositionTest
     public void AddEfCorePersistence_ShouldRegisterDbContextAsScoped()
     {
         // Arrange
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -431,7 +451,7 @@ public sealed class EntityFrameworkCompositionTest
             .Build();
 
         // Act
-        services.AddEfCorePersistence<CompositionTestDbContext>(config);
+        builder.AddEfCorePersistence<CompositionTestDbContext>(config);
 
         // Assert
         ServiceDescriptor? contextDescriptor = services
@@ -444,7 +464,8 @@ public sealed class EntityFrameworkCompositionTest
     public void AddEfCorePersistence_ShouldRegisterPersistenceSettingAsSingleton()
     {
         // Arrange
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         var config = new ConfigurationBuilder()
             .AddInMemoryCollection(new Dictionary<string, string?>
             {
@@ -454,7 +475,7 @@ public sealed class EntityFrameworkCompositionTest
             .Build();
 
         // Act
-        services.AddEfCorePersistence<CompositionTestDbContext>(config);
+        builder.AddEfCorePersistence<CompositionTestDbContext>(config);
 
         // Assert
         ServiceDescriptor? settingDescriptor = services

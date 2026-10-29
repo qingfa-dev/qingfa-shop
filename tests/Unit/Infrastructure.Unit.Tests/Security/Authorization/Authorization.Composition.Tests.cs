@@ -1,4 +1,6 @@
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging;
 
 using Application.Common.Security.Authorization.Permissions.Store;
 using Application.Common.Security.Authorization.Registry;
@@ -17,11 +19,12 @@ public sealed class AuthorizationCompositionTests
     [Fact(DisplayName = "AddAuthorizationStore: should register the EF Core permission store")]
     public void AddAuthorizationStore_ShouldRegisterPermissionStore()
     {
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
 
-        IServiceCollection returned = services.AddAuthorizationStore();
+        WebApplicationBuilder returned = builder.AddAuthorizationStore();
 
-        returned.Should().BeSameAs(services);
+        returned.Should().BeSameAs(builder);
         services.Should().ContainSingle(descriptor =>
             descriptor.ServiceType == typeof(IPermissionStore) &&
             descriptor.ImplementationType == typeof(PermissionStoreService) &&
@@ -31,9 +34,10 @@ public sealed class AuthorizationCompositionTests
     [Fact(DisplayName = "AddAuthorizationStore: should discover the metadata registry as a singleton")]
     public void AddAuthorizationStore_ShouldRegisterMetadataRegistry()
     {
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
 
-        services.AddAuthorizationStore();
+        builder.AddAuthorizationStore();
 
         services.Should().ContainSingle(descriptor =>
             descriptor.ServiceType == typeof(IPermissionMetadataRegistry) &&
@@ -43,24 +47,39 @@ public sealed class AuthorizationCompositionTests
             descriptor.ServiceType == typeof(TimeProvider));
     }
 
+    [Fact(DisplayName = "AddAuthorizationStore: should resolve the metadata registry")]
+    public void AddAuthorizationStore_ShouldResolveMetadataRegistry()
+    {
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
+        services.AddLogging();
+        builder.AddAuthorizationStore();
+
+        using ServiceProvider provider = services.BuildServiceProvider();
+
+        provider.GetRequiredService<IPermissionMetadataRegistry>()
+            .Should().BeOfType<PermissionMetadataRegistry>();
+    }
+
     [Fact(DisplayName = "AddAuthorizationStore: should not replace an existing permission store")]
     public void AddAuthorizationStore_ShouldNotReplaceExistingRegistration()
     {
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
         services.AddSingleton<IPermissionStore>(Mock.Of<IPermissionStore>());
 
-        services.AddAuthorizationStore();
+        builder.AddAuthorizationStore();
 
         services.Should().ContainSingle(descriptor =>
             descriptor.ServiceType == typeof(IPermissionStore));
     }
 
-    [Fact(DisplayName = "AddAuthorizationStore: should throw when services is null")]
-    public void AddAuthorizationStore_WithNullServices_ShouldThrow()
+    [Fact(DisplayName = "AddAuthorizationStore: should throw when the builder is null")]
+    public void AddAuthorizationStore_WithNullBuilder_ShouldThrow()
     {
-        IServiceCollection? services = null;
+        WebApplicationBuilder? builder = null;
 
-        Action action = () => services!.AddAuthorizationStore();
+        Action action = () => builder!.AddAuthorizationStore();
 
         action.Should().Throw<ArgumentNullException>();
     }

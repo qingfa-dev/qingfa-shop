@@ -11,7 +11,9 @@ using Application.Common.Security.Authorization.Permissions.Store;
 using Application.Common.Security.Authorization.Policies;
 using Application.Common.Security.Authorization.Registry;
 
-namespace Application.Unit.Tests.Common.Security.Authorization;
+using Infrastructure.Security.Authorization;
+
+namespace Infrastructure.Unit.Tests.Security.Authorization;
 
 [Trait("Category", "Unit")]
 [Trait("Module", "Authorization")]
@@ -205,7 +207,7 @@ public sealed class AuthorizationPipelineTests
         WebApplicationBuilder builder = WebApplication.CreateBuilder();
         builder.Services.AddSingleton<ICacheService, InMemoryCacheService>();
         builder.Services.AddSingleton<IPermissionStore>(store);
-        builder.AddApplicationAuthorization();
+        builder.AddAuthorizationPipeline();
 
         return builder.Build();
     }

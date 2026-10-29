@@ -8,6 +8,7 @@ using Application.Common.Security.Authentication.Tokens.Options;
 using Infrastructure.Security;
 using Infrastructure.Security.Authentication.Tokens.Services;
 
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -31,9 +32,10 @@ public sealed class SecurityCompositionTest
             ["RefreshToken:LifetimeDays"] = "14",
             ["TokenBlacklist:KeyPrefix"] = "blacklist:"
         });
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
 
-        services.AddSecurity(configuration);
+        builder.AddSecurity(configuration);
 
         using ServiceProvider provider = services.BuildServiceProvider();
         provider.GetRequiredService<ITokenService>().Should().BeOfType<JwtTokenService>();
@@ -56,9 +58,10 @@ public sealed class SecurityCompositionTest
     [Fact(DisplayName = "AddSecurity should use defaults when token sections are absent")]
     public void AddSecurity_ShouldUseDefaults()
     {
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
 
-        services.AddSecurity(new ConfigurationBuilder().Build());
+        builder.AddSecurity(new ConfigurationBuilder().Build());
 
         using ServiceProvider provider = services.BuildServiceProvider();
         provider.GetRequiredService<JwtTokenOption>().AccessTokenMinutes
@@ -77,8 +80,9 @@ public sealed class SecurityCompositionTest
             ["Jwt:Issuer"] = "QingFa.Shop",
             ["Jwt:Audience"] = "QingFa.Shop.Clients"
         });
-        var services = new ServiceCollection();
-        services.AddSecurity(configuration);
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
+        IServiceCollection services = builder.Services;
+        builder.AddSecurity(configuration);
         using ServiceProvider provider = services.BuildServiceProvider();
 
         Assert.Throws<InvalidOperationException>(
@@ -89,11 +93,11 @@ public sealed class SecurityCompositionTest
     public void AddSecurity_ShouldRejectNullDependencies()
     {
         IConfiguration configuration = new ConfigurationBuilder().Build();
-        IServiceCollection? services = null;
+        WebApplicationBuilder? builder = null;
 
-        Assert.Throws<ArgumentNullException>(() => services!.AddSecurity(configuration));
+        Assert.Throws<ArgumentNullException>(() => builder!.AddSecurity(configuration));
         Assert.Throws<ArgumentNullException>(
-            () => new ServiceCollection().AddSecurity(null!));
+            () => WebApplication.CreateBuilder().AddSecurity(null!));
     }
 
     private static IConfiguration BuildConfiguration(

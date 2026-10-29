@@ -4,7 +4,9 @@ using Application.Common.Security.Authorization.Permissions.Caches;
 using Application.Common.Security.Authorization.Permissions.Services;
 using Application.Common.Security.Authorization.Permissions.Store;
 
-namespace Application.Unit.Tests.Common.Security.Authorization.Permissions.Services;
+using Infrastructure.Security.Authorization.Permissions.Services;
+
+namespace Infrastructure.Unit.Tests.Security.Authorization.Permissions.Services;
 
 [Trait("Category", "Unit")]
 [Trait("Module", "Authorization")]

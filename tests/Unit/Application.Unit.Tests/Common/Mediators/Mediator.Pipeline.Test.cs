@@ -6,6 +6,7 @@ using FluentValidation;
 
 using MediatR;
 
+using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 
@@ -27,18 +28,18 @@ public class MediatorPipelineTest
 {
     private static ServiceProvider BuildProvider()
     {
-        var services = new ServiceCollection();
+        WebApplicationBuilder builder = WebApplication.CreateBuilder();
 
         // Initialize: a single logger instance per closed type, so the test can read
         // what the behaviors logged.
-        services.AddSingleton(typeof(ILogger<>), typeof(TestLogger<>));
+        builder.Services.AddSingleton(typeof(ILogger<>), typeof(TestLogger<>));
 
         // Initialize: validators live outside AddMediators; the host registers them
         // through AddApplication.
-        services.AddValidatorsFromAssemblyContaining<TestRequestValidator>();
+        builder.Services.AddValidatorsFromAssemblyContaining<TestRequestValidator>();
 
-        services.AddMediators(typeof(TestRequestHandler).Assembly);
-        return services.BuildServiceProvider();
+        builder.AddMediators(typeof(TestRequestHandler).Assembly);
+        return builder.Services.BuildServiceProvider();
     }
 
     [Fact(DisplayName = "The pipeline should run the exception behavior for a throwing handler")]

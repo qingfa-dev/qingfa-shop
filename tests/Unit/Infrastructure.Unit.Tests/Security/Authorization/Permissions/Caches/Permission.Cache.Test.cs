@@ -5,7 +5,9 @@ using Application.Common.Caching;
 using Application.Common.Security.Authorization.Options;
 using Application.Common.Security.Authorization.Permissions.Caches;
 
-namespace Application.Unit.Tests.Common.Security.Authorization.Permissions.Caches;
+using Infrastructure.Security.Authorization.Permissions.Caches;
+
+namespace Infrastructure.Unit.Tests.Security.Authorization.Permissions.Caches;
 
 [Trait("Category", "Unit")]
 [Trait("Module", "Authorization")]

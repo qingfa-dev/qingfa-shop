@@ -7,7 +7,9 @@ using Application.Common.Security.Authorization.Policies;
 using Application.Common.Security.Authorization.Registry;
 using Application.Common.Security.Authorization.Requirements;
 
-namespace Application.Unit.Tests.Common.Security.Authorization.Policies;
+using Infrastructure.Security.Authorization.Policies;
+
+namespace Infrastructure.Unit.Tests.Security.Authorization.Policies;
 
 [Trait("Category", "Unit")]
 [Trait("Module", "Authorization")]
