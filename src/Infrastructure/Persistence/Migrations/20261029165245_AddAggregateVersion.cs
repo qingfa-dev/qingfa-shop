@@ -11,7 +11,7 @@ namespace Infrastructure.Persistence.Migrations
         protected override void Up(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.AddColumn<long>(
-                name: "Version",
+                name: "version",
                 schema: "todo",
                 table: "todos",
                 type: "bigint",
@@ -19,7 +19,7 @@ namespace Infrastructure.Persistence.Migrations
                 defaultValue: 0L);
 
             migrationBuilder.AddColumn<long>(
-                name: "Version",
+                name: "version",
                 schema: "todo",
                 table: "todo_lists",
                 type: "bigint",
@@ -27,7 +27,7 @@ namespace Infrastructure.Persistence.Migrations
                 defaultValue: 0L);
 
             migrationBuilder.AddColumn<long>(
-                name: "Version",
+                name: "version",
                 schema: "todo",
                 table: "todo_categories",
                 type: "bigint",
@@ -39,17 +39,17 @@ namespace Infrastructure.Persistence.Migrations
         protected override void Down(MigrationBuilder migrationBuilder)
         {
             migrationBuilder.DropColumn(
-                name: "Version",
+                name: "version",
                 schema: "todo",
                 table: "todos");
 
             migrationBuilder.DropColumn(
-                name: "Version",
+                name: "version",
                 schema: "todo",
                 table: "todo_lists");
 
             migrationBuilder.DropColumn(
-                name: "Version",
+                name: "version",
                 schema: "todo",
                 table: "todo_categories");
         }

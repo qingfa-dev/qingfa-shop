@@ -34,7 +34,7 @@ public sealed class VersionableConfigurationTest
             builder.HasKey(entity => entity.Id);
             builder.Property(entity => entity.Id).ValueGeneratedNever();
 
-            // Arrange: a bare ModelBuilder has no discovery conventions, so map the column explicitly.
+            // Arrange
             builder.Property(entity => entity.Version);
         });
 
@@ -58,7 +58,7 @@ public sealed class VersionableConfigurationTest
             builder.HasKey(entity => entity.Id);
             builder.Property(entity => entity.Id).ValueGeneratedNever();
 
-            // Arrange: the property exists but the entity does not implement the contract.
+            // Arrange
             builder.Property(entity => entity.Version);
         });
 

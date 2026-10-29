@@ -76,6 +76,10 @@ public sealed class TodoListEntityTypeConfiguration : IEntityTypeConfiguration<T
             .HasColumnName("metadata")
             .HasMetadataConversion();
 
+        // Concurrency: Optimistic token bumped on every update.
+        builder.Property(t => t.Version)
+            .HasColumnName("version");
+
         // Indexes: Query performance for common filters.
         builder.HasIndex(t => t.TenantId);
         builder.HasIndex(t => t.CreatedAtUtc);
