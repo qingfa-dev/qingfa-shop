@@ -2,7 +2,7 @@
 
 .PHONY: test test.all test.dotnet.unit test.dotnet.integration test.dotnet.integration.fast test.web.unit test.web.integration test.web.e2e
 
-test.dotnet.unit: lib.test ## .NET unit suites: Core -> Contract -> Application -> Infrastructure -> Architecture
+test.dotnet.unit: lib.test ## .NET unit suites: Core -> Application -> Infrastructure -> Architecture
 
 test.dotnet.integration.fast: api.test ## Fast .NET integration: Api only
 

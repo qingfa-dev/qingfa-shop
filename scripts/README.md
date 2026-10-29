@@ -69,7 +69,7 @@ Environment variables read by scripts:
 | `GATEWAY_URL` | `infra/smoke` | Default `http://localhost:5050` |
 | `COVERAGE_LINES`, `COVERAGE_BRANCHES` | `common/coverage-check`, `web/coverage` | Per-assembly/per-app floors, default `90` / `80` |
 | `COVERAGE_ROOT` | `common/coverage.common.sh` | Report directory, default `artifacts/coverage` |
-| `COVERAGE_GATED`, `COVERAGE_BRANCH_EXEMPT` | `common/coverage-check` | Assemblies to fail on, and assemblies whose branch floor is skipped (`Contract`) |
+| `COVERAGE_GATED` | `common/coverage-check` | Assemblies that must meet the floor |
 
 ## Conventions
 
@@ -102,8 +102,7 @@ Environment variables read by scripts:
 - `backend/coverage-*` write raw Cobertura under
   `artifacts/coverage/dotnet/raw/`; `coverage.report` merges every raw file and
   enforces the gated assemblies. `common/coverage-check.common.py` deliberately
-  uses only the Python standard library so it runs on a bare CI runner.
-- `trace.common.sh` prints `(in <dir>)` when the command runs from a different
+  uses only the Python standard library so it runs on a bare CI runner.- `trace.common.sh` prints `(in <dir>)` when the command runs from a different
   directory than the caller, which matters for the `app/` pnpm commands.
 - `web/e2e.web.sh` is opt-in: it skips unless both a Playwright config and at
   least one spec exist under `app/<app>/e2e`, so `make test.all` stays green

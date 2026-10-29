@@ -5,7 +5,6 @@ WORKDIR /src
 # Initialize: copy the build graph only, so a source edit does not invalidate restore.
 COPY Directory.Build.props Directory.Build.targets Directory.Packages.props global.json nuget.config ./
 COPY src/Core/Core.csproj src/Core/packages.lock.json src/Core/
-COPY src/Contract/Contract.csproj src/Contract/packages.lock.json src/Contract/
 COPY src/Application/Application.csproj src/Application/packages.lock.json src/Application/
 COPY src/Infrastructure/Infrastructure.csproj src/Infrastructure/packages.lock.json src/Infrastructure/
 COPY src/ServiceDefaults/ServiceDefaults.csproj src/ServiceDefaults/packages.lock.json src/ServiceDefaults/

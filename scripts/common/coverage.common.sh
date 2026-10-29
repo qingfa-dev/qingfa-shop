@@ -13,13 +13,8 @@ COVERAGE_BRANCHES="${COVERAGE_BRANCHES:-80}"
 # Validate: only production assemblies owned by this repository are gated.
 # ServiceDefaults, Gateway, and AppHost are orchestration glue and stay
 # report-only; test assemblies never appear here.
-COVERAGE_GATED_UNIT="Core Application Contract Infrastructure"
+COVERAGE_GATED_UNIT="Core Application Infrastructure"
 COVERAGE_GATED_ALL="$COVERAGE_GATED_UNIT Web.Api"
-
-# Contract is a records/DTO assembly: its four compiler-generated branch points
-# are not meaningful behaviour. Gate its lines, but not its branches.
-COVERAGE_BRANCH_EXEMPT="${COVERAGE_BRANCH_EXEMPT-Contract}"
-export COVERAGE_BRANCH_EXEMPT
 
 # Run a test suite under dotnet-coverage and keep the raw Cobertura file.
 # Usage: coverage_collect <name> <command> [args...]

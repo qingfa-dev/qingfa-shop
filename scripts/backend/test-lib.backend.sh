@@ -10,7 +10,6 @@ CONFIG="${CONFIGURATION:-Release}"
 # architecture rules last; test.dotnet.unit mirrors this list.
 projects=(
   "Unit/Core.Unit.Tests/Core.Unit.Tests.csproj"
-  "Unit/Contract.Unit.Tests/Contract.Unit.Tests.csproj"
   "Unit/Application.Unit.Tests/Application.Unit.Tests.csproj"
   "Unit/Infrastructure.Unit.Tests/Infrastructure.Unit.Tests.csproj"
   "Architecture.Tests/Architecture.Tests.csproj"

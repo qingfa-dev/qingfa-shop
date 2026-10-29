@@ -6,7 +6,7 @@ Usage: coverage-check.common.py <report.xml> <lines-floor> <branches-floor> <ass
 Assemblies are read from the Cobertura <package name="..."> entries. A missing
 gated assembly fails the check so a renamed project cannot silently escape the
 gate. Floors are skipped when the report has no lines or no branch points for
-that assembly (for example a contract project made only of records).
+that assembly (for example an assembly made only of records).
 
 Generated code is excluded from the measured totals: EF Core migrations,
 design-time factories, and compiler/source-generator output under obj/.
@@ -14,7 +14,6 @@ design-time factories, and compiler/source-generator output under obj/.
 
 from __future__ import annotations
 
-import os
 import sys
 import xml.etree.ElementTree as ET
 
@@ -96,9 +95,6 @@ def main(argv: list[str]) -> int:
     print(f"Coverage thresholds: line {lines_floor:.0f}% / branch {branches_floor:.0f}%")
     print("Excluded from measurement: EF migrations, design-time factories, obj/ generated code")
 
-    branch_exempt = set(
-        filter(None, os.environ.get("COVERAGE_BRANCH_EXEMPT", "").split())
-    )
     print(f"{'Assembly':32} {'Line':>8} {'Branch':>8}  Result")
 
     failures: list[str] = []
@@ -114,14 +110,9 @@ def main(argv: list[str]) -> int:
         branch = rate(branch_covered, branch_valid)
 
         line_ok = line_valid == 0 or line + 1e-9 >= lines_floor
-        exempt_from_branch = name in branch_exempt
-        branch_ok = exempt_from_branch or branch_valid == 0 or branch + 1e-9 >= branches_floor
+        branch_ok = branch_valid == 0 or branch + 1e-9 >= branches_floor
         line_text = f"{line:7.1f}%" if line_valid else "     n/a"
-        branch_text = (
-            "     n/a"
-            if branch_valid == 0 or exempt_from_branch
-            else f"{branch:7.1f}%"
-        )
+        branch_text = f"{branch:7.1f}%" if branch_valid else "     n/a"
 
         if line_ok and branch_ok:
             print(f"{name:32} {line_text:>8} {branch_text:>8}  PASS")
