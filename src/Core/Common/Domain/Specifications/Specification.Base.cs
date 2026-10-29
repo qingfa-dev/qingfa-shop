@@ -13,15 +13,15 @@ public abstract class Specification<T> : ISpecification<T>
     public bool IsSatisfiedBy(T candidate) => ToExpression().Compile()(candidate);
 
     /// <summary>Combines this specification with another using logical AND.</summary>
-    public ISpecification<T> And(ISpecification<T> other)
+    public Specification<T> And(ISpecification<T> other)
         => new AndSpecification<T>(this, Require(other));
 
     /// <summary>Combines this specification with another using logical OR.</summary>
-    public ISpecification<T> Or(ISpecification<T> other)
+    public Specification<T> Or(ISpecification<T> other)
         => new OrSpecification<T>(this, Require(other));
 
     /// <summary>Negates this specification.</summary>
-    public ISpecification<T> Not() => new NotSpecification<T>(this);
+    public Specification<T> Not() => new NotSpecification<T>(this);
 
     private static ISpecification<T> Require(ISpecification<T> specification)
         => specification ?? throw new ArgumentNullException(nameof(specification));

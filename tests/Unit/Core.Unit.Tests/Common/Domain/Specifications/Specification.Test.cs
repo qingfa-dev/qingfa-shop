@@ -130,4 +130,85 @@ public sealed class SpecificationTest
         // Assert
         act.Should().Throw<ArgumentNullException>();
     }
+
+    [Fact]
+    public void Composition_CanBeChained()
+    {
+        // Arrange
+        var specification = new GreaterThan(5)
+            .And(new NameStartsWith("a"))
+            .Or(new NameStartsWith("b"))
+            .Not();
+
+        // Act
+        bool matches = specification.IsSatisfiedBy(new Item(6, "beta"));
+
+        // Assert
+        matches.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Any_WhenNothingMatches_ReturnsFalse()
+    {
+        // Arrange
+        var items = new[] { new Item(1, "a"), new Item(2, "b") }.AsQueryable();
+
+        // Act
+        bool result = items.Any(new GreaterThan(5));
+
+        // Assert
+        result.Should().BeFalse();
+    }
+
+    [Fact]
+    public void Not_ThroughQueryable_FiltersMatches()
+    {
+        // Arrange
+        var items = new[] { new Item(1, "a"), new Item(9, "b") }.AsQueryable();
+
+        // Act
+        var result = items.Where(new GreaterThan(5).Not()).ToList();
+
+        // Assert
+        result.Should().ContainSingle().Which.Should().Be(new Item(1, "a"));
+    }
+
+    [Fact]
+    public void Where_WithNullQuery_Throws()
+    {
+        // Arrange
+        IQueryable<Item> query = null!;
+
+        // Act
+        Action act = () => query.Where(new GreaterThan(1));
+
+        // Assert
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Where_WithNullSpecification_Throws()
+    {
+        // Arrange
+        var query = Array.Empty<Item>().AsQueryable();
+
+        // Act
+        Action act = () => query.Where((ISpecification<Item>)null!);
+
+        // Assert
+        act.Should().Throw<ArgumentNullException>();
+    }
+
+    [Fact]
+    public void Any_WithNullSpecification_Throws()
+    {
+        // Arrange
+        var query = Array.Empty<Item>().AsQueryable();
+
+        // Act
+        Action act = () => query.Any((ISpecification<Item>)null!);
+
+        // Assert
+        act.Should().Throw<ArgumentNullException>();
+    }
 }
