@@ -2,7 +2,7 @@ using Core.Common.Concerns.Lifecycle.Modifiable;
 using Core.Common.Concerns.Lifecycle.SoftDeletable;
 using Core.Todos.Items;
 
-namespace Core.Unit.Tests.Todos;
+namespace Core.Unit.Tests.Todos.Items;
 
 /// <summary>Specifications for todo creation and aggregate state.</summary>
 public sealed class TodoSpec

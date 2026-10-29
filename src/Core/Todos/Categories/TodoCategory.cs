@@ -16,15 +16,11 @@ public sealed class TodoCategory : AggregateRoot<Guid>, ITodoCategory
         Name = string.Empty;
     }
 
-    /// <summary>
-    /// Initializes a category with its domain state.
-    /// </summary>
-    /// <param name="id">The identifier of the category.</param>
-    /// <param name="name">The trimmed name of the category.</param>
-    /// <param name="description">The trimmed description of the category.</param>
-    private TodoCategory(Guid id, string name, string? description)
-        : base(id)
+
+    private TodoCategory(string name, string? description, Guid? id = null)
+        : base()
     {
+        Id = id ?? Guid.NewGuid();
         Name = name;
         Description = description;
     }
@@ -62,28 +58,28 @@ public sealed class TodoCategory : AggregateRoot<Guid>, ITodoCategory
     /// <summary>
     /// Creates a todo category and records its creation audit metadata.
     /// </summary>
-    /// <param name="id">The identifier of the category.</param>
     /// <param name="tenantId">The tenant the category belongs to.</param>
     /// <param name="name">The name of the category; surrounding whitespace is removed.</param>
     /// <param name="nowUtc">The UTC moment the category was created.</param>
     /// <param name="actor">The optional actor who created the category.</param>
     /// <param name="description">The optional description of the category; surrounding whitespace is removed.</param>
+    /// <param name="id">The identifier of the category.</param>
     /// <param name="metadata">The optional metadata to merge with the category.</param>
     /// <returns>The created category, or the first broken rule.</returns>
     public static Result<TodoCategory> Create(
-        Guid id,
         Guid tenantId,
         string? name,
         DateTimeOffset nowUtc,
         string? actor = null,
         string? description = null,
+        Guid? id = null,
         IMetadata? metadata = null)
     {
         // Normalize: Trim the free text so edge whitespace cannot create phantom differences.
         var candidate = new TodoCategory(
-            id,
             name?.Trim() ?? string.Empty,
-            description?.Trim());
+            description?.Trim(),
+            id);
 
         if (metadata is not null)
             candidate.MergeMetadata(metadata);

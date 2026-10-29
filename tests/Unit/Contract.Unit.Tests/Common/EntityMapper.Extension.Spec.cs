@@ -333,56 +333,5 @@ public class EntityMapperExtensionSpec
         responses.Should().BeEmpty();
     }
 
-    [Fact]
-    public void MapToResponses_Page_ShouldProjectItemsAndPreservePaging()
-    {
-        // Arrange:
-        var page = new PageModel<TestEntity>(
-            Items: new[] { Entity("first"), Entity("second") },
-            Page: 2,
-            PageSize: 10,
-            TotalCount: 25);
-
-        // Act:
-        var responses = page.MapToResponses<TestEntity, TestParameters, TestResponse>(
-            (source, target) =>
-            {
-                target.Name = source.Name;
-                target.Label = "paged";
-            });
-
-        // Assert:
-        responses.Items.Should().HaveCount(2);
-        responses.Items.Select(response => response.Name)
-            .Should().ContainInOrder("first", "second");
-        responses.Items.Should().OnlyContain(response => response.Label == "paged");
-        responses.Page.Should().Be(2);
-        responses.PageSize.Should().Be(10);
-        responses.TotalCount.Should().Be(25);
-        responses.TotalPages.Should().Be(3);
-    }
-
-    [Fact]
-    public void MapToResponses_EmptyPage_ShouldPreservePagingMetadata()
-    {
-        // Arrange:
-        var page = new PageModel<TestEntity>(
-            Items: Array.Empty<TestEntity>(),
-            Page: 1,
-            PageSize: 20,
-            TotalCount: 0);
-
-        // Act:
-        var responses = page.MapToResponses<TestEntity, TestParameters, TestResponse>(
-            (_, _) => { });
-
-        // Assert:
-        responses.Items.Should().BeEmpty();
-        responses.Page.Should().Be(1);
-        responses.PageSize.Should().Be(20);
-        responses.TotalCount.Should().Be(0);
-        responses.TotalPages.Should().Be(0);
-    }
-
     #endregion
 }

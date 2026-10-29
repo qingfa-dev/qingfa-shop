@@ -1,8 +1,10 @@
 using Application.Common.Persistence.Repositories;
-using Application.Features.Todos.Commands;
-using Application.Features.Todos.Queries;
-
-using Contract.Todos.Models;
+using Application.Features.Todos.Categories.Commands;
+using Application.Features.Todos.Categories.Queries;
+using Application.Features.Todos.Items.Commands;
+using Application.Features.Todos.Items.Queries;
+using Application.Features.Todos.Lists.Commands;
+using Application.Features.Todos.Lists.Queries;
 
 using Core.Common.Monad.Results;
 using Core.Todos.Items;
@@ -41,26 +43,31 @@ public sealed class TodoHandlerIntegrationTest : IAsyncLifetime
     public async Task Todo_ShouldFlowThroughEveryUseCase()
     {
         // Act: create
-        Result<TodoModel> created = await CreateTodoAsync("First task");
+        Result<CreateTodo.Response> created = await CreateTodoAsync("First task");
         created.IsSuccess.Should().BeTrue();
         Guid id = created.Value.Id;
 
         // Assert: persisted and readable
-        Result<TodoModel> fetched = await GetTodoAsync(id);
+        Result<GetTodo.Response> fetched = await GetTodoAsync(id);
         fetched.IsSuccess.Should().BeTrue();
         fetched.Value.Title.Should().Be("First task");
         fetched.Value.Status.Should().Be(TodoStatus.Pending);
 
         // Act: update
-        var update = new UpdateTodoHandler(
+        var update = new UpdateTodo.UseCaseHandler(
             _fixture.TodoRepository,
             _fixture.UnitOfWork,
             _fixture.Ambient,
             _fixture.Ambient,
             _fixture.Clock);
 
-        Result<TodoModel> updated = await update.Handle(
-            new UpdateTodoCommand(id, Title: "Renamed", Priority: TodoPriority.High),
+        Result<UpdateTodo.Response> updated = await update.Handle(
+            new UpdateTodo.UseCase(new UpdateTodo.Request
+            {
+                Id = id,
+                Title = "Renamed",
+                Priority = TodoPriority.High,
+            }),
             CancellationToken.None);
 
         updated.IsSuccess.Should().BeTrue(string.Join("; ", updated.Errors.Select(error => $"{error.Code}: {error.Message}")));
@@ -68,54 +75,62 @@ public sealed class TodoHandlerIntegrationTest : IAsyncLifetime
         updated.Value.Priority.Should().Be(TodoPriority.High);
 
         // Act: start and complete
-        var start = new StartTodoHandler(
+        var start = new StartTodo.UseCaseHandler(
             _fixture.TodoRepository,
             _fixture.UnitOfWork,
             _fixture.Ambient,
             _fixture.Ambient,
             _fixture.Clock);
 
-        Result<TodoModel> started = await start.Handle(new StartTodoCommand(id), CancellationToken.None);
+        Result<StartTodo.Response> started = await start.Handle(
+            new StartTodo.UseCase(new StartTodo.Request(id)),
+            CancellationToken.None);
         started.IsSuccess.Should().BeTrue();
 
-        var complete = new CompleteTodoHandler(
+        var complete = new CompleteTodo.UseCaseHandler(
             _fixture.TodoRepository,
             _fixture.UnitOfWork,
             _fixture.Ambient,
             _fixture.Ambient,
             _fixture.Clock);
 
-        Result<TodoModel> completed = await complete.Handle(new CompleteTodoCommand(id), CancellationToken.None);
+        Result<CompleteTodo.Response> completed = await complete.Handle(
+            new CompleteTodo.UseCase(new CompleteTodo.Request(id)),
+            CancellationToken.None);
         completed.IsSuccess.Should().BeTrue();
         completed.Value.Status.Should().Be(TodoStatus.Completed);
         completed.Value.CompletedAtUtc.Should().Be(_fixture.Clock.UtcNow);
 
         // Act: soft delete
-        var delete = new DeleteTodoHandler(
+        var delete = new DeleteTodo.UseCaseHandler(
             _fixture.TodoRepository,
             _fixture.UnitOfWork,
             _fixture.Ambient,
             _fixture.Ambient,
             _fixture.Clock);
 
-        Result deleted = await delete.Handle(new DeleteTodoCommand(id), CancellationToken.None);
+        Result deleted = await delete.Handle(
+            new DeleteTodo.UseCase(new DeleteTodo.Request(id)),
+            CancellationToken.None);
         deleted.IsSuccess.Should().BeTrue();
 
         // Assert: hidden by default, visible when explicitly included
         (await GetTodoAsync(id)).IsFailure.Should().BeTrue();
-        Result<TodoModel> deletedRow = await GetTodoAsync(id, includeDeleted: true);
+        Result<GetTodo.Response> deletedRow = await GetTodoAsync(id, includeDeleted: true);
         deletedRow.IsSuccess.Should().BeTrue();
         deletedRow.Value.IsDeleted.Should().BeTrue();
 
         // Act: restore
-        var restore = new RestoreTodoHandler(
+        var restore = new RestoreTodo.UseCaseHandler(
             _fixture.TodoRepository,
             _fixture.UnitOfWork,
             _fixture.Ambient,
             _fixture.Ambient,
             _fixture.Clock);
 
-        Result<TodoModel> restored = await restore.Handle(new RestoreTodoCommand(id), CancellationToken.None);
+        Result<RestoreTodo.Response> restored = await restore.Handle(
+            new RestoreTodo.UseCase(new RestoreTodo.Request(id)),
+            CancellationToken.None);
         restored.IsSuccess.Should().BeTrue();
         restored.Value.IsDeleted.Should().BeFalse();
 
@@ -126,24 +141,27 @@ public sealed class TodoHandlerIntegrationTest : IAsyncLifetime
     public async Task DeleteList_ShouldClearTodoReferences()
     {
         // Arrange
-        var createList = new CreateTodoListHandler(
+        var createList = new CreateTodoList.UseCaseHandler(
             _fixture.TodoListRepository,
             _fixture.UnitOfWork,
             _fixture.Ambient,
             _fixture.Ambient,
             _fixture.Clock);
 
-        Result<TodoListModel> list = await createList.Handle(
-            new CreateTodoListCommand("Inbox"),
+        Result<CreateTodoList.Response> list = await createList.Handle(
+            new CreateTodoList.UseCase(new CreateTodoList.Request
+            {
+                Name = "Inbox",
+            }),
             CancellationToken.None);
 
         list.IsSuccess.Should().BeTrue();
 
-        Result<TodoModel> todo = await CreateTodoAsync("Linked", list.Value.Id);
+        Result<CreateTodo.Response> todo = await CreateTodoAsync("Linked", list.Value.Id);
         todo.IsSuccess.Should().BeTrue();
 
         // Act
-        var deleteList = new DeleteTodoListHandler(
+        var deleteList = new DeleteTodoList.UseCaseHandler(
             _fixture.TodoListRepository,
             _fixture.ReferenceCleaner,
             _fixture.UnitOfWork,
@@ -152,21 +170,24 @@ public sealed class TodoHandlerIntegrationTest : IAsyncLifetime
             _fixture.Clock);
 
         Result deleted = await deleteList.Handle(
-            new DeleteTodoListCommand(list.Value.Id),
+            new DeleteTodoList.UseCase(new DeleteTodoList.Request(list.Value.Id)),
             CancellationToken.None);
 
         // Assert
         deleted.IsSuccess.Should().BeTrue();
-        Result<TodoModel> refreshed = await GetTodoAsync(todo.Value.Id);
+        Result<GetTodo.Response> refreshed = await GetTodoAsync(todo.Value.Id);
         refreshed.IsSuccess.Should().BeTrue();
         refreshed.Value.ListId.Should().BeNull();
 
-        var getList = new GetTodoListHandler(_fixture.TodoListRepository, _fixture.Ambient);
-        (await getList.Handle(new GetTodoListQuery(list.Value.Id), CancellationToken.None))
+        var getList = new GetTodoList.UseCaseHandler(_fixture.TodoListRepository, _fixture.Ambient);
+        (await getList.Handle(
+                new GetTodoList.UseCase(new GetTodoList.Request(list.Value.Id)),
+                CancellationToken.None))
             .IsFailure.Should().BeTrue();
 
-        Result<TodoListModel> deletedList = await getList.Handle(
-            new GetTodoListQuery(list.Value.Id, IncludeDeleted: true),
+        Result<GetTodoList.Response> deletedList = await getList.Handle(
+            new GetTodoList.UseCase(
+                new GetTodoList.Request(list.Value.Id, IncludeDeleted: true)),
             CancellationToken.None);
 
         deletedList.IsSuccess.Should().BeTrue();
@@ -177,35 +198,44 @@ public sealed class TodoHandlerIntegrationTest : IAsyncLifetime
     public async Task DeleteCategory_ShouldRemoveTodoReferences()
     {
         // Arrange
-        var createCategory = new CreateTodoCategoryHandler(
+        var createCategory = new CreateTodoCategory.UseCaseHandler(
             _fixture.TodoCategoryRepository,
             _fixture.UnitOfWork,
             _fixture.Ambient,
             _fixture.Ambient,
             _fixture.Clock);
 
-        Result<TodoCategoryModel> category = await createCategory.Handle(
-            new CreateTodoCategoryCommand("Urgent"),
+        CreateTodoCategory.Request request = new()
+        {
+            Name = "Urgent"
+        };
+
+        Result<CreateTodoCategory.Response> category = await createCategory.Handle(
+            new CreateTodoCategory.UseCase(request),
             CancellationToken.None);
 
         category.IsSuccess.Should().BeTrue();
 
-        var createTodo = new CreateTodoHandler(
+        var createTodo = new CreateTodo.UseCaseHandler(
             _fixture.TodoRepository,
             _fixture.UnitOfWork,
             _fixture.Ambient,
             _fixture.Ambient,
             _fixture.Clock);
 
-        Result<TodoModel> todo = await createTodo.Handle(
-            new CreateTodoCommand("Tagged", CategoryIds: [category.Value.Id]),
+        Result<CreateTodo.Response> todo = await createTodo.Handle(
+            new CreateTodo.UseCase(new CreateTodo.Request
+            {
+                Title = "Tagged",
+                CategoryIds = [category.Value.Id],
+            }),
             CancellationToken.None);
 
         todo.IsSuccess.Should().BeTrue();
         todo.Value.CategoryIds.Should().Contain(category.Value.Id);
 
         // Act
-        var deleteCategory = new DeleteTodoCategoryHandler(
+        var deleteCategory = new DeleteTodoCategory.UseCaseHandler(
             _fixture.TodoCategoryRepository,
             _fixture.ReferenceCleaner,
             _fixture.UnitOfWork,
@@ -214,21 +244,27 @@ public sealed class TodoHandlerIntegrationTest : IAsyncLifetime
             _fixture.Clock);
 
         Result deleted = await deleteCategory.Handle(
-            new DeleteTodoCategoryCommand(category.Value.Id),
+            new DeleteTodoCategory.UseCase(
+                new DeleteTodoCategory.Request(category.Value.Id)),
             CancellationToken.None);
 
         // Assert
         deleted.IsSuccess.Should().BeTrue();
-        Result<TodoModel> refreshed = await GetTodoAsync(todo.Value.Id);
+        Result<GetTodo.Response> refreshed = await GetTodoAsync(todo.Value.Id);
         refreshed.IsSuccess.Should().BeTrue();
         refreshed.Value.CategoryIds.Should().NotContain(category.Value.Id);
 
-        var getCategory = new GetTodoCategoryHandler(_fixture.TodoCategoryRepository, _fixture.Ambient);
-        (await getCategory.Handle(new GetTodoCategoryQuery(category.Value.Id), CancellationToken.None))
+        var getCategory = new GetTodoCategory.UseCaseHandler(
+            _fixture.TodoCategoryRepository,
+            _fixture.Ambient);
+        (await getCategory.Handle(
+                new GetTodoCategory.UseCase(new GetTodoCategory.Request(category.Value.Id)),
+                CancellationToken.None))
             .IsFailure.Should().BeTrue();
 
-        Result<TodoCategoryModel> deletedCategory = await getCategory.Handle(
-            new GetTodoCategoryQuery(category.Value.Id, IncludeDeleted: true),
+        Result<GetTodoCategory.Response> deletedCategory = await getCategory.Handle(
+            new GetTodoCategory.UseCase(
+                new GetTodoCategory.Request(category.Value.Id, IncludeDeleted: true)),
             CancellationToken.None);
 
         deletedCategory.IsSuccess.Should().BeTrue();
@@ -239,10 +275,10 @@ public sealed class TodoHandlerIntegrationTest : IAsyncLifetime
     public async Task HardDelete_ShouldRemoveRow()
     {
         // Arrange
-        Result<TodoModel> todo = await CreateTodoAsync("Temporary");
+        Result<CreateTodo.Response> todo = await CreateTodoAsync("Temporary");
         todo.IsSuccess.Should().BeTrue();
 
-        var delete = new DeleteTodoHandler(
+        var delete = new DeleteTodo.UseCaseHandler(
             _fixture.TodoRepository,
             _fixture.UnitOfWork,
             _fixture.Ambient,
@@ -251,7 +287,8 @@ public sealed class TodoHandlerIntegrationTest : IAsyncLifetime
 
         // Act
         Result deleted = await delete.Handle(
-            new DeleteTodoCommand(todo.Value.Id, DeleteMode.Hard),
+            new DeleteTodo.UseCase(
+                new DeleteTodo.Request(todo.Value.Id, DeleteMode.Hard)),
             CancellationToken.None);
 
         // Assert
@@ -259,9 +296,9 @@ public sealed class TodoHandlerIntegrationTest : IAsyncLifetime
         (await GetTodoAsync(todo.Value.Id, includeDeleted: true)).IsFailure.Should().BeTrue();
     }
 
-    private async Task<Result<TodoModel>> CreateTodoAsync(string title, Guid? listId = null)
+    private async Task<Result<CreateTodo.Response>> CreateTodoAsync(string title, Guid? listId = null)
     {
-        var handler = new CreateTodoHandler(
+        var handler = new CreateTodo.UseCaseHandler(
             _fixture.TodoRepository,
             _fixture.UnitOfWork,
             _fixture.Ambient,
@@ -269,13 +306,19 @@ public sealed class TodoHandlerIntegrationTest : IAsyncLifetime
             _fixture.Clock);
 
         return await handler.Handle(
-            new CreateTodoCommand(title, ListId: listId),
+            new CreateTodo.UseCase(new CreateTodo.Request
+            {
+                Title = title,
+                ListId = listId,
+            }),
             CancellationToken.None);
     }
 
-    private async Task<Result<TodoModel>> GetTodoAsync(Guid id, bool includeDeleted = false)
+    private async Task<Result<GetTodo.Response>> GetTodoAsync(Guid id, bool includeDeleted = false)
     {
-        var handler = new GetTodoHandler(_fixture.TodoRepository, _fixture.Ambient);
-        return await handler.Handle(new GetTodoQuery(id, includeDeleted), CancellationToken.None);
+        var handler = new GetTodo.UseCaseHandler(_fixture.TodoRepository, _fixture.Ambient);
+        return await handler.Handle(
+            new GetTodo.UseCase(new GetTodo.Request(id, includeDeleted)),
+            CancellationToken.None);
     }
 }

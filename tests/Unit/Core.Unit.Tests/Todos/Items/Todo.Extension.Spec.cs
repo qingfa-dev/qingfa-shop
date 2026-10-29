@@ -2,7 +2,7 @@ using Core.Common.Concerns.Lifecycle.SoftDeletable;
 using Core.Todos;
 using Core.Todos.Items;
 
-namespace Core.Unit.Tests.Todos;
+namespace Core.Unit.Tests.Todos.Items;
 
 /// <summary>Specifications for the todo behaviours.</summary>
 public sealed class TodoExtensionSpec

@@ -11,7 +11,7 @@ public sealed class TodoCategoryExtensionSpec
 
     private static TodoCategory ValidCategory()
     {
-        var result = TodoCategory.Create(Guid.NewGuid(), TenantId, "Errands", CreatedAt, "alice");
+        var result = TodoCategory.Create(tenantId: TenantId, "Errands", CreatedAt, "alice", id: Guid.NewGuid());
 
         result.IsSuccess.Should().BeTrue();
 

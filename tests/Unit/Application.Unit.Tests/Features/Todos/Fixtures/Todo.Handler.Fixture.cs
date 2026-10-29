@@ -4,10 +4,10 @@ using Application.Common.Querying.Mapping;
 using Application.Common.Security.Authentication.Contexts;
 using Application.Features.Todos.Abstractions;
 
-using Core.Common.Monad.Maybes;
 using Core.Todos.Categories;
 using Core.Todos.Items;
 using Core.Todos.Lists;
+
 namespace Application.Unit.Tests.Features.Todos.Fixtures;
 
 /// <summary>Shared mocks and clock for the Todos handler unit tests.</summary>
@@ -160,7 +160,7 @@ public sealed class TodoHandlerFixture
     /// <param name="name">The optional name.</param>
     /// <returns>The new category.</returns>
     public TodoCategory CreateCategory(string name = "Errands") =>
-        TodoCategory.Create(Guid.NewGuid(), TenantId, name, Now, Actor).Value;
+        TodoCategory.Create(TenantId, name, Now, Actor, id: Guid.NewGuid()).Value;
 
     /// <summary>Registers the minimal todo query map used by search tests.</summary>
     public void RegisterTodoMap() =>

@@ -1,7 +1,7 @@
 using Core.Common.Domain.Events;
 using Core.Todos.Items;
 
-namespace Core.Unit.Tests.Todos;
+namespace Core.Unit.Tests.Todos.Items;
 
 /// <summary>Specifications for the todo domain events.</summary>
 public sealed class TodoEventSpec

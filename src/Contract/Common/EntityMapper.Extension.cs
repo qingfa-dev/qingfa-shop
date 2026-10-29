@@ -144,26 +144,5 @@ public static class EntityMapperExtensions
         where TResponse : TParameters, new()
         => entities.Select(e => e.MapToResponse<TEntity, TParameters, TResponse>(fill)).ToList();
 
-    /// <summary>Projects every entity in a page while preserving the paging metadata.</summary>
-    /// <typeparam name="TEntity">The domain entity type.</typeparam>
-    /// <typeparam name="TParameters">The parameter base type of the response.</typeparam>
-    /// <typeparam name="TResponse">The response type derived from the parameters.</typeparam>
-    /// <param name="page">The page of entities to project.</param>
-    /// <param name="fill">Copies entity values into each response.</param>
-    /// <returns>A page of projected responses with the original paging metadata.</returns>
-    public static PageModel<TResponse> MapToResponses<TEntity, TParameters, TResponse>(
-        this PageModel<TEntity> page,
-        Action<TEntity, TResponse> fill)
-        where TEntity : class
-        where TParameters : class
-        where TResponse : TParameters, new()
-        => new PageModel<TResponse>(
-            Items: page.Items
-                            .Select(e => e.MapToResponse<TEntity, TParameters, TResponse>(fill))
-                            .ToList(),
-            Page: page.Page,
-            PageSize: page.PageSize,
-            TotalCount: page.TotalCount);
-
     #endregion
 }

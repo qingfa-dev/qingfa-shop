@@ -1,6 +1,6 @@
 using Core.Todos.Items;
 
-namespace Core.Unit.Tests.Todos;
+namespace Core.Unit.Tests.Todos.Items;
 
 /// <summary>Specifications for the todo constants.</summary>
 public sealed class TodoConstantSpec

@@ -21,7 +21,7 @@ public sealed class TodoCategorySpec
     [Fact]
     public void Create_ValidInput_ShouldSucceed()
     {
-        var result = TodoCategory.Create(CategoryId, TenantId, "Errands", CreatedAt, "alice");
+        var result = TodoCategory.Create(TenantId, "Errands", CreatedAt, "alice", id: CategoryId);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Id.Should().Be(CategoryId);
@@ -30,7 +30,7 @@ public sealed class TodoCategorySpec
     [Fact]
     public void Create_ValidInput_ShouldStampTheAuditMetadataAndTenant()
     {
-        var result = TodoCategory.Create(CategoryId, TenantId, "Errands", CreatedAt, "alice");
+        var result = TodoCategory.Create(TenantId, "Errands", CreatedAt, "alice", id: CategoryId);
 
         result.Value.CreatedAtUtc.Should().Be(CreatedAt);
         result.Value.CreatedBy.Should().Be("alice");
@@ -40,7 +40,7 @@ public sealed class TodoCategorySpec
     [Fact]
     public void Create_PaddedName_ShouldStoreTheTrimmedName()
     {
-        var result = TodoCategory.Create(CategoryId, TenantId, "  Errands  ", CreatedAt, "alice");
+        var result = TodoCategory.Create(TenantId, "  Errands  ", CreatedAt, "alice", id: CategoryId);
 
         result.Value.Name.Should().Be("Errands");
     }
@@ -48,7 +48,7 @@ public sealed class TodoCategorySpec
     [Fact]
     public void Create_ValidInput_ShouldRaiseTodoCategoryCreated()
     {
-        var result = TodoCategory.Create(CategoryId, TenantId, "Errands", CreatedAt, "alice");
+        var result = TodoCategory.Create(TenantId, "Errands", CreatedAt, "alice", id: CategoryId);
 
         var raised = result.Value.Events.Should().ContainSingle().Which;
         raised.Should().BeOfType<TodoCategoryCreated>();
@@ -59,7 +59,7 @@ public sealed class TodoCategorySpec
     public void Create_EmptyId_ShouldFailWithIdentifiableIdRequired()
     {
         ShouldFailWith(
-            TodoCategory.Create(Guid.Empty, TenantId, "Errands", CreatedAt, "alice"),
+            TodoCategory.Create(TenantId, "Errands", CreatedAt, "alice", id: Guid.Empty),
             "Identifiable.Id.Required");
     }
 
@@ -67,7 +67,8 @@ public sealed class TodoCategorySpec
     public void Create_EmptyTenantId_ShouldFailWithTenantableTenantIdRequired()
     {
         ShouldFailWith(
-            TodoCategory.Create(CategoryId, Guid.Empty, "Errands", CreatedAt, "alice"),
+            TodoCategory.Create(Guid.Empty, "Errands", CreatedAt, "alice",
+            id: CategoryId),
             "Tenantable.TenantId.Required");
     }
 
@@ -75,14 +76,20 @@ public sealed class TodoCategorySpec
     public void Create_BlankName_ShouldFailWithNameRequired()
     {
         ShouldFailWith(
-            TodoCategory.Create(CategoryId, TenantId, "   ", CreatedAt, "alice"),
+            TodoCategory.Create(
+                TenantId, "   ",
+                CreatedAt, "alice",
+                id: CategoryId),
             "TodoCategory.Name.Required");
     }
 
     [Fact]
     public void Create_NoOptionalInput_ShouldLeaveOptionalStateEmpty()
     {
-        var result = TodoCategory.Create(CategoryId, TenantId, "Errands", CreatedAt, "alice");
+        var result = TodoCategory.Create(
+            TenantId, "Errands",
+            CreatedAt, "alice",
+            id: CategoryId);
 
         result.Value.Description.Should().BeNull();
     }
@@ -90,7 +97,10 @@ public sealed class TodoCategorySpec
     [Fact]
     public void Create_NoModificationOrDeletion_ShouldLeaveTheAuditFlagsClear()
     {
-        var result = TodoCategory.Create(CategoryId, TenantId, "Errands", CreatedAt, "alice");
+        var result = TodoCategory.Create(
+            TenantId, "Errands",
+            CreatedAt, "alice",
+            id: CategoryId);
 
         result.Value.ModifiedAtUtc.Should().BeNull();
         result.Value.ModifiedBy.Should().BeNull();
@@ -103,12 +113,12 @@ public sealed class TodoCategorySpec
     public void Create_PaddedDescription_ShouldStoreTheTrimmedDescription()
     {
         var result = TodoCategory.Create(
-            CategoryId,
             TenantId,
             "Errands",
             CreatedAt,
             "alice",
-            description: "  Out of the house  ");
+            description: "  Out of the house  ",
+            id: CategoryId);
 
         result.Value.Description.Should().Be("Out of the house");
     }
@@ -119,7 +129,8 @@ public sealed class TodoCategorySpec
         string tooLong = new('a', TodoCategoryConstant.Constraints.Description.MaxLength + 1);
 
         ShouldFailWith(
-            TodoCategory.Create(CategoryId, TenantId, "Errands", CreatedAt, "alice", description: tooLong),
+            TodoCategory.Create(TenantId, "Errands", CreatedAt, "alice", description: tooLong,
+            id: CategoryId),
             "TodoCategory.Description.TooLong");
     }
 
@@ -129,7 +140,9 @@ public sealed class TodoCategorySpec
         string tooLong = new('a', TodoCategoryConstant.Constraints.Name.MaxLength + 1);
 
         ShouldFailWith(
-            TodoCategory.Create(CategoryId, TenantId, tooLong, CreatedAt, "alice"),
+            TodoCategory.Create(
+                TenantId, tooLong, CreatedAt, "alice",
+                id: CategoryId),
             "TodoCategory.Name.TooLong");
     }
 
@@ -137,11 +150,11 @@ public sealed class TodoCategorySpec
     public void MarkDeleted_ThenRestore_ShouldRoundTripTheDeletionAudit()
     {
         TodoCategory category = TodoCategory.Create(
-            CategoryId,
             TenantId,
             "Errands",
             CreatedAt,
-            "alice").Value;
+            "alice",
+            id: CategoryId).Value;
         DateTimeOffset deletedAt = CreatedAt.AddDays(1);
 
         Result<TodoCategory> deleted = Result<TodoCategory>.Ok(category).MarkDeleted(deletedAt, "bob");
@@ -163,11 +176,11 @@ public sealed class TodoCategorySpec
     public void MarkModified_ShouldStampTheTrimmedActor()
     {
         TodoCategory category = TodoCategory.Create(
-            CategoryId,
             TenantId,
             "Errands",
             CreatedAt,
-            "alice").Value;
+            "alice",
+            id: CategoryId).Value;
         DateTimeOffset modifiedAt = CreatedAt.AddHours(1);
 
         Result<TodoCategory> modified = Result<TodoCategory>.Ok(category)
