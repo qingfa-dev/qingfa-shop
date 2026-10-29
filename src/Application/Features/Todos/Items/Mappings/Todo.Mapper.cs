@@ -2,7 +2,7 @@ using Application.Features.Todos.Items.Models;
 
 using Core.Todos.Items;
 
-namespace Application.Features.Todos.Mapping;
+namespace Application.Features.Todos.Items.Mappings;
 
 /// <summary>Maps a todo onto slice response models.</summary>
 public static class TodoMapper

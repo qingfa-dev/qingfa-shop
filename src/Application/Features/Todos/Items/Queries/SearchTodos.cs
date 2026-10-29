@@ -3,8 +3,8 @@ using Application.Common.Querying;
 using Application.Common.Querying.Mapping;
 using Application.Common.Querying.Pagination;
 using Application.Features.Todos.Common;
+using Application.Features.Todos.Items.Mappings;
 using Application.Features.Todos.Items.Models;
-using Application.Features.Todos.Mapping;
 
 using Core.Todos.Items;
 
