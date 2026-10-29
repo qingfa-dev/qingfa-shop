@@ -3,7 +3,7 @@ namespace Application.Common.Security.Authorization.Domain;
 /// <summary>
 /// Stable error results for permission metadata operations.
 /// </summary>
-public static class PermissionMetadataResult
+public static class PermissionMetadataOutcome
 {
     /// <summary>Builds a stable error code for one metadata field.</summary>
     /// <param name="partName">The field name, for example <c>Domain</c>.</param>

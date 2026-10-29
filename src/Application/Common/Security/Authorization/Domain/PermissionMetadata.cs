@@ -153,7 +153,7 @@ public sealed record PermissionMetadata
     {
         string normalized = PermissionMetadataConstant.NormalizeIdentifier(identifier);
         if (!PermissionMetadataConstant.IsCanonicalIdentifier(normalized))
-            return PermissionMetadataResult.Failure.InvalidIdentifierFormat(identifier);
+            return PermissionMetadataOutcome.Failure.InvalidIdentifierFormat(identifier);
 
         string[] parts = normalized.Split('.');
         return TryCreate(parts[0], parts[1], parts[2], parts[3]);

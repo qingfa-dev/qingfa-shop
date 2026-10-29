@@ -48,10 +48,10 @@ public static class PermissionMetadataExtension
         ArgumentNullException.ThrowIfNull(metadata);
 
         if (string.IsNullOrWhiteSpace(name))
-            return PermissionMetadataResult.Failure.PartRequired(nameof(PermissionMetadata.Name));
+            return PermissionMetadataOutcome.Failure.PartRequired(nameof(PermissionMetadata.Name));
 
         if (name.Length > PermissionMetadataConstant.Constraints.MaxNameLength)
-            return PermissionMetadataResult.Failure.NameTooLong(name.Length);
+            return PermissionMetadataOutcome.Failure.NameTooLong(name.Length);
 
         return Result<PermissionMetadata>.Ok(metadata with { Name = name.Trim() });
     }
@@ -67,10 +67,10 @@ public static class PermissionMetadataExtension
         ArgumentNullException.ThrowIfNull(metadata);
 
         if (string.IsNullOrWhiteSpace(description))
-            return PermissionMetadataResult.Failure.PartRequired(nameof(PermissionMetadata.Description));
+            return PermissionMetadataOutcome.Failure.PartRequired(nameof(PermissionMetadata.Description));
 
         if (description.Length > PermissionMetadataConstant.Constraints.MaxDescriptionLength)
-            return PermissionMetadataResult.Failure.DescriptionTooLong(description.Length);
+            return PermissionMetadataOutcome.Failure.DescriptionTooLong(description.Length);
 
         return Result<PermissionMetadata>.Ok(metadata with { Description = description.Trim() });
     }

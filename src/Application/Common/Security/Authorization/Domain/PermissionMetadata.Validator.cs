@@ -19,26 +19,26 @@ public sealed class PermissionMetadataValidator : AbstractValidator<PermissionMe
 
         RuleFor(x => x.Name)
             .MaximumLength(PermissionMetadataConstant.Constraints.MaxNameLength)
-            .WithErrorCode(PermissionMetadataResult.Code("Name", "TooLong"))
-            .WithMessage((_, value) => PermissionMetadataResult.Failure.NameTooLong(value.Length).Message)
+            .WithErrorCode(PermissionMetadataOutcome.Code("Name", "TooLong"))
+            .WithMessage((_, value) => PermissionMetadataOutcome.Failure.NameTooLong(value.Length).Message)
             .When(x => !string.IsNullOrEmpty(x.Name));
 
         RuleFor(x => x.Description)
             .MaximumLength(PermissionMetadataConstant.Constraints.MaxDescriptionLength)
-            .WithErrorCode(PermissionMetadataResult.Code("Description", "TooLong"))
-            .WithMessage((_, value) => PermissionMetadataResult.Failure.DescriptionTooLong(value.Length).Message)
+            .WithErrorCode(PermissionMetadataOutcome.Code("Description", "TooLong"))
+            .WithMessage((_, value) => PermissionMetadataOutcome.Failure.DescriptionTooLong(value.Length).Message)
             .When(x => !string.IsNullOrEmpty(x.Description));
 
         RuleFor(x => x.Identifier)
             .NotEmpty()
-            .WithErrorCode(PermissionMetadataResult.Failure.IdentifierRequired.Code)
-            .WithMessage(PermissionMetadataResult.Failure.IdentifierRequired.Message)
+            .WithErrorCode(PermissionMetadataOutcome.Failure.IdentifierRequired.Code)
+            .WithMessage(PermissionMetadataOutcome.Failure.IdentifierRequired.Message)
             .MaximumLength(PermissionMetadataConstant.Constraints.MaxIdentifierLength)
-            .WithErrorCode(PermissionMetadataResult.Code("Identifier", "TooLong"))
-            .WithMessage((_, value) => PermissionMetadataResult.Failure.IdentifierTooLong(value.Length).Message)
+            .WithErrorCode(PermissionMetadataOutcome.Code("Identifier", "TooLong"))
+            .WithMessage((_, value) => PermissionMetadataOutcome.Failure.IdentifierTooLong(value.Length).Message)
             .Matches(PermissionMetadataConstant.IdentifierPattern)
-            .WithErrorCode(PermissionMetadataResult.Code("Identifier", "InvalidFormat"))
-            .WithMessage((_, value) => PermissionMetadataResult.Failure.InvalidIdentifierFormat(value).Message);
+            .WithErrorCode(PermissionMetadataOutcome.Code("Identifier", "InvalidFormat"))
+            .WithMessage((_, value) => PermissionMetadataOutcome.Failure.InvalidIdentifierFormat(value).Message);
     }
 
     private void RuleForPart(
@@ -47,13 +47,13 @@ public sealed class PermissionMetadataValidator : AbstractValidator<PermissionMe
     {
         RuleFor(property)
             .NotEmpty()
-            .WithErrorCode(PermissionMetadataResult.Code(partName, "Required"))
-            .WithMessage(PermissionMetadataResult.Failure.PartRequired(partName).Message)
+            .WithErrorCode(PermissionMetadataOutcome.Code(partName, "Required"))
+            .WithMessage(PermissionMetadataOutcome.Failure.PartRequired(partName).Message)
             .MaximumLength(PermissionMetadataConstant.Constraints.MaxPartLength)
-            .WithErrorCode(PermissionMetadataResult.Code(partName, "TooLong"))
-            .WithMessage((_, value) => PermissionMetadataResult.Failure.PartTooLong(partName, value.Length).Message)
+            .WithErrorCode(PermissionMetadataOutcome.Code(partName, "TooLong"))
+            .WithMessage((_, value) => PermissionMetadataOutcome.Failure.PartTooLong(partName, value.Length).Message)
             .Matches(PermissionMetadataConstant.PartPattern)
-            .WithErrorCode(PermissionMetadataResult.Code(partName, "InvalidChars"))
-            .WithMessage((_, value) => PermissionMetadataResult.Failure.InvalidPartChars(partName, value).Message);
+            .WithErrorCode(PermissionMetadataOutcome.Code(partName, "InvalidChars"))
+            .WithMessage((_, value) => PermissionMetadataOutcome.Failure.InvalidPartChars(partName, value).Message);
     }
 }
