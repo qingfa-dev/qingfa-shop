@@ -4,12 +4,12 @@ using System.Security.Claims;
 using System.Text;
 
 using Application.Common.Security.Authentication.Tokens;
+using Application.Common.Security.Authentication.Tokens.Abstractions.Jwt;
 using Application.Common.Security.Authentication.Tokens.Options;
-using Application.Common.Security.Authentication.Tokens.Services;
 
 using Microsoft.IdentityModel.Tokens;
 
-namespace Infrastructure.Security.Authentication.Tokens;
+namespace Infrastructure.Security.Authentication.Tokens.Services;
 
 /// <summary>Issues HMAC-signed JWT access tokens from validated application options.</summary>
 public sealed class JwtTokenService : ITokenService

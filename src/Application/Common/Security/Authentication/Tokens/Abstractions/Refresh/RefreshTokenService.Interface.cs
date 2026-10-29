@@ -2,7 +2,7 @@ using Application.Common.Security.Authentication.Tokens.Domain;
 
 using Core.Common.Monad.Maybes;
 
-namespace Application.Common.Security.Authentication.Tokens.Services;
+namespace Application.Common.Security.Authentication.Tokens.Abstractions.Refresh;
 
 /// <summary>Issues, finds, revokes, and rotates persisted refresh tokens.</summary>
 public interface IRefreshTokenService

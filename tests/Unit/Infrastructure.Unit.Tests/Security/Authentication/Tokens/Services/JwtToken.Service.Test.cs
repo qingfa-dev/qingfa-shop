@@ -5,11 +5,11 @@ using System.Text;
 using Application.Common.Security.Authentication.Tokens;
 using Application.Common.Security.Authentication.Tokens.Options;
 
-using Infrastructure.Security.Authentication.Tokens;
+using Infrastructure.Security.Authentication.Tokens.Services;
 
 using Microsoft.IdentityModel.Tokens;
 
-namespace Infrastructure.Unit.Tests.Security.Authentication.Tokens;
+namespace Infrastructure.Unit.Tests.Security.Authentication.Tokens.Services;
 
 [Trait("Category", "Unit")]
 [Trait("Module", "Security")]

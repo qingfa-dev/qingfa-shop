@@ -1,8 +1,10 @@
 using Application.Common.Security.Authentication.Tokens;
+using Application.Common.Security.Authentication.Tokens.Abstractions.Blacklist;
 using Application.Common.Security.Authentication.Tokens.Options;
-using Application.Common.Security.Authentication.Tokens.Services;
 
-namespace Application.Unit.Tests.Common.Security.Authentication.Tokens;
+using Infrastructure.Security.Authentication.Tokens.Services;
+
+namespace Infrastructure.Unit.Tests.Security.Authentication.Tokens.Services;
 
 [Trait("Category", "Unit")]
 [Trait("Module", "Security")]

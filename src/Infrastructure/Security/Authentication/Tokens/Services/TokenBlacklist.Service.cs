@@ -1,6 +1,8 @@
+using Application.Common.Security.Authentication.Tokens;
+using Application.Common.Security.Authentication.Tokens.Abstractions.Blacklist;
 using Application.Common.Security.Authentication.Tokens.Options;
 
-namespace Application.Common.Security.Authentication.Tokens.Services;
+namespace Infrastructure.Security.Authentication.Tokens.Services;
 
 /// <summary>
 /// Blacklists access-token identifiers for at most the remaining lifetime of the token.

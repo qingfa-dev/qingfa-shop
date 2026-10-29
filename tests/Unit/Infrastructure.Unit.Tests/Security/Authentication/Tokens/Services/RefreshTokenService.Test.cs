@@ -1,11 +1,13 @@
 using Application.Common.Security.Authentication.Tokens;
-using Application.Common.Security.Authentication.Tokens.Options;
-using Application.Common.Security.Authentication.Tokens.Services;
+using Application.Common.Security.Authentication.Tokens.Abstractions.Refresh;
 using Application.Common.Security.Authentication.Tokens.Domain;
+using Application.Common.Security.Authentication.Tokens.Options;
 
 using Core.Common.Monad.Maybes;
 
-namespace Application.Unit.Tests.Common.Security.Authentication.Tokens;
+using Infrastructure.Security.Authentication.Tokens.Services;
+
+namespace Infrastructure.Unit.Tests.Security.Authentication.Tokens.Services;
 
 [Trait("Category", "Unit")]
 [Trait("Module", "Security")]

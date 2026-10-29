@@ -1,6 +1,9 @@
+using Application.Common.Security.Authentication.Tokens;
+using Application.Common.Security.Authentication.Tokens.Abstractions.Refresh;
+using Application.Common.Security.Authentication.Tokens.Abstractions.Rotation;
 using Application.Common.Security.Authentication.Tokens.Domain;
 
-namespace Application.Common.Security.Authentication.Tokens.Services;
+namespace Infrastructure.Security.Authentication.Tokens.Services;
 
 /// <summary>
 /// Rotates refresh tokens and converts reuse of a replaced token into theft detection.

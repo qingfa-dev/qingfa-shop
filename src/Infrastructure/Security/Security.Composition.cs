@@ -1,14 +1,7 @@
-using Application.Common.Security.Authentication.Contexts;
-using Application.Common.Security.Authentication.Tokens;
-using Application.Common.Security.Authentication.Tokens.Options;
-using Application.Common.Security.Authentication.Tokens.Services;
-
-using Infrastructure.Security.Authentication.Contexts;
-using Infrastructure.Security.Authentication.Tokens;
+using Infrastructure.Security.Authentication;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Infrastructure.Security;
 
@@ -18,7 +11,7 @@ namespace Infrastructure.Security;
 public static class SecurityComposition
 {
     /// <summary>
-    /// Adds the current tenant and user contexts plus the JWT token service.
+    /// Adds the authentication contexts and token services.
     /// </summary>
     /// <param name="services">The host's service collection.</param>
     /// <param name="configuration">Configuration holding the token sections.</param>
@@ -33,29 +26,6 @@ public static class SecurityComposition
         ArgumentNullException.ThrowIfNull(services);
         ArgumentNullException.ThrowIfNull(configuration);
 
-        services.AddHttpContextAccessor();
-        services.TryAddScoped<ITenantContext, TenantContext>();
-        services.TryAddScoped<IUserContext, CurrentUser>();
-
-        // Initialize: keep the system clock replaceable so tests can inject a fake.
-        services.TryAddSingleton(TimeProvider.System);
-
-        JwtTokenOption jwt = configuration
-            .GetSection(TokenConstant.Sections.Jwt)
-            .Get<JwtTokenOption>() ?? new JwtTokenOption();
-
-        services.TryAddSingleton(jwt);
-        services.TryAddSingleton(
-            configuration
-                .GetSection(TokenConstant.Sections.RefreshToken)
-                .Get<RefreshTokenOption>() ?? new RefreshTokenOption());
-        services.TryAddSingleton(
-            configuration
-                .GetSection(TokenConstant.Sections.Blacklist)
-                .Get<TokenBlacklistOption>() ?? new TokenBlacklistOption());
-
-        services.TryAddSingleton<ITokenService, JwtTokenService>();
-
-        return services;
+        return services.AddAuthentication(configuration);
     }
 }

@@ -1,4 +1,4 @@
-namespace Application.Common.Security.Authentication.Tokens.Services;
+namespace Application.Common.Security.Authentication.Tokens.Abstractions.Jwt;
 
 /// <summary>Issues signed JWT access tokens.</summary>
 public interface ITokenService

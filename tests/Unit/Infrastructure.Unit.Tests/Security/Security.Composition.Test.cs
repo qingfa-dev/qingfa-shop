@@ -1,9 +1,12 @@
 using Application.Common.Security.Authentication.Tokens;
+using Application.Common.Security.Authentication.Tokens.Abstractions.Blacklist;
+using Application.Common.Security.Authentication.Tokens.Abstractions.Jwt;
+using Application.Common.Security.Authentication.Tokens.Abstractions.Refresh;
+using Application.Common.Security.Authentication.Tokens.Abstractions.Rotation;
 using Application.Common.Security.Authentication.Tokens.Options;
-using Application.Common.Security.Authentication.Tokens.Services;
 
 using Infrastructure.Security;
-using Infrastructure.Security.Authentication.Tokens;
+using Infrastructure.Security.Authentication.Tokens.Services;
 
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -38,6 +41,16 @@ public sealed class SecurityCompositionTest
         provider.GetRequiredService<RefreshTokenOption>().LifetimeDays.Should().Be(14);
         provider.GetRequiredService<TokenBlacklistOption>().KeyPrefix.Should().Be("blacklist:");
         provider.GetRequiredService<TimeProvider>().Should().NotBeNull();
+
+        services.Should().Contain(descriptor =>
+            descriptor.ServiceType == typeof(IRefreshTokenService) &&
+            descriptor.Lifetime == ServiceLifetime.Scoped);
+        services.Should().Contain(descriptor =>
+            descriptor.ServiceType == typeof(ITokenBlacklist) &&
+            descriptor.Lifetime == ServiceLifetime.Scoped);
+        services.Should().Contain(descriptor =>
+            descriptor.ServiceType == typeof(ITokenRotationService) &&
+            descriptor.Lifetime == ServiceLifetime.Scoped);
     }
 
     [Fact(DisplayName = "AddSecurity should use defaults when token sections are absent")]

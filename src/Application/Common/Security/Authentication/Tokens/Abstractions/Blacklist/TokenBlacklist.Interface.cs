@@ -1,4 +1,4 @@
-namespace Application.Common.Security.Authentication.Tokens.Services;
+namespace Application.Common.Security.Authentication.Tokens.Abstractions.Blacklist;
 
 /// <summary>Blacklists access-token identifiers until their original expiry.</summary>
 public interface ITokenBlacklist

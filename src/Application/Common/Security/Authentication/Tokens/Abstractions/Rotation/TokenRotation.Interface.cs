@@ -1,4 +1,4 @@
-namespace Application.Common.Security.Authentication.Tokens.Services;
+namespace Application.Common.Security.Authentication.Tokens.Abstractions.Rotation;
 
 /// <summary>Rotates refresh tokens and detects reuse of already-rotated tokens.</summary>
 public interface ITokenRotationService
