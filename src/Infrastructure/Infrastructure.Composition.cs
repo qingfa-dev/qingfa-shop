@@ -32,16 +32,16 @@ public static class InfrastructureComposition
         ArgumentNullException.ThrowIfNull(builder.Configuration);
 
         // Register: Persistence services (EF Core, repositories, query maps).
-        builder.Services.AddPersistence<ApplicationDbContext>(builder.Configuration);
+        builder.AddPersistence<ApplicationDbContext>(builder.Configuration);
 
         // Register: Caching facade (HybridCache over L1/L2 tiers).
-        builder.Services.AddCaching(builder.Configuration);
+        builder.AddCaching(builder.Configuration);
 
         // Register: Request-scoped tenant/user contexts and token services.
-        builder.Services.AddSecurity(builder.Configuration);
+        builder.AddSecurity(builder.Configuration);
 
         // Register: Cross-aggregate reference cleanup.
-        builder.Services.AddServices();
+        builder.AddServices();
 
         return builder;
     }
@@ -60,6 +60,10 @@ public static class InfrastructureComposition
 
         // Warm up: application services are part of the same startup pipeline.
         app.UseApplication();
+        app.UseCaching();
+        app.UsePersistence();
+        app.UsePersistenceInitialization();
+        app.UseServices();
 
         bool autoMigrate = app.Configuration.GetValue("Persistence:AutoMigrate", false);
         bool seed = app.Configuration.GetValue("Persistence:Seed", false);
