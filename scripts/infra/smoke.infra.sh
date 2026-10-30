@@ -38,6 +38,10 @@ check_body() {
   printf '  %-40s contains %s\n' "$url" "$needle"
 }
 
+(cd "$ROOT" && docker compose exec -T postgres pg_isready -U qingfa -d db >/dev/null)
+(cd "$ROOT" && docker compose exec -T redis redis-cli ping >/dev/null)
+(cd "$ROOT" && docker compose exec -T rabbitmq rabbitmq-diagnostics -q ping >/dev/null)
+
 wait_for gateway "$GATEWAY_URL/alive"
 
 check "$GATEWAY_URL/alive"       200

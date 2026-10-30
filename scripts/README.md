@@ -17,7 +17,7 @@ upward.
 | `common/` | util | `doctor`, `clean`, `structure.check`, `restore-tools`, `trace.common.sh` (shared command echo), `coverage.common.sh` + `coverage-check.*` (report paths, merge, thresholds) |
 | `backend/` | util | solution restore/build, scoped `dotnet format`, Api/Gateway/AppHost/lib test runners, coverage collectors, Api/Gateway publish |
 | `web/` | util | workspace install, per-app Prettier, `vue-tsc`, Vitest unit/integration, optional Playwright e2e, coverage, build, publish |
-| `infra/` | util | `config`, `build` (six images), `size`, `test`, `up`, `down`, `logs`, `ps`, `smoke` |
+| `infra/` | util | `config`, `build` (six images), `size`, `test`, `up`, `down`, `logs`, `ps`, `smoke`, plus `backing-up/down/health` for PostgreSQL, Redis, and RabbitMQ |
 
 ## Boundaries
 
@@ -47,7 +47,9 @@ Out of scope:
   the suite definition exists once. Shared code is limited to
   `common/trace.common.sh` and `common/coverage.common.sh`, which are sourced.
 - Every script that runs a tool prints the exact argv via `trace` or
-  `trace_exec` first. Trace lines go to stderr so stdout stays capturable.
+  `trace_exec` first. Use `trace` when the script must run more than one
+  command; `trace_exec` replaces the shell. Trace lines go to stderr so stdout
+  stays capturable.
 - No script runs a git command.
 - A script prints nothing on success unless it has something useful to say.
 - A suite with no test sources is skipped explicitly, never by ignoring an exit

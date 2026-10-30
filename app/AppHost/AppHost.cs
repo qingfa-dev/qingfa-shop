@@ -10,7 +10,11 @@ var db = builder
 
 var redis = builder.AddRedis("redis");
 
-var rabbitmq = builder.AddRabbitMQ("rabbitmq");
+// Initialize: the broker is a backing service like PostgreSQL and Redis, so it pins
+// the same named volume Compose mounts.
+var rabbitmq = builder
+    .AddRabbitMQ("rabbitmq")
+    .WithDataVolume("rabbitmq-data");
 
 IResourceBuilder<ProjectResource> api = builder
     .AddProject<Projects.Web_Api>("api")
@@ -22,6 +26,7 @@ IResourceBuilder<ProjectResource> api = builder
     .WaitFor(rabbitmq)
     .WithEnvironment("EfCore__ConnectionStringName", "db")
     .WithEnvironment("Persistence__AutoMigrate", "true")
+    .WithEnvironment("Messaging__Transport", "RabbitMq")
     .WithHttpHealthCheck("/health");
 
 // Enforce: the gateway fronts the Api, so every browser request enters here rather

@@ -23,7 +23,7 @@ the same command works locally and in CI.
 | `host.mk` | config | `##@ Host`: install, format, lint, build, test |
 | `store.mk` | config | `##@ Store`: install, format, lint, `test` (`unit` -> `integration`), optional `e2e`, build, publish |
 | `admin.mk` | config | `##@ Admin`: install, format, lint, `test` (`unit` -> `integration`), optional `e2e`, build, publish |
-| `infra.mk` | config | `##@ Infra`: `config`, `build`, `size`, `test`, `up`, `down`, `ps`, `logs`, `smoke` |
+| `infra.mk` | config | `##@ Infra`: `config`, `build`, `size`, `test`, `up`, `down`, `ps`, `logs`, `smoke`, and the symmetric `backing.up/down/health` lifecycle |
 | `test.mk` | config | `##@ Tests`: `test`, `test.all`, and the layered `test.dotnet.*` / `test.web.*` targets |
 | `coverage.mk` | config | `##@ Coverage`: `coverage` (PR gate), per-suite collectors, `coverage.report`, `coverage.all`, `coverage.clean` |
 | `ci.mk` | config | `##@ CI/CD`: `ci`, `ci.full`, `cd` |

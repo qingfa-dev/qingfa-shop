@@ -50,6 +50,7 @@ services:
       ConnectionStrings__db: Host=postgres;Port=5432;Database=db;Username=qingfa;Password=qingfa
       ConnectionStrings__redis: redis:6379
       ConnectionStrings__rabbitmq: amqp://qingfa:qingfa@rabbitmq:5672
+      Messaging__Transport: RabbitMq
     ports:
       - "8080:8080"
     healthcheck:
@@ -133,6 +134,8 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
     healthcheck:
       test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
       interval: 10s
@@ -205,3 +208,4 @@ services:
 volumes:
   pgdata:
   redisdata:
+  rabbitmq-data:
