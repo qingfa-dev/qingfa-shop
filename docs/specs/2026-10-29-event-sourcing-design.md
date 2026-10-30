@@ -5,6 +5,9 @@
 - **Depends on:** slices ①–③
 - **Final slice**
 
+> **Error handling:** follow `docs/specs/2026-10-30-monadic-error-handling-design.md`:
+> flow-level failures return `Result`; throws are boundary-only and documented.
+
 ## 1. Goal
 
 Add a provider-neutral event store with rehydration, snapshots, projections and

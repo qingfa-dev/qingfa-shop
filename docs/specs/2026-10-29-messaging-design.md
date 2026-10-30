@@ -5,6 +5,9 @@
 - **Depends on:** slice ②
 - **Unblocks:** distributed consumers and slice ④ notifications
 
+> **Error handling:** follow `docs/specs/2026-10-30-monadic-error-handling-design.md`:
+> flow-level failures return `Result`; throws are boundary-only and documented.
+
 ## 1. Goal
 
 Turn the existing outbox into a real distributed message path using the Wolverine and

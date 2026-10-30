@@ -5,6 +5,9 @@
 - **Depends on:** slice ①
 - **Unblocks:** slices ③ and ④
 
+> **Error handling:** follow `docs/specs/2026-10-30-monadic-error-handling-design.md`:
+> flow-level failures return `Result`; throws are boundary-only and documented.
+
 ## 1. Goal
 
 Make domain-event delivery durable and make command handlers atomic.

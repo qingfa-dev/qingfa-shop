@@ -110,7 +110,10 @@ segment or a sub-role whose chain contains a role:
 
 ### Results and errors
 
-Ports return `Result` / `Result<T>`. New failures live in a dedicated `*.Outcome.cs`
+All flow-level failures follow `docs/specs/2026-10-30-monadic-error-handling-design.md`:
+`TryXxx` methods return `Result`, validators own input rules, and throws are limited to
+DI guards, startup composition, adapter boundaries, cancellation, and documented final
+unwraps. Ports return `Result` / `Result<T>`. New failures live in a dedicated `*.Outcome.cs`
 file with stable codes, following the existing `DomainEventOutcome` shape. Infrastructure
 translates provider exceptions to those outcomes; it never leaks `NpgsqlException`.
 
