@@ -34,6 +34,7 @@ public sealed class ResultContractApiTest : IntegrationTestBase
         using HttpResponseMessage response = await Client.GetAsync("/api/todos");
 
         response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+        response.Headers.WwwAuthenticate.ToString().Should().Contain("Bearer");
 
         using JsonDocument document = await ReadJsonAsync(response);
 

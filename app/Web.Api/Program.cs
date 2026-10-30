@@ -58,23 +58,27 @@ builder.Services.Configure<JwtBearerOptions>(
     JwtBearerDefaults.AuthenticationScheme,
     options =>
     {
-        options.Events = new JwtBearerEvents
+        options.Events ??= new JwtBearerEvents();
+
+        options.Events.OnChallenge = async context =>
         {
-            OnChallenge = async context =>
-            {
-                context.HandleResponse();
-                await Result.Fail(Error.Unauthorized(
-                        "Authentication.Required",
-                        "Authentication is required."))
-                    .ToApiResult()
-                    .ExecuteAsync(context.HttpContext);
-            },
-            OnForbidden = context => Result.Fail(Error.Forbidden(
-                    "Authorization.Forbidden",
-                    "The caller is not allowed to perform this operation."))
+            // Preserve: HandleResponse suppresses the framework's challenge, including
+            // its WWW-Authenticate header, so the scheme advertises itself here.
+            context.Response.Headers.WWWAuthenticate = JwtBearerDefaults.AuthenticationScheme;
+
+            context.HandleResponse();
+            await Result.Fail(Error.Unauthorized(
+                    "Authentication.Required",
+                    "Authentication is required."))
                 .ToApiResult()
-                .ExecuteAsync(context.HttpContext),
+                .ExecuteAsync(context.HttpContext);
         };
+
+        options.Events.OnForbidden = context => Result.Fail(Error.Forbidden(
+                "Authorization.Forbidden",
+                "The caller is not allowed to perform this operation."))
+            .ToApiResult()
+            .ExecuteAsync(context.HttpContext);
     });
 
 WebApplication app = builder.Build();
