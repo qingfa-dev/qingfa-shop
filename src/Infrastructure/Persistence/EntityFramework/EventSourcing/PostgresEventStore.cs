@@ -6,6 +6,7 @@ using Application.Common.Messaging.Serialization;
 using Core.Common.Domain.Events;
 
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Storage;
 
 namespace Infrastructure.Persistence.EntityFramework.EventSourcing;
 
@@ -32,16 +33,23 @@ public sealed class PostgresEventStore(
         if (events.Count == 0)
             return Result<long>.Success(expectedVersion);
 
+        // Handle: enrol in the command's ambient transaction instead of opening a nested one.
+        bool ownsTransaction = context.Database.CurrentTransaction is null;
+        IDbContextTransaction? transaction = ownsTransaction
+            ? await context.Database.BeginTransactionAsync(cancellationToken)
+            : null;
+
         try
         {
-            await using var transaction = await context.Database.BeginTransactionAsync(cancellationToken);
             long current = await Events
                 .Where(stored => stored.StreamId == streamId)
                 .MaxAsync(stored => (long?)stored.Version, cancellationToken) ?? 0;
 
             if (current != expectedVersion)
             {
-                await transaction.RollbackAsync(cancellationToken);
+                if (transaction is not null)
+                    await transaction.RollbackAsync(cancellationToken);
+
                 return Result<long>.Fail(EventSourcingOutcome.Failure.AppendConflict(streamId, expectedVersion));
             }
 
@@ -68,7 +76,10 @@ public sealed class PostgresEventStore(
 
             Events.AddRange(rows);
             await context.SaveChangesAsync(cancellationToken);
-            await transaction.CommitAsync(cancellationToken);
+
+            if (transaction is not null)
+                await transaction.CommitAsync(cancellationToken);
+
             return Result<long>.Success(version);
         }
         catch (OperationCanceledException)
@@ -88,6 +99,11 @@ public sealed class PostgresEventStore(
         {
             return Result<long>.Fail(
                 EventSourcingOutcome.Failure.AppendFailed(streamId, exception.Message));
+        }
+        finally
+        {
+            if (transaction is not null)
+                await transaction.DisposeAsync();
         }
     }
 

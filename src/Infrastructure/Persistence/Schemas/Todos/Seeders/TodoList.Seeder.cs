@@ -74,8 +74,8 @@ public sealed class TodoListSeeder : IPersistenceSeeder<TodoList, Guid>
 
             using var command = context.Connection.CreateCommand();
             command.CommandText = $"""
-                INSERT INTO {TodoTable.Lists} (id, name, description, created_at_utc, created_by, tenant_id, metadata)
-                VALUES (@id, @name, @description, @created_at_utc, @created_by, @tenant_id, CAST(@metadata AS jsonb))
+                INSERT INTO {TodoTable.Lists} (id, name, description, created_at_utc, created_by, tenant_id, metadata, version)
+                VALUES (@id, @name, @description, @created_at_utc, @created_by, @tenant_id, CAST(@metadata AS jsonb), @version)
                 """;
             command.Parameters.Add(CreateParam(command, "@id", id));
             command.Parameters.Add(CreateParam(command, "@name", name));
@@ -84,6 +84,7 @@ public sealed class TodoListSeeder : IPersistenceSeeder<TodoList, Guid>
             command.Parameters.Add(CreateParam(command, "@created_by", "system"));
             command.Parameters.Add(CreateParam(command, "@tenant_id", DefaultTenantId));
             command.Parameters.Add(CreateParam(command, "@metadata", "{}"));
+            command.Parameters.Add(CreateParam(command, "@version", 0L));
             command.CommandTimeout = 30;
 
             command.ExecuteNonQuery();

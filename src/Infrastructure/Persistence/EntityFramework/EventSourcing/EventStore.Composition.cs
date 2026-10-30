@@ -2,6 +2,7 @@ using Application.Common.EventSourcing;
 using Application.Common.Validation.FluentValidation;
 
 using Core.Common.Domain.EventSourcing;
+using Core.Todos.Items;
 using Core.Todos.Reminders;
 
 using FluentValidation;
@@ -48,6 +49,7 @@ public static class EventStoreComposition
         builder.Services.TryAddScoped<IProjectionCheckpointStore, EfCoreProjectionCheckpointStore>();
         builder.Services.TryAddScoped(typeof(IEventSourcedRepository<,>), typeof(EventSourcedRepository<,>));
         builder.Services.TryAddScoped<IAggregateFactory<TodoReminder>, TodoReminderFactory>();
+        builder.Services.TryAddScoped<IAggregateFactory<Todo>, TodoFactory>();
         builder.Services.TryAddScoped<IProjection, TodoReminderProjection>();
         // Register: TryAddEnumerable deduplicates by implementation type, so repeated composition keeps one todo projection.
         builder.Services.TryAddEnumerable(ServiceDescriptor.Scoped<IProjection, TodoProjection>());
