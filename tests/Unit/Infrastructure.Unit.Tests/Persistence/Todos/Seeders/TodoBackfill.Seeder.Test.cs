@@ -142,7 +142,8 @@ public sealed class TodoBackfillSeederTest : IAsyncLifetime
             typeof(TodoCategoryAdded),
             typeof(TodoUpdated),
             typeof(TodoStatusChanged),
-            typeof(TodoDeleted));
+            typeof(TodoDeleted),
+            typeof(TodoUpdated));
 
         var created = (TodoCreated)events[0];
         created.TodoId.Should().Be(row.Id);
@@ -170,12 +171,18 @@ public sealed class TodoBackfillSeederTest : IAsyncLifetime
         deleted.OccurredAtUtc.Should().Be(_now.AddHours(3));
         deleted.Actor.Should().Be("deleter");
 
+        // Assert: the trailing update restores the legacy modified stamp that the status
+        // event would otherwise overwrite with CompletedAtUtc.
+        var restoredAudit = (TodoUpdated)events[6];
+        restoredAudit.ModifiedAtUtc.Should().Be(_now.AddHours(1));
+        restoredAudit.ModifiedBy.Should().Be("editor");
+
         // Assert: the legacy aggregate version is zeroed so the projection applies the replay.
         (await ReadVersionAsync(row.Id)).Should().Be(0);
 
         Snapshot snapshot = snapshots.Saved.Should().ContainSingle().Subject;
         snapshot.StreamId.Should().Be(streamId);
-        snapshot.Version.Should().Be(6);
+        snapshot.Version.Should().Be(7);
         snapshot.TakenOnUtc.Should().Be(_now);
 
         TodoSnapshot state = JsonSerializer.Deserialize<TodoSnapshot>(snapshot.State)!;
@@ -185,16 +192,73 @@ public sealed class TodoBackfillSeederTest : IAsyncLifetime
         state.CategoryIds.Should().Equal(categoryOne, categoryTwo);
         state.IsDeleted.Should().BeTrue();
         state.IsHardDeleted.Should().BeFalse();
-        state.Version.Should().Be(6);
+        state.ModifiedAtUtc.Should().Be(_now.AddHours(1));
+        state.ModifiedBy.Should().Be("editor");
+        state.Version.Should().Be(7);
 
         checkpoints.Positions.Should().ContainKey($"TodoBackfill:{row.Id}")
-            .WhoseValue.Should().Be(6);
+            .WhoseValue.Should().Be(7);
     }
 
-    [Fact(DisplayName = "Backfill should skip a row whose stream already exists")]
-    public async Task ExecuteAsync_WhenStreamExists_ShouldSkipTheRow()
+    [Fact(DisplayName = "Backfill should not append a trailing update when the status stamp matches")]
+    public async Task ExecuteAsync_WhenStatusStampMatchesModified_ShouldNotAppendATrailingUpdate()
+    {
+        // Arrange: the status event writes the same modified stamp, so no repair is needed.
+        TodoReadModel row = await SeedRowAsync(row =>
+        {
+            row.Status = TodoStatus.Completed;
+            row.CompletedAtUtc = _now.AddHours(1);
+            row.ModifiedAtUtc = _now.AddHours(1);
+            row.ModifiedBy = "editor";
+        });
+        var eventStore = new InMemoryEventStore();
+        TodoBackfillSeeder seeder = CreateSeeder(eventStore: eventStore);
+
+        // Act
+        Result result = await seeder.ExecuteAsync(CreateInitializationContext());
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        List<IDomainEvent> events = eventStore.Events(EventStreamName.For<Todo>(row.Id));
+        events.Select(domainEvent => domainEvent.GetType()).Should().Equal(
+            typeof(TodoCreated),
+            typeof(TodoUpdated),
+            typeof(TodoStatusChanged));
+    }
+
+    [Fact(DisplayName = "Backfill should skip a row whose stream and marker already exist")]
+    public async Task ExecuteAsync_WhenStreamAndMarkerExist_ShouldSkipTheRow()
     {
         // Arrange
+        TodoReadModel row = await SeedRowAsync(version: 42);
+        var eventStore = new InMemoryEventStore();
+        string streamId = EventStreamName.For<Todo>(row.Id);
+        await eventStore.AppendAsync(
+            streamId,
+            0,
+            [new TodoCreated(row.Id, row.TenantId, row.Title, null, row.Priority, null, null, row.CreatedAtUtc, row.CreatedBy)]);
+
+        var snapshots = new RecordingSnapshotStore();
+        var checkpoints = new RecordingCheckpointStore();
+        checkpoints.Positions[$"TodoBackfill:{row.Id}"] = 1;
+        TodoBackfillSeeder seeder = CreateSeeder(eventStore: eventStore, snapshots: snapshots, checkpoints: checkpoints);
+
+        // Act
+        Result result = await seeder.ExecuteAsync(CreateInitializationContext());
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        eventStore.AppendCalls.Should().Be(1);
+        eventStore.Events(streamId).Should().HaveCount(1);
+        snapshots.Saved.Should().BeEmpty();
+        checkpoints.Positions[$"TodoBackfill:{row.Id}"].Should().Be(1);
+        (await ReadVersionAsync(row.Id)).Should().Be(42);
+    }
+
+    [Fact(DisplayName = "Backfill should recover a missing marker without appending events")]
+    public async Task ExecuteAsync_WhenMarkerIsMissing_ShouldRecoverSnapshotAndMarker()
+    {
+        // Arrange: the stream exists from a crashed run, but the marker is still zero.
         TodoReadModel row = await SeedRowAsync(version: 42);
         var eventStore = new InMemoryEventStore();
         string streamId = EventStreamName.For<Todo>(row.Id);
@@ -208,14 +272,18 @@ public sealed class TodoBackfillSeederTest : IAsyncLifetime
         TodoBackfillSeeder seeder = CreateSeeder(eventStore: eventStore, snapshots: snapshots, checkpoints: checkpoints);
 
         // Act
-        Result result = await seeder.ExecuteAsync(CreateInitializationContext());
+        Result first = await seeder.ExecuteAsync(CreateInitializationContext());
+        Result second = await seeder.ExecuteAsync(CreateInitializationContext());
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
+        first.IsSuccess.Should().BeTrue();
+        second.IsSuccess.Should().BeTrue();
         eventStore.AppendCalls.Should().Be(1);
         eventStore.Events(streamId).Should().HaveCount(1);
-        snapshots.Saved.Should().BeEmpty();
-        checkpoints.Positions.Should().BeEmpty();
+        snapshots.Saved.Should().ContainSingle()
+            .Which.Version.Should().Be(1);
+        checkpoints.Positions.Should().ContainKey($"TodoBackfill:{row.Id}")
+            .WhoseValue.Should().Be(1);
         (await ReadVersionAsync(row.Id)).Should().Be(42);
     }
 
@@ -262,6 +330,23 @@ public sealed class TodoBackfillSeederTest : IAsyncLifetime
         eventStore.AppendCalls.Should().Be(2);
         eventStore.Events(EventStreamName.For<Todo>(older.Id)).Should().ContainSingle();
         eventStore.Events(EventStreamName.For<Todo>(newer.Id)).Should().ContainSingle();
+    }
+
+    [Fact(DisplayName = "Backfill should clamp a non-positive batch size to one row")]
+    public async Task ExecuteAsync_WithNonPositiveBatchSize_ShouldStillBackfill()
+    {
+        // Arrange
+        await SeedRowAsync();
+        await SeedRowAsync();
+        var eventStore = new InMemoryEventStore();
+        TodoBackfillSeeder seeder = CreateSeeder(eventStore: eventStore, batchSize: 0);
+
+        // Act
+        Result result = await seeder.ExecuteAsync(CreateInitializationContext());
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        eventStore.AppendCalls.Should().Be(1);
     }
 
     [Fact(DisplayName = "Backfill should proceed when the store reports StreamNotFound")]
@@ -377,7 +462,7 @@ public sealed class TodoBackfillSeederTest : IAsyncLifetime
             .Which.Code.Should().Be(EventSourcingOutcome.Codes.ProjectionCheckpointFailed);
     }
 
-    [Fact(DisplayName = "Backfill should forward the cancellation token")]
+    [Fact(DisplayName = "Backfill should forward the cancellation token to every store")]
     public async Task ExecuteAsync_ShouldForwardTheCancellationToken()
     {
         // Arrange
@@ -395,7 +480,20 @@ public sealed class TodoBackfillSeederTest : IAsyncLifetime
                 cancellation.Token))
             .ReturnsAsync(Result<long>.Success(1));
 
-        TodoBackfillSeeder seeder = CreateSeeder(eventStore: eventStore.Object);
+        var snapshots = new Mock<ISnapshotStore>();
+        snapshots
+            .Setup(store => store.SaveAsync(It.IsAny<Snapshot>(), cancellation.Token))
+            .ReturnsAsync(Result.Ok());
+        var checkpoints = new Mock<IProjectionCheckpointStore>();
+        checkpoints
+            .Setup(store => store.SavePositionAsync(
+                It.IsAny<string>(), It.IsAny<long>(), cancellation.Token))
+            .ReturnsAsync(Result.Ok());
+
+        TodoBackfillSeeder seeder = CreateSeeder(
+            eventStore: eventStore.Object,
+            snapshots: snapshots.Object,
+            checkpoints: checkpoints.Object);
 
         // Act
         Result result = await seeder.ExecuteAsync(
@@ -405,6 +503,20 @@ public sealed class TodoBackfillSeederTest : IAsyncLifetime
         result.IsSuccess.Should().BeTrue();
         eventStore.Verify(
             store => store.ReadStreamAsync(It.IsAny<string>(), 1, cancellation.Token),
+            Times.Once);
+        eventStore.Verify(
+            store => store.AppendAsync(
+                It.IsAny<string>(),
+                0,
+                It.IsAny<IReadOnlyCollection<IDomainEvent>>(),
+                cancellation.Token),
+            Times.Once);
+        snapshots.Verify(
+            store => store.SaveAsync(It.IsAny<Snapshot>(), cancellation.Token),
+            Times.Once);
+        checkpoints.Verify(
+            store => store.SavePositionAsync(
+                It.IsAny<string>(), It.IsAny<long>(), cancellation.Token),
             Times.Once);
     }
 

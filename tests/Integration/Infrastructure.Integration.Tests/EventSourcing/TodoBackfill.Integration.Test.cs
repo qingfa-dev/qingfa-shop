@@ -56,6 +56,7 @@ public sealed class TodoBackfillIntegrationTest(MessagingFixture fixture) : IAsy
         IDomainEventSerializer serializer = fixture.DomainSerializer;
 
         TodoReadModel row = CreateLegacyRow();
+        row.CompletedAtUtc.Should().NotBe(row.ModifiedAtUtc);
         db.Set<TodoReadModel>().Add(row);
         await db.SaveChangesAsync();
         db.ChangeTracker.Clear();
@@ -73,16 +74,16 @@ public sealed class TodoBackfillIntegrationTest(MessagingFixture fixture) : IAsy
         string streamId = EventStreamName.For<Todo>(row.Id);
         Result<IReadOnlyList<StoredEvent>> stream = await eventStore.ReadStreamAsync(streamId, 1);
         stream.IsSuccess.Should().BeTrue();
-        stream.Value.Should().HaveCount(6);
+        stream.Value.Should().HaveCount(7);
 
         Result<Maybe<Snapshot>> snapshot = await snapshots.LoadAsync(streamId);
         snapshot.IsSuccess.Should().BeTrue();
         snapshot.Value.HasValue.Should().BeTrue();
-        snapshot.Value.Value.Version.Should().Be(6);
+        snapshot.Value.Value.Version.Should().Be(7);
 
         Result<long> marker = await checkpoints.GetPositionAsync($"TodoBackfill:{row.Id}");
         marker.IsSuccess.Should().BeTrue();
-        marker.Value.Should().Be(6);
+        marker.Value.Should().Be(7);
 
         // Act: replay the stream through the real PostgreSQL projection.
         var runner = new ProjectionRunner(
@@ -97,18 +98,20 @@ public sealed class TodoBackfillIntegrationTest(MessagingFixture fixture) : IAsy
         projected.IsSuccess.Should().BeTrue();
         db.ChangeTracker.Clear();
         TodoReadModel replayed = await db.Set<TodoReadModel>().SingleAsync(todo => todo.Id == row.Id);
-        replayed.Version.Should().Be(6);
+        replayed.Version.Should().Be(7);
         replayed.TenantId.Should().Be(row.TenantId);
         replayed.Title.Should().Be(row.Title);
         replayed.Description.Should().Be(row.Description);
         replayed.Status.Should().Be(TodoStatus.Completed);
         replayed.Priority.Should().Be(TodoPriority.High);
         replayed.DueAtUtc.Should().Be(row.DueAtUtc);
+        replayed.CompletedAtUtc.Should().Be(_now.AddMinutes(45));
         replayed.CompletedAtUtc.Should().Be(row.CompletedAtUtc);
         replayed.ListId.Should().Be(row.ListId);
         replayed.CategoryIds.Should().Equal(row.CategoryIds);
         replayed.CreatedAtUtc.Should().Be(row.CreatedAtUtc);
         replayed.CreatedBy.Should().Be(row.CreatedBy);
+        replayed.ModifiedAtUtc.Should().Be(_now.AddMinutes(20));
         replayed.ModifiedAtUtc.Should().Be(row.ModifiedAtUtc);
         replayed.ModifiedBy.Should().Be(row.ModifiedBy);
         replayed.IsDeleted.Should().BeTrue();
@@ -122,8 +125,58 @@ public sealed class TodoBackfillIntegrationTest(MessagingFixture fixture) : IAsy
         second.IsSuccess.Should().BeTrue();
         Result<IReadOnlyList<StoredEvent>> unchanged = await eventStore.ReadStreamAsync(streamId, 1);
         unchanged.IsSuccess.Should().BeTrue();
-        unchanged.Value.Should().HaveCount(6);
-        (await ReadVersionAsync(db, row.Id)).Should().Be(6);
+        unchanged.Value.Should().HaveCount(7);
+        (await ReadVersionAsync(db, row.Id)).Should().Be(7);
+    }
+
+    [Fact(DisplayName = "Backfill should recover a missing marker after a partial run")]
+    public async Task Backfill_WhenMarkerAndSnapshotAreMissing_ShouldRecoverThem()
+    {
+        // Arrange
+        ApplicationDbContext db = fixture.DbContext;
+        IServiceProvider scoped = fixture.CurrentScope!.ServiceProvider;
+        IEventStore eventStore = scoped.GetRequiredService<IEventStore>();
+        ISnapshotStore snapshots = scoped.GetRequiredService<ISnapshotStore>();
+        IProjectionCheckpointStore checkpoints = scoped.GetRequiredService<IProjectionCheckpointStore>();
+
+        TodoReadModel row = CreateLegacyRow();
+        row.CompletedAtUtc.Should().NotBe(row.ModifiedAtUtc);
+        db.Set<TodoReadModel>().Add(row);
+        await db.SaveChangesAsync();
+        db.ChangeTracker.Clear();
+
+        TodoBackfillSeeder seeder = CreateSeeder(db, eventStore, snapshots, checkpoints);
+        IInitializationContext initialization = CreateInitializationContext(db, fixture.UnitOfWork);
+        string streamId = EventStreamName.For<Todo>(row.Id);
+        string marker = $"TodoBackfill:{row.Id}";
+
+        (await seeder.ExecuteAsync(initialization)).IsSuccess.Should().BeTrue();
+
+        // Arrange: simulate a crash after the append but before the artifacts were durable.
+        await db.Set<Snapshot>()
+            .Where(snapshot => snapshot.StreamId == streamId)
+            .ExecuteDeleteAsync();
+        (await checkpoints.SavePositionAsync(marker, 0)).IsSuccess.Should().BeTrue();
+        db.ChangeTracker.Clear();
+
+        // Act
+        Result recovered = await seeder.ExecuteAsync(initialization);
+
+        // Assert: the stream is untouched, while the snapshot and marker are re-created.
+        recovered.IsSuccess.Should().BeTrue();
+        Result<IReadOnlyList<StoredEvent>> stream = await eventStore.ReadStreamAsync(streamId, 1);
+        stream.IsSuccess.Should().BeTrue();
+        stream.Value.Should().HaveCount(7);
+
+        Result<Maybe<Snapshot>> snapshot = await snapshots.LoadAsync(streamId);
+        snapshot.IsSuccess.Should().BeTrue();
+        snapshot.Value.HasValue.Should().BeTrue();
+        snapshot.Value.Value.Version.Should().Be(7);
+
+        Result<long> restoredMarker = await checkpoints.GetPositionAsync(marker);
+        restoredMarker.IsSuccess.Should().BeTrue();
+        restoredMarker.Value.Should().Be(7);
+        (await ReadVersionAsync(db, row.Id)).Should().Be(0);
     }
 
     private TodoReadModel CreateLegacyRow()
@@ -141,12 +194,14 @@ public sealed class TodoBackfillIntegrationTest(MessagingFixture fixture) : IAsy
             Status = TodoStatus.Completed,
             Priority = TodoPriority.High,
             DueAtUtc = _now.AddDays(1),
-            CompletedAtUtc = _now.AddMinutes(30),
+            // Distinct completion and modification stamps prove the trailing update repairs
+            // the audit values that TodoStatusChanged would otherwise overwrite.
+            CompletedAtUtc = _now.AddMinutes(45),
             ListId = listId,
             CategoryIds = [categoryId, secondCategoryId],
             CreatedAtUtc = _now,
             CreatedBy = "creator",
-            ModifiedAtUtc = _now.AddMinutes(30),
+            ModifiedAtUtc = _now.AddMinutes(20),
             ModifiedBy = "editor",
             IsDeleted = true,
             DeletedAtUtc = _now.AddHours(1),
@@ -185,3 +240,4 @@ public sealed class TodoBackfillIntegrationTest(MessagingFixture fixture) : IAsy
             .Select(todo => todo.Version)
             .SingleAsync();
     }
+}

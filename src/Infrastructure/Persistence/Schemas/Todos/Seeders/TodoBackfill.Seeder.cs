@@ -19,9 +19,17 @@ namespace Infrastructure.Persistence.Schemas.Todos.Seeders;
 /// Backfills event streams for todo rows created before the event-sourced cutover.
 /// </summary>
 /// <remarks>
+/// <para>
 /// Rows are replayed into the existing read model, so the seeder resets the legacy
 /// projection version before appending. The stream identifier is the idempotency key:
-/// a row whose <c>todo:{id}</c> stream already exists is skipped.
+/// a row whose <c>todo:{id}</c> stream already exists is skipped once its marker exists.
+/// </para>
+/// <para>
+/// Rows written to <c>projection_checkpoints</c> as <c>TodoBackfill:{id}</c> store the
+/// backfilled stream version, not a global event-log position. They are one-shot markers
+/// for this migration seeder, not positions consumed by a projection runner, which is why
+/// reusing that table is acceptable here.
+/// </para>
 /// </remarks>
 public sealed class TodoBackfillSeeder(
     DbContext context,
@@ -33,6 +41,12 @@ public sealed class TodoBackfillSeeder(
 {
     /// <summary>Rows fetched per page; the batch setting caps how many rows are backfilled.</summary>
     private const int PageSize = 100;
+
+    /// <summary>Smallest batch that can still make progress.</summary>
+    private const int MinimumBatchSize = 1;
+
+    /// <summary>Upper bound that keeps one initialization pass bounded.</summary>
+    private const int MaximumBatchSize = 10_000;
 
     /// <inheritdoc />
     public string Name => "seeder:todo-backfill";
@@ -64,16 +78,13 @@ public sealed class TodoBackfillSeeder(
         if (!setting.Value.BackfillTodos)
             return Result.Ok();
 
-        int batchSize = setting.Value.BatchSize;
+        int batchSize = ResolveBatchSize();
         int backfilled = 0;
         int offset = 0;
 
         while (backfilled < batchSize)
         {
-            List<TodoReadModel> page = await LoadPageAsync(
-                offset,
-                Math.Min(PageSize, batchSize - backfilled),
-                cancellationToken);
+            List<TodoReadModel> page = await LoadPageAsync(offset, cancellationToken);
             if (page.Count == 0)
                 break;
 
@@ -85,7 +96,7 @@ public sealed class TodoBackfillSeeder(
                 if (result.IsFailure)
                     return Result.Fail(result.Errors);
 
-                // Check: false means the row already had a stream and was left untouched.
+                // Check: false means the row was already complete or only needed artifact recovery.
                 if (!result.Value)
                     continue;
 
@@ -120,16 +131,13 @@ public sealed class TodoBackfillSeeder(
             ]);
         }
 
-        int batchSize = setting.Value.BatchSize;
+        int batchSize = ResolveBatchSize();
         List<InitializationOperation> operations = [];
         int offset = 0;
 
         while (operations.Count < batchSize)
         {
-            List<TodoReadModel> page = await LoadPageAsync(
-                offset,
-                Math.Min(PageSize, batchSize - operations.Count),
-                cancellationToken);
+            List<TodoReadModel> page = await LoadPageAsync(offset, cancellationToken);
             if (page.Count == 0)
                 break;
 
@@ -138,12 +146,13 @@ public sealed class TodoBackfillSeeder(
             foreach (TodoReadModel row in page)
             {
                 string streamId = EventStreamName.For<Todo>(row.Id);
-                Result<bool> hasStream = await HasStreamAsync(streamId, cancellationToken);
-                if (hasStream.IsFailure)
-                    return Result<IReadOnlyList<InitializationOperation>>.Fail(hasStream.Errors);
+                Result<IReadOnlyList<StoredEvent>> existing = await LoadStreamAsync(
+                    streamId, cancellationToken);
+                if (existing.IsFailure)
+                    return Result<IReadOnlyList<InitializationOperation>>.Fail(existing.Errors);
 
                 // Filter: rows with a stream are already backfilled.
-                if (hasStream.Value)
+                if (existing.Value.Count > 0)
                     continue;
 
                 operations.Add(new InitializationOperation
@@ -173,36 +182,64 @@ public sealed class TodoBackfillSeeder(
         return Result<IReadOnlyList<InitializationOperation>>.Success(operations);
     }
 
+    /// <summary>Resolves a batch size that cannot silently report no work.</summary>
+    private int ResolveBatchSize()
+        => Math.Clamp(setting.Value.BatchSize, MinimumBatchSize, MaximumBatchSize);
+
     /// <summary>Loads one stable page of todo rows in creation order.</summary>
     private async Task<List<TodoReadModel>> LoadPageAsync(
         int offset,
-        int take,
         CancellationToken cancellationToken)
         => await context.Set<TodoReadModel>()
             .AsNoTracking()
             .OrderBy(todo => todo.CreatedAtUtc)
             .ThenBy(todo => todo.Id)
             .Skip(offset)
-            .Take(take)
+            .Take(PageSize)
             .ToListAsync(cancellationToken);
 
-    /// <summary>Backfills one row, returning false when its stream already exists.</summary>
+    /// <summary>Backfills one row, returning false when no new events were appended.</summary>
     private async Task<Result<bool>> BackfillRowAsync(
         TodoReadModel row,
         CancellationToken cancellationToken)
     {
         string streamId = EventStreamName.For<Todo>(row.Id);
+        string marker = MarkerName(row.Id);
 
-        // Check: an existing stream means this row was already migrated or replayed.
-        Result<bool> hasStream = await HasStreamAsync(streamId, cancellationToken);
-        if (hasStream.IsFailure)
-            return Result<bool>.Fail(hasStream.Errors);
-        if (hasStream.Value)
-            return Result<bool>.Success(false);
+        // Check: because the store may report a missing stream as an empty success, the
+        // empty list is the authoritative "no stream" signal.
+        Result<IReadOnlyList<StoredEvent>> existing = await LoadStreamAsync(
+            streamId, cancellationToken);
+        if (existing.IsFailure)
+            return Result<bool>.Fail(existing.Errors);
+
+        if (existing.Value.Count > 0)
+        {
+            Result<long> position = await checkpoints.GetPositionAsync(marker, cancellationToken);
+            if (position.IsFailure)
+                return Result<bool>.Fail(position.Errors);
+
+            // Skip: a positive marker means a previous run finished this row.
+            if (position.Value > 0)
+                return Result<bool>.Success(false);
+
+            // Audit: the stream exists but the marker was lost, so re-save the artifacts
+            // idempotently instead of leaving the row unmigrated forever.
+            long version = existing.Value[^1].Version;
+            Result recoveredSnapshot = await SaveSnapshotAsync(row, version, cancellationToken);
+            if (recoveredSnapshot.IsFailure)
+                return Result<bool>.Fail(recoveredSnapshot.Errors);
+
+            Result recoveredMarker = await checkpoints.SavePositionAsync(
+                marker, version, cancellationToken);
+            return recoveredMarker.IsFailure
+                ? Result<bool>.Fail(recoveredMarker.Errors)
+                : Result<bool>.Success(false);
+        }
 
         IReadOnlyList<IDomainEvent> events = BuildEvents(row);
 
-        // Reset: a legacy row's Version is an aggregate version, not a stream version.
+        // Update: a legacy row's Version is an aggregate version, not a stream version.
         // Zeroing it lets the projection's Version guard apply the replayed events.
         await context.Set<TodoReadModel>()
             .Where(todo => todo.Id == row.Id)
@@ -210,34 +247,26 @@ public sealed class TodoBackfillSeeder(
                 setters => setters.SetProperty(todo => todo.Version, 0L),
                 cancellationToken);
 
-        // Append: the stream starts empty by construction, so the expected version is 0.
+        // Call: the stream starts empty by construction, so the expected version is 0.
         Result<long> appended = await eventStore.AppendAsync(
             streamId, 0, events, cancellationToken);
         if (appended.IsFailure)
             return Result<bool>.Fail(appended.Errors);
 
-        // Persist: the snapshot mirrors the same state the projection will replay to.
-        Result snapshot = await snapshotStore.SaveAsync(
-            new Snapshot(
-                streamId,
-                events.Count,
-                JsonSerializer.Serialize(ToSnapshot(row, events.Count)),
-                clock.GetUtcNow()),
-            cancellationToken);
+        Result snapshot = await SaveSnapshotAsync(row, events.Count, cancellationToken);
         if (snapshot.IsFailure)
             return Result<bool>.Fail(snapshot.Errors);
 
-        // Mark: the per-row checkpoint records that this stream was backfilled.
-        Result marker = await checkpoints.SavePositionAsync(
-            $"TodoBackfill:{row.Id}", events.Count, cancellationToken);
-        if (marker.IsFailure)
-            return Result<bool>.Fail(marker.Errors);
+        Result savedMarker = await checkpoints.SavePositionAsync(
+            marker, events.Count, cancellationToken);
+        if (savedMarker.IsFailure)
+            return Result<bool>.Fail(savedMarker.Errors);
 
         return Result<bool>.Success(true);
     }
 
-    /// <summary>Reports whether a stream has at least one stored event.</summary>
-    private async Task<Result<bool>> HasStreamAsync(
+    /// <summary>Reads an existing stream, folding the missing-stream signal into an empty list.</summary>
+    private async Task<Result<IReadOnlyList<StoredEvent>>> LoadStreamAsync(
         string streamId,
         CancellationToken cancellationToken)
     {
@@ -245,16 +274,29 @@ public sealed class TodoBackfillSeeder(
             streamId, 1, cancellationToken);
 
         if (existing.IsSuccess)
-            return Result<bool>.Success(existing.Value.Count > 0);
+            return existing;
 
         // Fallback: some event-store implementations signal a missing stream as a failure.
         bool missing = existing.Errors.Exists(
             error => error.Code == EventSourcingOutcome.Codes.StreamNotFound);
 
         return missing
-            ? Result<bool>.Success(false)
-            : Result<bool>.Fail(existing.Errors);
+            ? Result<IReadOnlyList<StoredEvent>>.Success([])
+            : Result<IReadOnlyList<StoredEvent>>.Fail(existing.Errors);
     }
+
+    /// <summary>Persists the snapshot shape that the aggregate would capture.</summary>
+    private async Task<Result> SaveSnapshotAsync(
+        TodoReadModel row,
+        long version,
+        CancellationToken cancellationToken)
+        => await snapshotStore.SaveAsync(
+            new Snapshot(
+                EventStreamName.For<Todo>(row.Id),
+                version,
+                JsonSerializer.Serialize(ToSnapshot(row, version)),
+                clock.GetUtcNow()),
+            cancellationToken);
 
     /// <summary>Builds the ordered event history that reproduces the current row.</summary>
     private static IReadOnlyList<IDomainEvent> BuildEvents(TodoReadModel row)
@@ -276,12 +318,13 @@ public sealed class TodoBackfillSeeder(
                 row.ListId, row.ModifiedAtUtc.Value, row.ModifiedBy));
         }
 
+        DateTimeOffset? statusOccurredAt = null;
         if (row.Status != TodoStatus.Pending)
         {
+            statusOccurredAt = row.CompletedAtUtc ?? row.ModifiedAtUtc ?? row.CreatedAtUtc;
             events.Add(new TodoStatusChanged(
                 row.Id, row.TenantId, TodoStatus.Pending, row.Status,
-                row.CompletedAtUtc ?? row.ModifiedAtUtc ?? row.CreatedAtUtc,
-                row.ModifiedBy));
+                statusOccurredAt.Value, row.ModifiedBy));
         }
 
         if (row.IsDeleted)
@@ -292,8 +335,22 @@ public sealed class TodoBackfillSeeder(
                 row.DeletedBy));
         }
 
+        // Update: a status replay overwrites the modified stamp, so restore the legacy
+        // row's real audit values with a trailing update when the timestamps differ.
+        if (row.ModifiedAtUtc is not null &&
+            statusOccurredAt is not null &&
+            row.ModifiedAtUtc.Value != statusOccurredAt.Value)
+        {
+            events.Add(new TodoUpdated(
+                row.Id, row.Title, row.Description, row.Priority, row.DueAtUtc,
+                row.ListId, row.ModifiedAtUtc.Value, row.ModifiedBy));
+        }
+
         return events;
     }
+
+    /// <summary>Stable per-row marker name outside the projection checkpoint namespace.</summary>
+    private static string MarkerName(Guid id) => $"TodoBackfill:{id}";
 
     /// <summary>Maps the row to the aggregate snapshot shape.</summary>
     private static TodoSnapshot ToSnapshot(TodoReadModel row, long version)
