@@ -2,11 +2,9 @@ using System.Text.Json;
 
 using Core.Common.Monad.Results;
 
-using Infrastructure.Integrations.Serialization;
-
 using Microsoft.AspNetCore.Http;
 
-namespace Web.Api.Endpoints.Results;
+namespace Infrastructure.Integrations.Serialization;
 
 /// <summary>Writes a value-less <see cref="Result"/> with its own status code.</summary>
 public sealed class ApiResult : IResult

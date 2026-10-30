@@ -9,7 +9,7 @@ using Core.Common.Monad.Results;
 using Microsoft.AspNetCore.Http;
 
 using Web.Api.Endpoints.Identity;
-using Web.Api.Endpoints.Results;
+using Infrastructure.Integrations.Serialization;
 
 using ExternalAuthOption = Application.Common.Security.Authentication.Identity.ExternalAuthOption;
 using ExternalProviderModel = Application.Common.Security.Authentication.Identity.ExternalProviderModel;

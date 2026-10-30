@@ -1,103 +1,27 @@
-using System.Text.Json;
-
-using Carter;
-
 using Application;
-
-using Core.Common.Monad.Errors;
-using Core.Common.Monad.Results;
 
 using Infrastructure;
 
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.Extensions.DependencyInjection.Extensions;
-
 using ServiceDefaults;
 
-using Web.Api.Endpoints.Authorization;
-using Infrastructure.Integrations.Serialization;
-using Web.Api.Endpoints.Identity;
-using Web.Api.Endpoints.Results;
-using Web.Api.Endpoints.Todos;
+using Web.Api.Composition;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
-// Register: Service defaults (OpenTelemetry, health checks, resilience, service discovery).
+// Register: service defaults, then the Application and Infrastructure roots.
 builder.AddServiceDefaults();
-
-// Register: Application layer services (MediatR, validators, Mapster).
 builder.AddApplication();
-
-// Register: Infrastructure layer services (EF Core, caching, repositories, query maps).
 builder.AddInfrastructure();
 
-// Register: Carter endpoint modules (the permission catalog and checks).
-builder.Services.AddCarter(configurator: configurator =>
-{
-    configurator.WithModule<PermissionRegistryEndpoint>();
-    configurator.WithModule<IdentityEndpoint>();
-    configurator.WithModule<TodoEndpoint>();
-    configurator.WithModule<TodoListEndpoint>();
-    configurator.WithModule<TodoCategoryEndpoint>();
-    configurator.WithModule<TodoReminderEndpoint>();
-});
-
-// Register: one-time external sign-in codes live in the distributed cache.
-builder.Services.AddScoped<ExternalCodeStore>();
-
-// Initialize: production uses the system clock; TryAdd lets a test host replace it
-// with FakeTimeProvider without touching this composition.
-builder.Services.TryAddSingleton(TimeProvider.System);
-
-// Initialize: validation failures are client errors. The default handler covers
-// everything else as a 500 problem response.
-builder.Services.AddProblemDetails();
-
-// Initialize: one serializer governs request binding and response writing, so
-// results and endpoint payloads share naming, enum, escaping, and null rules.
-builder.AddApiJsonOptions();
-
-// Initialize: authentication failures keep the Result contract instead of writing
-// an empty body or ProblemDetails that clients would have to special-case.
-builder.Services.Configure<JwtBearerOptions>(
-    JwtBearerDefaults.AuthenticationScheme,
-    options =>
-    {
-        options.Events ??= new JwtBearerEvents();
-
-        options.Events.OnChallenge = async context =>
-        {
-            // Preserve: HandleResponse suppresses the framework's challenge, including
-            // its WWW-Authenticate header, so the scheme advertises itself here.
-            context.Response.Headers.WWWAuthenticate = JwtBearerDefaults.AuthenticationScheme;
-
-            context.HandleResponse();
-            await Result.Fail(Error.Unauthorized(
-                    "Authentication.Required",
-                    "Authentication is required."))
-                .ToApiResult()
-                .ExecuteAsync(context.HttpContext);
-        };
-
-        options.Events.OnForbidden = context => Result.Fail(Error.Forbidden(
-                "Authorization.Forbidden",
-                "The caller is not allowed to perform this operation."))
-            .ToApiResult()
-            .ExecuteAsync(context.HttpContext);
-    });
+// Register: the HTTP surface and its feature modules.
+builder.AddApi();
 
 WebApplication app = builder.Build();
 
-// Initialize: warm application services and run the persistence pipeline when configured.
+// Initialize: warm application services and run the persistence pipeline.
 app.UseInfrastructure();
 
-app.UseExceptionHandler();
-
-app.MapCarter();
-app.MapDefaultEndpoints();
-
-// Handle: /time exposes the injected TimeProvider so integration tests can prove the
-// fake clock is wired through DI rather than the endpoint reading the system clock.
-app.MapGet("/time", (TimeProvider clock) => Results.Json(new { utcNow = clock.GetUtcNow() }));
+// Map: Carter modules, health endpoints, and the clock probe.
+app.UseApi();
 
 app.Run();

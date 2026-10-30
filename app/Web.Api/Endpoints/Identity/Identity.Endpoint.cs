@@ -12,9 +12,10 @@ using Core.Common.Monad.Results;
 
 using Microsoft.AspNetCore.Authentication;
 
-using Web.Api.Endpoints.Results;
+using Infrastructure.Integrations.Serialization;
 
 using ApplicationLogoutRequest = Application.Common.Security.Authentication.Identity.LogoutRequest;
+
 
 namespace Web.Api.Endpoints.Identity;
 

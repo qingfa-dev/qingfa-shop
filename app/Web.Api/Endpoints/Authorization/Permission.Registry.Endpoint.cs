@@ -11,7 +11,7 @@ using Application.Common.Security.Authorization.Registry;
 
 using Infrastructure.Security.Identity.Domain.Roles;
 
-using Web.Api.Endpoints.Results;
+using Infrastructure.Integrations.Serialization;
 
 namespace Web.Api.Endpoints.Authorization;
 

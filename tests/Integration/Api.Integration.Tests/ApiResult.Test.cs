@@ -6,7 +6,7 @@ using Core.Common.Monad.Results;
 
 using Microsoft.AspNetCore.Http;
 
-using Web.Api.Endpoints.Results;
+using Infrastructure.Integrations.Serialization;
 
 namespace Api.Integration.Tests;
 

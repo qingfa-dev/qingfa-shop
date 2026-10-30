@@ -2,7 +2,7 @@ using Core.Common.Monad.Results;
 
 using Microsoft.AspNetCore.Http;
 
-namespace Web.Api.Endpoints.Results;
+namespace Infrastructure.Integrations.Serialization;
 
 /// <summary>Maps a monadic result to the shared HTTP result.</summary>
 public static class ApiResultExtension

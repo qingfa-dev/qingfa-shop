@@ -165,6 +165,8 @@ public static class AuthenticationComposition
             });
         }
 
+        services.AddAuthenticationResultContract();
+
         return builder;
     }
 
