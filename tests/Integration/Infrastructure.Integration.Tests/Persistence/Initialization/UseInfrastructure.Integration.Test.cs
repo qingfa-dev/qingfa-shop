@@ -84,6 +84,8 @@ public sealed class UseInfrastructureIntegrationTest(PersistenceInitializationFi
             ["EfCore:ConnectionStringName"] = "Default",
             ["EfCore:Provider"] = "PostgreSQL",
             ["Caching:Enabled"] = "false",
+            ["Messaging:Enabled"] = "false",
+            ["Outbox:Enabled"] = "false",
             ["Persistence:AutoMigrate"] = autoMigrate.ToString(),
             ["Persistence:Seed"] = seed.ToString(),
         });
