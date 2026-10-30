@@ -26,6 +26,8 @@ public sealed class EventSourcedAggregateTest
 
         public void Rename(string name) => Raise(new Renamed(name));
 
+        public void RestoreVersionFromSnapshot(long version) => RestoreVersion(version);
+
         public void Break() => Raise(new Unknown("x"));
 
         protected override void When(IDomainEvent domainEvent)
@@ -169,6 +171,25 @@ public sealed class EventSourcedAggregateTest
         aggregate.UncommittedEvents.Should().BeEmpty();
         aggregate.Version.Should().Be(1);
         aggregate.Name.Should().Be("first");
+    }
+
+    [Fact]
+    public void RestoreVersion_SetsTheVersionWithoutMarkingHistoryLoaded()
+    {
+        // Arrange
+        var aggregate = new TestAggregate();
+
+        // Act
+        aggregate.RestoreVersionFromSnapshot(7);
+
+        // Assert: the snapshot position survives, and replay can still continue after it.
+        aggregate.Version.Should().Be(7);
+
+        Result replayed = aggregate.TryLoadFromHistory(8, [new Renamed("later")]);
+
+        replayed.IsSuccess.Should().BeTrue();
+        aggregate.Version.Should().Be(8);
+        aggregate.Name.Should().Be("later");
     }
 
     [Fact]

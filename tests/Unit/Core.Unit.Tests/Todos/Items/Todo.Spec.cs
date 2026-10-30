@@ -142,6 +142,22 @@ public sealed class TodoSpec
     }
 
     [Fact]
+    public void Create_MissingCreationInstant_ShouldFailWithCreatedAtRequired()
+    {
+        ShouldFailWith(
+            Todo.Create(TodoId, TenantId, "Buy milk", nowUtc: default, actor: "alice"),
+            "Todo.CreatedAt.Required");
+    }
+
+    [Fact]
+    public void Create_BlankActor_ShouldStoreNull()
+    {
+        var result = Todo.Create(TodoId, TenantId, "Buy milk", CreatedAt, "   ");
+
+        result.Value.CreatedBy.Should().BeNull();
+    }
+
+    [Fact]
     public void Create_BlankTitle_ShouldFailWithTitleRequired()
     {
         ShouldFailWith(
@@ -203,6 +219,29 @@ public sealed class TodoSpec
         result.Value.IsDeleted.Should().BeFalse();
         result.Value.DeletedAtUtc.Should().BeNull();
         result.Value.DeletedBy.Should().BeNull();
+    }
+
+    [Fact]
+    public void CategoryIds_ShouldBeAReadOnlyView()
+    {
+        Todo todo = NewTodo();
+
+        Action add = () => todo.CategoryIds.Add(Guid.NewGuid());
+
+        add.Should().Throw<NotSupportedException>();
+        todo.CategoryIds.Should().BeEmpty();
+        todo.Version.Should().Be(1);
+    }
+
+    [Fact]
+    public void Update_BlankActor_ShouldStoreNull()
+    {
+        Todo todo = NewTodo();
+
+        todo.Update("Buy milk", null, TodoPriority.Medium, null, null, Later, "   ")
+            .IsSuccess.Should().BeTrue();
+
+        todo.ModifiedBy.Should().BeNull();
     }
 
     [Fact]
@@ -690,6 +729,16 @@ public sealed class TodoSpec
 
         var deleted = todo.UncommittedEvents.OfType<TodoDeleted>().Should().ContainSingle().Subject;
         deleted.IsHard.Should().BeTrue();
+    }
+
+    [Fact]
+    public void Delete_BlankActor_ShouldStoreNull()
+    {
+        Todo todo = NewTodo();
+
+        todo.Delete(isHard: false, Later, "   ").IsSuccess.Should().BeTrue();
+
+        todo.DeletedBy.Should().BeNull();
     }
 
     [Fact]

@@ -109,7 +109,7 @@ public abstract class EventSourcedAggregate<TKey> : IEventSourcedAggregate<TKey>
     /// <param name="version">The stream version captured in the snapshot.</param>
     protected void RestoreVersion(long version)
     {
-        // Restore: A snapshot stands in for history, so the version must not reset to zero
+        // Initialize: A snapshot stands in for history, so the version must not reset to zero
         // before the caller replays any events newer than the snapshot.
         Version = version;
     }

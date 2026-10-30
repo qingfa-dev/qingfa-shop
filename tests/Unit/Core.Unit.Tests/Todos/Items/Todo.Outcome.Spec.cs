@@ -48,6 +48,13 @@ public sealed class TodoOutcomeSpec
     }
 
     [Fact]
+    public void CreatedAtRequired_ShouldBeBadRequest()
+    {
+        TodoOutcome.Failure.CreatedAtRequired.Status.Should().Be(400);
+        TodoOutcome.Failure.CreatedAtRequired.Code.Should().Be("Todo.CreatedAt.Required");
+    }
+
+    [Fact]
     public void CategoryRequired_ShouldBeBadRequest()
     {
         TodoOutcome.Failure.CategoryRequired.Status.Should().Be(400);
@@ -115,6 +122,7 @@ public sealed class TodoOutcomeSpec
             TodoOutcome.Failure.StatusInvalid.Code,
             TodoOutcome.Failure.PriorityInvalid.Code,
             TodoOutcome.Failure.DueAtBeforeCreated.Code,
+            TodoOutcome.Failure.CreatedAtRequired.Code,
             TodoOutcome.Failure.CategoryRequired.Code,
             TodoOutcome.Failure.CategoryDuplicate.Code,
             TodoOutcome.Failure.CategoryNotFound.Code,

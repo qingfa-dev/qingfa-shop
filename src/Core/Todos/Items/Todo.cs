@@ -1,3 +1,4 @@
+using System.Collections.ObjectModel;
 using System.Text.Json;
 
 using Core.Common.Domain.Events;
@@ -9,13 +10,17 @@ namespace Core.Todos.Items;
 /// <summary>An event-sourced unit of work with a lifecycle, a priority, and optional references.</summary>
 public sealed class Todo : EventSourcedAggregate<Guid>, ITodo, ISnapshotable
 {
+    private static readonly JsonSerializerOptions SnapshotOptions = new();
+
     private readonly List<Guid> _categoryIds = [];
+    private readonly ReadOnlyCollection<Guid> _categoryIdsView;
 
     internal Todo()
     {
         Title = string.Empty;
         Status = TodoConstant.Defaults.Status;
         Priority = TodoConstant.Defaults.Priority;
+        _categoryIdsView = _categoryIds.AsReadOnly();
     }
 
     /// <inheritdoc />
@@ -40,7 +45,7 @@ public sealed class Todo : EventSourcedAggregate<Guid>, ITodo, ISnapshotable
     public Guid? ListId { get; private set; }
 
     /// <inheritdoc />
-    public ICollection<Guid> CategoryIds => _categoryIds;
+    public ICollection<Guid> CategoryIds => _categoryIdsView;
 
     /// <inheritdoc />
     public bool IsCompleted => Status == TodoStatus.Completed;
@@ -92,9 +97,13 @@ public sealed class Todo : EventSourcedAggregate<Guid>, ITodo, ISnapshotable
             DueAtUtc = dueAtUtc?.ToUniversalTime(),
             ListId = listId,
             CreatedAtUtc = nowUtc.ToUniversalTime(),
-            CreatedBy = actor?.Trim(),
+            CreatedBy = NormalizeActor(actor),
             Status = TodoConstant.Defaults.Status,
         };
+
+        // Guard: A created todo must carry its creation instant.
+        if (candidate.CreatedAtUtc == default)
+            return Result<Todo>.Fail(TodoOutcome.Failure.CreatedAtRequired);
 
         Result<Todo> validated = TodoValidator.Validate(candidate);
         if (validated.IsFailure)
@@ -128,15 +137,15 @@ public sealed class Todo : EventSourcedAggregate<Guid>, ITodo, ISnapshotable
         DateTimeOffset nowUtc,
         string? actor)
     {
-        // Guard: a deleted todo is immutable until restored.
-        if (IsDeleted)
-            return Result.Fail(TodoOutcome.Failure.DeletedNotMutable);
+        Result validation = TodoValidator.ValidateNotDeleted(IsDeleted);
+        if (validation.IsFailure)
+            return validation;
 
         var normalizedTitle = title?.Trim() ?? string.Empty;
         var normalizedDescription = description?.Trim();
         var normalizedDue = dueAtUtc?.ToUniversalTime();
 
-        Result validation = TodoValidator.ValidateTitle(normalizedTitle);
+        validation = TodoValidator.ValidateTitle(normalizedTitle);
         if (validation.IsFailure)
             return validation;
 
@@ -164,7 +173,7 @@ public sealed class Todo : EventSourcedAggregate<Guid>, ITodo, ISnapshotable
             normalizedDue,
             listId,
             nowUtc.ToUniversalTime(),
-            actor?.Trim()));
+            NormalizeActor(actor)));
 
         return Result.Ok();
     }
@@ -196,7 +205,7 @@ public sealed class Todo : EventSourcedAggregate<Guid>, ITodo, ISnapshotable
         if (validation.IsFailure)
             return validation;
 
-        Raise(new TodoListChanged(Id, listId, nowUtc.ToUniversalTime(), actor?.Trim()));
+        Raise(new TodoListChanged(Id, listId, nowUtc.ToUniversalTime(), NormalizeActor(actor)));
         return Result.Ok();
     }
 
@@ -207,7 +216,7 @@ public sealed class Todo : EventSourcedAggregate<Guid>, ITodo, ISnapshotable
         if (validation.IsFailure)
             return validation;
 
-        Raise(new TodoListChanged(Id, null, nowUtc.ToUniversalTime(), actor?.Trim()));
+        Raise(new TodoListChanged(Id, null, nowUtc.ToUniversalTime(), NormalizeActor(actor)));
         return Result.Ok();
     }
 
@@ -222,7 +231,7 @@ public sealed class Todo : EventSourcedAggregate<Guid>, ITodo, ISnapshotable
         if (validation.IsFailure)
             return validation;
 
-        Raise(new TodoCategoryAdded(Id, categoryId, nowUtc.ToUniversalTime(), actor?.Trim()));
+        Raise(new TodoCategoryAdded(Id, categoryId, nowUtc.ToUniversalTime(), NormalizeActor(actor)));
         return Result.Ok();
     }
 
@@ -236,29 +245,29 @@ public sealed class Todo : EventSourcedAggregate<Guid>, ITodo, ISnapshotable
         if (!_categoryIds.Contains(categoryId))
             return Result.Fail(TodoOutcome.Failure.CategoryNotFound);
 
-        Raise(new TodoCategoryRemoved(Id, categoryId, nowUtc.ToUniversalTime(), actor?.Trim()));
+        Raise(new TodoCategoryRemoved(Id, categoryId, nowUtc.ToUniversalTime(), NormalizeActor(actor)));
         return Result.Ok();
     }
 
     /// <summary>Soft- or hard-deletes the todo. A hard delete removes the projection row.</summary>
     public Result Delete(bool isHard, DateTimeOffset nowUtc, string? actor)
     {
-        // Guard: a soft-deleted todo stays deleted without raising another event.
+        // Handle: Repeating a soft delete is an intentional idempotent no-op; no event is raised.
         if (IsDeleted && !isHard)
             return Result.Ok();
 
-        Raise(new TodoDeleted(Id, isHard, nowUtc.ToUniversalTime(), actor?.Trim()));
+        Raise(new TodoDeleted(Id, isHard, nowUtc.ToUniversalTime(), NormalizeActor(actor)));
         return Result.Ok();
     }
 
     /// <summary>Restores a soft-deleted todo.</summary>
     public Result Restore(DateTimeOffset nowUtc, string? actor)
     {
-        // Guard: a live todo has nothing to restore.
+        // Handle: Restoring a live todo is an intentional idempotent no-op; no event is raised.
         if (!IsDeleted)
             return Result.Ok();
 
-        Raise(new TodoRestored(Id, nowUtc.ToUniversalTime(), actor?.Trim()));
+        Raise(new TodoRestored(Id, nowUtc.ToUniversalTime(), NormalizeActor(actor)));
         return Result.Ok();
     }
 
@@ -282,12 +291,22 @@ public sealed class Todo : EventSourcedAggregate<Guid>, ITodo, ISnapshotable
             IsDeleted,
             DeletedAtUtc,
             DeletedBy,
-            Version));
+            Version),
+            SnapshotOptions);
 
     /// <inheritdoc />
     public void RestoreSnapshot(string state)
     {
-        TodoSnapshot? snapshot = JsonSerializer.Deserialize<TodoSnapshot>(state);
+        TodoSnapshot? snapshot;
+        try
+        {
+            snapshot = JsonSerializer.Deserialize<TodoSnapshot>(state, SnapshotOptions);
+        }
+        catch (JsonException exception)
+        {
+            // Boundary: a corrupt snapshot is a storage invariant failure; the repository falls back to replay.
+            throw new InvalidOperationException("The todo snapshot is invalid.", exception);
+        }
 
         // Boundary: a corrupt snapshot is a storage invariant failure; the repository falls back to replay.
         if (snapshot is null)
@@ -391,6 +410,12 @@ public sealed class Todo : EventSourcedAggregate<Guid>, ITodo, ISnapshotable
         }
     }
 
+    private static string? NormalizeActor(string? actor)
+    {
+        var trimmed = actor?.Trim();
+        return string.IsNullOrEmpty(trimmed) ? null : trimmed;
+    }
+
     private Result Transition(TodoStatus next, DateTimeOffset nowUtc, string? actor)
     {
         Result validation = TodoValidator.ValidateNotDeleted(IsDeleted);
@@ -407,7 +432,7 @@ public sealed class Todo : EventSourcedAggregate<Guid>, ITodo, ISnapshotable
             Status,
             next,
             nowUtc.ToUniversalTime(),
-            actor?.Trim()));
+            NormalizeActor(actor)));
 
         return Result.Ok();
     }

@@ -139,7 +139,70 @@ public sealed class TodoEventSourcedSpec
         restored.Title.Should().Be(todo.Title);
         restored.Status.Should().Be(TodoStatus.InProgress);
         restored.CategoryIds.Should().BeEquivalentTo(todo.CategoryIds);
-        restored.Version.Should().Be(todo.Version);
+        restored.Version.Should().Be(3);
+        restored.CaptureSnapshot().Should().Be(state);
+    }
+
+    [Fact]
+    public void RestoreSnapshot_ThenRaise_ShouldContinueTheVersion()
+    {
+        Todo todo = Create();
+        todo.Start(Now.AddMinutes(1), "alice");
+        string state = todo.CaptureSnapshot();
+
+        Todo restored = new TodoFactory().Create();
+        restored.RestoreSnapshot(state);
+        restored.Version.Should().Be(2);
+
+        restored.Complete(Now.AddMinutes(2), "alice").IsSuccess.Should().BeTrue();
+
+        restored.Version.Should().Be(3);
+        restored.Status.Should().Be(TodoStatus.Completed);
+        restored.UncommittedEvents.Should().ContainSingle()
+            .Which.Should().BeOfType<TodoStatusChanged>();
+    }
+
+    [Fact]
+    public void RestoreSnapshot_ThenReplayLaterEvent_ShouldContinueTheVersion()
+    {
+        Todo live = Create();
+        live.Start(Now.AddMinutes(1), "alice");
+        string state = live.CaptureSnapshot();
+        live.Complete(Now.AddMinutes(2), "alice").IsSuccess.Should().BeTrue();
+        var later = live.UncommittedEvents[^1];
+
+        Todo restored = new TodoFactory().Create();
+        restored.RestoreSnapshot(state);
+        restored.Version.Should().Be(2);
+
+        Result loaded = restored.TryLoadFromHistory(3, [later]);
+
+        loaded.IsSuccess.Should().BeTrue();
+        restored.Version.Should().Be(3);
+        restored.Status.Should().Be(TodoStatus.Completed);
+        restored.UncommittedEvents.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void RestoreSnapshot_MalformedJson_ShouldThrowBoundaryException()
+    {
+        Todo restored = new TodoFactory().Create();
+
+        Action act = () => restored.RestoreSnapshot("{ not json");
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*snapshot is invalid*");
+    }
+
+    [Fact]
+    public void RestoreSnapshot_NullPayload_ShouldThrowBoundaryException()
+    {
+        Todo restored = new TodoFactory().Create();
+
+        Action act = () => restored.RestoreSnapshot("null");
+
+        act.Should().Throw<InvalidOperationException>()
+            .WithMessage("*snapshot is invalid*");
     }
 
     [Fact]

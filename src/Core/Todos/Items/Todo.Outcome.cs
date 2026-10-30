@@ -43,6 +43,11 @@ public static class TodoOutcome
             code: "Todo.DueAt.BeforeCreated",
             message: "Todo due date cannot precede the created date.");
 
+        /// <summary>Error returned when the creation instant is missing.</summary>
+        public static Error CreatedAtRequired => Error.BadRequest(
+            code: "Todo.CreatedAt.Required",
+            message: "Todo creation instant must be specified.");
+
         /// <summary>Error returned when a category reference is missing.</summary>
         public static Error CategoryRequired => Error.BadRequest(
             code: "Todo.Category.Required",
