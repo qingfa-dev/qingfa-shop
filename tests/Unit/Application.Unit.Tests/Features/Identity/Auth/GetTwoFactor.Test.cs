@@ -1,4 +1,4 @@
-using Application.Common.Security.Authentication.Identity;
+using Application.Features.Identity.Auth.Models;
 using Application.Features.Identity.Auth.Queries;
 
 namespace Application.Unit.Tests.Features.Identity.Auth;
@@ -9,8 +9,8 @@ public sealed class GetTwoFactorTest
     private static GetTwoFactor.UseCaseHandler CreateHandler(AuthFixture fixture) =>
         new(fixture.Identity.Object, fixture.UserContext);
 
-    [Fact(DisplayName = "Get two-factor should map the current state")]
-    public async Task Handle_ShouldMapTwoFactorState()
+    [Fact(DisplayName = "Get two-factor should return the current state")]
+    public async Task Handle_ShouldReturnTwoFactorState()
     {
         // Arrange
         var fixture = new AuthFixture();
@@ -21,8 +21,8 @@ public sealed class GetTwoFactorTest
             .ReturnsAsync(Result<TwoFactorInfo>.Ok(AuthFixture.TwoFactor));
 
         // Act
-        Result<GetTwoFactor.Response> result = await CreateHandler(fixture).Handle(
-            new GetTwoFactor.UseCase(new GetTwoFactor.Request()),
+        Result<TwoFactorInfo> result = await CreateHandler(fixture).Handle(
+            new GetTwoFactor.UseCase(),
             CancellationToken.None);
 
         // Assert
@@ -39,8 +39,8 @@ public sealed class GetTwoFactorTest
         var fixture = new AuthFixture(userId: string.Empty);
 
         // Act
-        Result<GetTwoFactor.Response> result = await CreateHandler(fixture).Handle(
-            new GetTwoFactor.UseCase(new GetTwoFactor.Request()),
+        Result<TwoFactorInfo> result = await CreateHandler(fixture).Handle(
+            new GetTwoFactor.UseCase(),
             CancellationToken.None);
 
         // Assert
@@ -65,23 +65,12 @@ public sealed class GetTwoFactorTest
             .ReturnsAsync(Result<TwoFactorInfo>.Fail(AuthFixture.Failure));
 
         // Act
-        Result<GetTwoFactor.Response> result = await CreateHandler(fixture).Handle(
-            new GetTwoFactor.UseCase(new GetTwoFactor.Request()),
+        Result<TwoFactorInfo> result = await CreateHandler(fixture).Handle(
+            new GetTwoFactor.UseCase(),
             CancellationToken.None);
 
         // Assert
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().ContainSingle(error => error.Code == "Identity.Test.Failed");
-    }
-
-    [Fact(DisplayName = "Get two-factor validator should accept the empty request")]
-    public void Validate_WithEmptyRequest_ShouldPass()
-    {
-        // Act
-        var result = new GetTwoFactor.UseCaseValidator().Validate(
-            new GetTwoFactor.UseCase(new GetTwoFactor.Request()));
-
-        // Assert
-        result.IsValid.Should().BeTrue();
     }
 }

@@ -12,3 +12,19 @@ public sealed record ExternalCallbackModel(string RedirectUrl);
 /// <summary>Exchanges a one-time external sign-in code for the issued token pair.</summary>
 /// <param name="Code">The code delivered to the client redirect URL.</param>
 public sealed record ExternalExchangeRequest(string Code);
+
+/// <summary>A configured external authentication provider.</summary>
+/// <param name="Name">The configured authentication scheme name.</param>
+/// <param name="DisplayName">The user-facing provider name.</param>
+public sealed record ExternalProviderModel(string Name, string DisplayName);
+
+/// <summary>Normalized external provider identity data.</summary>
+/// <param name="Provider">The configured authentication scheme name.</param>
+/// <param name="ProviderKey">The provider's stable subject identifier.</param>
+/// <param name="DisplayName">The optional display name.</param>
+/// <param name="Email">The optional email address.</param>
+public sealed record ExternalUserInfo(
+    string Provider,
+    string ProviderKey,
+    string? DisplayName,
+    string? Email);

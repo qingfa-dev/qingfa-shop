@@ -1,4 +1,10 @@
 using Application.Common.Security.Authentication.Identity;
+using Application.Features.Identity.Auth;
+using Application.Features.Identity.Auth.Models;
+using Application.Features.Identity.Auth.Outcome;
+using Application.Features.Identity.Auth.Validators;
+using Application.Features.Identity.External.Abstractions;
+using Application.Features.Identity.External.Models;
 
 using Infrastructure.Security.Identity.Domain.Roles;
 using Infrastructure.Security.Identity.Domain.Users;
@@ -36,18 +42,18 @@ public sealed class ExternalAuthenticationService(
     }
 
     /// <inheritdoc />
-    public async Task<Result<AuthResponse>> LoginAsync(
+    public async Task<Result<AuthTokenResponse>> LoginAsync(
         ExternalUserInfo user,
         CancellationToken cancellationToken = default)
     {
         Result<ExternalUserInfo> validation = IdentityValidator.Validate(user);
         if (validation.IsFailure)
-            return Result<AuthResponse>.Fail(validation.Errors);
+            return Result<AuthTokenResponse>.Fail(validation.Errors);
 
         if (!GetProviders().Any(provider =>
             string.Equals(provider.Name, user.Provider, StringComparison.OrdinalIgnoreCase)))
         {
-            return Result<AuthResponse>.Fail(
+            return Result<AuthTokenResponse>.Fail(
                 IdentityOutcome.Failure.ExternalProviderUnsupported(user.Provider));
         }
 
@@ -63,7 +69,7 @@ public sealed class ExternalAuthenticationService(
         if (existing is not null)
         {
             if (!existing.IsActive)
-                return Result<AuthResponse>.Fail(IdentityOutcome.Failure.Inactive);
+                return Result<AuthTokenResponse>.Fail(IdentityOutcome.Failure.Inactive);
 
             if (await userManager
                 .FindByLoginAsync(user.Provider, user.ProviderKey)
@@ -74,10 +80,14 @@ public sealed class ExternalAuthenticationService(
                     .ConfigureAwait(false);
 
                 if (!linked.Succeeded)
-                    return Fail<AuthResponse>(linked);
+                    return Fail<AuthTokenResponse>(linked);
             }
 
-            return await tokenIssuer.IssueAsync(existing, cancellationToken).ConfigureAwait(false);
+            Result<AuthResponse> issued = await tokenIssuer
+                .IssueAsync(existing, cancellationToken)
+                .ConfigureAwait(false);
+
+            return issued.Map(response => response.ToTokenResponse());
         }
 
         string userName = BuildUserName(user);
@@ -92,7 +102,7 @@ public sealed class ExternalAuthenticationService(
             lastName: null);
 
         if (created.IsFailure)
-            return Result<AuthResponse>.Fail(created.Errors);
+            return Result<AuthTokenResponse>.Fail(created.Errors);
 
         User newUser = created.Value;
         newUser.EmailConfirmed = true;
@@ -102,7 +112,7 @@ public sealed class ExternalAuthenticationService(
 
         IdentityResult result = await userManager.CreateAsync(newUser).ConfigureAwait(false);
         if (!result.Succeeded)
-            return Fail<AuthResponse>(result);
+            return Fail<AuthTokenResponse>(result);
 
         if (await roleManager.RoleExistsAsync(IdentityConstant.Defaults.DefaultRole).ConfigureAwait(false))
         {
@@ -115,9 +125,14 @@ public sealed class ExternalAuthenticationService(
             .AddLoginAsync(newUser, new UserLoginInfo(user.Provider, user.ProviderKey, user.Provider))
             .ConfigureAwait(false);
 
-        return loginResult.Succeeded
-            ? await tokenIssuer.IssueAsync(newUser, cancellationToken).ConfigureAwait(false)
-            : Fail<AuthResponse>(loginResult);
+        if (!loginResult.Succeeded)
+            return Fail<AuthTokenResponse>(loginResult);
+
+        Result<AuthResponse> createdTokens = await tokenIssuer
+            .IssueAsync(newUser, cancellationToken)
+            .ConfigureAwait(false);
+
+        return createdTokens.Map(response => response.ToTokenResponse());
     }
 
     private static string BuildUserName(ExternalUserInfo user)

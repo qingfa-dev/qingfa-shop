@@ -1,6 +1,9 @@
-using Application.Common.Security.Authentication.Identity;
+using Application.Features.Identity.Auth.Models;
+using Application.Features.Identity.Auth.Outcome;
+using Application.Features.Identity.Auth.Validators;
+using Application.Features.Identity.External.Models;
 
-namespace Application.Unit.Tests.Common.Security.Authentication.Identity;
+namespace Application.Unit.Tests.Features.Identity.Auth;
 
 [Trait("Category", "Unit")]
 [Trait("Module", "Identity")]

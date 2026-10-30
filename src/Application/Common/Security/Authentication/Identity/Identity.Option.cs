@@ -1,3 +1,5 @@
+using Application.Features.Identity.Auth;
+
 namespace Application.Common.Security.Authentication.Identity;
 
 /// <summary>Configuration for the identity API behavior.</summary>

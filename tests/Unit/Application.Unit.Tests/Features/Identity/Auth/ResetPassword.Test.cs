@@ -1,5 +1,5 @@
-using Application.Common.Security.Authentication.Identity;
 using Application.Features.Identity.Auth.Commands;
+using Application.Features.Identity.Auth.Models;
 
 namespace Application.Unit.Tests.Features.Identity.Auth;
 
@@ -22,7 +22,7 @@ public sealed class ResetPasswordTest
 
         // Act
         Result result = await CreateHandler(fixture).Handle(
-            new ResetPassword.UseCase(new ResetPassword.Request(
+            new ResetPassword.UseCase(new ResetPasswordRequest(
                 "admin@example.com",
                 "reset-token",
                 "Password@123")),
@@ -46,7 +46,7 @@ public sealed class ResetPasswordTest
 
         // Act
         Result result = await CreateHandler(fixture).Handle(
-            new ResetPassword.UseCase(new ResetPassword.Request(
+            new ResetPassword.UseCase(new ResetPasswordRequest(
                 "admin@example.com",
                 "reset-token",
                 "Password@123")),
@@ -55,22 +55,5 @@ public sealed class ResetPasswordTest
         // Assert
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().ContainSingle(error => error.Code == "Identity.Test.Failed");
-    }
-
-    [Theory(DisplayName = "Reset password validator should reject invalid fields")]
-    [InlineData("not-an-email", "reset-token", "Password@123")]
-    [InlineData("admin@example.com", "", "Password@123")]
-    [InlineData("admin@example.com", "reset-token", "short")]
-    public void Validate_WithInvalidRequest_ShouldFail(
-        string email,
-        string token,
-        string newPassword)
-    {
-        // Act
-        var result = new ResetPassword.UseCaseValidator().Validate(
-            new ResetPassword.UseCase(new ResetPassword.Request(email, token, newPassword)));
-
-        // Assert
-        result.IsValid.Should().BeFalse();
     }
 }

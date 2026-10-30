@@ -1,4 +1,6 @@
-namespace Application.Common.Security.Authentication.Identity;
+using Application.Features.Identity.Auth.Models;
+
+namespace Application.Features.Identity.Auth.Abstractions;
 
 /// <summary>Application-level identity operations backed by ASP.NET Core Identity.</summary>
 public interface IIdentityService
@@ -9,12 +11,12 @@ public interface IIdentityService
         CancellationToken cancellationToken = default);
 
     /// <summary>Signs in a local account and issues a token pair.</summary>
-    Task<Result<AuthResponse>> LoginAsync(
+    Task<Result<AuthTokenResponse>> LoginAsync(
         LoginRequest request,
         CancellationToken cancellationToken = default);
 
     /// <summary>Rotates a refresh token and issues a new token pair.</summary>
-    Task<Result<AuthResponse>> RefreshAsync(
+    Task<Result<AuthTokenResponse>> RefreshAsync(
         RefreshRequest request,
         CancellationToken cancellationToken = default);
 
@@ -79,17 +81,5 @@ public interface IIdentityEmailSender
     Task<Result> SendPasswordResetAsync(
         string email,
         string link,
-        CancellationToken cancellationToken = default);
-}
-
-/// <summary>Application-level external OAuth/OIDC login operations.</summary>
-public interface IExternalAuthenticationService
-{
-    /// <summary>Returns the external providers configured for this host.</summary>
-    IReadOnlyCollection<ExternalProviderModel> GetProviders();
-
-    /// <summary>Finds or creates a local account for external identity data and issues tokens.</summary>
-    Task<Result<AuthResponse>> LoginAsync(
-        ExternalUserInfo user,
         CancellationToken cancellationToken = default);
 }

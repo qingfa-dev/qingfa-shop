@@ -1,17 +1,13 @@
+using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
+using Application.Features.Identity.Auth;
 using Application.Features.Identity.Auth.Commands;
-using Application.Features.Identity.Auth.Mappings;
 using Application.Features.Identity.Auth.Models;
 using Application.Features.Identity.Auth.Queries;
+using Application.Features.Identity.External.Abstractions;
 using Application.Features.Identity.External.Models;
-
-using IExternalAuthenticationService = Application.Common.Security.Authentication.Identity.IExternalAuthenticationService;
-using ExternalProviderModel = Application.Common.Security.Authentication.Identity.ExternalProviderModel;
-using ExternalUserInfo = Application.Common.Security.Authentication.Identity.ExternalUserInfo;
-using ExternalAuthOption = Application.Common.Security.Authentication.Identity.ExternalAuthOption;
-using IdentityConstant = Application.Common.Security.Authentication.Identity.IdentityConstant;
 
 using Carter;
 
@@ -24,13 +20,16 @@ using MediatR;
 
 using Microsoft.AspNetCore.Authentication;
 
+using Web.Api.Endpoints.Identity.Models;
+
+using ExternalAuthOption = Application.Common.Security.Authentication.Identity.ExternalAuthOption;
+
 namespace Web.Api.Endpoints.Identity;
 
 /// <summary>Carter module for local authentication and the current user's profile.</summary>
 public sealed class IdentityEndpoint : ICarterModule
 {
     private const string BasePath = "/api/auth";
-
     private static readonly long MaxUnixSeconds = DateTimeOffset.MaxValue.ToUnixTimeSeconds();
 
     /// <inheritdoc />
@@ -144,6 +143,47 @@ public sealed class IdentityEndpoint : ICarterModule
                 FindFirstClaim(principal, ClaimTypes.Email, "email")));
     }
 
+    /// <summary>Builds the logout command request from the body and the authenticated principal.</summary>
+    /// <param name="body">The optional request body.</param>
+    /// <param name="principal">The authenticated principal.</param>
+    /// <returns>The request enriched with the access-token claims.</returns>
+    /// <remarks>
+    /// The access-token identifier and expiry are always read from the principal, never
+    /// from the body, so a caller cannot blacklist an arbitrary token.
+    /// </remarks>
+    internal static LogoutRequest FromPrincipal(LogoutBody? body, ClaimsPrincipal principal)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+
+        return new LogoutRequest(
+            body?.RefreshToken,
+            principal.FindFirstValue("jti"),
+            ReadAccessTokenExpiry(principal));
+    }
+
+    /// <summary>Reads the access-token expiry from the standard <c>exp</c> claim.</summary>
+    /// <param name="principal">The authenticated principal.</param>
+    /// <returns>The expiry instant, or <c>null</c> when the claim is absent or invalid.</returns>
+    internal static DateTimeOffset? ReadAccessTokenExpiry(ClaimsPrincipal principal)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+
+        string? expiresAt = principal.FindFirstValue("exp");
+
+        if (!long.TryParse(
+            expiresAt,
+            NumberStyles.Integer,
+            CultureInfo.InvariantCulture,
+            out long seconds))
+        {
+            return null;
+        }
+
+        return seconds >= 0 && seconds <= MaxUnixSeconds
+            ? DateTimeOffset.FromUnixTimeSeconds(seconds)
+            : null;
+    }
+
     /// <summary>Appends the one-time code to the configured client redirect URL.</summary>
     /// <param name="successRedirectUrl">The configured client URL.</param>
     /// <param name="code">The one-time code.</param>
@@ -220,10 +260,9 @@ public sealed class IdentityEndpoint : ICarterModule
         if (user.IsFailure)
             return user.ToApiResult();
 
-        Result<AuthTokenResponse> token = (await external.LoginAsync(
-                user.Value,
-                cancellationToken))
-            .Map(AuthMapper.ToResponse);
+        Result<AuthTokenResponse> token = await external
+            .LoginAsync(user.Value, cancellationToken)
+            .ConfigureAwait(false);
 
         if (token.IsFailure)
             return token.ToApiResult();
@@ -256,59 +295,59 @@ public sealed class IdentityEndpoint : ICarterModule
             .ToApiResult();
 
     private static async Task<IResult> RegisterAsync(
-        RegisterUser.Request request,
+        RegisterRequest request,
         IMediator mediator,
         CancellationToken cancellationToken)
         => (await mediator.Send(new RegisterUser.UseCase(request), cancellationToken))
             .ToApiResult();
 
     private static async Task<IResult> LoginAsync(
-        Login.Request request,
+        LoginRequest request,
         IMediator mediator,
         CancellationToken cancellationToken)
         => (await mediator.Send(new Login.UseCase(request), cancellationToken))
             .ToApiResult();
 
     private static async Task<IResult> RefreshAsync(
-        RefreshToken.Request request,
+        RefreshRequest request,
         IMediator mediator,
         CancellationToken cancellationToken)
         => (await mediator.Send(new RefreshToken.UseCase(request), cancellationToken))
             .ToApiResult();
 
     private static async Task<IResult> LogoutAsync(
-        Logout.Request? request,
+        LogoutBody? body,
         ClaimsPrincipal principal,
         IMediator mediator,
         CancellationToken cancellationToken)
         => (await mediator.Send(
-                new Logout.UseCase(Logout.FromPrincipal(request, principal)),
+                new Logout.UseCase(FromPrincipal(body, principal)),
                 cancellationToken))
             .ToApiResult();
 
     private static async Task<IResult> ConfirmEmailAsync(
-        ConfirmEmail.Request request,
+        ConfirmEmailRequest request,
         IMediator mediator,
         CancellationToken cancellationToken)
         => (await mediator.Send(new ConfirmEmail.UseCase(request), cancellationToken))
             .ToApiResult();
 
     private static async Task<IResult> ResendConfirmationAsync(
-        ResendConfirmation.Request request,
+        ResendConfirmationEmailRequest request,
         IMediator mediator,
         CancellationToken cancellationToken)
         => (await mediator.Send(new ResendConfirmation.UseCase(request), cancellationToken))
             .ToApiResult();
 
     private static async Task<IResult> ForgotPasswordAsync(
-        ForgotPassword.Request request,
+        ForgotPasswordRequest request,
         IMediator mediator,
         CancellationToken cancellationToken)
         => (await mediator.Send(new ForgotPassword.UseCase(request), cancellationToken))
             .ToApiResult();
 
     private static async Task<IResult> ResetPasswordAsync(
-        ResetPassword.Request request,
+        ResetPasswordRequest request,
         IMediator mediator,
         CancellationToken cancellationToken)
         => (await mediator.Send(new ResetPassword.UseCase(request), cancellationToken))
@@ -317,13 +356,11 @@ public sealed class IdentityEndpoint : ICarterModule
     private static async Task<IResult> GetMeAsync(
         IMediator mediator,
         CancellationToken cancellationToken)
-        => (await mediator.Send(
-                new GetCurrentUser.UseCase(new GetCurrentUser.Request()),
-                cancellationToken))
+        => (await mediator.Send(new GetCurrentUser.UseCase(), cancellationToken))
             .ToApiResult();
 
     private static async Task<IResult> UpdateMeAsync(
-        UpdateCurrentUser.Request request,
+        UpdateInfoRequest request,
         IMediator mediator,
         CancellationToken cancellationToken)
         => (await mediator.Send(new UpdateCurrentUser.UseCase(request), cancellationToken))
@@ -332,13 +369,11 @@ public sealed class IdentityEndpoint : ICarterModule
     private static async Task<IResult> GetTwoFactorAsync(
         IMediator mediator,
         CancellationToken cancellationToken)
-        => (await mediator.Send(
-                new GetTwoFactor.UseCase(new GetTwoFactor.Request()),
-                cancellationToken))
+        => (await mediator.Send(new GetTwoFactor.UseCase(), cancellationToken))
             .ToApiResult();
 
     private static async Task<IResult> UpdateTwoFactorAsync(
-        UpdateTwoFactor.Request request,
+        TwoFactorRequest request,
         IMediator mediator,
         CancellationToken cancellationToken)
         => (await mediator.Send(new UpdateTwoFactor.UseCase(request), cancellationToken))

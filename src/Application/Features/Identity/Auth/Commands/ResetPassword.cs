@@ -1,37 +1,13 @@
-using Application.Common.Security.Authentication.Identity;
-using Application.Features.Identity.Auth.Validators;
-
-using FluentValidation;
-
-using ApplicationIdentity = Application.Common.Security.Authentication.Identity;
+using Application.Features.Identity.Auth.Abstractions;
+using Application.Features.Identity.Auth.Models;
 
 namespace Application.Features.Identity.Auth.Commands;
 
 public static class ResetPassword
 {
-    #region Request
-    public sealed record Request(string Email, string Token, string NewPassword);
-    #endregion
-
     #region UseCase
-    public sealed record UseCase(Request Request) : ICommand, INonTransactionalCommand;
-    #endregion
-
-    #region Validator
-    public sealed class UseCaseValidator : AbstractValidator<UseCase>
-    {
-        public UseCaseValidator()
-        {
-            RuleFor(command => command.Request.Email)
-                .ApplyEmailRules();
-
-            RuleFor(command => command.Request.Token)
-                .ApplyTokenRules();
-
-            RuleFor(command => command.Request.NewPassword)
-                .ApplyPasswordRules();
-        }
-    }
+    public sealed record UseCase(ResetPasswordRequest Request)
+        : ICommand, INonTransactionalCommand;
     #endregion
 
     #region Handler
@@ -46,12 +22,7 @@ public static class ResetPassword
             ArgumentNullException.ThrowIfNull(command.Request);
 
             Result result = await identity
-                .ResetPasswordAsync(
-                    new ApplicationIdentity.ResetPasswordRequest(
-                        command.Request.Email,
-                        command.Request.Token,
-                        command.Request.NewPassword),
-                    cancellationToken)
+                .ResetPasswordAsync(command.Request, cancellationToken)
                 .ConfigureAwait(false);
 
             return result.IsSuccess ? Result.NoContent() : result;

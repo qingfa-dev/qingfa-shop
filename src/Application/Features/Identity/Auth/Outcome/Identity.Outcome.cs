@@ -1,4 +1,4 @@
-namespace Application.Common.Security.Authentication.Identity;
+namespace Application.Features.Identity.Auth.Outcome;
 
 /// <summary>Failures and success messages for identity application services.</summary>
 public static class IdentityOutcome

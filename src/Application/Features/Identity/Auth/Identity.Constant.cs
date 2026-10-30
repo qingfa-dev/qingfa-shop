@@ -1,4 +1,4 @@
-namespace Application.Common.Security.Authentication.Identity;
+namespace Application.Features.Identity.Auth;
 
 /// <summary>Constants shared by the Identity API application services.</summary>
 public static class IdentityConstant

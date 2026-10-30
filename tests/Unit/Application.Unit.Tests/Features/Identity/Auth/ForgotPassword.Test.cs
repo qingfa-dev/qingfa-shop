@@ -1,5 +1,5 @@
-using Application.Common.Security.Authentication.Identity;
 using Application.Features.Identity.Auth.Commands;
+using Application.Features.Identity.Auth.Models;
 
 namespace Application.Unit.Tests.Features.Identity.Auth;
 
@@ -22,7 +22,7 @@ public sealed class ForgotPasswordTest
 
         // Act
         Result result = await CreateHandler(fixture).Handle(
-            new ForgotPassword.UseCase(new ForgotPassword.Request("admin@example.com")),
+            new ForgotPassword.UseCase(new ForgotPasswordRequest("admin@example.com")),
             CancellationToken.None);
 
         // Assert
@@ -43,24 +43,11 @@ public sealed class ForgotPasswordTest
 
         // Act
         Result result = await CreateHandler(fixture).Handle(
-            new ForgotPassword.UseCase(new ForgotPassword.Request("admin@example.com")),
+            new ForgotPassword.UseCase(new ForgotPasswordRequest("admin@example.com")),
             CancellationToken.None);
 
         // Assert
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().ContainSingle(error => error.Code == "Identity.Test.Failed");
-    }
-
-    [Theory(DisplayName = "Forgot password validator should reject an invalid email")]
-    [InlineData("")]
-    [InlineData("not-an-email")]
-    public void Validate_WithInvalidEmail_ShouldFail(string email)
-    {
-        // Act
-        var result = new ForgotPassword.UseCaseValidator().Validate(
-            new ForgotPassword.UseCase(new ForgotPassword.Request(email)));
-
-        // Assert
-        result.IsValid.Should().BeFalse();
     }
 }

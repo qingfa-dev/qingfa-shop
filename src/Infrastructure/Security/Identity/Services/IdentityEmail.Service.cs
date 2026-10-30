@@ -1,4 +1,4 @@
-using Application.Common.Security.Authentication.Identity;
+using Application.Features.Identity.Auth.Abstractions;
 
 namespace Infrastructure.Security.Identity.Services;
 

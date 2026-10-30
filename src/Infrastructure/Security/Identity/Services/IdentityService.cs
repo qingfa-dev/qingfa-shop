@@ -1,4 +1,9 @@
+using Application.Features.Identity.Auth;
 using Application.Common.Security.Authentication.Identity;
+using Application.Features.Identity.Auth.Abstractions;
+using Application.Features.Identity.Auth.Models;
+using Application.Features.Identity.Auth.Outcome;
+using Application.Features.Identity.Auth.Validators;
 using Application.Common.Security.Authentication.Tokens;
 using Application.Common.Security.Authentication.Tokens.Abstractions.Jwt;
 using Application.Common.Security.Authentication.Tokens.Abstractions.Blacklist;
@@ -82,28 +87,28 @@ public sealed class IdentityService(
     }
 
     /// <inheritdoc />
-    public async Task<Result<AuthResponse>> LoginAsync(
+    public async Task<Result<AuthTokenResponse>> LoginAsync(
         LoginRequest request,
         CancellationToken cancellationToken = default)
     {
         Result<LoginRequest> validation = IdentityValidator.Validate(request);
         if (validation.IsFailure)
-            return Result<AuthResponse>.Fail(validation.Errors);
+            return Result<AuthTokenResponse>.Fail(validation.Errors);
 
         User? user = request.Identifier.Contains('@')
             ? await userManager.FindByEmailAsync(request.Identifier).ConfigureAwait(false)
             : await userManager.FindByNameAsync(request.Identifier).ConfigureAwait(false);
 
         if (user is null)
-            return Result<AuthResponse>.Fail(IdentityOutcome.Failure.InvalidCredentials);
+            return Result<AuthTokenResponse>.Fail(IdentityOutcome.Failure.InvalidCredentials);
 
         if (!user.IsActive)
-            return Result<AuthResponse>.Fail(IdentityOutcome.Failure.Inactive);
+            return Result<AuthTokenResponse>.Fail(IdentityOutcome.Failure.Inactive);
 
         if ((option.RequireConfirmedEmail || option.RequireConfirmedAccount) &&
             !user.EmailConfirmed)
         {
-            return Result<AuthResponse>.Fail(IdentityOutcome.Failure.EmailNotConfirmed);
+            return Result<AuthTokenResponse>.Fail(IdentityOutcome.Failure.EmailNotConfirmed);
         }
 
         SignInResult signIn = await signInManager
@@ -129,45 +134,55 @@ public sealed class IdentityService(
             }
             else
             {
-                return Result<AuthResponse>.Fail(IdentityOutcome.Failure.TwoFactorRequired);
+                return Result<AuthTokenResponse>.Fail(IdentityOutcome.Failure.TwoFactorRequired);
             }
         }
 
         if (signIn.IsLockedOut)
-            return Result<AuthResponse>.Fail(IdentityOutcome.Failure.LockedOut);
+            return Result<AuthTokenResponse>.Fail(IdentityOutcome.Failure.LockedOut);
 
         if (signIn.IsNotAllowed)
-            return Result<AuthResponse>.Fail(IdentityOutcome.Failure.NotAllowed);
+            return Result<AuthTokenResponse>.Fail(IdentityOutcome.Failure.NotAllowed);
 
         if (!signIn.Succeeded)
-            return Result<AuthResponse>.Fail(IdentityOutcome.Failure.InvalidCredentials);
+            return Result<AuthTokenResponse>.Fail(IdentityOutcome.Failure.InvalidCredentials);
 
-        return await tokenIssuer.IssueAsync(user, cancellationToken).ConfigureAwait(false);
+        Result<AuthResponse> issued = await tokenIssuer
+            .IssueAsync(user, cancellationToken)
+            .ConfigureAwait(false);
+
+        return issued.Map(response => response.ToTokenResponse());
     }
 
     /// <inheritdoc />
-    public async Task<Result<AuthResponse>> RefreshAsync(
+    public async Task<Result<AuthTokenResponse>> RefreshAsync(
         RefreshRequest request,
         CancellationToken cancellationToken = default)
     {
         Result<RefreshRequest> validation = IdentityValidator.Validate(request);
         if (validation.IsFailure)
-            return Result<AuthResponse>.Fail(validation.Errors);
+            return Result<AuthTokenResponse>.Fail(validation.Errors);
 
         Result<RefreshTokenIssue> rotated = await rotation
             .RotateAsync(request.RefreshToken, clock.GetUtcNow(), cancellationToken)
             .ConfigureAwait(false);
 
         if (rotated.IsFailure)
-            return Result<AuthResponse>.Fail(rotated.Errors);
+            return Result<AuthTokenResponse>.Fail(rotated.Errors);
 
         User? user = await userManager
             .FindByIdAsync(rotated.Value.Entity.UserId)
             .ConfigureAwait(false);
 
-        return user is null
-            ? Result<AuthResponse>.Fail(IdentityOutcome.Failure.UserNotFound)
-            : await CreateAuthResponseAsync(user, rotated.Value, cancellationToken).ConfigureAwait(false);
+        if (user is null)
+            return Result<AuthTokenResponse>.Fail(IdentityOutcome.Failure.UserNotFound);
+
+        Result<AuthResponse> issued = await CreateAuthResponseAsync(
+            user,
+            rotated.Value,
+            cancellationToken).ConfigureAwait(false);
+
+        return issued.Map(response => response.ToTokenResponse());
     }
 
     /// <inheritdoc />

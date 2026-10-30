@@ -1,4 +1,3 @@
-using Application.Common.Security.Authentication.Identity;
 using Application.Common.Security.Authentication.Tokens;
 using Application.Common.Security.Authentication.Tokens.Abstractions.Jwt;
 using Application.Common.Security.Authentication.Tokens.Abstractions.Refresh;
@@ -20,7 +19,7 @@ public sealed class IdentityTokenIssuer(
     /// <param name="user">The authenticated user.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The token pair and user projection, or a failure.</returns>
-    public async Task<Result<AuthResponse>> IssueAsync(
+    internal async Task<Result<AuthResponse>> IssueAsync(
         User user,
         CancellationToken cancellationToken = default)
     {

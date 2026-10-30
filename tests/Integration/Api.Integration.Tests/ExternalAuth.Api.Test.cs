@@ -2,7 +2,9 @@ using System.Net;
 using System.Net.Http.Json;
 using System.Text.Json;
 
-using Application.Common.Security.Authentication.Identity;
+using Application.Features.Identity.Auth;
+using Application.Features.Identity.Auth.Models;
+using Application.Features.Identity.External.Models;
 
 using Core.Common.Monad.Errors;
 using Core.Common.Monad.Results;
@@ -143,7 +145,7 @@ public sealed class ExternalAuthApiTest
     [Fact(DisplayName = "A failed external login should return its Result failure")]
     public async Task Callback_WhenLoginFails_ShouldPreserveFailure()
     {
-        _factory.External.LoginHandler = _ => Result<AuthResponse>.Fail(Error.Forbidden(
+        _factory.External.LoginHandler = _ => Result<AuthTokenResponse>.Fail(Error.Forbidden(
             "Test.ExternalDenied",
             "The external account is not allowed."));
 

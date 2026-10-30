@@ -1,6 +1,12 @@
+using System.IdentityModel.Tokens.Jwt;
+
 using Application.Common.Persistence.UnitOfWorks;
-using Application.Common.Security.Authentication.Identity;
 using Application.Common.Security.Authentication.Tokens.Abstractions.Blacklist;
+using Application.Features.Identity.Auth;
+using Application.Features.Identity.Auth.Abstractions;
+using Application.Features.Identity.Auth.Models;
+using Application.Features.Identity.External.Abstractions;
+using Application.Features.Identity.External.Models;
 
 using Infrastructure.Persistence.EntityFramework.Contexts;
 using Infrastructure.Persistence.EntityFramework.UnitOfWorks;
@@ -36,12 +42,12 @@ public sealed class IdentityServiceTest
         registered.Value.Email.Should().Be("alice@example.com");
         host.Email.LastConfirmationLink.Should().NotBeNull();
 
-        Result<AuthResponse> login = await host.Identity.LoginAsync(
+        Result<AuthTokenResponse> login = await host.Identity.LoginAsync(
             new LoginRequest("alice", Password));
 
         login.IsSuccess.Should().BeTrue();
-        login.Value.AccessToken.Token.Should().NotBeNullOrWhiteSpace();
-        login.Value.RefreshToken.Token.Should().NotBeNullOrWhiteSpace();
+        login.Value.AccessToken.Should().NotBeNullOrWhiteSpace();
+        login.Value.RefreshToken.Should().NotBeNullOrWhiteSpace();
         login.Value.User.UserName.Should().Be("alice");
     }
 
@@ -51,15 +57,15 @@ public sealed class IdentityServiceTest
         await using TestHost host = await TestHost.CreateAsync();
         await host.Identity.RegisterAsync(
             new RegisterRequest("alice", "alice@example.com", Password, "Alice", "Smith"));
-        Result<AuthResponse> login = await host.Identity.LoginAsync(
+        Result<AuthTokenResponse> login = await host.Identity.LoginAsync(
             new LoginRequest("alice", Password));
 
-        Result<AuthResponse> refreshed = await host.Identity.RefreshAsync(
-            new RefreshRequest(login.Value.RefreshToken.Token));
+        Result<AuthTokenResponse> refreshed = await host.Identity.RefreshAsync(
+            new RefreshRequest(login.Value.RefreshToken));
 
         refreshed.IsSuccess.Should().BeTrue();
-        refreshed.Value.RefreshToken.Token.Should().NotBe(login.Value.RefreshToken.Token);
-        refreshed.Value.AccessToken.Jti.Should().NotBe(login.Value.AccessToken.Jti);
+        refreshed.Value.RefreshToken.Should().NotBe(login.Value.RefreshToken);
+        refreshed.Value.AccessToken.Should().NotBe(login.Value.AccessToken);
     }
 
     [Fact(DisplayName = "Confirmation and password reset should use Identity tokens")]
@@ -132,19 +138,20 @@ public sealed class IdentityServiceTest
         await using TestHost host = await TestHost.CreateAsync();
         await host.Identity.RegisterAsync(
             new RegisterRequest("alice", "alice@example.com", Password, "Alice", "Smith"));
-        Result<AuthResponse> login = await host.Identity.LoginAsync(new LoginRequest("alice", Password));
+        Result<AuthTokenResponse> login = await host.Identity.LoginAsync(new LoginRequest("alice", Password));
 
+        string jti = ReadJti(login.Value.AccessToken);
         Result logout = await host.Identity.LogoutAsync(new LogoutRequest(
-            login.Value.RefreshToken.Token,
-            login.Value.AccessToken.Jti,
-            login.Value.AccessToken.ExpiresAtUtc));
+            login.Value.RefreshToken,
+            jti,
+            login.Value.ExpiresAtUtc));
 
         logout.IsSuccess.Should().BeTrue();
-        (await host.Identity.RefreshAsync(new RefreshRequest(login.Value.RefreshToken.Token)))
+        (await host.Identity.RefreshAsync(new RefreshRequest(login.Value.RefreshToken)))
             .IsFailure.Should().BeTrue();
 
         var blacklist = host.Scope.ServiceProvider.GetRequiredService<ITokenBlacklist>();
-        (await blacklist.ContainsAsync(login.Value.AccessToken.Jti)).Value.Should().BeTrue();
+        (await blacklist.ContainsAsync(jti)).Value.Should().BeTrue();
     }
 
     [Fact(DisplayName = "Forgot and resend should be enumeration-safe for unknown addresses")]
@@ -194,8 +201,8 @@ public sealed class IdentityServiceTest
             "Alice",
             "alice@example.com");
 
-        Result<AuthResponse> first = await host.External.LoginAsync(external);
-        Result<AuthResponse> second = await host.External.LoginAsync(external);
+        Result<AuthTokenResponse> first = await host.External.LoginAsync(external);
+        Result<AuthTokenResponse> second = await host.External.LoginAsync(external);
 
         first.IsSuccess.Should().BeTrue();
         second.IsSuccess.Should().BeTrue();
@@ -210,12 +217,15 @@ public sealed class IdentityServiceTest
     {
         await using TestHost host = await TestHost.CreateAsync();
 
-        Result<AuthResponse> result = await host.External.LoginAsync(
+        Result<AuthTokenResponse> result = await host.External.LoginAsync(
             new ExternalUserInfo("Unknown", "key", null, "user@example.com"));
 
         result.IsFailure.Should().BeTrue();
         result.Errors[0].Code.Should().Be("Identity.External.ProviderUnsupported");
     }
+
+    private static string ReadJti(string accessToken) =>
+        new JwtSecurityTokenHandler().ReadJwtToken(accessToken).Id;
 
     private static string ExtractToken(string link)
     {

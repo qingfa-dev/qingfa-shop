@@ -1,7 +1,6 @@
 using Application.Common.Security.Authentication.Contexts;
-using Application.Common.Security.Authentication.Identity;
-using Application.Common.Security.Authentication.Tokens;
-using Application.Common.Security.Authentication.Tokens.Domain;
+using Application.Features.Identity.Auth.Abstractions;
+using Application.Features.Identity.Auth.Models;
 
 namespace Application.Unit.Tests.Features.Identity.Auth;
 
@@ -38,23 +37,11 @@ public sealed class AuthFixture
         false);
 
     /// <summary>Gets a representative issued token pair.</summary>
-    public static AuthResponse Tokens()
-    {
-        Result<RefreshToken> refresh = RefreshToken.Create(
-            Guid.NewGuid(),
-            "token-hash",
-            Guid.NewGuid().ToString(),
-            Guid.NewGuid(),
-            Now,
-            Now.AddDays(7));
-
-        refresh.IsSuccess.Should().BeTrue();
-
-        return new AuthResponse(
-            new AccessToken("access-token", "Bearer", Now, Now.AddMinutes(15), "jti-1"),
-            new RefreshTokenIssue("refresh-token", refresh.Value),
-            User);
-    }
+    public static AuthTokenResponse Tokens() => new(
+        "access-token",
+        Now.AddMinutes(15),
+        "refresh-token",
+        User);
 
     /// <summary>Gets a representative two-factor state.</summary>
     public static TwoFactorInfo TwoFactor => new(

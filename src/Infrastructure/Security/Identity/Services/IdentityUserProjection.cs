@@ -1,4 +1,4 @@
-using Application.Common.Security.Authentication.Identity;
+using Application.Features.Identity.Auth.Models;
 
 using Infrastructure.Security.Identity.Domain.Users;
 

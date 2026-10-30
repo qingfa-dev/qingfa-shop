@@ -1,5 +1,5 @@
-using Application.Common.Security.Authentication.Identity;
 using Application.Features.Identity.Auth.Commands;
+using Application.Features.Identity.Auth.Models;
 
 namespace Application.Unit.Tests.Features.Identity.Auth;
 
@@ -9,8 +9,8 @@ public sealed class RefreshTokenTest
     private static RefreshToken.UseCaseHandler CreateHandler(AuthFixture fixture) =>
         new(fixture.Identity.Object);
 
-    [Fact(DisplayName = "Refresh should map the rotated token pair")]
-    public async Task Handle_ShouldMapRotatedTokens()
+    [Fact(DisplayName = "Refresh should return the rotated token pair")]
+    public async Task Handle_ShouldReturnRotatedTokens()
     {
         // Arrange
         var fixture = new AuthFixture();
@@ -18,11 +18,11 @@ public sealed class RefreshTokenTest
             .Setup(service => service.RefreshAsync(
                 It.IsAny<RefreshRequest>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<AuthResponse>.Ok(AuthFixture.Tokens()));
+            .ReturnsAsync(Result<AuthTokenResponse>.Ok(AuthFixture.Tokens()));
 
         // Act
-        Result<RefreshToken.Response> result = await CreateHandler(fixture).Handle(
-            new RefreshToken.UseCase(new RefreshToken.Request("refresh-token")),
+        Result<AuthTokenResponse> result = await CreateHandler(fixture).Handle(
+            new RefreshToken.UseCase(new RefreshRequest("refresh-token")),
             CancellationToken.None);
 
         // Assert
@@ -40,26 +40,15 @@ public sealed class RefreshTokenTest
             .Setup(service => service.RefreshAsync(
                 It.IsAny<RefreshRequest>(),
                 It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<AuthResponse>.Fail(AuthFixture.Failure));
+            .ReturnsAsync(Result<AuthTokenResponse>.Fail(AuthFixture.Failure));
 
         // Act
-        Result<RefreshToken.Response> result = await CreateHandler(fixture).Handle(
-            new RefreshToken.UseCase(new RefreshToken.Request("refresh-token")),
+        Result<AuthTokenResponse> result = await CreateHandler(fixture).Handle(
+            new RefreshToken.UseCase(new RefreshRequest("refresh-token")),
             CancellationToken.None);
 
         // Assert
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().ContainSingle(error => error.Code == "Identity.Test.Failed");
-    }
-
-    [Fact(DisplayName = "Refresh validator should require the refresh token")]
-    public void Validate_WithEmptyToken_ShouldFail()
-    {
-        // Act
-        var result = new RefreshToken.UseCaseValidator().Validate(
-            new RefreshToken.UseCase(new RefreshToken.Request(string.Empty)));
-
-        // Assert
-        result.IsValid.Should().BeFalse();
     }
 }

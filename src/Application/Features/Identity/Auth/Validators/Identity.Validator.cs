@@ -1,4 +1,8 @@
-namespace Application.Common.Security.Authentication.Identity;
+using Application.Features.Identity.Auth.Models;
+using Application.Features.Identity.Auth.Outcome;
+using Application.Features.Identity.External.Models;
+
+namespace Application.Features.Identity.Auth.Validators;
 
 /// <summary>Validates identity API requests before they reach the Identity stores.</summary>
 public static class IdentityValidator

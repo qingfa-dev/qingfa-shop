@@ -1,15 +1,16 @@
 using System.Security.Cryptography;
 using System.Text;
 
-using Application.Common.Security.Authentication.Identity;
+using Application.Features.Identity.Auth.Models;
 
 using Core.Common.Monad.Results;
 
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Time.Testing;
 
-using Application.Features.Identity.Auth.Models;
 using Web.Api.Endpoints.Identity;
+
+using ExternalAuthOption = Application.Common.Security.Authentication.Identity.ExternalAuthOption;
 
 namespace Api.Integration.Tests;
 

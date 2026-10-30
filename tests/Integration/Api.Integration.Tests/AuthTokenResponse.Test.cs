@@ -1,17 +1,8 @@
 using System.Text.Json;
 
-using Application.Common.Security.Authentication.Identity;
-using Application.Common.Security.Authentication.Tokens;
-using Application.Common.Security.Authentication.Tokens.Domain;
-
-using Core.Common.Monad.Results;
-
-using Infrastructure.Integrations.Serialization;
-
-using Application.Features.Identity.Auth.Mappings;
 using Application.Features.Identity.Auth.Models;
 
-using Web.Api.Endpoints.Identity;
+using Infrastructure.Integrations.Serialization;
 
 namespace Api.Integration.Tests;
 
@@ -19,31 +10,6 @@ namespace Api.Integration.Tests;
 [Trait("Category", "Unit")]
 public sealed class AuthTokenResponseTest
 {
-    [Fact(DisplayName = "AuthResponse should map to the public token strings and user")]
-    public void FromAuthResponse_ShouldProjectTokenStringsAndUser()
-    {
-        DateTimeOffset now = new(2026, 10, 30, 12, 0, 0, TimeSpan.Zero);
-        var user = new IdentityUserModel(
-            Guid.NewGuid(),
-            "admin",
-            "admin@example.com",
-            "Admin",
-            null,
-            true,
-            false);
-        var response = new AuthResponse(
-            new AccessToken("access-token", "Bearer", now, now.AddMinutes(15), "jti-1"),
-            new RefreshTokenIssue("refresh-token", CreateRefreshToken(now)),
-            user);
-
-        AuthTokenResponse mapped = AuthMapper.ToResponse(response);
-
-        mapped.AccessToken.Should().Be("access-token");
-        mapped.ExpiresAtUtc.Should().Be(now.AddMinutes(15));
-        mapped.RefreshToken.Should().Be("refresh-token");
-        mapped.User.Should().Be(user);
-    }
-
     [Fact(DisplayName = "Serialization should expose only the public token and user fields")]
     public void Serialization_ShouldExposeOnlyPublicFields()
     {
@@ -57,14 +23,13 @@ public sealed class AuthTokenResponseTest
             null,
             true,
             false);
-        var response = new AuthResponse(
-            new AccessToken("access-token", "Bearer", now, now.AddMinutes(15), "jti-1"),
-            new RefreshTokenIssue("refresh-token", CreateRefreshToken(now)),
+        var response = new AuthTokenResponse(
+            "access-token",
+            now.AddMinutes(15),
+            "refresh-token",
             user);
 
-        string json = JsonSerializer.Serialize(
-            AuthMapper.ToResponse(response),
-            ApiJson.Options);
+        string json = JsonSerializer.Serialize(response, ApiJson.Options);
 
         using JsonDocument document = JsonDocument.Parse(json);
         JsonElement root = document.RootElement;
@@ -75,6 +40,8 @@ public sealed class AuthTokenResponseTest
             .BeEquivalentTo("accessToken", "expiresAtUtc", "refreshToken", "user");
         root.GetProperty("accessToken").GetString().Should().Be("access-token");
         root.GetProperty("refreshToken").GetString().Should().Be("refresh-token");
+        root.GetProperty("expiresAtUtc").GetDateTimeOffset()
+            .Should().Be(now.AddMinutes(15));
 
         JsonElement serializedUser = root.GetProperty("user");
         serializedUser.EnumerateObject()
@@ -95,20 +62,5 @@ public sealed class AuthTokenResponseTest
         serializedUser.GetProperty("lastName").ValueKind.Should().Be(JsonValueKind.Null);
         serializedUser.GetProperty("emailConfirmed").GetBoolean().Should().BeTrue();
         serializedUser.GetProperty("twoFactorEnabled").GetBoolean().Should().BeFalse();
-    }
-
-    private static RefreshToken CreateRefreshToken(DateTimeOffset now)
-    {
-        Result<RefreshToken> created = RefreshToken.Create(
-            Guid.NewGuid(),
-            "token-hash",
-            Guid.NewGuid().ToString(),
-            Guid.NewGuid(),
-            now,
-            now.AddDays(7));
-
-        created.IsSuccess.Should().BeTrue();
-
-        return created.Value;
     }
 }

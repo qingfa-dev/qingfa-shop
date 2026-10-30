@@ -1,31 +1,13 @@
-using Application.Common.Security.Authentication.Identity;
-using Application.Features.Identity.Auth.Validators;
-
-using FluentValidation;
-
-using ApplicationIdentity = Application.Common.Security.Authentication.Identity;
+using Application.Features.Identity.Auth.Abstractions;
+using Application.Features.Identity.Auth.Models;
 
 namespace Application.Features.Identity.Auth.Commands;
 
 public static class ResendConfirmation
 {
-    #region Request
-    public sealed record Request(string Email);
-    #endregion
-
     #region UseCase
-    public sealed record UseCase(Request Request) : ICommand, INonTransactionalCommand;
-    #endregion
-
-    #region Validator
-    public sealed class UseCaseValidator : AbstractValidator<UseCase>
-    {
-        public UseCaseValidator()
-        {
-            RuleFor(command => command.Request.Email)
-                .ApplyEmailRules();
-        }
-    }
+    public sealed record UseCase(ResendConfirmationEmailRequest Request)
+        : ICommand, INonTransactionalCommand;
     #endregion
 
     #region Handler
@@ -40,10 +22,7 @@ public static class ResendConfirmation
             ArgumentNullException.ThrowIfNull(command.Request);
 
             Result result = await identity
-                .ResendConfirmationEmailAsync(
-                    new ApplicationIdentity.ResendConfirmationEmailRequest(
-                        command.Request.Email),
-                    cancellationToken)
+                .ResendConfirmationEmailAsync(command.Request, cancellationToken)
                 .ConfigureAwait(false);
 
             return result.IsSuccess ? Result.NoContent() : result;

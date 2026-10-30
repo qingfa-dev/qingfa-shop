@@ -1,5 +1,5 @@
-using Application.Common.Security.Authentication.Identity;
 using Application.Features.Identity.Auth.Commands;
+using Application.Features.Identity.Auth.Models;
 
 namespace Application.Unit.Tests.Features.Identity.Auth;
 
@@ -22,7 +22,7 @@ public sealed class ConfirmEmailTest
 
         // Act
         Result result = await CreateHandler(fixture).Handle(
-            new ConfirmEmail.UseCase(new ConfirmEmail.Request(
+            new ConfirmEmail.UseCase(new ConfirmEmailRequest(
                 AuthFixture.UserId.ToString(),
                 "confirmation-token")),
             CancellationToken.None);
@@ -45,7 +45,7 @@ public sealed class ConfirmEmailTest
 
         // Act
         Result result = await CreateHandler(fixture).Handle(
-            new ConfirmEmail.UseCase(new ConfirmEmail.Request(
+            new ConfirmEmail.UseCase(new ConfirmEmailRequest(
                 AuthFixture.UserId.ToString(),
                 "confirmation-token")),
             CancellationToken.None);
@@ -53,18 +53,5 @@ public sealed class ConfirmEmailTest
         // Assert
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().ContainSingle(error => error.Code == "Identity.Test.Failed");
-    }
-
-    [Theory(DisplayName = "Confirm email validator should reject invalid identifiers or tokens")]
-    [InlineData("not-a-guid", "token")]
-    [InlineData("11111111-1111-1111-1111-111111111111", "")]
-    public void Validate_WithInvalidRequest_ShouldFail(string userId, string token)
-    {
-        // Act
-        var result = new ConfirmEmail.UseCaseValidator().Validate(
-            new ConfirmEmail.UseCase(new ConfirmEmail.Request(userId, token)));
-
-        // Assert
-        result.IsValid.Should().BeFalse();
     }
 }

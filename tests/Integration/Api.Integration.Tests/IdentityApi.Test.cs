@@ -64,8 +64,8 @@ public sealed class IdentityApiTest
         await AssertFailureAsync(response, HttpStatusCode.UnprocessableEntity);
     }
 
-    [Fact(DisplayName = "POST /api/auth/login with an empty password should return a Result 422")]
-    public async Task Login_WithEmptyPassword_ShouldReturn422Result()
+    [Fact(DisplayName = "POST /api/auth/login with an empty password should return a Result 400")]
+    public async Task Login_WithEmptyPassword_ShouldReturn400Result()
     {
         using HttpClient client = _factory.CreateClient();
 
@@ -73,7 +73,7 @@ public sealed class IdentityApiTest
             "/api/auth/login",
             new { identifier = "admin", password = string.Empty });
 
-        await AssertFailureAsync(response, HttpStatusCode.UnprocessableEntity);
+        await AssertFailureAsync(response, HttpStatusCode.BadRequest);
     }
 
     [Fact(DisplayName = "POST /api/auth/register should return 200 with the created user")]

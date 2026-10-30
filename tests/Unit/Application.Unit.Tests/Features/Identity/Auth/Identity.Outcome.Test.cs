@@ -1,6 +1,6 @@
-using Application.Common.Security.Authentication.Identity;
+using Application.Features.Identity.Auth.Outcome;
 
-namespace Application.Unit.Tests.Common.Security.Authentication.Identity;
+namespace Application.Unit.Tests.Features.Identity.Auth;
 
 [Trait("Category", "Unit")]
 [Trait("Module", "Identity")]

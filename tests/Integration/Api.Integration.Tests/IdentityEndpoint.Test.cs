@@ -10,13 +10,15 @@ using Microsoft.AspNetCore.Http;
 
 using Application.Features.Identity.Auth;
 using Application.Features.Identity.Auth.Commands;
-using Web.Api.Endpoints.Identity;
+using Application.Features.Identity.Auth.Models;
+using Application.Features.Identity.External.Models;
+
 using Infrastructure.Integrations.Serialization;
 
+using Web.Api.Endpoints.Identity;
+using Web.Api.Endpoints.Identity.Models;
+
 using ExternalAuthOption = Application.Common.Security.Authentication.Identity.ExternalAuthOption;
-using ExternalProviderModel = Application.Common.Security.Authentication.Identity.ExternalProviderModel;
-using ExternalUserInfo = Application.Common.Security.Authentication.Identity.ExternalUserInfo;
-using IdentityConstant = Application.Common.Security.Authentication.Identity.IdentityConstant;
 
 namespace Api.Integration.Tests;
 
@@ -57,8 +59,8 @@ public sealed class IdentityEndpointTest
             new Claim(JwtRegisteredClaimNames.Jti, "access-jti"),
             new Claim(JwtRegisteredClaimNames.Exp, "1893456000"));
 
-        var mapped = Logout.FromPrincipal(
-            new Logout.Request("refresh-token"),
+        var mapped = IdentityEndpoint.FromPrincipal(
+            new LogoutBody("refresh-token"),
             principal);
 
         mapped.RefreshToken.Should().Be("refresh-token");
@@ -74,7 +76,7 @@ public sealed class IdentityEndpointTest
             new Claim(JwtRegisteredClaimNames.Jti, "access-jti"),
             new Claim(JwtRegisteredClaimNames.Exp, "1893456000"));
 
-        var mapped = Logout.FromPrincipal(null, principal);
+        var mapped = IdentityEndpoint.FromPrincipal(null, principal);
 
         mapped.RefreshToken.Should().BeNull();
         mapped.AccessTokenJti.Should().Be("access-jti");
@@ -89,7 +91,7 @@ public sealed class IdentityEndpointTest
     {
         var principal = Principal(new Claim(JwtRegisteredClaimNames.Exp, value));
 
-        DateTimeOffset? expiresAt = Logout.ReadAccessTokenExpiry(principal);
+        DateTimeOffset? expiresAt = IdentityEndpoint.ReadAccessTokenExpiry(principal);
 
         expiresAt.Should().Be(DateTimeOffset.FromUnixTimeSeconds(long.Parse(
             value,
@@ -108,7 +110,7 @@ public sealed class IdentityEndpointTest
         var principal = Principal(
             value is null ? [] : [new Claim(JwtRegisteredClaimNames.Exp, value)]);
 
-        DateTimeOffset? expiresAt = Logout.ReadAccessTokenExpiry(principal);
+        DateTimeOffset? expiresAt = IdentityEndpoint.ReadAccessTokenExpiry(principal);
 
         expiresAt.Should().BeNull();
     }

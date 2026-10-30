@@ -1,9 +1,11 @@
 using System.Security.Claims;
 using System.Text.Encodings.Web;
 
-using Application.Common.Security.Authentication.Identity;
-using Application.Common.Security.Authentication.Tokens;
-using Application.Common.Security.Authentication.Tokens.Domain;
+using Application.Features.Identity.Auth;
+using Application.Features.Identity.Auth.Abstractions;
+using Application.Features.Identity.Auth.Models;
+using Application.Features.Identity.External.Abstractions;
+using Application.Features.Identity.External.Models;
 
 using Core.Common.Monad.Errors;
 using Core.Common.Monad.Results;
@@ -49,7 +51,7 @@ public sealed class IdentityApiFactory : ShopApiFactory
                     IdentityConstant.Providers.Google,
                     _ => { });
 
-            External.LoginHandler = _ => Result<AuthResponse>.Ok(Identity.CreateAuthResponse());
+            External.LoginHandler = _ => Result<AuthTokenResponse>.Ok(Identity.CreateAuthResponse());
         });
     }
 }
@@ -57,7 +59,7 @@ public sealed class IdentityApiFactory : ShopApiFactory
 /// <summary>Records identity calls and returns configurable results without persistence.</summary>
 public sealed class StubIdentityService : IIdentityService
 {
-    private AuthResponse _authResponse = null!;
+    private AuthTokenResponse _authResponse = null!;
 
     /// <summary>Initializes the default success handlers.</summary>
     public StubIdentityService() => Reset();
@@ -92,10 +94,10 @@ public sealed class StubIdentityService : IIdentityService
     public Func<RegisterRequest, Result<IdentityUserModel>> RegisterHandler { get; set; } = null!;
 
     /// <summary>Overrides the login result; defaults to required-credential validation.</summary>
-    public Func<LoginRequest, Result<AuthResponse>> LoginHandler { get; set; } = null!;
+    public Func<LoginRequest, Result<AuthTokenResponse>> LoginHandler { get; set; } = null!;
 
     /// <summary>Overrides the refresh result.</summary>
-    public Func<RefreshRequest, Result<AuthResponse>> RefreshHandler { get; set; } = null!;
+    public Func<RefreshRequest, Result<AuthTokenResponse>> RefreshHandler { get; set; } = null!;
 
     /// <summary>Overrides the logout result.</summary>
     public Func<LogoutRequest, Result> LogoutHandler { get; set; } = null!;
@@ -128,11 +130,11 @@ public sealed class StubIdentityService : IIdentityService
                 : Result<IdentityUserModel>.Ok(User);
         LoginHandler = request =>
             string.IsNullOrWhiteSpace(request.Identifier) || string.IsNullOrWhiteSpace(request.Password)
-                ? Result<AuthResponse>.Fail(Error.BadRequest(
+                ? Result<AuthTokenResponse>.Fail(Error.BadRequest(
                     "Identity.Credentials.Invalid",
                     "The supplied credentials are invalid."))
-                : Result<AuthResponse>.Ok(_authResponse);
-        RefreshHandler = _ => Result<AuthResponse>.Ok(_authResponse);
+                : Result<AuthTokenResponse>.Ok(_authResponse);
+        RefreshHandler = _ => Result<AuthTokenResponse>.Ok(_authResponse);
         LogoutHandler = request =>
         {
             LastLogout = request;
@@ -151,13 +153,13 @@ public sealed class StubIdentityService : IIdentityService
         => Task.FromResult(RegisterHandler(request));
 
     /// <inheritdoc />
-    public Task<Result<AuthResponse>> LoginAsync(
+    public Task<Result<AuthTokenResponse>> LoginAsync(
         LoginRequest request,
         CancellationToken cancellationToken = default)
         => Task.FromResult(LoginHandler(request));
 
     /// <inheritdoc />
-    public Task<Result<AuthResponse>> RefreshAsync(
+    public Task<Result<AuthTokenResponse>> RefreshAsync(
         RefreshRequest request,
         CancellationToken cancellationToken = default)
         => Task.FromResult(RefreshHandler(request));
@@ -226,28 +228,13 @@ public sealed class StubIdentityService : IIdentityService
 
     /// <summary>Creates the token pair returned by stub login handlers.</summary>
     /// <returns>A token pair bound to <see cref="User"/>.</returns>
-    public AuthResponse CreateAuthResponse()
+    public AuthTokenResponse CreateAuthResponse()
     {
         DateTimeOffset now = DateTimeOffset.UtcNow;
-        Result<RefreshToken> created = RefreshToken.Create(
-            Guid.NewGuid(),
-            "token-hash",
-            User.Id.ToString(),
-            Guid.NewGuid(),
-            now,
-            now.AddDays(7));
-
-        if (created.IsFailure)
-            throw new InvalidOperationException(created.Errors[0].Message);
-
-        return new AuthResponse(
-            new AccessToken(
-                "access-token",
-                "Bearer",
-                now,
-                now.AddMinutes(15),
-                Guid.NewGuid().ToString("N")),
-            new RefreshTokenIssue("refresh-token", created.Value),
+        return new AuthTokenResponse(
+            "access-token",
+            now.AddMinutes(15),
+            "refresh-token",
             User);
     }
 }
@@ -263,8 +250,8 @@ public sealed class StubExternalAuthenticationService : IExternalAuthenticationS
     public ExternalUserInfo? LastUser { get; private set; }
 
     /// <summary>Overrides the external login result.</summary>
-    public Func<ExternalUserInfo, Result<AuthResponse>> LoginHandler { get; set; } =
-        _ => Result<AuthResponse>.Fail(Error.Unexpected(
+    public Func<ExternalUserInfo, Result<AuthTokenResponse>> LoginHandler { get; set; } =
+        _ => Result<AuthTokenResponse>.Fail(Error.Unexpected(
             "Test.NotConfigured",
             "The external login handler was not configured."));
 
@@ -272,7 +259,7 @@ public sealed class StubExternalAuthenticationService : IExternalAuthenticationS
     public IReadOnlyCollection<ExternalProviderModel> GetProviders() => Providers;
 
     /// <inheritdoc />
-    public Task<Result<AuthResponse>> LoginAsync(
+    public Task<Result<AuthTokenResponse>> LoginAsync(
         ExternalUserInfo user,
         CancellationToken cancellationToken = default)
     {
@@ -282,11 +269,11 @@ public sealed class StubExternalAuthenticationService : IExternalAuthenticationS
 
     /// <summary>Restores the provider list and the successful login handler.</summary>
     /// <param name="response">The token pair returned by the default handler.</param>
-    public void Reset(AuthResponse response)
+    public void Reset(AuthTokenResponse response)
     {
         Providers = [new ExternalProviderModel(IdentityConstant.Providers.Google, "Google")];
         LastUser = null;
-        LoginHandler = _ => Result<AuthResponse>.Ok(response);
+        LoginHandler = _ => Result<AuthTokenResponse>.Ok(response);
     }
 }
 

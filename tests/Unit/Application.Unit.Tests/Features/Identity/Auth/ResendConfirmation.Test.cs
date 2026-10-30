@@ -1,5 +1,5 @@
-using Application.Common.Security.Authentication.Identity;
 using Application.Features.Identity.Auth.Commands;
+using Application.Features.Identity.Auth.Models;
 
 namespace Application.Unit.Tests.Features.Identity.Auth;
 
@@ -23,7 +23,7 @@ public sealed class ResendConfirmationTest
         // Act
         Result result = await CreateHandler(fixture).Handle(
             new ResendConfirmation.UseCase(
-                new ResendConfirmation.Request("admin@example.com")),
+                new ResendConfirmationEmailRequest("admin@example.com")),
             CancellationToken.None);
 
         // Assert
@@ -45,24 +45,11 @@ public sealed class ResendConfirmationTest
         // Act
         Result result = await CreateHandler(fixture).Handle(
             new ResendConfirmation.UseCase(
-                new ResendConfirmation.Request("admin@example.com")),
+                new ResendConfirmationEmailRequest("admin@example.com")),
             CancellationToken.None);
 
         // Assert
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().ContainSingle(error => error.Code == "Identity.Test.Failed");
-    }
-
-    [Theory(DisplayName = "Resend confirmation validator should reject an invalid email")]
-    [InlineData("")]
-    [InlineData("not-an-email")]
-    public void Validate_WithInvalidEmail_ShouldFail(string email)
-    {
-        // Act
-        var result = new ResendConfirmation.UseCaseValidator().Validate(
-            new ResendConfirmation.UseCase(new ResendConfirmation.Request(email)));
-
-        // Assert
-        result.IsValid.Should().BeFalse();
     }
 }

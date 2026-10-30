@@ -1,5 +1,5 @@
-using Application.Common.Security.Authentication.Identity;
 using Application.Features.Identity.Auth.Commands;
+using Application.Features.Identity.Auth.Models;
 
 namespace Application.Unit.Tests.Features.Identity.Auth;
 
@@ -9,8 +9,8 @@ public sealed class UpdateCurrentUserTest
     private static UpdateCurrentUser.UseCaseHandler CreateHandler(AuthFixture fixture) =>
         new(fixture.Identity.Object, fixture.UserContext);
 
-    [Fact(DisplayName = "Update current user should map the updated profile")]
-    public async Task Handle_ShouldMapUpdatedUser()
+    [Fact(DisplayName = "Update current user should return the updated profile")]
+    public async Task Handle_ShouldReturnUpdatedUser()
     {
         // Arrange
         var fixture = new AuthFixture();
@@ -22,8 +22,8 @@ public sealed class UpdateCurrentUserTest
             .ReturnsAsync(Result<IdentityUserModel>.Ok(AuthFixture.User));
 
         // Act
-        Result<UpdateCurrentUser.Response> result = await CreateHandler(fixture).Handle(
-            new UpdateCurrentUser.UseCase(new UpdateCurrentUser.Request(FirstName: "Admin")),
+        Result<IdentityUserModel> result = await CreateHandler(fixture).Handle(
+            new UpdateCurrentUser.UseCase(new UpdateInfoRequest(FirstName: "Admin")),
             CancellationToken.None);
 
         // Assert
@@ -39,8 +39,8 @@ public sealed class UpdateCurrentUserTest
         var fixture = new AuthFixture(userId: "not-a-guid");
 
         // Act
-        Result<UpdateCurrentUser.Response> result = await CreateHandler(fixture).Handle(
-            new UpdateCurrentUser.UseCase(new UpdateCurrentUser.Request(FirstName: "Admin")),
+        Result<IdentityUserModel> result = await CreateHandler(fixture).Handle(
+            new UpdateCurrentUser.UseCase(new UpdateInfoRequest(FirstName: "Admin")),
             CancellationToken.None);
 
         // Assert
@@ -69,36 +69,12 @@ public sealed class UpdateCurrentUserTest
             .ReturnsAsync(Result<IdentityUserModel>.Fail(AuthFixture.Failure));
 
         // Act
-        Result<UpdateCurrentUser.Response> result = await CreateHandler(fixture).Handle(
-            new UpdateCurrentUser.UseCase(new UpdateCurrentUser.Request(FirstName: "Admin")),
+        Result<IdentityUserModel> result = await CreateHandler(fixture).Handle(
+            new UpdateCurrentUser.UseCase(new UpdateInfoRequest(FirstName: "Admin")),
             CancellationToken.None);
 
         // Assert
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().ContainSingle(error => error.Code == "Identity.Test.Failed");
-    }
-
-    [Fact(DisplayName = "Update current user validator should reject a new password without the old one")]
-    public void Validate_WithNewPasswordWithoutOld_ShouldFail()
-    {
-        // Act
-        var result = new UpdateCurrentUser.UseCaseValidator().Validate(
-            new UpdateCurrentUser.UseCase(
-                new UpdateCurrentUser.Request(NewPassword: "Password@123")));
-
-        // Assert
-        result.IsValid.Should().BeFalse();
-    }
-
-    [Fact(DisplayName = "Update current user validator should reject an invalid optional email")]
-    public void Validate_WithInvalidEmail_ShouldFail()
-    {
-        // Act
-        var result = new UpdateCurrentUser.UseCaseValidator().Validate(
-            new UpdateCurrentUser.UseCase(
-                new UpdateCurrentUser.Request(Email: "not-an-email")));
-
-        // Assert
-        result.IsValid.Should().BeFalse();
     }
 }

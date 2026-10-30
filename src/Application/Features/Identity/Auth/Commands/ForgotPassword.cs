@@ -1,31 +1,13 @@
-using Application.Common.Security.Authentication.Identity;
-using Application.Features.Identity.Auth.Validators;
-
-using FluentValidation;
-
-using ApplicationIdentity = Application.Common.Security.Authentication.Identity;
+using Application.Features.Identity.Auth.Abstractions;
+using Application.Features.Identity.Auth.Models;
 
 namespace Application.Features.Identity.Auth.Commands;
 
 public static class ForgotPassword
 {
-    #region Request
-    public sealed record Request(string Email);
-    #endregion
-
     #region UseCase
-    public sealed record UseCase(Request Request) : ICommand, INonTransactionalCommand;
-    #endregion
-
-    #region Validator
-    public sealed class UseCaseValidator : AbstractValidator<UseCase>
-    {
-        public UseCaseValidator()
-        {
-            RuleFor(command => command.Request.Email)
-                .ApplyEmailRules();
-        }
-    }
+    public sealed record UseCase(ForgotPasswordRequest Request)
+        : ICommand, INonTransactionalCommand;
     #endregion
 
     #region Handler
@@ -40,9 +22,7 @@ public static class ForgotPassword
             ArgumentNullException.ThrowIfNull(command.Request);
 
             Result result = await identity
-                .ForgotPasswordAsync(
-                    new ApplicationIdentity.ForgotPasswordRequest(command.Request.Email),
-                    cancellationToken)
+                .ForgotPasswordAsync(command.Request, cancellationToken)
                 .ConfigureAwait(false);
 
             return result.IsSuccess ? Result.NoContent() : result;
