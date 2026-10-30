@@ -47,6 +47,16 @@ public sealed class ApiSmokeTest : IntegrationTestBase
     }
 
     [Fact]
+    public async Task ScheduleReminder_WithoutToken_ReturnsUnauthorized()
+    {
+        using var response = await Client.PostAsJsonAsync(
+            $"/api/todos/{Guid.NewGuid()}/reminders",
+            new { remindAtUtc = DateTimeOffset.UtcNow.AddHours(1) });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
     public async Task GetPermissionCatalog_WithoutToken_ReturnsUnauthorized()
     {
         // Act

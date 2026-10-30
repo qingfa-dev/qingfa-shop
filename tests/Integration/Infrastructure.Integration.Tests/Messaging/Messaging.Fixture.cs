@@ -5,11 +5,15 @@ using Application.Common.Messaging.Inbox;
 using Application.Common.Messaging.Outbox;
 using Application.Common.Persistence.UnitOfWorks;
 
+using Core.Common.Domain.EventSourcing;
 using Core.Todos.Items;
+using Core.Todos.Reminders;
 
 using Infrastructure.Integrations.Messaging.Serialization;
 using Infrastructure.Persistence.EntityFramework.Contexts;
 using Infrastructure.Persistence.EntityFramework.EventSourcing;
+using Infrastructure.Persistence.EntityFramework.EventSourcing.Options;
+using Infrastructure.Persistence.EntityFramework.Projections;
 using Infrastructure.Persistence.EntityFramework.Inbox;
 using Infrastructure.Persistence.EntityFramework.Options;
 using Infrastructure.Persistence.EntityFramework.Outbox;
@@ -106,6 +110,7 @@ public sealed class MessagingFixture : IAsyncLifetime
 
         services.AddScoped<IUnitOfWork>(sp =>
             new EfCoreUnitOfWork(sp.GetRequiredService<ApplicationDbContext>()));
+        services.AddScoped<DbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
 
         services.AddMediatR(configuration =>
         {
@@ -134,6 +139,22 @@ public sealed class MessagingFixture : IAsyncLifetime
             new EfCoreSnapshotStore(sp.GetRequiredService<ApplicationDbContext>()));
         services.AddScoped<IProjectionCheckpointStore>(sp =>
             new EfCoreProjectionCheckpointStore(sp.GetRequiredService<ApplicationDbContext>()));
+        services.AddSingleton(new EventStoreSetting());
+        services.AddSingleton<ISnapshotPolicy>(new IntervalSnapshotPolicy(10));
+        services.AddScoped<IAggregateFactory<TodoReminder>, TodoReminderFactory>();
+        services.AddScoped<IEventSourcedRepository<TodoReminder, Guid>>(sp =>
+            new EventSourcedRepository<TodoReminder, Guid>(
+                sp.GetRequiredService<IEventStore>(),
+                sp.GetRequiredService<ISnapshotStore>(),
+                sp.GetRequiredService<ISnapshotPolicy>(),
+                sp.GetRequiredService<IAggregateFactory<TodoReminder>>(),
+                sp.GetRequiredService<IDomainEventSerializer>(),
+                sp.GetRequiredService<IOutboxStore>(),
+                sp.GetRequiredService<IUnitOfWork>(),
+                sp.GetRequiredService<TimeProvider>(),
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<EventSourcedRepository<TodoReminder, Guid>>.Instance));
+        services.AddScoped<IProjection, TodoReminderProjection>();
+        services.AddScoped<ProjectionRunner>();
 
         services.AddSingleton<IEventTypeRegistry>(eventTypes);
         services.AddSingleton(serializer);
