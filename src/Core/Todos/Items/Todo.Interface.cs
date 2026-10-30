@@ -45,6 +45,9 @@ public interface ITodo
     /// <summary>Gets the actor who last modified the todo.</summary>
     string? ModifiedBy { get; }
 
+    /// <summary>Gets a value indicating whether the todo was permanently deleted.</summary>
+    bool IsHardDeleted { get; }
+
     /// <summary>Gets a value indicating whether the todo is deleted.</summary>
     bool IsDeleted { get; }
 

@@ -44,27 +44,26 @@ public static class DeleteTodo
             ArgumentNullException.ThrowIfNull(command.Request);
 
             Request request = command.Request;
+            DateTimeOffset nowUtc = clock.GetUtcNow();
+            string? actor = actorContext.Actor();
 
-            Result<Guid> tenant = tenantContext.RequireTenant();
-            if (tenant.IsFailure)
-                return Result.Fail(tenant.Errors);
+            Result<Todo> deleted = await tenantContext.RequireTenant()
+                .BindAsync(
+                    (tenantId, ct) => repository.LoadOwnedAsync(
+                        request.Id,
+                        tenantId,
+                        ct,
+                        includeDeleted: true),
+                    cancellationToken)
+                .BindAsync(todo => todo.Delete(
+                    request.Mode == DeleteMode.Hard,
+                    nowUtc,
+                    actor))
+                .ThenAsync(
+                    (todo, ct) => repository.SaveAsync(todo, ct),
+                    cancellationToken);
 
-            Result<Todo> loaded = await repository
-                .LoadOwnedAsync(request.Id, tenant.Value, cancellationToken, includeDeleted: true)
-                .ConfigureAwait(false);
-            if (loaded.IsFailure)
-                return Result.Fail(loaded.Errors);
-
-            Result deleted = loaded.Value.Delete(
-                request.Mode == DeleteMode.Hard,
-                clock.GetUtcNow(),
-                actorContext.Actor());
-            if (deleted.IsFailure)
-                return deleted;
-
-            return await repository
-                .SaveAsync(loaded.Value, cancellationToken)
-                .ConfigureAwait(false);
+            return deleted.ToResult();
         }
     }
     #endregion

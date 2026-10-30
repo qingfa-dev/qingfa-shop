@@ -90,6 +90,10 @@ public sealed class Todo : EventSourcedAggregate<Guid>, ITodo, ISnapshotable
         Guid? listId = null,
         IMetadata? metadata = null)
     {
+        DefaultMetadata? eventMetadata = metadata is null
+            ? null
+            : new DefaultMetadata(metadata.ToDictionary(pair => pair.Key, pair => pair.Value));
+
         var candidate = new Todo
         {
             Id = id,
@@ -104,34 +108,24 @@ public sealed class Todo : EventSourcedAggregate<Guid>, ITodo, ISnapshotable
             Status = TodoConstant.Defaults.Status,
         };
 
-        // Guard: A created todo must carry its creation instant.
-        if (candidate.CreatedAtUtc == default)
-            return Result<Todo>.Fail(TodoOutcome.Failure.CreatedAtRequired);
-
-        Result<Todo> validated = TodoValidator.Validate(candidate);
-        if (validated.IsFailure)
-            return validated;
-
-        DefaultMetadata? eventMetadata = metadata is null
-            ? null
-            : new DefaultMetadata(metadata.ToDictionary(pair => pair.Key, pair => pair.Value));
-        candidate.Raise(new TodoCreated(
-            candidate.Id,
-            candidate.TenantId,
-            candidate.Title,
-            candidate.Description,
-            candidate.Priority,
-            candidate.DueAtUtc,
-            candidate.ListId,
-            candidate.CreatedAtUtc,
-            candidate.CreatedBy,
-            eventMetadata));
-
-        return Result<Todo>.Success(candidate);
+        return Result<Todo>.Success(candidate)
+            .EnsureCreatedAt()
+            .Ensure(todo => TodoValidator.Validate(todo))
+            .Bind(todo => todo.RaiseEvent(new TodoCreated(
+                todo.Id,
+                todo.TenantId,
+                todo.Title,
+                todo.Description,
+                todo.Priority,
+                todo.DueAtUtc,
+                todo.ListId,
+                todo.CreatedAtUtc,
+                todo.CreatedBy,
+                eventMetadata)));
     }
 
     /// <summary>Replaces the editable fields in one event.</summary>
-    public Result Update(
+    public Result<Todo> Update(
         string? title,
         string? description,
         TodoPriority priority,
@@ -140,77 +134,54 @@ public sealed class Todo : EventSourcedAggregate<Guid>, ITodo, ISnapshotable
         DateTimeOffset nowUtc,
         string? actor)
     {
-        Result validation = TodoValidator.ValidateNotDeleted(IsDeleted);
-        if (validation.IsFailure)
-            return validation;
-
         var normalizedTitle = title?.Trim() ?? string.Empty;
         var normalizedDescription = description?.Trim();
         var normalizedDue = dueAtUtc?.ToUniversalTime();
 
-        validation = TodoValidator.ValidateTitle(normalizedTitle);
-        if (validation.IsFailure)
-            return validation;
-
-        validation = TodoValidator.ValidateDescription(normalizedDescription);
-        if (validation.IsFailure)
-            return validation;
-
-        validation = TodoValidator.ValidatePriority(priority);
-        if (validation.IsFailure)
-            return validation;
-
-        validation = TodoValidator.ValidateDueDate(normalizedDue, CreatedAtUtc);
-        if (validation.IsFailure)
-            return validation;
-
-        validation = TodoValidator.ValidateListId(listId);
-        if (validation.IsFailure)
-            return validation;
-
-        Raise(new TodoUpdated(
-            Id,
-            normalizedTitle,
-            normalizedDescription,
-            priority,
-            normalizedDue,
-            listId,
-            nowUtc.ToUniversalTime(),
-            NormalizeActor(actor)));
-
-        return Result.Ok();
+        return Result<Todo>.Success(this)
+            .EnsureMutable()
+            .EnsureTitle(normalizedTitle)
+            .EnsureDescription(normalizedDescription)
+            .EnsurePriority(priority)
+            .EnsureDueDate(normalizedDue)
+            .EnsureListId(listId)
+            .Bind(todo => todo.RaiseEvent(new TodoUpdated(
+                todo.Id,
+                normalizedTitle,
+                normalizedDescription,
+                priority,
+                normalizedDue,
+                listId,
+                nowUtc.ToUniversalTime(),
+                NormalizeActor(actor))));
     }
 
     /// <summary>Moves a pending todo into progress.</summary>
-    public Result Start(DateTimeOffset nowUtc, string? actor)
+    public Result<Todo> Start(DateTimeOffset nowUtc, string? actor)
         => Transition(TodoStatus.InProgress, nowUtc, actor);
 
     /// <summary>Completes a started todo.</summary>
-    public Result Complete(DateTimeOffset nowUtc, string? actor)
+    public Result<Todo> Complete(DateTimeOffset nowUtc, string? actor)
         => Transition(TodoStatus.Completed, nowUtc, actor);
 
     /// <summary>Cancels a pending or started todo.</summary>
-    public Result Cancel(DateTimeOffset nowUtc, string? actor)
+    public Result<Todo> Cancel(DateTimeOffset nowUtc, string? actor)
         => Transition(TodoStatus.Cancelled, nowUtc, actor);
 
     /// <summary>Reopens a finished todo.</summary>
-    public Result Reopen(DateTimeOffset nowUtc, string? actor)
+    public Result<Todo> Reopen(DateTimeOffset nowUtc, string? actor)
         => Transition(TodoStatus.Pending, nowUtc, actor);
 
     /// <summary>Assigns the todo to a list.</summary>
-    public Result AssignToList(Guid listId, DateTimeOffset nowUtc, string? actor)
-    {
-        Result validation = TodoValidator.ValidateNotDeleted(IsDeleted);
-        if (validation.IsFailure)
-            return validation;
-
-        validation = TodoValidator.ValidateListId(listId);
-        if (validation.IsFailure)
-            return validation;
-
-        Raise(new TodoListChanged(Id, listId, nowUtc.ToUniversalTime(), NormalizeActor(actor)));
-        return Result.Ok();
-    }
+    public Result<Todo> AssignToList(Guid listId, DateTimeOffset nowUtc, string? actor)
+        => Result<Todo>.Success(this)
+            .EnsureMutable()
+            .EnsureListId(listId)
+            .Bind(todo => todo.RaiseEvent(new TodoListChanged(
+                todo.Id,
+                listId,
+                nowUtc.ToUniversalTime(),
+                NormalizeActor(actor))));
 
     /// <summary>Clears the list reference.</summary>
     /// <param name="nowUtc">The UTC moment of the change.</param>
@@ -218,30 +189,25 @@ public sealed class Todo : EventSourcedAggregate<Guid>, ITodo, ISnapshotable
     /// <param name="allowDeleted">
     /// True to mutate a soft-deleted stream during cross-aggregate reference cleanup.
     /// </param>
-    public Result ClearList(DateTimeOffset nowUtc, string? actor, bool allowDeleted = false)
-    {
-        Result validation = ValidateMutable(allowDeleted);
-        if (validation.IsFailure)
-            return validation;
-
-        Raise(new TodoListChanged(Id, null, nowUtc.ToUniversalTime(), NormalizeActor(actor)));
-        return Result.Ok();
-    }
+    public Result<Todo> ClearList(DateTimeOffset nowUtc, string? actor, bool allowDeleted = false)
+        => Result<Todo>.Success(this)
+            .EnsureMutable(allowDeleted)
+            .Bind(todo => todo.RaiseEvent(new TodoListChanged(
+                todo.Id,
+                null,
+                nowUtc.ToUniversalTime(),
+                NormalizeActor(actor))));
 
     /// <summary>Adds a category reference.</summary>
-    public Result AddCategory(Guid categoryId, DateTimeOffset nowUtc, string? actor)
-    {
-        Result validation = TodoValidator.ValidateNotDeleted(IsDeleted);
-        if (validation.IsFailure)
-            return validation;
-
-        validation = TodoValidator.ValidateCategoryIds([.. _categoryIds, categoryId]);
-        if (validation.IsFailure)
-            return validation;
-
-        Raise(new TodoCategoryAdded(Id, categoryId, nowUtc.ToUniversalTime(), NormalizeActor(actor)));
-        return Result.Ok();
-    }
+    public Result<Todo> AddCategory(Guid categoryId, DateTimeOffset nowUtc, string? actor)
+        => Result<Todo>.Success(this)
+            .EnsureMutable()
+            .EnsureCategories([.. _categoryIds, categoryId])
+            .Bind(todo => todo.RaiseEvent(new TodoCategoryAdded(
+                todo.Id,
+                categoryId,
+                nowUtc.ToUniversalTime(),
+                NormalizeActor(actor))));
 
     /// <summary>Removes a category reference.</summary>
     /// <param name="categoryId">The category identifier to remove.</param>
@@ -250,47 +216,48 @@ public sealed class Todo : EventSourcedAggregate<Guid>, ITodo, ISnapshotable
     /// <param name="allowDeleted">
     /// True to mutate a soft-deleted stream during cross-aggregate reference cleanup.
     /// </param>
-    public Result RemoveCategory(
+    public Result<Todo> RemoveCategory(
         Guid categoryId,
         DateTimeOffset nowUtc,
         string? actor,
         bool allowDeleted = false)
-    {
-        Result validation = ValidateMutable(allowDeleted);
-        if (validation.IsFailure)
-            return validation;
-
-        if (!_categoryIds.Contains(categoryId))
-            return Result.Fail(TodoOutcome.Failure.CategoryNotFound);
-
-        Raise(new TodoCategoryRemoved(Id, categoryId, nowUtc.ToUniversalTime(), NormalizeActor(actor)));
-        return Result.Ok();
-    }
+        => Result<Todo>.Success(this)
+            .EnsureMutable(allowDeleted)
+            .Ensure(todo => todo.CategoryIds.Contains(categoryId), TodoOutcome.Failure.CategoryNotFound)
+            .Bind(todo => todo.RaiseEvent(new TodoCategoryRemoved(
+                todo.Id,
+                categoryId,
+                nowUtc.ToUniversalTime(),
+                NormalizeActor(actor))));
 
     /// <summary>Soft- or hard-deletes the todo. A hard delete removes the projection row.</summary>
-    public Result Delete(bool isHard, DateTimeOffset nowUtc, string? actor)
+    public Result<Todo> Delete(bool isHard, DateTimeOffset nowUtc, string? actor)
     {
         // Handle: Repeating a soft delete is an intentional idempotent no-op; no event is raised.
         if (IsDeleted && !isHard)
-            return Result.Ok();
+            return Result<Todo>.Success(this);
 
-        Raise(new TodoDeleted(Id, isHard, nowUtc.ToUniversalTime(), NormalizeActor(actor)));
-        return Result.Ok();
+        return Result<Todo>.Success(this)
+            .Bind(todo => todo.RaiseEvent(new TodoDeleted(
+                todo.Id,
+                isHard,
+                nowUtc.ToUniversalTime(),
+                NormalizeActor(actor))));
     }
 
     /// <summary>Restores a soft-deleted todo.</summary>
-    public Result Restore(DateTimeOffset nowUtc, string? actor)
+    public Result<Todo> Restore(DateTimeOffset nowUtc, string? actor)
     {
-        // Guard: a hard-deleted stream has no projection row to restore.
-        if (IsHardDeleted)
-            return Result.Fail(TodoOutcome.Failure.HardDeletedNotFound);
-
         // Handle: Restoring a live todo is an intentional idempotent no-op; no event is raised.
         if (!IsDeleted)
-            return Result.Ok();
+            return Result<Todo>.Success(this);
 
-        Raise(new TodoRestored(Id, nowUtc.ToUniversalTime(), NormalizeActor(actor)));
-        return Result.Ok();
+        return Result<Todo>.Success(this)
+            .Ensure(todo => !todo.IsHardDeleted, TodoOutcome.Failure.HardDeletedNotFound)
+            .Bind(todo => todo.RaiseEvent(new TodoRestored(
+                todo.Id,
+                nowUtc.ToUniversalTime(),
+                NormalizeActor(actor))));
     }
 
     /// <inheritdoc />
@@ -443,36 +410,24 @@ public sealed class Todo : EventSourcedAggregate<Guid>, ITodo, ISnapshotable
         return string.IsNullOrEmpty(trimmed) ? null : trimmed;
     }
 
-    /// <summary>Guards cleanup-aware mutators that may target a soft-deleted stream.</summary>
-    private Result ValidateMutable(bool allowDeleted)
-    {
-        // Guard: a hard-deleted stream is permanently gone; even cleanup cannot append to it.
-        if (IsHardDeleted)
-            return Result.Fail(TodoOutcome.Failure.HardDeletedNotFound);
+    /// <summary>Applies a validated event through the single mutation path.</summary>
+    internal Result<Todo> RaiseEvent(IDomainEvent domainEvent)
+        => TodoEventValidator.Validate(domainEvent)
+            .Bind(() =>
+            {
+                Raise(domainEvent);
+                return Result<Todo>.Success(this);
+            });
 
-        return allowDeleted
-            ? Result.Ok()
-            : TodoValidator.ValidateNotDeleted(IsDeleted);
-    }
-
-    private Result Transition(TodoStatus next, DateTimeOffset nowUtc, string? actor)
-    {
-        Result validation = TodoValidator.ValidateNotDeleted(IsDeleted);
-        if (validation.IsFailure)
-            return validation;
-
-        validation = TodoValidator.ValidateTransition(Status, next);
-        if (validation.IsFailure)
-            return validation;
-
-        Raise(new TodoStatusChanged(
-            Id,
-            TenantId,
-            Status,
-            next,
-            nowUtc.ToUniversalTime(),
-            NormalizeActor(actor)));
-
-        return Result.Ok();
-    }
+    private Result<Todo> Transition(TodoStatus next, DateTimeOffset nowUtc, string? actor)
+        => Result<Todo>.Success(this)
+            .EnsureMutable()
+            .EnsureTransition(next)
+            .Bind(todo => todo.RaiseEvent(new TodoStatusChanged(
+                todo.Id,
+                todo.TenantId,
+                todo.Status,
+                next,
+                nowUtc.ToUniversalTime(),
+                NormalizeActor(actor))));
 }

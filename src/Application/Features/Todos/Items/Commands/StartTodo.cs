@@ -50,28 +50,18 @@ public static class StartTodo
             ArgumentNullException.ThrowIfNull(command.Request);
 
             Request request = command.Request;
+            DateTimeOffset nowUtc = clock.GetUtcNow();
+            string? actor = actorContext.Actor();
 
-            Result<Guid> tenant = tenantContext.RequireTenant();
-            if (tenant.IsFailure)
-                return Result<Response>.Fail(tenant.Errors);
-
-            Result<Todo> loaded = await repository
-                .LoadOwnedAsync(request.Id, tenant.Value, cancellationToken)
-                .ConfigureAwait(false);
-            if (loaded.IsFailure)
-                return Result<Response>.Fail(loaded.Errors);
-
-            Result transition = loaded.Value.Start(clock.GetUtcNow(), actorContext.Actor());
-            if (transition.IsFailure)
-                return Result<Response>.Fail(transition.Errors);
-
-            Result saved = await repository
-                .SaveAsync(loaded.Value, cancellationToken)
-                .ConfigureAwait(false);
-
-            return saved.IsFailure
-                ? Result<Response>.Fail(saved.Errors)
-                : Result<Response>.Success(loaded.Value.ToModel<Response>());
+            return await tenantContext.RequireTenant()
+                .BindAsync(
+                    (tenantId, ct) => repository.LoadOwnedAsync(request.Id, tenantId, ct),
+                    cancellationToken)
+                .BindAsync(todo => todo.Start(nowUtc, actor))
+                .ThenAsync(
+                    (todo, ct) => repository.SaveAsync(todo, ct),
+                    cancellationToken)
+                .MapAsync(todo => todo.ToModel<Response>());
         }
     }
     #endregion

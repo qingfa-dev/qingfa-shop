@@ -1,6 +1,3 @@
-using Core.Common.Concerns.Foundation.Identifiable;
-using Core.Common.Concerns.Foundation.Tenantable;
-
 namespace Core.Todos.Items;
 
 /// <summary>Validates the invariants for <see cref="ITodo"/> without mutating it.</summary>
@@ -8,33 +5,23 @@ public static class TodoValidator
 {
     #region Public Methods
 
-    /// <summary>Validates a todo against every rule it must always satisfy.</summary>
+    /// <summary>Validates any todo state, including the event-sourced aggregate and the read model.</summary>
+    /// <typeparam name="TTodo">The todo state type.</typeparam>
     /// <param name="todo">The todo to validate.</param>
     /// <returns>Success when every rule holds; otherwise a failure with the first broken rule.</returns>
-    public static Result<Todo> Validate(Todo todo)
+    public static Result<TTodo> Validate<TTodo>(TTodo todo)
+        where TTodo : class, ITodo
     {
         // Guard: Reject a missing todo immediately.
         if (todo is null)
         {
-            return Result<Todo>.Fail(
+            return Result<TTodo>.Fail(
                 TodoOutcome.Failure.EntityRequired);
         }
 
-        // Guard: A persisted todo must carry an identifier.
-        if (todo.Id == Guid.Empty)
-        {
-            return Result<Todo>.Fail(
-                IdentifiableOutcome.Failure.IdRequired);
-        }
-
-        // Guard: A persisted todo must belong to a tenant.
-        if (todo.TenantId == Guid.Empty)
-        {
-            return Result<Todo>.Fail(
-                TenantableOutcome.Failure.TenantIdRequired);
-        }
-
-        return Result<Todo>.Success(todo)
+        return Result<TTodo>.Success(todo)
+            .Ensure(entity => entity.Id != Guid.Empty, TodoOutcome.Failure.IdRequired)
+            .Ensure(entity => entity.TenantId != Guid.Empty, TodoOutcome.Failure.TenantIdRequired)
             .Ensure(entity => ValidateTitle(entity.Title))
             .Ensure(entity => ValidateDescription(entity.Description))
             .Ensure(entity => ValidateStatus(entity.Status))
@@ -43,6 +30,14 @@ public static class TodoValidator
             .Ensure(entity => ValidateCategoryIds(entity.CategoryIds))
             .Ensure(entity => ValidateListId(entity.ListId));
     }
+
+    /// <summary>Validates that a todo carries a creation instant.</summary>
+    /// <param name="createdAtUtc">The creation instant to validate.</param>
+    /// <returns>Success when the instant is present; otherwise a failure.</returns>
+    public static Result ValidateCreatedAt(DateTimeOffset createdAtUtc)
+        => createdAtUtc == default
+            ? Result.Fail(TodoOutcome.Failure.CreatedAtRequired)
+            : Result.Ok();
 
     /// <summary>Validates that a todo may move from one status to another.</summary>
     /// <param name="current">The status the todo is in now.</param>

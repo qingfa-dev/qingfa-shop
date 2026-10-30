@@ -6,7 +6,7 @@ using Core.Todos.Items;
 namespace Application.Features.Todos.Items.Models;
 
 /// <summary>Relational projection of the Todo event stream.</summary>
-public sealed record TodoReadModel : IEntity<Guid>, ITenantable<Guid>, ISoftDeletable
+public sealed record TodoReadModel : IEntity<Guid>, ITenantable<Guid>, ISoftDeletable, ITodo
 {
     public Guid Id { get; set; }
     public Guid TenantId { get; set; }
@@ -24,6 +24,7 @@ public sealed record TodoReadModel : IEntity<Guid>, ITenantable<Guid>, ISoftDele
     public DateTimeOffset? ModifiedAtUtc { get; set; }
     public string? ModifiedBy { get; set; }
     public bool IsDeleted { get; set; }
+    public bool IsHardDeleted => false;
     public DateTimeOffset? DeletedAtUtc { get; set; }
     public string? DeletedBy { get; set; }
     public long Version { get; set; }

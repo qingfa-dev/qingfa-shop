@@ -6,6 +6,26 @@ public static class TodoOutcome
     /// <summary>Failure error constants for <see cref="ITodo"/>.</summary>
     public static class Failure
     {
+        /// <summary>Error returned when the todo identifier is missing.</summary>
+        public static Error IdRequired => Error.BadRequest(
+            code: "Todo.Id.Required",
+            message: "Todo identifier must be specified.");
+
+        /// <summary>Error returned when the tenant is missing.</summary>
+        public static Error TenantIdRequired => Error.BadRequest(
+            code: "Todo.TenantId.Required",
+            message: "Tenant identifier must be specified.");
+
+        /// <summary>Error returned when an event payload violates an invariant.</summary>
+        public static Error EventInvalid(string detail) => Error.InternalServerError(
+            code: "Todo.Event.Invalid",
+            message: $"The todo event is invalid: {detail}");
+
+        /// <summary>Error returned when an event is outside the todo vocabulary.</summary>
+        public static Error EventUnsupported(string eventName) => Error.InternalServerError(
+            code: "Todo.Event.Unsupported",
+            message: $"Event '{eventName}' is not supported by Todo.");
+
         /// <summary>Error returned when the todo is missing.</summary>
         public static Error EntityRequired => Error.UnprocessableEntity(
             code: "Todo.Entity.Required",

@@ -130,7 +130,7 @@ public sealed class TodoSpec
     {
         ShouldFailWith(
             Todo.Create(Guid.Empty, TenantId, "Buy milk", CreatedAt, "alice"),
-            "Identifiable.Id.Required");
+            "Todo.Id.Required");
     }
 
     [Fact]
@@ -138,7 +138,7 @@ public sealed class TodoSpec
     {
         ShouldFailWith(
             Todo.Create(TodoId, Guid.Empty, "Buy milk", CreatedAt, "alice"),
-            "Tenantable.TenantId.Required");
+            "Todo.TenantId.Required");
     }
 
     [Fact]

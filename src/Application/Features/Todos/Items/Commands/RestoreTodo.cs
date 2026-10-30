@@ -50,28 +50,22 @@ public static class RestoreTodo
             ArgumentNullException.ThrowIfNull(command.Request);
 
             Request request = command.Request;
+            DateTimeOffset nowUtc = clock.GetUtcNow();
+            string? actor = actorContext.Actor();
 
-            Result<Guid> tenant = tenantContext.RequireTenant();
-            if (tenant.IsFailure)
-                return Result<Response>.Fail(tenant.Errors);
-
-            Result<Todo> loaded = await repository
-                .LoadOwnedAsync(request.Id, tenant.Value, cancellationToken, includeDeleted: true)
-                .ConfigureAwait(false);
-            if (loaded.IsFailure)
-                return Result<Response>.Fail(loaded.Errors);
-
-            Result restored = loaded.Value.Restore(clock.GetUtcNow(), actorContext.Actor());
-            if (restored.IsFailure)
-                return Result<Response>.Fail(restored.Errors);
-
-            Result saved = await repository
-                .SaveAsync(loaded.Value, cancellationToken)
-                .ConfigureAwait(false);
-
-            return saved.IsFailure
-                ? Result<Response>.Fail(saved.Errors)
-                : Result<Response>.Success(loaded.Value.ToModel<Response>());
+            return await tenantContext.RequireTenant()
+                .BindAsync(
+                    (tenantId, ct) => repository.LoadOwnedAsync(
+                        request.Id,
+                        tenantId,
+                        ct,
+                        includeDeleted: true),
+                    cancellationToken)
+                .BindAsync(todo => todo.Restore(nowUtc, actor))
+                .ThenAsync(
+                    (todo, ct) => repository.SaveAsync(todo, ct),
+                    cancellationToken)
+                .MapAsync(todo => todo.ToModel<Response>());
         }
     }
     #endregion

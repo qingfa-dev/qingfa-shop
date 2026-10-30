@@ -50,42 +50,38 @@ public static class CreateTodo
             ArgumentNullException.ThrowIfNull(command.Request);
 
             Request request = command.Request;
-
-            Result<Guid> tenant = tenantContext.RequireTenant();
-            if (tenant.IsFailure)
-                return Result<Response>.Fail(tenant.Errors);
-
             DateTimeOffset nowUtc = clock.GetUtcNow();
             string? actor = actorContext.Actor();
 
-            Result<Todo> created = Todo.Create(
-                id: Guid.NewGuid(),
-                tenantId: tenant.Value,
-                title: request.Title,
-                nowUtc: nowUtc,
-                actor: actor,
-                description: request.Description,
-                priority: request.Priority ?? TodoConstant.Defaults.Priority,
-                dueAtUtc: request.DueAtUtc,
-                listId: request.ListId);
-            if (created.IsFailure)
-                return Result<Response>.Fail(created.Errors);
-
-            foreach (Guid categoryId in request.CategoryIds)
-            {
-                Result added = created.Value.AddCategory(categoryId, nowUtc, actor);
-                if (added.IsFailure)
-                    return Result<Response>.Fail(added.Errors);
-            }
-
-            Result saved = await repository
-                .SaveAsync(created.Value, cancellationToken)
-                .ConfigureAwait(false);
-
-            return saved.IsFailure
-                ? Result<Response>.Fail(saved.Errors)
-                : Result<Response>.Success(created.Value.ToModel<Response>());
+            return await tenantContext.RequireTenant()
+                .Bind(tenantId => Todo.Create(
+                    id: Guid.NewGuid(),
+                    tenantId: tenantId,
+                    title: request.Title,
+                    nowUtc: nowUtc,
+                    actor: actor,
+                    description: request.Description,
+                    priority: request.Priority ?? TodoConstant.Defaults.Priority,
+                    dueAtUtc: request.DueAtUtc,
+                    listId: request.ListId))
+                .Bind(created => AddCategories(created, request.CategoryIds, nowUtc, actor))
+                .ThenAsync(
+                    (todo, ct) => repository.SaveAsync(todo, ct),
+                    cancellationToken)
+                .MapAsync(todo => todo.ToModel<Response>());
         }
-    }
+
+        private static Result<Todo> AddCategories(
+            Result<Todo> created,
+            IReadOnlyCollection<Guid>? categoryIds,
+            DateTimeOffset nowUtc,
+            string? actor)
+            => categoryIds is null || categoryIds.Count == 0
+                ? created
+                : categoryIds.Aggregate(
+                    created,
+                    (current, categoryId) => current.Bind(
+                        todo => todo.AddCategory(categoryId, nowUtc, actor)));
+        }
     #endregion
 }

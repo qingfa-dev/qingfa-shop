@@ -39,7 +39,7 @@ public sealed class TodoValidatorSpec
     public void Validate_NullTodo_ShouldFailWithEntityRequired()
     {
         ShouldFailWith(
-            TodoValidator.Validate(null!),
+            TodoValidator.Validate<Todo>(null!),
             "Todo.Entity.Required");
     }
 
@@ -48,7 +48,7 @@ public sealed class TodoValidatorSpec
     {
         ShouldFailWith(
             TodoValidator.Validate(With(snapshot => snapshot with { Id = Guid.Empty })),
-            "Identifiable.Id.Required");
+            "Todo.Id.Required");
     }
 
     [Fact]
@@ -56,7 +56,7 @@ public sealed class TodoValidatorSpec
     {
         ShouldFailWith(
             TodoValidator.Validate(With(snapshot => snapshot with { TenantId = Guid.Empty })),
-            "Tenantable.TenantId.Required");
+            "Todo.TenantId.Required");
     }
 
     [Fact]

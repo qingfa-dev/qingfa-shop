@@ -63,18 +63,28 @@ public static class UpdateTodo
             ArgumentNullException.ThrowIfNull(command.Request);
 
             Request request = command.Request;
+            DateTimeOffset nowUtc = clock.GetUtcNow();
+            string? actor = actorContext.Actor();
 
-            Result<Guid> tenant = tenantContext.RequireTenant();
-            if (tenant.IsFailure)
-                return Result<Response>.Fail(tenant.Errors);
+            return await tenantContext.RequireTenant()
+                .BindAsync(
+                    (tenantId, ct) => repository.LoadOwnedAsync(request.Id, tenantId, ct),
+                    cancellationToken)
+                .BindAsync(
+                    (todo, _) => Task.FromResult(Apply(todo, request, nowUtc, actor)),
+                    cancellationToken)
+                .ThenAsync(
+                    (todo, ct) => repository.SaveAsync(todo, ct),
+                    cancellationToken)
+                .MapAsync(todo => todo.ToModel<Response>());
+        }
 
-            Result<Todo> loaded = await repository
-                .LoadOwnedAsync(request.Id, tenant.Value, cancellationToken)
-                .ConfigureAwait(false);
-            if (loaded.IsFailure)
-                return Result<Response>.Fail(loaded.Errors);
-
-            Todo todo = loaded.Value;
+        private static Result<Todo> Apply(
+            Todo todo,
+            Request request,
+            DateTimeOffset nowUtc,
+            string? actor)
+        {
             string title = request.Title ?? todo.Title;
             string? description = request.ClearDescription
                 ? null
@@ -83,26 +93,10 @@ public static class UpdateTodo
             DateTimeOffset? dueAtUtc = request.ClearDueAt
                 ? null
                 : request.DueAtUtc ?? todo.DueAtUtc;
-            Guid? listId = request.ListId ?? (request.ClearList ? null : todo.ListId);
+            Guid? listId = request.ListId
+                ?? (request.ClearList ? null : todo.ListId);
 
-            Result updated = todo.Update(
-                title,
-                description,
-                priority,
-                dueAtUtc,
-                listId,
-                clock.GetUtcNow(),
-                actorContext.Actor());
-            if (updated.IsFailure)
-                return Result<Response>.Fail(updated.Errors);
-
-            Result saved = await repository
-                .SaveAsync(todo, cancellationToken)
-                .ConfigureAwait(false);
-
-            return saved.IsFailure
-                ? Result<Response>.Fail(saved.Errors)
-                : Result<Response>.Success(todo.ToModel<Response>());
+            return todo.Update(title, description, priority, dueAtUtc, listId, nowUtc, actor);
         }
     }
     #endregion
