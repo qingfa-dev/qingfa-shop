@@ -2,6 +2,7 @@ using Application.Common.Persistence.Repositories;
 using Application.Common.Persistence.UnitOfWorks;
 using Application.Common.Querying.Mapping;
 using Application.Common.Security.Authentication.Contexts;
+using Application.Features.Todos.Reminders.Models;
 using Application.Features.Todos.Abstractions;
 
 using Core.Todos.Categories;
@@ -198,6 +199,19 @@ public sealed class TodoHandlerFixture
             .Map("isDeleted", list => list.IsDeleted, field => field.Filterable())
             .Map("createdAtUtc", list => list.CreatedAtUtc, field => field.Filterable().Sortable())
             .Map("name", list => list.Name, field => field.Filterable().Searchable().Groupable())
+            .Build().Value);
+
+    /// <summary>Registers the minimal reminder query map used by search tests.</summary>
+    public void RegisterReminderMap() =>
+        Registry.Register(QueryMapBuilder<TodoReminderModel>.Create()
+            .Map("id", reminder => reminder.Id, field => field.Filterable().Sortable().Groupable())
+            .Map("todoId", reminder => reminder.TodoId, field => field.Filterable().Sortable().Groupable())
+            .Map("tenantId", reminder => reminder.TenantId, field => field.Filterable().Sortable().Groupable())
+            .Map("remindAtUtc", reminder => reminder.RemindAtUtc, field => field.Filterable().Sortable())
+            .Map("status", reminder => reminder.Status, field => field.Filterable().Sortable())
+            .Map("snoozeCount", reminder => reminder.SnoozeCount, field => field.Filterable().Sortable())
+            .Map("dismissedAtUtc", reminder => reminder.DismissedAtUtc, field => field.Filterable().Sortable())
+            .Map("version", reminder => reminder.Version, field => field.Filterable().Sortable())
             .Build().Value);
 
     /// <summary>Registers the minimal category query map used by search tests.</summary>

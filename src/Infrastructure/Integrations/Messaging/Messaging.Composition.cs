@@ -31,6 +31,7 @@ namespace Infrastructure.Integrations.Messaging;
 public static class MessagingComposition
 {
     private const string TodoCompletedEventName = "todo.completed";
+    private const string TodoReminderChangedEventName = "todo.reminder.changed";
     private const int EventVersion = 1;
 
     /// <summary>Adds the messaging pipeline to the host.</summary>
@@ -147,6 +148,7 @@ public static class MessagingComposition
                 typeof(MessagingComposition).Assembly);
 
             registry.Register<TodoCompletedIntegration>(TodoCompletedEventName, EventVersion);
+            registry.Register<TodoReminderChangedIntegration>(TodoReminderChangedEventName, EventVersion);
 
             return registry;
         });
@@ -189,11 +191,17 @@ public static class MessagingComposition
                     ushort.MaxValue);
             });
 
-        string queueName =
+        string todoQueueName =
             $"{setting.QueuePrefix}.{TodoCompletedEventName}.{nameof(Handlers.TodoCompletedIntegrationHandler)}";
+        string reminderQueueName =
+            $"{setting.QueuePrefix}.{TodoReminderChangedEventName}.{nameof(Handlers.TodoReminderChangedIntegrationHandler)}";
+
         transport
             .BindExchange(setting.ExchangeName, Wolverine.RabbitMQ.ExchangeType.Topic)
-            .ToQueue(queueName, TodoCompletedEventName);
+            .ToQueue(todoQueueName, TodoCompletedEventName);
+        transport
+            .BindExchange(setting.ExchangeName, Wolverine.RabbitMQ.ExchangeType.Topic)
+            .ToQueue(reminderQueueName, TodoReminderChangedEventName);
 
         // Publish: one topic exchange; the routing key is the stable event name.
         options
@@ -202,10 +210,19 @@ public static class MessagingComposition
                 setting.ExchangeName,
                 TodoCompletedEventName,
                 exchange => exchange.ExchangeType = Wolverine.RabbitMQ.ExchangeType.Topic);
+        options
+            .PublishMessage<TodoReminderChangedIntegration>()
+            .ToRabbitRoutingKey(
+                setting.ExchangeName,
+                TodoReminderChangedEventName,
+                exchange => exchange.ExchangeType = Wolverine.RabbitMQ.ExchangeType.Topic);
 
         // Listen: one queue per consumer, tuned by prefetch and concurrency settings.
         options
-            .ListenToRabbitQueue(queueName)
+            .ListenToRabbitQueue(todoQueueName)
+            .PreFetchCount((ushort)setting.PrefetchCount);
+        options
+            .ListenToRabbitQueue(reminderQueueName)
             .PreFetchCount((ushort)setting.PrefetchCount);
     }
 

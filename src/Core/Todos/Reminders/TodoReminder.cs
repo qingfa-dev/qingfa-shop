@@ -54,7 +54,7 @@ public sealed class TodoReminder : EventSourcedAggregate<Guid>, ISnapshotable
         if (validation.IsFailure)
             return validation;
 
-        Raise(new ReminderSnoozed(Id, remindAtUtc, SnoozeCount + 1));
+        Raise(new ReminderSnoozed(Id, TodoId, TenantId, remindAtUtc, SnoozeCount + 1));
         return Result.Ok();
     }
 
@@ -65,7 +65,7 @@ public sealed class TodoReminder : EventSourcedAggregate<Guid>, ISnapshotable
         if (validation.IsFailure)
             return validation;
 
-        Raise(new ReminderDismissed(Id, nowUtc));
+        Raise(new ReminderDismissed(Id, TodoId, TenantId, RemindAtUtc, nowUtc));
         return Result.Ok();
     }
 

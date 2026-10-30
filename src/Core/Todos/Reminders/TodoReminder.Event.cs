@@ -16,6 +16,8 @@ public sealed record ReminderScheduled(
 /// <summary>Raised when a reminder is snoozed.</summary>
 public sealed record ReminderSnoozed(
     Guid ReminderId,
+    Guid TodoId,
+    Guid TenantId,
     DateTimeOffset RemindAtUtc,
     int SnoozeCount,
     [property: JsonIgnore] DefaultMetadata? metadata = null) : DomainEvent(metadata: metadata);
@@ -23,5 +25,8 @@ public sealed record ReminderSnoozed(
 /// <summary>Raised when a reminder is dismissed.</summary>
 public sealed record ReminderDismissed(
     Guid ReminderId,
+    Guid TodoId,
+    Guid TenantId,
+    DateTimeOffset RemindAtUtc,
     DateTimeOffset DismissedAtUtc,
     [property: JsonIgnore] DefaultMetadata? metadata = null) : DomainEvent(metadata: metadata);

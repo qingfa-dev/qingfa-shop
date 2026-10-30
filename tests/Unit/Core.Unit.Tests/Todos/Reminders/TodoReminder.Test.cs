@@ -91,6 +91,84 @@ public sealed class TodoReminderTest
         rehydrated.Version.Should().Be(2);
     }
 
+    [Fact]
+    public void Create_WithoutIdentifiers_ShouldFail()
+    {
+        Result<TodoReminder> result = TodoReminder.Create(
+            Guid.Empty, Guid.NewGuid(), Guid.NewGuid(), Now.AddHours(1), Now);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().ContainSingle()
+            .Which.Code.Should().Be(TodoReminderOutcome.Codes.IdRequired);
+    }
+
+    [Fact]
+    public void Create_WithoutTodoId_ShouldFail()
+    {
+        Result<TodoReminder> result = TodoReminder.Create(
+            Guid.NewGuid(), Guid.Empty, Guid.NewGuid(), Now.AddHours(1), Now);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().ContainSingle()
+            .Which.Code.Should().Be(TodoReminderOutcome.Codes.TodoIdRequired);
+    }
+
+    [Fact]
+    public void Create_WithoutTenantId_ShouldFail()
+    {
+        Result<TodoReminder> result = TodoReminder.Create(
+            Guid.NewGuid(), Guid.NewGuid(), Guid.Empty, Now.AddHours(1), Now);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().ContainSingle()
+            .Which.Code.Should().Be(TodoReminderOutcome.Codes.TenantIdRequired);
+    }
+
+    [Fact]
+    public void Snooze_WithoutInstant_ShouldFail()
+    {
+        TodoReminder reminder = Create();
+
+        Result result = reminder.Snooze(default, Now);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().ContainSingle()
+            .Which.Code.Should().Be(TodoReminderOutcome.Codes.RemindAtRequired);
+    }
+
+    [Fact]
+    public void Snooze_BeyondLimit_ShouldFail()
+    {
+        TodoReminder reminder = Create();
+        for (int count = 0; count < TodoReminderConstant.Constraints.MaxSnoozeCount; count++)
+        {
+            reminder.Snooze(Now.AddHours(2), Now).IsSuccess.Should().BeTrue();
+        }
+
+        Result result = reminder.Snooze(Now.AddHours(3), Now);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().ContainSingle()
+            .Which.Code.Should().Be(TodoReminderOutcome.Codes.SnoozeLimit);
+    }
+
+    [Fact]
+    public void Dismiss_ShouldCarryTheReminderIdentity()
+    {
+        TodoReminder reminder = Create();
+
+        reminder.Dismiss(Now).IsSuccess.Should().BeTrue();
+
+        ReminderDismissed dismissed = reminder.UncommittedEvents
+            .OfType<ReminderDismissed>()
+            .Should().ContainSingle().Subject;
+        dismissed.ReminderId.Should().Be(reminder.Id);
+        dismissed.TodoId.Should().Be(reminder.TodoId);
+        dismissed.TenantId.Should().Be(reminder.TenantId);
+        dismissed.RemindAtUtc.Should().Be(reminder.RemindAtUtc);
+        dismissed.DismissedAtUtc.Should().Be(Now);
+    }
+
     private static TodoReminder Create()
         => TodoReminder.Create(
             Guid.NewGuid(),

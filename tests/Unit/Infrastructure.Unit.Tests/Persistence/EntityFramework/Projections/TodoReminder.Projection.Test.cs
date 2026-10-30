@@ -3,6 +3,7 @@ using Application.Common.Messaging.Serialization;
 using Application.Features.Todos.Reminders.Models;
 
 using Core.Common.Domain.Events;
+using Core.Todos.Items;
 using Core.Todos.Reminders;
 
 using Infrastructure.Integrations.Messaging.Serialization;
@@ -55,15 +56,50 @@ public sealed class TodoReminderProjectionTest : IAsyncLifetime
         TodoReminderModel model = await _context.Reminders.SingleAsync();
         model.Status.Should().Be(ReminderStatus.Scheduled);
 
-        await _projection.ApplyAsync(Stored(new ReminderSnoozed(id, _now.AddHours(2), 1), 2));
+        await _projection.ApplyAsync(Stored(new ReminderSnoozed(id, todoId, tenantId, _now.AddHours(2), 1), 2));
         await _context.Entry(model).ReloadAsync();
         model.Status.Should().Be(ReminderStatus.Snoozed);
         model.SnoozeCount.Should().Be(1);
 
-        await _projection.ApplyAsync(Stored(new ReminderDismissed(id, _now.AddHours(3)), 3));
+        await _projection.ApplyAsync(Stored(new ReminderDismissed(id, todoId, tenantId, _now.AddHours(1), _now.AddHours(3)), 3));
         await _context.Entry(model).ReloadAsync();
         model.Status.Should().Be(ReminderStatus.Dismissed);
         model.Version.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task Apply_ShouldIgnoreEventsOlderThanTheProjectedVersion()
+    {
+        Guid id = Guid.NewGuid();
+        Guid todoId = Guid.NewGuid();
+        Guid tenantId = Guid.NewGuid();
+
+        await _projection.ApplyAsync(Stored(new ReminderScheduled(id, todoId, tenantId, _now.AddHours(1)), 1));
+        await _projection.ApplyAsync(Stored(new ReminderSnoozed(id, todoId, tenantId, _now.AddHours(2), 1), 2));
+        await _projection.ApplyAsync(
+            Stored(new ReminderDismissed(id, todoId, tenantId, _now.AddHours(2), _now.AddHours(3)), 3));
+
+        // Replay an older delivery and the creation event; neither may regress the row.
+        await _projection.ApplyAsync(Stored(new ReminderSnoozed(id, todoId, tenantId, _now.AddHours(4), 2), 2));
+        await _projection.ApplyAsync(Stored(new ReminderScheduled(id, todoId, tenantId, _now.AddHours(5)), 1));
+
+        TodoReminderModel model = await _context.Reminders.SingleAsync();
+        model.Status.Should().Be(ReminderStatus.Dismissed);
+        model.Version.Should().Be(3);
+        model.RemindAtUtc.Should().Be(_now.AddHours(2));
+    }
+
+    [Fact]
+    public async Task Apply_WithAnUnrelatedEvent_ShouldBeANoOp()
+    {
+        string name = _projection.Name;
+
+        Result result = await _projection.ApplyAsync(
+            Stored(new TodoCompleted(Guid.NewGuid(), Guid.NewGuid(), _now), 1));
+
+        name.Should().Be("todo-reminders");
+        result.IsSuccess.Should().BeTrue();
+        (await _context.Reminders.CountAsync()).Should().Be(0);
     }
 
     private StoredEvent Stored(IDomainEvent domainEvent, long version)

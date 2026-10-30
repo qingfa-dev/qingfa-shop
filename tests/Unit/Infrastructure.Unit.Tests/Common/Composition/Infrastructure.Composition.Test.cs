@@ -5,6 +5,7 @@ using Application.Common.Persistence.Initialization.Resetters;
 using Application.Common.Persistence.Repositories;
 using Application.Common.Querying.Mapping;
 using Application.Common.Security.Authentication.Contexts;
+using Application.Features.Todos.Reminders.Models;
 
 using Core.Todos.Categories;
 using Core.Todos.Items;
@@ -98,10 +99,11 @@ public class InfrastructureCompositionTest
 
         // Assert
         var registry = serviceProvider.GetRequiredService<QueryMapRegistry>();
-        registry.Count.Should().Be(3);
+        registry.Count.Should().Be(4);
         registry.IsRegistered<Todo>().Should().BeTrue();
         registry.IsRegistered<TodoList>().Should().BeTrue();
         registry.IsRegistered<TodoCategory>().Should().BeTrue();
+        registry.IsRegistered<TodoReminderModel>().Should().BeTrue();
     }
 
     [Fact(DisplayName = "AddInfrastructure should auto-register every query map definition")]

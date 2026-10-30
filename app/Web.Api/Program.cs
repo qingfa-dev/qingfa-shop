@@ -26,6 +26,9 @@ builder.AddInfrastructure();
 builder.Services.AddCarter(configurator: configurator =>
 {
     configurator.WithModule<PermissionRegistryEndpoint>();
+    configurator.WithModule<TodoEndpoint>();
+    configurator.WithModule<TodoListEndpoint>();
+    configurator.WithModule<TodoCategoryEndpoint>();
     configurator.WithModule<TodoReminderEndpoint>();
 });
 

@@ -57,6 +57,61 @@ public sealed class ApiSmokeTest : IntegrationTestBase
     }
 
     [Fact]
+    public async Task SearchReminders_WithoutToken_ReturnsUnauthorized()
+    {
+        using var response = await Client.GetAsync(
+            $"/api/todos/{Guid.NewGuid()}/reminders");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task SnoozeReminder_WithoutToken_ReturnsUnauthorized()
+    {
+        using var response = await Client.PatchAsJsonAsync(
+            $"/api/todos/{Guid.NewGuid()}/reminders/{Guid.NewGuid()}/snooze",
+            new { remindAtUtc = DateTimeOffset.UtcNow.AddHours(1) });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetTodos_WithoutToken_ReturnsUnauthorized()
+    {
+        using var response = await Client.GetAsync("/api/todos");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateTodo_WithoutToken_ReturnsUnauthorized()
+    {
+        using var response = await Client.PostAsJsonAsync(
+            "/api/todos",
+            new { title = "blocked" });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task GetTodoLists_WithoutToken_ReturnsUnauthorized()
+    {
+        using var response = await Client.GetAsync("/api/todo-lists");
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
+    public async Task CreateTodoCategory_WithoutToken_ReturnsUnauthorized()
+    {
+        using var response = await Client.PostAsJsonAsync(
+            "/api/todo-categories",
+            new { name = "blocked" });
+
+        Assert.Equal(HttpStatusCode.Unauthorized, response.StatusCode);
+    }
+
+    [Fact]
     public async Task GetPermissionCatalog_WithoutToken_ReturnsUnauthorized()
     {
         // Act
