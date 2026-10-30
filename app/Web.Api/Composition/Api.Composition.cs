@@ -6,7 +6,6 @@ using Infrastructure.Integrations.Serialization;
 
 using ServiceDefaults;
 
-using Web.Api.Endpoints.Authorization;
 using Web.Api.Endpoints.Identity;
 using Web.Api.Endpoints.Todos;
 
@@ -28,10 +27,10 @@ public static class ApiComposition
 
         builder.Services.AddCarter(configurator: configurator =>
         {
-            configurator.WithModule<PermissionRegistryEndpoint>();
             configurator.WithModule<IdentityEndpoint>();
             configurator.WithModule<IdentityUserEndpoint>();
             configurator.WithModule<IdentityRoleEndpoint>();
+            configurator.WithModule<IdentityPermissionEndpoint>();
             configurator.WithModule<TodoEndpoint>();
             configurator.WithModule<TodoListEndpoint>();
             configurator.WithModule<TodoCategoryEndpoint>();

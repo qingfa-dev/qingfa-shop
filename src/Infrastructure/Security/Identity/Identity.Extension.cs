@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
 
 using Infrastructure.Persistence.EntityFramework.Contexts;
+using Infrastructure.Security.Authorization.Permissions.Services;
 using Infrastructure.Security.Identity.Domain.Roles;
 using Infrastructure.Security.Identity.Domain.Users;
 using Infrastructure.Security.Identity.Options;
@@ -60,7 +61,10 @@ public static class IdentityExtensions
         services.Configure<SecurityStampValidatorOptions>(options =>
             options.ValidationInterval = IdentitySettingConstant.SecurityStamp.ValidationInterval);
 
+        // Register: admin ports. Role management owns the Identity role store; the
+        // permission catalog projects the authorization registry and permission service.
         services.AddScoped<IRoleManagementService, RoleManagementService>();
+        services.AddScoped<IPermissionCatalogService, PermissionCatalogService>();
 
         return services;
     }
