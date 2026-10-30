@@ -49,6 +49,7 @@ services:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__db: Host=postgres;Port=5432;Database=db;Username=qingfa;Password=qingfa
       ConnectionStrings__redis: redis:6379
+      ConnectionStrings__rabbitmq: amqp://qingfa:qingfa@rabbitmq:5672
     ports:
       - "8080:8080"
     healthcheck:
@@ -61,6 +62,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     deploy:
       resources:
@@ -115,6 +118,31 @@ services:
         limits:
           cpus: "0.25"
           memory: 128M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  rabbitmq:
+    image: rabbitmq:4-management
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: qingfa
+      RABBITMQ_DEFAULT_PASS: qingfa
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 256M
     logging:
       driver: json-file
       options:

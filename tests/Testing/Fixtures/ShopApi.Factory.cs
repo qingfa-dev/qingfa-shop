@@ -42,6 +42,7 @@ public sealed class ShopApiFactory : WebApplicationFactory<Web.Api.AssemblyMarke
         Environment.SetEnvironmentVariable("ConnectionStrings__db", DatabaseConnectionString);
         Environment.SetEnvironmentVariable("ConnectionStrings__redis", RedisConnectionString);
         Environment.SetEnvironmentVariable("Outbox__Enabled", "false");
+        Environment.SetEnvironmentVariable("Messaging__Enabled", "false");
 
         return base.CreateHost(builder);
     }

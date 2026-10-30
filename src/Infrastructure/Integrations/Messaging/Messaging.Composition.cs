@@ -15,6 +15,8 @@ using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
+using RabbitMQ.Client;
+
 using Wolverine;
 using Wolverine.ErrorHandling;
 using Wolverine.RabbitMQ;
@@ -85,6 +87,17 @@ public static class MessagingComposition
         // outbox's TryAdd no-op registration. The adapter is scoped because Wolverine's
         // IMessageBus is scoped to the current message/DI scope.
         builder.Services.AddScoped<IEventBus, WolverineEventBus>();
+
+        if (setting.Transport == MessagingTransport.RabbitMq && connectionString is not null)
+        {
+            builder.Services.AddHealthChecks()
+                .AddRabbitMQ(
+                    _ => new ConnectionFactory
+                    {
+                        Uri = new Uri(connectionString),
+                    }.CreateConnectionAsync(),
+                    tags: ["ready", "messaging"]);
+        }
 
         return builder;
     }
@@ -168,7 +181,7 @@ public static class MessagingComposition
 
         string queueName = $"{setting.QueuePrefix}.{TodoCompletedEventName}";
         transport
-            .BindExchange(setting.ExchangeName, ExchangeType.Topic)
+            .BindExchange(setting.ExchangeName, Wolverine.RabbitMQ.ExchangeType.Topic)
             .ToQueue(queueName, TodoCompletedEventName);
 
         // Publish: one topic exchange; the routing key is the stable event name.
@@ -177,7 +190,7 @@ public static class MessagingComposition
             .ToRabbitRoutingKey(
                 setting.ExchangeName,
                 TodoCompletedEventName,
-                exchange => exchange.ExchangeType = ExchangeType.Topic);
+                exchange => exchange.ExchangeType = Wolverine.RabbitMQ.ExchangeType.Topic);
 
         // Listen: one queue per consumer, tuned by prefetch and concurrency settings.
         options

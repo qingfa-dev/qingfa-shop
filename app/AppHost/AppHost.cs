@@ -10,12 +10,16 @@ var db = builder
 
 var redis = builder.AddRedis("redis");
 
+var rabbitmq = builder.AddRabbitMQ("rabbitmq");
+
 IResourceBuilder<ProjectResource> api = builder
     .AddProject<Projects.Web_Api>("api")
     .WithReference(db)
     .WaitFor(db)
     .WithReference(redis)
     .WaitFor(redis)
+    .WithReference(rabbitmq)
+    .WaitFor(rabbitmq)
     .WithEnvironment("EfCore__ConnectionStringName", "db")
     .WithEnvironment("Persistence__AutoMigrate", "true")
     .WithHttpHealthCheck("/health");
