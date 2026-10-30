@@ -142,7 +142,6 @@ public sealed class EfCoreMigratorIntegrationTest(PersistenceInitializationFixtu
 
         // Assert
         pending.Should().ContainSingle();
-        pending.Should().ContainSingle();
         pending.Single().EndsWith("_InitialCreate", StringComparison.Ordinal).Should().BeTrue();
     }
 

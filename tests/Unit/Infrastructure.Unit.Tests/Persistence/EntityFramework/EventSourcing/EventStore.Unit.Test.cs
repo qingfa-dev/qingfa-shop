@@ -43,6 +43,34 @@ public sealed class EventStoreUnitTest : IAsyncLifetime
     }
 
     [Fact]
+    public async Task Append_WhenTheTransactionCannotStart_ShouldReturnAppendFailed()
+    {
+        // Arrange: a disposed context cannot start the append transaction.
+        var options = new DbContextOptionsBuilder<EventStoreTestContext>()
+            .UseSqlite("Filename=:memory:")
+            .Options;
+        var context = new EventStoreTestContext(options);
+        await context.Database.OpenConnectionAsync();
+        await context.Database.EnsureCreatedAsync();
+        var store = new PostgresEventStore(
+            context,
+            new JsonMessageSerializer(new EventTypeRegistry(typeof(DomainEvent).Assembly)),
+            TimeProvider.System);
+        await context.DisposeAsync();
+
+        // Act
+        Result<long> result = await store.AppendAsync(
+            $"test-{Guid.NewGuid():N}",
+            0,
+            [new StoreEvent("rejected")]);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().ContainSingle()
+            .Which.Code.Should().Be(EventSourcingOutcome.Codes.AppendFailed);
+    }
+
+    [Fact]
     public async Task SnapshotsAndCheckpoints_ShouldRoundTrip()
     {
         var snapshots = new EfCoreSnapshotStore(_context);

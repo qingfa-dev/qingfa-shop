@@ -293,18 +293,6 @@ public sealed class TodoEfCoreFixture : IAsyncLifetime
         CurrentScope = Services.CreateScope();
     }
 
-    /// <summary>Persists a todo stream and runs the projection so read-side queries see it.</summary>
-    /// <param name="todo">The todo aggregate to save.</param>
-    /// <returns>The save or projection failure.</returns>
-    public async Task<Result> SaveTodoAsync(Todo todo)
-    {
-        Result saved = await TodoEvents.SaveAsync(todo);
-        if (saved.IsFailure)
-            return saved;
-
-        return await Runner.RunOnceAsync();
-    }
-
     /// <summary>Runs one projection pass so handler writes are visible to read-side queries.</summary>
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>The projection outcome.</returns>

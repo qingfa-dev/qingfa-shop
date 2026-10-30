@@ -16,6 +16,7 @@ using Infrastructure.Persistence.EntityFramework.UnitOfWorks;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Diagnostics;
+using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging.Abstractions;
 
 namespace Infrastructure.Integration.Tests.Messaging;
@@ -58,13 +59,13 @@ public sealed class OutboxAtomicityIntegrationTest(MessagingFixture fixture) : I
     }
 
     [Fact]
-    public async Task FailedSave_ShouldLeaveNoStateOrOutboxRowAndKeepTheEvent()
+    public async Task FailedOutboxStage_ShouldRollBackTheAppendAndOutboxTogether()
     {
-        // Arrange
+        // Arrange: the first save appends events, the second save stages the outbox.
         var options = new DbContextOptionsBuilder<ApplicationDbContext>()
             .UseNpgsql(fixture.ConnectionString, npgsql =>
                 npgsql.UsePersistenceMigrationHistory())
-            .AddInterceptors(new ThrowingSaveInterceptor())
+            .AddInterceptors(new ThrowingSaveInterceptor(throwOnSave: 2))
             .Options;
 
         await using var context = new ApplicationDbContext(options);
@@ -83,15 +84,29 @@ public sealed class OutboxAtomicityIntegrationTest(MessagingFixture fixture) : I
             NullLogger<EventSourcedRepository<Todo, Guid>>.Instance);
         Todo todo = CreateTodo("rejected");
 
+        Result<ITransaction> begin = await unitOfWork.BeginTransactionAsync();
+        begin.IsSuccess.Should().BeTrue();
+        await using ITransaction transaction = begin.Value;
+
         // Act
         Result save = await repository.SaveAsync(todo);
 
-        // Assert
+        // Assert: the append reached the ambient transaction and the outbox rows were staged.
         save.IsFailure.Should().BeTrue();
-        (await context.Set<OutboxMessage>().CountAsync()).Should().Be(0);
-        (await context.Set<StoredEvent>().CountAsync()).Should().Be(0);
-        (await context.Set<TodoReadModel>().CountAsync()).Should().Be(0);
+        (await context.Set<StoredEvent>().CountAsync()).Should().Be(1);
+        context.ChangeTracker.Entries<OutboxMessage>().Should().ContainSingle();
         todo.UncommittedEvents.Should().ContainSingle();
+
+        // Act: roll back the transaction that owned both writes.
+        (await transaction.RollbackAsync()).IsSuccess.Should().BeTrue();
+        context.ChangeTracker.Clear();
+
+        // Assert: a fresh scope sees neither the event nor the outbox row.
+        using IServiceScope verificationScope = fixture.Services.CreateScope();
+        var verification = verificationScope.ServiceProvider.GetRequiredService<ApplicationDbContext>();
+        (await verification.Set<StoredEvent>().CountAsync()).Should().Be(0);
+        (await verification.Set<OutboxMessage>().CountAsync()).Should().Be(0);
+        (await verification.Set<TodoReadModel>().CountAsync()).Should().Be(0);
     }
 
     private static Todo CreateTodo(string title)
@@ -101,14 +116,21 @@ public sealed class OutboxAtomicityIntegrationTest(MessagingFixture fixture) : I
             title,
             DateTimeOffset.UtcNow).Value;
 
-    /// <summary>Fails the save after the outbox interceptor has staged rows.</summary>
-    private sealed class ThrowingSaveInterceptor : SaveChangesInterceptor
+    /// <summary>Fails one selected save so the outbox stage can be interrupted.</summary>
+    private sealed class ThrowingSaveInterceptor(int throwOnSave) : SaveChangesInterceptor
     {
+        private int _saveCount;
+
         public override ValueTask<InterceptionResult<int>> SavingChangesAsync(
             DbContextEventData eventData,
             InterceptionResult<int> result,
             CancellationToken cancellationToken = default)
-            => ValueTask.FromException<InterceptionResult<int>>(
-                new InvalidOperationException("The save was rejected."));
+        {
+            int saveCount = Interlocked.Increment(ref _saveCount);
+            return saveCount == throwOnSave
+                ? ValueTask.FromException<InterceptionResult<int>>(
+                    new InvalidOperationException("The save was rejected."))
+                : ValueTask.FromResult(result);
+        }
     }
 }

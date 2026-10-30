@@ -33,14 +33,16 @@ public sealed class PostgresEventStore(
         if (events.Count == 0)
             return Result<long>.Success(expectedVersion);
 
-        // Handle: enrol in the command's ambient transaction instead of opening a nested one.
-        bool ownsTransaction = context.Database.CurrentTransaction is null;
-        IDbContextTransaction? transaction = ownsTransaction
-            ? await context.Database.BeginTransactionAsync(cancellationToken)
-            : null;
+        IDbContextTransaction? transaction = null;
 
         try
         {
+            // Handle: enrol in the command's ambient transaction instead of opening a nested one.
+            bool ownsTransaction = context.Database.CurrentTransaction is null;
+            transaction = ownsTransaction
+                ? await context.Database.BeginTransactionAsync(cancellationToken)
+                : null;
+
             long current = await Events
                 .Where(stored => stored.StreamId == streamId)
                 .MaxAsync(stored => (long?)stored.Version, cancellationToken) ?? 0;

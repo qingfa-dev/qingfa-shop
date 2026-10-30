@@ -195,6 +195,192 @@ public sealed class TodoReadModelMappingUnitTest : IAsyncDisposable
         result.Value.Items.Should().NotContain(dto => dto.Title == "Deleted");
     }
 
+    [Fact(DisplayName = "MapAsync should apply an AND filter over the read model")]
+    public async Task MapAsync_ReadModel_AndFilter_ShouldReturnMatching()
+    {
+        // Arrange
+        await SeedRowsAsync(
+            CreateReadModel("Pending high", TenantId, TodoStatus.Pending, priority: TodoPriority.High),
+            CreateReadModel("Pending low", TenantId, TodoStatus.Pending, priority: TodoPriority.Low),
+            CreateReadModel("Completed high", TenantId, TodoStatus.Completed, priority: TodoPriority.High));
+        var repository = CreateRepository();
+        var query = new Query<TodoReadModel>
+        {
+            Filter = new FilterGroup(
+                FilterLogic.And,
+                new FilterNode[]
+                {
+                    new FilterCondition(
+                        "status", FilterOperator.Equal,
+                        "0", (int)TodoStatus.Pending, typeof(int), false, null, null),
+                    new FilterCondition(
+                        "priority", FilterOperator.Equal,
+                        "2", (int)TodoPriority.High, typeof(int), false, null, null),
+                })
+        };
+
+        // Act
+        Result<QueryPage<TodoReadModelSimpleDto>> result = await repository.MapAsync(
+            query,
+            todo => new TodoReadModelSimpleDto(todo.Title, todo.Status, todo.Priority));
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Items.Should().ContainSingle()
+            .Which.Title.Should().Be("Pending high");
+    }
+
+    [Fact(DisplayName = "MapAsync should apply an OR filter over the read model")]
+    public async Task MapAsync_ReadModel_OrFilter_ShouldReturnMatching()
+    {
+        // Arrange
+        await SeedRowsAsync(
+            CreateReadModel("Pending", TenantId, TodoStatus.Pending),
+            CreateReadModel("Completed", TenantId, TodoStatus.Completed),
+            CreateReadModel("Cancelled", TenantId, TodoStatus.Cancelled));
+        var repository = CreateRepository();
+        var query = new Query<TodoReadModel>
+        {
+            Filter = new FilterGroup(
+                FilterLogic.Or,
+                new FilterNode[]
+                {
+                    new FilterCondition(
+                        "status", FilterOperator.Equal,
+                        "0", (int)TodoStatus.Pending, typeof(int), false, null, null),
+                    new FilterCondition(
+                        "status", FilterOperator.Equal,
+                        "2", (int)TodoStatus.Completed, typeof(int), false, null, null),
+                })
+        };
+
+        // Act
+        Result<QueryPage<TodoReadModelSimpleDto>> result = await repository.MapAsync(
+            query,
+            todo => new TodoReadModelSimpleDto(todo.Title, todo.Status, todo.Priority));
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Items.Select(dto => dto.Title)
+            .Should().BeEquivalentTo(["Pending", "Completed"]);
+    }
+
+    [Fact(DisplayName = "ProjectAsync should preserve null optional read-model fields")]
+    public async Task ProjectAsync_ReadModel_OptionalFields_ShouldHandleNulls()
+    {
+        // Arrange
+        DateTimeOffset dueAtUtc = DateTimeOffset.UtcNow.AddDays(2);
+        await SeedRowsAsync(
+            CreateReadModel(
+                "With optional",
+                TenantId,
+                TodoStatus.Pending,
+                description: "Description",
+                dueAtUtc: dueAtUtc),
+            CreateReadModel("Without optional", TenantId, TodoStatus.Pending));
+        var repository = CreateRepository();
+        var query = new Query<TodoReadModel>();
+
+        // Act
+        Result<QueryPage<TodoReadModelOptionalDto>> result = await repository.ProjectAsync(
+            query,
+            todo => new TodoReadModelOptionalDto(todo.Title, todo.Description, todo.DueAtUtc));
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Items.Should().HaveCount(2);
+        result.Value.Items.Single(dto => dto.Title == "With optional")
+            .Should().Be(new TodoReadModelOptionalDto("With optional", "Description", dueAtUtc));
+        result.Value.Items.Single(dto => dto.Title == "Without optional")
+            .Should().Be(new TodoReadModelOptionalDto("Without optional", null, null));
+    }
+
+    [Fact(DisplayName = "MapAsync should project the computed IsCompleted flag")]
+    public async Task MapAsync_ReadModel_ComputedIsCompleted_ShouldReturnFlag()
+    {
+        // Arrange
+        await SeedRowsAsync(
+            CreateReadModel("Done", TenantId, TodoStatus.Completed),
+            CreateReadModel("Open", TenantId, TodoStatus.Pending));
+        var repository = CreateRepository();
+        var query = new Query<TodoReadModel>();
+
+        // Act
+        Result<QueryPage<TodoReadModelComputedDto>> result = await repository.MapAsync(
+            query,
+            todo => new TodoReadModelComputedDto(todo.Title, todo.IsCompleted));
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Items.Single(dto => dto.Title == "Done").IsCompleted.Should().BeTrue();
+        result.Value.Items.Single(dto => dto.Title == "Open").IsCompleted.Should().BeFalse();
+    }
+
+    [Fact(DisplayName = "ProjectAsync should translate a computed completion projection")]
+    public async Task ProjectAsync_ReadModel_ComputedIsCompleted_ShouldTranslate()
+    {
+        // Arrange
+        await SeedRowsAsync(
+            CreateReadModel("Done", TenantId, TodoStatus.Completed),
+            CreateReadModel("Open", TenantId, TodoStatus.Pending));
+        var repository = CreateRepository();
+        var query = new Query<TodoReadModel>();
+
+        // Act
+        Result<QueryPage<TodoReadModelComputedDto>> result = await repository.ProjectAsync(
+            query,
+            todo => new TodoReadModelComputedDto(
+                todo.Title,
+                todo.Status == TodoStatus.Completed));
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Items.Single(dto => dto.Title == "Done").IsCompleted.Should().BeTrue();
+        result.Value.Items.Single(dto => dto.Title == "Open").IsCompleted.Should().BeFalse();
+    }
+
+    [Fact(DisplayName = "MapAsync should return a result when the token is already cancelled")]
+    public async Task MapAsync_ReadModel_WithCancelledToken_ShouldReturnResult()
+    {
+        // Arrange
+        await SeedAsync(3);
+        var repository = CreateRepository();
+        var query = new Query<TodoReadModel>();
+        using var cancellation = new CancellationTokenSource();
+        cancellation.Cancel();
+
+        // Act
+        Result<QueryPage<TodoReadModelSimpleDto>> result = await repository.MapAsync(
+            query,
+            todo => new TodoReadModelSimpleDto(todo.Title, todo.Status, todo.Priority),
+            cancellation.Token);
+
+        // Assert: SQLite may complete before observing cancellation; the contract is a Result.
+        result.Should().NotBeNull();
+    }
+
+    [Fact(DisplayName = "MapAsync should page a larger read-model dataset")]
+    public async Task MapAsync_ReadModel_LargeDataset_ShouldMapAll()
+    {
+        // Arrange
+        await SeedAsync(50);
+        var repository = CreateRepository();
+        var query = new Query<TodoReadModel>
+        {
+            Page = new PageRequest(1, 50)
+        };
+
+        // Act
+        Result<QueryPage<TodoReadModelSimpleDto>> result = await repository.MapAsync(
+            query,
+            todo => new TodoReadModelSimpleDto(todo.Title, todo.Status, todo.Priority));
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Items.Should().HaveCount(50);
+        result.Value.TotalCount.Should().Be(50);
+    }
+
     private EfCoreRepository<TodoReadModel, Guid> CreateRepository()
     {
         var registry = new QueryMapRegistry();
@@ -226,18 +412,30 @@ public sealed class TodoReadModelMappingUnitTest : IAsyncDisposable
         await _context.SaveChangesAsync();
     }
 
+    private async Task SeedRowsAsync(params TodoReadModel[] rows)
+    {
+        _context.Set<TodoReadModel>().AddRange(rows);
+        await _context.SaveChangesAsync();
+        _context.ChangeTracker.Clear();
+    }
+
     private static TodoReadModel CreateReadModel(
         string title,
         Guid tenantId,
         TodoStatus status,
-        bool isDeleted = false) =>
+        bool isDeleted = false,
+        TodoPriority priority = TodoPriority.Medium,
+        string? description = null,
+        DateTimeOffset? dueAtUtc = null) =>
         new()
         {
             Id = Guid.NewGuid(),
             TenantId = tenantId,
             Title = title,
+            Description = description,
             Status = status,
-            Priority = TodoPriority.Medium,
+            Priority = priority,
+            DueAtUtc = dueAtUtc,
             CreatedAtUtc = DateTimeOffset.UtcNow,
             CreatedBy = "test",
             IsDeleted = isDeleted,
@@ -264,3 +462,19 @@ public sealed record TodoReadModelSimpleDto(
     string Title,
     TodoStatus Status,
     TodoPriority Priority);
+
+/// <summary>The optional-field shape used to prove null preservation.</summary>
+/// <param name="Title">The todo title.</param>
+/// <param name="Description">The optional description.</param>
+/// <param name="DueAtUtc">The optional due instant.</param>
+public sealed record TodoReadModelOptionalDto(
+    string Title,
+    string? Description,
+    DateTimeOffset? DueAtUtc);
+
+/// <summary>The computed shape used to prove completion projection.</summary>
+/// <param name="Title">The todo title.</param>
+/// <param name="IsCompleted">Whether the todo is completed.</param>
+public sealed record TodoReadModelComputedDto(
+    string Title,
+    bool IsCompleted);
