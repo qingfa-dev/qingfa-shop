@@ -67,3 +67,52 @@ public sealed record UpdateUserSpec(
     string? FirstName,
     string? LastName,
     IReadOnlyList<Guid>? RoleIds);
+
+
+/// <summary>Create-user request values shared by the command and the HTTP model.</summary>
+public abstract record CreateUserModel
+{
+    public string UserName { get; set; } = string.Empty;
+    public string Email { get; set; } = string.Empty;
+    public string Password { get; set; } = string.Empty;
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+    public bool EmailConfirmed { get; set; }
+    public IReadOnlyList<Guid> RoleIds { get; set; } = [];
+}
+
+/// <summary>Update-user request values shared by the command and the HTTP model.</summary>
+public abstract record UpdateUserModel
+{
+    public Guid Id { get; set; }
+    public string? Email { get; set; }
+    public string? FirstName { get; set; }
+    public string? LastName { get; set; }
+    public IReadOnlyList<Guid>? RoleIds { get; set; }
+}
+
+/// <summary>A request addressed to one user.</summary>
+public abstract record UserTargetModel
+{
+    public Guid Id { get; set; }
+}
+
+/// <summary>A request linking one user to one role.</summary>
+public abstract record UserRoleModel
+{
+    public Guid UserId { get; set; }
+    public Guid RoleId { get; set; }
+}
+
+/// <summary>An admin password reset request.</summary>
+public abstract record ResetUserPasswordModel
+{
+    public Guid Id { get; set; }
+    public string NewPassword { get; set; } = string.Empty;
+}
+
+/// <summary>A user search request.</summary>
+public abstract record SearchUsersModel
+{
+    public Application.Common.Querying.QueryParameters Parameters { get; set; } = new();
+}

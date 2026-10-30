@@ -1,6 +1,7 @@
 using System.Text;
 
 using Application.Common.Security.Authentication.Contexts;
+using Application.Features.Identity.Abstractions;
 using Application.Features.Identity.Auth;
 using Application.Features.Identity.Auth.Abstractions;
 using Application.Features.Identity.Auth.Options;
@@ -99,6 +100,7 @@ public static class AuthenticationComposition
         services.TryAddSingleton(external);
         services.TryAddScoped<IdentityTokenIssuer>();
         services.TryAddScoped<IIdentityService, IdentityService>();
+        services.TryAddScoped<IUserAccountService, UserAccountService>();
         services.TryAddScoped<IExternalAuthenticationService, ExternalAuthenticationService>();
         services.TryAddScoped<IIdentityEmailSender, LoggingIdentityEmailSender>();
 

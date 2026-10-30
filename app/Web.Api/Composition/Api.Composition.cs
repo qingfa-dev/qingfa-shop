@@ -30,6 +30,7 @@ public static class ApiComposition
         {
             configurator.WithModule<PermissionRegistryEndpoint>();
             configurator.WithModule<IdentityEndpoint>();
+            configurator.WithModule<IdentityUserEndpoint>();
             configurator.WithModule<TodoEndpoint>();
             configurator.WithModule<TodoListEndpoint>();
             configurator.WithModule<TodoCategoryEndpoint>();
