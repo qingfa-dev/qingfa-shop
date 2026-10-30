@@ -4,6 +4,7 @@ using Application.Common.Validation.FluentValidation;
 using FluentValidation;
 
 using Infrastructure.Persistence.EntityFramework.EventSourcing.Options;
+using Infrastructure.Persistence.EntityFramework.Projections;
 
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
@@ -41,6 +42,8 @@ public static class EventStoreComposition
         builder.Services.TryAddScoped<ISnapshotStore, EfCoreSnapshotStore>();
         builder.Services.TryAddScoped<IProjectionCheckpointStore, EfCoreProjectionCheckpointStore>();
         builder.Services.TryAddScoped(typeof(IEventSourcedRepository<,>), typeof(EventSourcedRepository<,>));
+        builder.Services.TryAddScoped<ProjectionRunner>();
+        builder.Services.AddHostedService<ProjectionWorker>();
 
         return builder;
     }
