@@ -115,22 +115,36 @@ public sealed class IdentityService(
             .CheckPasswordSignInAsync(user, request.Password, lockoutOnFailure: true)
             .ConfigureAwait(false);
 
-        if (signIn.RequiresTwoFactor)
+        // Enforce: CheckPasswordSignInAsync verifies the password only, so an enabled
+        // second factor must be required explicitly before any token is issued.
+        bool twoFactorRequired = signIn.RequiresTwoFactor ||
+            (signIn.Succeeded && await userManager.GetTwoFactorEnabledAsync(user).ConfigureAwait(false));
+
+        if (twoFactorRequired)
         {
+            // Verify: the cookie-based SignInManager two-factor entry points need the
+            // interactive "Identity.TwoFactorUserId" scheme, which a JWT-only host does
+            // not register. Verify the factor directly instead.
             if (!string.IsNullOrWhiteSpace(request.TwoFactorRecoveryCode))
             {
-                signIn = await signInManager
-                    .TwoFactorRecoveryCodeSignInAsync(request.TwoFactorRecoveryCode)
+                IdentityResult recovery = await userManager
+                    .RedeemTwoFactorRecoveryCodeAsync(user, request.TwoFactorRecoveryCode)
                     .ConfigureAwait(false);
+
+                if (!recovery.Succeeded)
+                    return Result<AuthTokenResponse>.Fail(IdentityOutcome.Failure.TwoFactorInvalid);
             }
             else if (!string.IsNullOrWhiteSpace(request.TwoFactorCode))
             {
-                signIn = await signInManager
-                    .TwoFactorAuthenticatorSignInAsync(
-                        request.TwoFactorCode,
-                        isPersistent: false,
-                        rememberClient: false)
+                bool valid = await userManager
+                    .VerifyTwoFactorTokenAsync(
+                        user,
+                        TokenOptions.DefaultAuthenticatorProvider,
+                        request.TwoFactorCode)
                     .ConfigureAwait(false);
+
+                if (!valid)
+                    return Result<AuthTokenResponse>.Fail(IdentityOutcome.Failure.TwoFactorInvalid);
             }
             else
             {

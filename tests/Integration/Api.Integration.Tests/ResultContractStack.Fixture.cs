@@ -1,5 +1,6 @@
 using System.Net.Http.Headers;
 
+using Application.Common.Persistence.Initialization;
 using Application.Common.Security.Authentication.Tokens;
 using Application.Common.Security.Authentication.Tokens.Abstractions.Jwt;
 
@@ -35,7 +36,7 @@ public sealed class ResultContractStackFixture : IAsyncLifetime
     private PostgreSqlContainer? _container;
 
     /// <summary>The host under test; unavailable when <see cref="SkipReason"/> is set.</summary>
-    public ShopApiFactory Factory { get; private set; } = null!;
+    public IdentityStackFactory Factory { get; private set; } = null!;
 
     /// <summary>The reason container-backed tests must skip, or <c>null</c> when ready.</summary>
     public string? SkipReason { get; private set; }
@@ -69,9 +70,11 @@ public sealed class ResultContractStackFixture : IAsyncLifetime
 
         // Initialize: the factory publishes the connection string before Program composes
         // the context, so the host and the pre-migrated database point at the same server.
-        Factory = new ShopApiFactory { DatabaseConnectionString = connectionString };
+        Factory = new IdentityStackFactory { DatabaseConnectionString = connectionString };
         Factory.Clock.SetUtcNow(DateTimeOffset.UtcNow);
         _ = Factory.Services;
+
+        await SeedIdentityAsync();
     }
 
     /// <summary>Creates a client carrying a signed token with the supplied roles.</summary>
@@ -93,6 +96,27 @@ public sealed class ResultContractStackFixture : IAsyncLifetime
             new AuthenticationHeaderValue("Bearer", issued.Value.Token);
 
         return client;
+    }
+
+    /// <summary>Runs the identity seeders against the migrated database.</summary>
+    /// <exception cref="InvalidOperationException">A seeder reported a failure.</exception>
+    public async Task SeedIdentityAsync()
+    {
+        using IServiceScope scope = Factory.Services.CreateScope();
+
+        IPersistenceInitializer initializer = scope.ServiceProvider
+            .GetRequiredService<IPersistenceInitializer>();
+
+        Result seeded = await initializer.InitializeAsync(
+            runMigrations: false,
+            runSeeders: true,
+            cancellationToken: TestContext.Current.CancellationToken);
+
+        if (seeded.IsFailure)
+        {
+            throw new InvalidOperationException(
+                $"Identity seeding failed: {string.Join("; ", seeded.Errors.Select(error => error.Message))}");
+        }
     }
 
     /// <inheritdoc />
