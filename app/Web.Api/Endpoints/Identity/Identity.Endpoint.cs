@@ -17,6 +17,8 @@ using Infrastructure.Integrations.Serialization;
 using ApplicationLogoutRequest = Application.Common.Security.Authentication.Identity.LogoutRequest;
 
 
+using Web.Api.Endpoints.Identity.Mappings;
+
 namespace Web.Api.Endpoints.Identity;
 
 /// <summary>Carter module for local authentication and the current user's profile.</summary>
@@ -287,7 +289,7 @@ public sealed class IdentityEndpoint : ICarterModule
         Result<AuthTokenResponse> token = (await external.LoginAsync(
                 user.Value,
                 cancellationToken))
-            .Map(AuthTokenResponse.FromAuthResponse);
+            .Map(IdentityMapper.ToTokenResponse);
 
         if (token.IsFailure)
             return token.ToApiResult();
@@ -331,7 +333,7 @@ public sealed class IdentityEndpoint : ICarterModule
         IIdentityService identity,
         CancellationToken cancellationToken)
         => (await identity.LoginAsync(request.ToApplication(), cancellationToken))
-            .Map(AuthTokenResponse.FromAuthResponse)
+            .Map(IdentityMapper.ToTokenResponse)
             .ToApiResult();
 
     private static async Task<IResult> RefreshAsync(
@@ -339,7 +341,7 @@ public sealed class IdentityEndpoint : ICarterModule
         IIdentityService identity,
         CancellationToken cancellationToken)
         => (await identity.RefreshAsync(request.ToApplication(), cancellationToken))
-            .Map(AuthTokenResponse.FromAuthResponse)
+            .Map(IdentityMapper.ToTokenResponse)
             .ToApiResult();
 
     private static async Task<IResult> LogoutAsync(

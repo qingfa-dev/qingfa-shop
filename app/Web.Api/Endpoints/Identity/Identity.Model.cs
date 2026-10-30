@@ -17,19 +17,6 @@ public sealed record AuthTokenResponse(
     string RefreshToken,
     ApplicationIdentity.IdentityUserModel User)
 {
-    /// <summary>Projects an application auth response onto the public wire shape.</summary>
-    /// <param name="response">The issued token pair and user.</param>
-    /// <returns>The serializable token response.</returns>
-    public static AuthTokenResponse FromAuthResponse(ApplicationIdentity.AuthResponse response)
-    {
-        ArgumentNullException.ThrowIfNull(response);
-
-        return new AuthTokenResponse(
-            response.AccessToken.Token,
-            response.AccessToken.ExpiresAtUtc,
-            response.RefreshToken.Token,
-            response.User);
-    }
 }
 
 /// <summary>Registration data for a local account.</summary>
