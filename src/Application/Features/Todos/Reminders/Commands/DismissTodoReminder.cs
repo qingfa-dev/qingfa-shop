@@ -1,6 +1,4 @@
 using Application.Common.EventSourcing;
-using Application.Features.Todos.Reminders.Mappings;
-using Application.Features.Todos.Reminders.Models;
 
 using Core.Todos.Reminders;
 
@@ -14,12 +12,8 @@ public static class DismissTodoReminder
     public sealed record Request(Guid ReminderId, Guid TodoId);
     #endregion
 
-    #region Response
-    public sealed record Response : TodoReminderResponseModel;
-    #endregion
-
     #region UseCase
-    public sealed record UseCase(Request Request) : ICommand<Response>;
+    public sealed record UseCase(Request Request) : ICommand;
     #endregion
 
     #region Validator
@@ -41,9 +35,9 @@ public static class DismissTodoReminder
         IEventSourcedRepository<TodoReminder, Guid> repository,
         ITenantContext tenantContext,
         TimeProvider clock)
-        : ICommandHandler<UseCase, Response>
+        : ICommandHandler<UseCase>
     {
-        public async Task<Result<Response>> Handle(
+        public async Task<Result> Handle(
             UseCase command,
             CancellationToken cancellationToken)
         {
@@ -52,32 +46,32 @@ public static class DismissTodoReminder
 
             Result<Guid> tenant = tenantContext.RequireTenant();
             if (tenant.IsFailure)
-                return Result<Response>.Fail(tenant.Errors);
+                return Result.Fail(tenant.Errors);
 
             Result<TodoReminder> loaded = await repository
                 .LoadAsync(command.Request.ReminderId, cancellationToken)
                 .ConfigureAwait(false);
             if (loaded.IsFailure)
-                return Result<Response>.Fail(loaded.Errors);
+                return Result.Fail(loaded.Errors);
 
             // Guard: a stream outside the caller's tenant or todo is reported as missing.
             if (loaded.Value.TenantId != tenant.Value ||
                 loaded.Value.TodoId != command.Request.TodoId)
             {
-                return Result<Response>.Fail(TodoReminderOutcome.Failure.NotFound);
+                return Result.Fail(TodoReminderOutcome.Failure.NotFound);
             }
 
             Result dismissed = loaded.Value.Dismiss(clock.GetUtcNow());
             if (dismissed.IsFailure)
-                return Result<Response>.Fail(dismissed.Errors);
+                return Result.Fail(dismissed.Errors);
 
             Result saved = await repository
                 .SaveAsync(loaded.Value, cancellationToken)
                 .ConfigureAwait(false);
 
             return saved.IsFailure
-                ? Result<Response>.Fail(saved.Errors)
-                : Result<Response>.Success(loaded.Value.ToModel<Response>());
+                ? Result.Fail(saved.Errors)
+                : Result.NoContent();
         }
     }
     #endregion

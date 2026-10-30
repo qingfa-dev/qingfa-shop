@@ -33,6 +33,7 @@ public sealed class DeleteTodoCategoryTest
 
         // Assert
         result.IsSuccess.Should().BeTrue();
+        result.StatusCode.Should().Be(204);
         category.IsDeleted.Should().BeTrue();
         fixture.CategoryRepository.Verify(
             repository => repository.UpdateAsync(category, It.IsAny<CancellationToken>()),
@@ -63,6 +64,7 @@ public sealed class DeleteTodoCategoryTest
 
         // Assert
         result.IsSuccess.Should().BeTrue();
+        result.StatusCode.Should().Be(204);
         fixture.CategoryRepository.Verify(
             repository => repository.RemoveAsync(category, It.IsAny<CancellationToken>()),
             Times.Once);

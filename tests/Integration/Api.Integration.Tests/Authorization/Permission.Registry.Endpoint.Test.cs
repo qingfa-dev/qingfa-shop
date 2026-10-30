@@ -152,11 +152,11 @@ public sealed class PermissionRegistryEndpointTest
     }
 
     [Fact(DisplayName = "GET roles should return the built-in role permission sets")]
-    public void ListRolePermissions_ShouldReturnBuiltIns()
+    public async Task ListRolePermissions_ShouldReturnBuiltIns()
     {
         IResult result = PermissionRegistryEndpoint.ListRolePermissionsAsync();
 
-        Status(result).Should().Be(StatusCodes.Status200OK);
+        (await StatusAsync(result)).Should().Be(StatusCodes.Status200OK);
     }
 
     [Fact(DisplayName = "POST refresh should return the new snapshot summary")]
@@ -308,12 +308,17 @@ public sealed class PermissionRegistryEndpointTest
     }
 
     private static async Task<int> StatusAsync(Task<IResult> result) =>
-        Status(await result);
+        await StatusAsync(await result);
 
-    private static int Status(IResult result) =>
-        result as IStatusCodeHttpResult is { StatusCode: { } status }
-            ? status
-            : throw new InvalidOperationException($"Unexpected result type: {result.GetType().Name}");
+    private static async Task<int> StatusAsync(IResult result)
+    {
+        DefaultHttpContext context = new();
+        context.Response.Body = new MemoryStream();
+
+        await result.ExecuteAsync(context);
+
+        return context.Response.StatusCode;
+    }
 
     private sealed class FakeRegistry : IPermissionMetadataRegistry
     {

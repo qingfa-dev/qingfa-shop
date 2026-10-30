@@ -31,6 +31,7 @@ public sealed class DeleteTodoTest
 
         // Assert
         result.IsSuccess.Should().BeTrue();
+        result.StatusCode.Should().Be(204);
         todo.IsDeleted.Should().BeTrue();
         todo.DeletedAtUtc.Should().Be(TodoHandlerFixture.Now);
         TodoDeleted deleted = todo.UncommittedEvents.OfType<TodoDeleted>().Should().ContainSingle().Subject;
@@ -56,6 +57,7 @@ public sealed class DeleteTodoTest
 
         // Assert
         result.IsSuccess.Should().BeTrue();
+        result.StatusCode.Should().Be(204);
         TodoDeleted deleted = todo.UncommittedEvents.OfType<TodoDeleted>().Should().ContainSingle().Subject;
         deleted.IsHard.Should().BeTrue();
         fixture.TodoRepository.Verify(

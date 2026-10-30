@@ -11,7 +11,7 @@ using Core.Common.Monad.Results;
 
 using MediatR;
 
-using HttpResults = Microsoft.AspNetCore.Http.Results;
+using Web.Api.Endpoints.Results;
 
 namespace Web.Api.Endpoints.Todos;
 
@@ -106,7 +106,7 @@ public sealed class TodoEndpoint : ICarterModule
         => (await mediator.Send(
                 new SearchTodos.UseCase(new SearchTodos.Request(parameters, includeDeleted)),
                 cancellationToken))
-            .ToHttpResult();
+            .ToApiResult();
 
     private static async Task<IResult> GetAsync(
         Guid id,
@@ -116,14 +116,14 @@ public sealed class TodoEndpoint : ICarterModule
         => (await mediator.Send(
                 new GetTodo.UseCase(new GetTodo.Request(id, includeDeleted)),
                 cancellationToken))
-            .ToHttpResult();
+            .ToApiResult();
 
     private static async Task<IResult> CreateAsync(
         CreateTodo.Request request,
         IMediator mediator,
         CancellationToken cancellationToken)
         => (await mediator.Send(new CreateTodo.UseCase(request), cancellationToken))
-            .ToHttpResult(value => HttpResults.Created($"/api/todos/{value.Id}", value));
+            .ToApiResult(value => $"/api/todos/{value.Id}");
 
     private static async Task<IResult> UpdateAsync(
         Guid id,
@@ -133,7 +133,7 @@ public sealed class TodoEndpoint : ICarterModule
     {
         request.Id = id;
         return (await mediator.Send(new UpdateTodo.UseCase(request), cancellationToken))
-            .ToHttpResult();
+            .ToApiResult();
     }
 
     private static async Task<IResult> DeleteAsync(
@@ -144,7 +144,7 @@ public sealed class TodoEndpoint : ICarterModule
         => (await mediator.Send(
                 new DeleteTodo.UseCase(new DeleteTodo.Request(id, mode)),
                 cancellationToken))
-            .ToHttpResult();
+            .ToApiResult();
 
     private static Task<IResult> StartAsync(
         Guid id,
@@ -216,7 +216,7 @@ public sealed class TodoEndpoint : ICarterModule
         IMediator mediator,
         IRequest<Result<T>> request,
         CancellationToken cancellationToken)
-        => (await mediator.Send(request, cancellationToken)).ToHttpResult();
+        => (await mediator.Send(request, cancellationToken)).ToApiResult();
 
     /// <summary>List assignment body.</summary>
     public sealed record AssignListRequest(Guid ListId);

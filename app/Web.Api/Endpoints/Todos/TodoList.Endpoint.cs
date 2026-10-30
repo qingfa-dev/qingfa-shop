@@ -7,11 +7,9 @@ using Application.Features.Todos.Lists.Queries;
 
 using Carter;
 
-using Core.Common.Monad.Results;
-
 using MediatR;
 
-using HttpResults = Microsoft.AspNetCore.Http.Results;
+using Web.Api.Endpoints.Results;
 
 namespace Web.Api.Endpoints.Todos;
 
@@ -66,7 +64,7 @@ public sealed class TodoListEndpoint : ICarterModule
         => (await mediator.Send(
                 new SearchTodoLists.UseCase(new SearchTodoLists.Request(parameters, includeDeleted)),
                 cancellationToken))
-            .ToHttpResult();
+            .ToApiResult();
 
     private static async Task<IResult> GetAsync(
         Guid id,
@@ -76,14 +74,14 @@ public sealed class TodoListEndpoint : ICarterModule
         => (await mediator.Send(
                 new GetTodoList.UseCase(new GetTodoList.Request(id, includeDeleted)),
                 cancellationToken))
-            .ToHttpResult();
+            .ToApiResult();
 
     private static async Task<IResult> CreateAsync(
         CreateTodoList.Request request,
         IMediator mediator,
         CancellationToken cancellationToken)
         => (await mediator.Send(new CreateTodoList.UseCase(request), cancellationToken))
-            .ToHttpResult(value => HttpResults.Created($"/api/todo-lists/{value.Id}", value));
+            .ToApiResult(value => $"/api/todo-lists/{value.Id}");
 
     private static async Task<IResult> UpdateAsync(
         Guid id,
@@ -93,7 +91,7 @@ public sealed class TodoListEndpoint : ICarterModule
     {
         request.Id = id;
         return (await mediator.Send(new UpdateTodoList.UseCase(request), cancellationToken))
-            .ToHttpResult();
+            .ToApiResult();
     }
 
     private static async Task<IResult> DeleteAsync(
@@ -104,7 +102,7 @@ public sealed class TodoListEndpoint : ICarterModule
         => (await mediator.Send(
                 new DeleteTodoList.UseCase(new DeleteTodoList.Request(id, mode)),
                 cancellationToken))
-            .ToHttpResult();
+            .ToApiResult();
 
     private static async Task<IResult> RestoreAsync(
         Guid id,
@@ -113,5 +111,5 @@ public sealed class TodoListEndpoint : ICarterModule
         => (await mediator.Send(
                 new RestoreTodoList.UseCase(new RestoreTodoList.Request(id)),
                 cancellationToken))
-            .ToHttpResult();
+            .ToApiResult();
 }

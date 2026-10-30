@@ -63,7 +63,10 @@ public static class DeleteTodo
                     (todo, ct) => repository.SaveAsync(todo, ct),
                     cancellationToken);
 
-            return deleted.ToResult();
+            Result outcome = deleted.ToResult();
+            return outcome.IsSuccess
+                ? outcome.WithStatus(ResultConstant.StatusCode.NoContent)
+                : outcome;
         }
     }
     #endregion

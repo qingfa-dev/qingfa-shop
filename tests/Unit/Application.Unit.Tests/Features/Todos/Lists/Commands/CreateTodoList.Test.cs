@@ -35,6 +35,7 @@ public sealed class CreateTodoListTest
 
         // Assert
         result.IsSuccess.Should().BeTrue();
+        result.StatusCode.Should().Be(201);
         stored!.TenantId.Should().Be(TodoHandlerFixture.TenantId);
         result.Value.Name.Should().Be("Groceries");
     }

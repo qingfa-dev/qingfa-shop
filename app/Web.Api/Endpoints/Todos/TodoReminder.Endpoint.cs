@@ -6,11 +6,9 @@ using Application.Features.Todos.Reminders.Queries;
 
 using Carter;
 
-using Core.Common.Monad.Results;
-
 using MediatR;
 
-using HttpResults = Microsoft.AspNetCore.Http.Results;
+using Web.Api.Endpoints.Results;
 
 namespace Web.Api.Endpoints.Todos;
 
@@ -60,7 +58,7 @@ public sealed class TodoReminderEndpoint : ICarterModule
         => (await mediator.Send(
                 new SearchTodoReminders.UseCase(new SearchTodoReminders.Request(parameters, todoId)),
                 cancellationToken))
-            .ToHttpResult();
+            .ToApiResult();
 
     private static async Task<IResult> GetAsync(
         Guid todoId,
@@ -70,7 +68,7 @@ public sealed class TodoReminderEndpoint : ICarterModule
         => (await mediator.Send(
                 new GetTodoReminder.UseCase(new GetTodoReminder.Request(reminderId, todoId)),
                 cancellationToken))
-            .ToHttpResult();
+            .ToApiResult();
 
     private static async Task<IResult> ScheduleAsync(
         Guid todoId,
@@ -87,9 +85,7 @@ public sealed class TodoReminderEndpoint : ICarterModule
         return (await mediator.Send(
                 new ScheduleTodoReminder.UseCase(command),
                 cancellationToken))
-            .ToHttpResult(value => HttpResults.Created(
-                $"/api/todos/{todoId}/reminders/{value.Id}",
-                value));
+            .ToApiResult(value => $"/api/todos/{todoId}/reminders/{value.Id}");
     }
 
     private static async Task<IResult> SnoozeAsync(
@@ -109,7 +105,7 @@ public sealed class TodoReminderEndpoint : ICarterModule
         return (await mediator.Send(
                 new SnoozeTodoReminder.UseCase(command),
                 cancellationToken))
-            .ToHttpResult();
+            .ToApiResult();
     }
 
     private static async Task<IResult> DismissAsync(
@@ -120,7 +116,7 @@ public sealed class TodoReminderEndpoint : ICarterModule
         => (await mediator.Send(
                 new DismissTodoReminder.UseCase(new DismissTodoReminder.Request(reminderId, todoId)),
                 cancellationToken))
-            .ToHttpResult();
+            .ToApiResult();
 
     /// <summary>Schedule request body.</summary>
     public sealed record ScheduleRequest(DateTimeOffset RemindAtUtc);

@@ -4,14 +4,19 @@ using Carter;
 
 using Application;
 
+using Core.Common.Monad.Errors;
+using Core.Common.Monad.Results;
+
 using Infrastructure;
 
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
 using ServiceDefaults;
 
 using Web.Api.Endpoints.Authorization;
 using Infrastructure.Integrations.Serialization;
+using Web.Api.Endpoints.Results;
 using Web.Api.Endpoints.Todos;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -46,6 +51,31 @@ builder.Services.AddProblemDetails();
 // Initialize: one serializer governs request binding and response writing, so
 // results and endpoint payloads share naming, enum, escaping, and null rules.
 builder.AddApiJsonOptions();
+
+// Initialize: authentication failures keep the Result contract instead of writing
+// an empty body or ProblemDetails that clients would have to special-case.
+builder.Services.Configure<JwtBearerOptions>(
+    JwtBearerDefaults.AuthenticationScheme,
+    options =>
+    {
+        options.Events = new JwtBearerEvents
+        {
+            OnChallenge = async context =>
+            {
+                context.HandleResponse();
+                await Result.Fail(Error.Unauthorized(
+                        "Authentication.Required",
+                        "Authentication is required."))
+                    .ToApiResult()
+                    .ExecuteAsync(context.HttpContext);
+            },
+            OnForbidden = context => Result.Fail(Error.Forbidden(
+                    "Authorization.Forbidden",
+                    "The caller is not allowed to perform this operation."))
+                .ToApiResult()
+                .ExecuteAsync(context.HttpContext),
+        };
+    });
 
 WebApplication app = builder.Build();
 

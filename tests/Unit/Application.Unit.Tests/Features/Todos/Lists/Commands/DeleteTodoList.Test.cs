@@ -33,6 +33,7 @@ public sealed class DeleteTodoListTest
 
         // Assert
         result.IsSuccess.Should().BeTrue();
+        result.StatusCode.Should().Be(204);
         list.IsDeleted.Should().BeTrue();
         fixture.ListRepository.Verify(
             repository => repository.UpdateAsync(list, It.IsAny<CancellationToken>()),
@@ -63,6 +64,7 @@ public sealed class DeleteTodoListTest
 
         // Assert
         result.IsSuccess.Should().BeTrue();
+        result.StatusCode.Should().Be(204);
         fixture.ListRepository.Verify(
             repository => repository.RemoveAsync(list, It.IsAny<CancellationToken>()),
             Times.Once);

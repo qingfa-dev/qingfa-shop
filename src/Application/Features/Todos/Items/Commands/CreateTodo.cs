@@ -53,7 +53,7 @@ public static class CreateTodo
             DateTimeOffset nowUtc = clock.GetUtcNow();
             string? actor = actorContext.Actor();
 
-            return await tenantContext.RequireTenant()
+            Result<Response> response = await tenantContext.RequireTenant()
                 .Bind(tenantId => Todo.Create(
                     id: Guid.NewGuid(),
                     tenantId: tenantId,
@@ -69,6 +69,10 @@ public static class CreateTodo
                     (todo, ct) => repository.SaveAsync(todo, ct),
                     cancellationToken)
                 .MapAsync(todo => todo.ToModel<Response>());
+
+            return response.IsSuccess
+                ? response.WithStatus(ResultConstant.StatusCode.Created)
+                : response;
         }
 
         private static Result<Todo> AddCategories(

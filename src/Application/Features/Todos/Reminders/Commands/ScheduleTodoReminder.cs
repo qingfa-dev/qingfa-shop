@@ -76,7 +76,7 @@ public static class ScheduleTodoReminder
 
             return saved.IsFailure
                 ? Result<Response>.Fail(saved.Errors)
-                : Result<Response>.Success(created.Value.ToModel<Response>());
+                : Result<Response>.Created(created.Value.ToModel<Response>());
         }
     }
     #endregion

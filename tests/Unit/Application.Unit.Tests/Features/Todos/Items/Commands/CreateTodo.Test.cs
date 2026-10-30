@@ -46,6 +46,7 @@ public sealed class CreateTodoTest
 
         // Assert
         result.IsSuccess.Should().BeTrue();
+        result.StatusCode.Should().Be(201);
         stored.Should().NotBeNull();
         stored!.TenantId.Should().Be(TodoHandlerFixture.TenantId);
         stored.Status.Should().Be(TodoStatus.Pending);

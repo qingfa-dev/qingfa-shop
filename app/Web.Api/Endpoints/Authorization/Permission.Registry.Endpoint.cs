@@ -3,8 +3,6 @@ using Carter;
 using Core.Common.Monad.Errors;
 using Core.Common.Monad.Results;
 
-using Microsoft.AspNetCore.Http.HttpResults;
-
 using Application.Common.Security.Authorization;
 using Application.Common.Security.Authorization.Attributes;
 using Application.Common.Security.Authorization.Domain;
@@ -13,7 +11,7 @@ using Application.Common.Security.Authorization.Registry;
 
 using Infrastructure.Security.Identity.Domain.Roles;
 
-using HttpResults = Microsoft.AspNetCore.Http.Results;
+using Web.Api.Endpoints.Results;
 
 namespace Web.Api.Endpoints.Authorization;
 
@@ -77,7 +75,7 @@ public sealed class PermissionRegistryEndpoint : ICarterModule
     {
         Result<PermissionMetadataSnapshot> refreshed = await registry.RefreshAsync(cancellationToken);
         if (refreshed.IsFailure)
-            return Problem(refreshed.Errors);
+            return refreshed.ToApiResult();
 
         IEnumerable<PermissionMetadata> permissions = refreshed.Value.Permissions;
 
@@ -96,10 +94,10 @@ public sealed class PermissionRegistryEndpoint : ICarterModule
                 permission.Description.Contains(search, StringComparison.OrdinalIgnoreCase));
 
         PermissionMetadata[] result = [.. permissions];
-        return HttpResults.Ok(new PermissionListResponse(
+        return Result<PermissionListResponse>.Ok(new PermissionListResponse(
             result,
             result.Length,
-            refreshed.Value.RefreshedAtUtc));
+            refreshed.Value.RefreshedAtUtc)).ToApiResult();
     }
 
     internal static async Task<IResult> GetPermissionAsync(
@@ -109,12 +107,14 @@ public sealed class PermissionRegistryEndpoint : ICarterModule
     {
         Result<PermissionMetadataSnapshot> refreshed = await registry.RefreshAsync(cancellationToken);
         if (refreshed.IsFailure)
-            return Problem(refreshed.Errors);
+            return refreshed.ToApiResult();
 
         PermissionMetadata? permission = refreshed.Value.Find(identifier);
         return permission is null
-            ? HttpResults.NotFound(new { identifier, message = "Permission metadata was not found." })
-            : HttpResults.Ok(permission);
+            ? Result<PermissionMetadata>.Fail(Error.NotFound(
+                "Permission.NotFound",
+                "Permission metadata was not found.")).ToApiResult()
+            : Result<PermissionMetadata>.Ok(permission).ToApiResult();
     }
 
     internal static async Task<IResult> ListDomainsAsync(
@@ -123,14 +123,14 @@ public sealed class PermissionRegistryEndpoint : ICarterModule
     {
         Result<PermissionMetadataSnapshot> refreshed = await registry.RefreshAsync(cancellationToken);
         if (refreshed.IsFailure)
-            return Problem(refreshed.Errors);
+            return refreshed.ToApiResult();
 
         DomainCount[] domains = [.. refreshed.Value.Permissions
             .GroupBy(permission => permission.Domain, StringComparer.OrdinalIgnoreCase)
             .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
             .Select(group => new DomainCount(group.Key, group.Count()))];
 
-        return HttpResults.Ok(domains);
+        return Result<DomainCount[]>.Ok(domains).ToApiResult();
     }
 
     internal static async Task<IResult> ListCategoriesAsync(
@@ -139,19 +139,19 @@ public sealed class PermissionRegistryEndpoint : ICarterModule
     {
         Result<PermissionMetadataSnapshot> refreshed = await registry.RefreshAsync(cancellationToken);
         if (refreshed.IsFailure)
-            return Problem(refreshed.Errors);
+            return refreshed.ToApiResult();
 
         CategoryCount[] categories = [.. refreshed.Value.Permissions
             .GroupBy(permission => permission.Category, StringComparer.OrdinalIgnoreCase)
             .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
             .Select(group => new CategoryCount(group.Key, group.Count()))];
 
-        return HttpResults.Ok(categories);
+        return Result<CategoryCount[]>.Ok(categories).ToApiResult();
     }
 
     internal static IResult ListRolePermissionsAsync() =>
-        HttpResults.Ok(new[]
-        {
+        Result<RolePermissionSet[]>.Ok(
+        [
             new RolePermissionSet(
                 RoleConstant.Defaults.Admin,
                 [.. PermissionContext.Admin.Select(permission => permission.Identifier)]),
@@ -161,7 +161,7 @@ public sealed class PermissionRegistryEndpoint : ICarterModule
             new RolePermissionSet(
                 RoleConstant.Defaults.User,
                 [.. PermissionContext.User.Select(permission => permission.Identifier)]),
-        });
+        ]).ToApiResult();
 
     internal static async Task<IResult> RefreshAsync(
         IPermissionMetadataRegistry registry,
@@ -169,11 +169,11 @@ public sealed class PermissionRegistryEndpoint : ICarterModule
     {
         Result<PermissionMetadataSnapshot> refreshed = await registry.RefreshAsync(cancellationToken);
         if (refreshed.IsFailure)
-            return Problem(refreshed.Errors);
+            return refreshed.ToApiResult();
 
-        return HttpResults.Ok(new PermissionRefreshResponse(
+        return Result<PermissionRefreshResponse>.Ok(new PermissionRefreshResponse(
             refreshed.Value.Count,
-            refreshed.Value.RefreshedAtUtc));
+            refreshed.Value.RefreshedAtUtc)).ToApiResult();
     }
 
     internal static async Task<IResult> GetUserPermissionsAsync(
@@ -185,10 +185,10 @@ public sealed class PermissionRegistryEndpoint : ICarterModule
             .GetEffectiveUserPermissionsAsync(userId, cancellationToken);
 
         return permissions.IsFailure
-            ? Problem(permissions.Errors)
-            : HttpResults.Ok(new UserPermissionResponse(
+            ? permissions.ToApiResult()
+            : Result<UserPermissionResponse>.Ok(new UserPermissionResponse(
                 userId,
-                [.. permissions.Value.Order(StringComparer.OrdinalIgnoreCase)]));
+                [.. permissions.Value.Order(StringComparer.OrdinalIgnoreCase)])).ToApiResult();
     }
 
     internal static async Task<IResult> CheckUserPermissionsAsync(
@@ -199,17 +199,17 @@ public sealed class PermissionRegistryEndpoint : ICarterModule
         CancellationToken cancellationToken)
     {
         if (permissions.Length == 0)
-            return HttpResults.Problem(
-                title: "A permission check was requested without permissions.",
-                statusCode: StatusCodes.Status400BadRequest);
+            return Result<PermissionCheckResponse>.Fail(Error.BadRequest(
+                "Permission.Check.NoPermissions",
+                "A permission check was requested without permissions.")).ToApiResult();
 
         PermissionMatchMode matchMode = PermissionMatchMode.All;
         if (!string.IsNullOrWhiteSpace(mode) &&
             !Enum.TryParse(mode, ignoreCase: true, out matchMode))
         {
-            return HttpResults.Problem(
-                title: $"Unknown permission match mode '{mode}'.",
-                statusCode: StatusCodes.Status400BadRequest);
+            return Result<PermissionCheckResponse>.Fail(Error.BadRequest(
+                "Permission.Check.UnknownMode",
+                $"Unknown permission match mode '{mode}'.")).ToApiResult();
         }
 
         Result<bool> granted = matchMode == PermissionMatchMode.Any
@@ -217,12 +217,12 @@ public sealed class PermissionRegistryEndpoint : ICarterModule
             : await permissionService.HasAllPermissionsAsync(userId, permissions, cancellationToken);
 
         return granted.IsFailure
-            ? Problem(granted.Errors)
-            : HttpResults.Ok(new PermissionCheckResponse(
+            ? granted.ToApiResult()
+            : Result<PermissionCheckResponse>.Ok(new PermissionCheckResponse(
                 userId,
                 matchMode,
                 permissions,
-                granted.Value));
+                granted.Value)).ToApiResult();
     }
 
     internal static async Task<IResult> GetRolePermissionsAsync(
@@ -234,23 +234,10 @@ public sealed class PermissionRegistryEndpoint : ICarterModule
             .GetRolePermissionsAsync(roleId, cancellationToken);
 
         return permissions.IsFailure
-            ? Problem(permissions.Errors)
-            : HttpResults.Ok(new RolePermissionResponse(
+            ? permissions.ToApiResult()
+            : Result<RolePermissionResponse>.Ok(new RolePermissionResponse(
                 roleId,
-                [.. permissions.Value.Order(StringComparer.OrdinalIgnoreCase)]));
-    }
-
-    private static ProblemHttpResult Problem(IEnumerable<Error> errors)
-    {
-        Error[] details = [.. errors];
-        int status = details.Select(error => error.Status).FirstOrDefault(status => status is not null) ?? 500;
-
-        return TypedResults.Problem(
-            title: "Authorization request failed",
-            detail: string.Join(
-                "; ",
-                details.Select(error => $"{error.Code}: {error.Message}")),
-            statusCode: status);
+                [.. permissions.Value.Order(StringComparer.OrdinalIgnoreCase)])).ToApiResult();
     }
 
     private sealed record PermissionListResponse(

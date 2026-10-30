@@ -51,7 +51,7 @@ public static class CreateTodoList
 
             Request request = command.Request;
 
-            return await tenantContext.RequireTenant()
+            Result<Response> response = await tenantContext.RequireTenant()
                 .Bind(tenantId => TodoList.Create(
                     id: Guid.NewGuid(),
                     tenantId: tenantId,
@@ -63,6 +63,10 @@ public static class CreateTodoList
                     (created, ct) => repository.SaveNewAsync(unitOfWork, created, ct),
                     cancellationToken)
                 .MapAsync(created => created.ToModel<Response>());
+
+            return response.IsSuccess
+                ? response.WithStatus(ResultConstant.StatusCode.Created)
+                : response;
         }
     }
     #endregion

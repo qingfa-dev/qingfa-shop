@@ -9,7 +9,7 @@ using Carter;
 
 using MediatR;
 
-using HttpResults = Microsoft.AspNetCore.Http.Results;
+using Web.Api.Endpoints.Results;
 
 namespace Web.Api.Endpoints.Todos;
 
@@ -65,7 +65,7 @@ public sealed class TodoCategoryEndpoint : ICarterModule
                 new SearchTodoCategories.UseCase(
                     new SearchTodoCategories.Request(parameters, includeDeleted)),
                 cancellationToken))
-            .ToHttpResult();
+            .ToApiResult();
 
     private static async Task<IResult> GetAsync(
         Guid id,
@@ -75,14 +75,14 @@ public sealed class TodoCategoryEndpoint : ICarterModule
         => (await mediator.Send(
                 new GetTodoCategory.UseCase(new GetTodoCategory.Request(id, includeDeleted)),
                 cancellationToken))
-            .ToHttpResult();
+            .ToApiResult();
 
     private static async Task<IResult> CreateAsync(
         CreateTodoCategory.Request request,
         IMediator mediator,
         CancellationToken cancellationToken)
         => (await mediator.Send(new CreateTodoCategory.UseCase(request), cancellationToken))
-            .ToHttpResult(value => HttpResults.Created($"/api/todo-categories/{value.Id}", value));
+            .ToApiResult(value => $"/api/todo-categories/{value.Id}");
 
     private static async Task<IResult> UpdateAsync(
         Guid id,
@@ -92,7 +92,7 @@ public sealed class TodoCategoryEndpoint : ICarterModule
     {
         request.Id = id;
         return (await mediator.Send(new UpdateTodoCategory.UseCase(request), cancellationToken))
-            .ToHttpResult();
+            .ToApiResult();
     }
 
     private static async Task<IResult> DeleteAsync(
@@ -103,7 +103,7 @@ public sealed class TodoCategoryEndpoint : ICarterModule
         => (await mediator.Send(
                 new DeleteTodoCategory.UseCase(new DeleteTodoCategory.Request(id, mode)),
                 cancellationToken))
-            .ToHttpResult();
+            .ToApiResult();
 
     private static async Task<IResult> RestoreAsync(
         Guid id,
@@ -112,5 +112,5 @@ public sealed class TodoCategoryEndpoint : ICarterModule
         => (await mediator.Send(
                 new RestoreTodoCategory.UseCase(new RestoreTodoCategory.Request(id)),
                 cancellationToken))
-            .ToHttpResult();
+            .ToApiResult();
 }

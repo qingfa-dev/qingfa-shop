@@ -52,7 +52,7 @@ public static class DeleteTodoList
             Request request = command.Request;
             DateTimeOffset nowUtc = clock.GetUtcNow();
 
-            return await tenantContext.RequireTenant()
+            Result outcome = await tenantContext.RequireTenant()
                 .BindAsync(
                     (tenantId, ct) => repository.FindOwnedAsync(
                         request.Id,
@@ -78,6 +78,10 @@ public static class DeleteTodoList
                         actorContext.Actor(),
                         ct),
                     cancellationToken);
+
+            return outcome.IsSuccess
+                ? outcome.WithStatus(ResultConstant.StatusCode.NoContent)
+                : outcome;
         }
     }
     #endregion

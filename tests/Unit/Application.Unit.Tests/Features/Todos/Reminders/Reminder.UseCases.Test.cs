@@ -46,6 +46,7 @@ public sealed class ReminderUseCasesTest
             TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
+        result.StatusCode.Should().Be(201);
         result.Value.TodoId.Should().Be(command.TodoId);
         result.Value.TenantId.Should().Be(TodoHandlerFixture.TenantId);
         result.Value.Status.Should().Be(ReminderStatus.Scheduled);
@@ -181,13 +182,14 @@ public sealed class ReminderUseCasesTest
             fixture.Tenant,
             fixture.Clock);
 
-        Result<DismissTodoReminder.Response> result = await handler.Handle(
+        Result result = await handler.Handle(
             new DismissTodoReminder.UseCase(new DismissTodoReminder.Request(reminder.Id, reminder.TodoId)),
             TestContext.Current.CancellationToken);
 
         result.IsSuccess.Should().BeTrue();
-        result.Value.Status.Should().Be(ReminderStatus.Dismissed);
-        result.Value.DismissedAtUtc.Should().Be(Now);
+        result.StatusCode.Should().Be(204);
+        reminder.Status.Should().Be(ReminderStatus.Dismissed);
+        reminder.DismissedAtUtc.Should().Be(Now);
     }
 
     #endregion
