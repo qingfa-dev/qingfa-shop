@@ -16,6 +16,7 @@ using ServiceDefaults;
 
 using Web.Api.Endpoints.Authorization;
 using Infrastructure.Integrations.Serialization;
+using Web.Api.Endpoints.Identity;
 using Web.Api.Endpoints.Results;
 using Web.Api.Endpoints.Todos;
 
@@ -34,6 +35,7 @@ builder.AddInfrastructure();
 builder.Services.AddCarter(configurator: configurator =>
 {
     configurator.WithModule<PermissionRegistryEndpoint>();
+    configurator.WithModule<IdentityEndpoint>();
     configurator.WithModule<TodoEndpoint>();
     configurator.WithModule<TodoListEndpoint>();
     configurator.WithModule<TodoCategoryEndpoint>();
