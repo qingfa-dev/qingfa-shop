@@ -380,5 +380,8 @@
   <ItemGroup>
     <PackageVersion Include="WolverineFx" Version="6.52.0" />
     <PackageVersion Include="WolverineFx.RabbitMQ" Version="6.52.0" />
+    <!-- Wolverine 6 core no longer ships the Roslyn code generator; hosts that
+         compose Wolverine need this package or pre-generated static code. -->
+    <PackageVersion Include="WolverineFx.RuntimeCompilation" Version="6.52.0" />
   </ItemGroup>
 </Project>

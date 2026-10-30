@@ -1,5 +1,6 @@
 using Infrastructure.Integrations.Backgrounds;
 using Infrastructure.Integrations.Http;
+using Infrastructure.Integrations.Messaging;
 using Infrastructure.Integrations.Notifications;
 using Infrastructure.Integrations.Observability;
 using Infrastructure.Integrations.OpenApi;
@@ -24,6 +25,7 @@ public static class IntegrationComposition
 
         builder.AddHttpClients();
         builder.AddBackgroundJobs();
+        builder.AddMessaging(builder.Configuration);
         builder.AddNotifications();
         builder.AddStorage();
         builder.AddObservability();
@@ -43,6 +45,7 @@ public static class IntegrationComposition
         app.UseObservability();
         app.UseStorage();
         app.UseBackgroundJobs();
+        app.UseMessaging();
         app.UseOpenApiDocumentation();
 
         return app;
