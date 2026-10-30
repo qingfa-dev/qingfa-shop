@@ -90,6 +90,11 @@ public sealed class IntegrationEventHandlerTest
 
         public Error? Failure { get; init; }
 
+        public Task Handle(
+            TestIntegrationEvent message,
+            CancellationToken cancellationToken)
+            => ExecuteOnceAsync(message, cancellationToken);
+
         protected override Task<Result> HandleAsync(
             TestIntegrationEvent message,
             CancellationToken cancellationToken)

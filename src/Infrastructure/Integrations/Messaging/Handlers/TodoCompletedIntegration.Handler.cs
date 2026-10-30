@@ -11,6 +11,15 @@ public sealed class TodoCompletedIntegrationHandler(
     IInboxStore inbox)
     : IntegrationEventHandler<TodoCompletedIntegration>(inbox)
 {
+    /// <summary>Wolverine entry point.</summary>
+    /// <param name="message">The integration event.</param>
+    /// <param name="cancellationToken">A token that cancels the handler.</param>
+    /// <returns>A task that completes when the handler finishes.</returns>
+    public Task Handle(
+        TodoCompletedIntegration message,
+        CancellationToken cancellationToken)
+        => ExecuteOnceAsync(message, cancellationToken);
+
     /// <inheritdoc />
     protected override async Task<Result> HandleAsync(
         TodoCompletedIntegration message,

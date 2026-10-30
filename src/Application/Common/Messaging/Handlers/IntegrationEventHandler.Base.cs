@@ -28,7 +28,7 @@ public abstract class IntegrationEventHandler<TEvent>
     /// <exception cref="ResultException">
     /// Thrown after the inbox rolls back a failed consumer, so the transport retries the delivery.
     /// </exception>
-    public async Task Handle(
+    protected async Task ExecuteOnceAsync(
         TEvent message,
         CancellationToken cancellationToken = default)
     {

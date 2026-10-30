@@ -182,9 +182,14 @@ public static class MessagingComposition
                 // Confirm: the outbox marks a row processed only after the broker acknowledges it.
                 channel.PublisherConfirmationsEnabled = true;
                 channel.PublisherConfirmationTrackingEnabled = true;
+                channel.ConsumerDispatchConcurrency = (ushort)Math.Clamp(
+                    setting.MaxConcurrency,
+                    1,
+                    ushort.MaxValue);
             });
 
-        string queueName = $"{setting.QueuePrefix}.{TodoCompletedEventName}";
+        string queueName =
+            $"{setting.QueuePrefix}.{TodoCompletedEventName}.{nameof(Handlers.TodoCompletedIntegrationHandler)}";
         transport
             .BindExchange(setting.ExchangeName, Wolverine.RabbitMQ.ExchangeType.Topic)
             .ToQueue(queueName, TodoCompletedEventName);
@@ -200,8 +205,7 @@ public static class MessagingComposition
         // Listen: one queue per consumer, tuned by prefetch and concurrency settings.
         options
             .ListenToRabbitQueue(queueName)
-            .PreFetchCount((ushort)setting.PrefetchCount)
-            .MaximumParallelMessages(setting.MaxConcurrency);
+            .PreFetchCount((ushort)setting.PrefetchCount);
     }
 
     /// <summary>Resolves the broker connection string from the supported configuration keys.</summary>

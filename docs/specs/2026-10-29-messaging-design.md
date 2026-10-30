@@ -55,6 +55,11 @@ Rules:
 - A breaking payload change increments `Version`; consumers must tolerate unknown
   versions by dead-lettering, never by guessing.
 - Events carry no EF entities and no infrastructure types.
+- `EventName` and `Version` are envelope metadata for our serializer, not a broker wire
+  header yet. Wolverine routes by CLR message type, so renaming a type remains a breaking
+  change until a wire-type mapper is added. Cross-process payloads must carry tenant and
+  correlation as explicit event fields; the metadata dictionary is not a guaranteed
+  cross-process contract under Wolverine's serializer.
 
 ## 4. Bus port
 
