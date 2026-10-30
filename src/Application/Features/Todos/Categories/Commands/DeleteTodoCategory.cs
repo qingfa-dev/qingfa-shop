@@ -28,6 +28,11 @@ public static class DeleteTodoCategory
     #endregion
 
     #region Handler
+    /// <summary>Deletes a category and removes its reference from every todo.</summary>
+    /// <remarks>
+    /// Each todo stream commits independently, so a failed category delete can
+    /// leave references cleared. The operation is idempotent and safe to retry.
+    /// </remarks>
     public sealed class UseCaseHandler(
         IPersistentRepository<TodoCategory, Guid> repository,
         ITodoReferenceCleaner cleaner,
@@ -47,8 +52,6 @@ public static class DeleteTodoCategory
             Request request = command.Request;
             DateTimeOffset nowUtc = clock.GetUtcNow();
 
-            // Note: each todo stream commits independently; a failed category delete can leave references
-            // cleared. The operation is idempotent and safe to retry.
             return await tenantContext.RequireTenant()
                 .BindAsync(
                     (tenantId, ct) => repository.FindOwnedAsync(

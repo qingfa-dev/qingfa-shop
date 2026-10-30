@@ -729,6 +729,7 @@ public sealed class TodoSpec
 
         var deleted = todo.UncommittedEvents.OfType<TodoDeleted>().Should().ContainSingle().Subject;
         deleted.IsHard.Should().BeTrue();
+        todo.IsHardDeleted.Should().BeTrue();
     }
 
     [Fact]
@@ -766,6 +767,64 @@ public sealed class TodoSpec
 
         result.IsSuccess.Should().BeTrue();
         todo.UncommittedEvents.Should().HaveCount(eventCount);
+    }
+
+    [Fact]
+    public void Restore_HardDeletedTodo_ShouldFailWithHardDeletedNotFound()
+    {
+        Todo todo = NewTodo();
+        todo.Delete(isHard: true, Later, "bob").IsSuccess.Should().BeTrue();
+
+        ShouldFailWithoutMutation(
+            todo,
+            () => todo.Restore(Later.AddMinutes(1), "alice"),
+            "Todo.Deleted.Hard");
+    }
+
+    [Fact]
+    public void ClearList_SoftDeletedTodoWithAllowDeleted_ShouldRaiseTheEvent()
+    {
+        Todo todo = NewTodo();
+        todo.Delete(isHard: false, Later, "bob").IsSuccess.Should().BeTrue();
+        todo.ClearUncommittedEvents();
+
+        Result result = todo.ClearList(Later, "cleaner", allowDeleted: true);
+
+        result.IsSuccess.Should().BeTrue();
+        todo.IsDeleted.Should().BeTrue();
+        todo.UncommittedEvents.Should().ContainSingle()
+            .Which.Should().BeOfType<TodoListChanged>();
+    }
+
+    [Fact]
+    public void RemoveCategory_SoftDeletedTodoWithAllowDeleted_ShouldRaiseTheEvent()
+    {
+        Guid categoryId = Guid.NewGuid();
+        Todo todo = NewTodo();
+        todo.AddCategory(categoryId, CreatedAt, "alice").IsSuccess.Should().BeTrue();
+        todo.Delete(isHard: false, Later, "bob").IsSuccess.Should().BeTrue();
+        todo.ClearUncommittedEvents();
+
+        Result result = todo.RemoveCategory(categoryId, Later, "cleaner", allowDeleted: true);
+
+        result.IsSuccess.Should().BeTrue();
+        todo.IsDeleted.Should().BeTrue();
+        todo.CategoryIds.Should().BeEmpty();
+        todo.UncommittedEvents.Should().ContainSingle()
+            .Which.Should().BeOfType<TodoCategoryRemoved>();
+    }
+
+    [Fact]
+    public void ClearList_HardDeletedTodoWithAllowDeleted_ShouldStillFail()
+    {
+        Todo todo = NewTodo();
+        todo.Delete(isHard: true, Later, "bob").IsSuccess.Should().BeTrue();
+        todo.ClearUncommittedEvents();
+
+        ShouldFailWithoutMutation(
+            todo,
+            () => todo.ClearList(Later, "cleaner", allowDeleted: true),
+            "Todo.Deleted.Hard");
     }
 
     // Deleted guard

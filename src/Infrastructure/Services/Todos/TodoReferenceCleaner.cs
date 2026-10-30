@@ -1,4 +1,5 @@
 using Application.Common.EventSourcing;
+using Application.Common.Persistence.UnitOfWorks;
 using Application.Features.Todos.Abstractions;
 using Application.Features.Todos.Common;
 using Application.Features.Todos.Items.Models;
@@ -15,6 +16,8 @@ namespace Infrastructure.Services.Todos;
 /// <remarks>
 /// Finds affected streams through the todo projection, then appends one
 /// <c>TodoListChanged</c> or <c>TodoCategoryRemoved</c> event per stream.
+/// Soft-deleted rows are included so a restored todo never keeps a dangling
+/// reference; the aggregate's <c>allowDeleted</c> escape hatch makes that legal.
 /// </remarks>
 /// <param name="context">The application DbContext.</param>
 /// <param name="repository">The todo event-stream repository.</param>
@@ -30,18 +33,27 @@ public sealed class TodoReferenceCleaner(
         string? actor,
         CancellationToken cancellationToken = default)
     {
-        List<Guid> ids = await context.Set<TodoReadModel>()
-            .Where(todo => todo.TenantId == tenantId && todo.ListId == listId)
-            .Select(todo => todo.Id)
-            .ToListAsync(cancellationToken);
+        try
+        {
+            List<Guid> ids = await context.Set<TodoReadModel>()
+                .Where(todo => todo.TenantId == tenantId && todo.ListId == listId)
+                .Select(todo => todo.Id)
+                .ToListAsync(cancellationToken);
 
-        return await CleanAsync(
-            ids,
-            tenantId,
-            nowUtc,
-            actor,
-            (todo, at, by) => todo.ClearList(at, by),
-            cancellationToken);
+            return await CleanAsync(
+                ids,
+                tenantId,
+                nowUtc,
+                actor,
+                (todo, at, by) => todo.ClearList(at, by, allowDeleted: true),
+                cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            // Translate: any unexpected error to a typed persistence outcome.
+            return Result<int>.Fail(
+                UnitOfWorkOutcome.Failure.InvalidOperationFor(exception.Message));
+        }
     }
 
     /// <inheritdoc />
@@ -52,23 +64,32 @@ public sealed class TodoReferenceCleaner(
         string? actor,
         CancellationToken cancellationToken = default)
     {
-        // Load: category identifiers are a value-converted JSON array, so the provider
-        // cannot translate a containment predicate. Scope by tenant and filter in memory.
-        List<TodoReadModel> rows = await context.Set<TodoReadModel>()
-            .Where(todo => todo.TenantId == tenantId)
-            .ToListAsync(cancellationToken);
+        try
+        {
+            // Load: category identifiers are a value-converted JSON array, so the provider
+            // cannot translate a containment predicate. Scope by tenant and filter in memory.
+            List<TodoReadModel> rows = await context.Set<TodoReadModel>()
+                .Where(todo => todo.TenantId == tenantId)
+                .ToListAsync(cancellationToken);
 
-        List<Guid> ids = [.. rows
-            .Where(todo => todo.CategoryIds.Contains(categoryId))
-            .Select(todo => todo.Id)];
+            List<Guid> ids = [.. rows
+                .Where(todo => todo.CategoryIds.Contains(categoryId))
+                .Select(todo => todo.Id)];
 
-        return await CleanAsync(
-            ids,
-            tenantId,
-            nowUtc,
-            actor,
-            (todo, at, by) => todo.RemoveCategory(categoryId, at, by),
-            cancellationToken);
+            return await CleanAsync(
+                ids,
+                tenantId,
+                nowUtc,
+                actor,
+                (todo, at, by) => todo.RemoveCategory(categoryId, at, by, allowDeleted: true),
+                cancellationToken);
+        }
+        catch (Exception exception) when (exception is not OperationCanceledException)
+        {
+            // Translate: any unexpected error to a typed persistence outcome.
+            return Result<int>.Fail(
+                UnitOfWorkOutcome.Failure.InvalidOperationFor(exception.Message));
+        }
     }
 
     private async Task<Result<int>> CleanAsync(
@@ -83,7 +104,7 @@ public sealed class TodoReferenceCleaner(
         foreach (Guid id in ids)
         {
             Result<Todo> loaded = await repository
-                .LoadOwnedAsync(id, tenantId, cancellationToken)
+                .LoadOwnedAsync(id, tenantId, cancellationToken, includeDeleted: true)
                 .ConfigureAwait(false);
             if (loaded.IsFailure)
                 return Result<int>.Fail(loaded.Errors);

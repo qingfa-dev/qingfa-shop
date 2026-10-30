@@ -50,7 +50,7 @@ public static class DeleteTodo
                 return Result.Fail(tenant.Errors);
 
             Result<Todo> loaded = await repository
-                .LoadOwnedAsync(request.Id, tenant.Value, cancellationToken)
+                .LoadOwnedAsync(request.Id, tenant.Value, cancellationToken, includeDeleted: true)
                 .ConfigureAwait(false);
             if (loaded.IsFailure)
                 return Result.Fail(loaded.Errors);

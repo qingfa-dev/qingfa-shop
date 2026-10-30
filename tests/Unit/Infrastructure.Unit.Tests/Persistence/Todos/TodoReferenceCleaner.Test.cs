@@ -1,8 +1,13 @@
+using Application.Common.EventSourcing;
+using Application.Common.Persistence.Repositories;
+using Application.Features.Todos.Items.Models;
+
 using Core.Todos.Items;
 
 using Infrastructure.Persistence.EntityFramework.Contexts;
 using Infrastructure.Services.Todos;
 
+using Microsoft.Data.Sqlite;
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Unit.Tests.Persistence.Todos;
@@ -13,42 +18,68 @@ namespace Infrastructure.Unit.Tests.Persistence.Todos;
 /// </summary>
 [Trait("Category", "Unit")]
 [Trait("Module", "Infrastructure")]
-[Trait("Feature", "Persistence")]
+[Trait("Feature", "EventSourcing")]
 public sealed class TodoReferenceCleanerTest : IAsyncLifetime
 {
     private static readonly Guid TenantId = Guid.Parse("11111111-1111-1111-1111-111111111111");
     private static readonly Guid OtherTenantId = Guid.Parse("22222222-2222-2222-2222-222222222222");
     private static readonly DateTimeOffset Now = new(2026, 10, 27, 12, 0, 0, TimeSpan.Zero);
 
-    private string _databasePath = string.Empty;
+    private SqliteConnection _connection = null!;
     private DbContextOptions<ApplicationDbContext> _options = null!;
 
     /// <inheritdoc />
-    public ValueTask InitializeAsync()
+    public async ValueTask InitializeAsync()
     {
-        _databasePath = $"Data Source=TodoRefCleaner_{Guid.NewGuid():N}.db";
+        _connection = new SqliteConnection("Filename=:memory:");
+        await _connection.OpenAsync();
         _options = new DbContextOptionsBuilder<ApplicationDbContext>()
-            .UseSqlite(_databasePath)
+            .UseSqlite(_connection)
             .Options;
-        return default;
     }
 
     /// <inheritdoc />
-    public async ValueTask DisposeAsync()
-    {
-        await using var context = new ApplicationDbContext(_options);
-        await context.Database.EnsureDeletedAsync();
-        File.Delete(_databasePath.Replace("Data Source=", string.Empty, StringComparison.Ordinal));
-    }
+    public async ValueTask DisposeAsync() => await _connection.DisposeAsync();
 
-    private async Task<ApplicationDbContext> CreateSeededContextAsync()
+    private async Task<ApplicationDbContext> CreateSeededContextAsync(params Todo[] todos)
     {
         var context = new ApplicationDbContext(_options);
         await context.Database.EnsureCreatedAsync();
+
+        foreach (Todo todo in todos)
+        {
+            context.Set<TodoReadModel>().Add(new TodoReadModel
+            {
+                Id = todo.Id,
+                TenantId = todo.TenantId,
+                Title = todo.Title,
+                Description = todo.Description,
+                Status = todo.Status,
+                Priority = todo.Priority,
+                DueAtUtc = todo.DueAtUtc,
+                CompletedAtUtc = todo.CompletedAtUtc,
+                ListId = todo.ListId,
+                CategoryIds = [.. todo.CategoryIds],
+                CreatedAtUtc = todo.CreatedAtUtc,
+                CreatedBy = todo.CreatedBy,
+                ModifiedAtUtc = todo.ModifiedAtUtc,
+                ModifiedBy = todo.ModifiedBy,
+                IsDeleted = todo.IsDeleted,
+                DeletedAtUtc = todo.DeletedAtUtc,
+                DeletedBy = todo.DeletedBy,
+                Version = todo.Version,
+            });
+        }
+
+        await context.SaveChangesAsync();
         return context;
     }
 
-    private static Todo CreateTodo(Guid tenantId, Guid? listId, params Guid[] categoryIds)
+    private static Todo CreateTodo(
+        Guid tenantId,
+        Guid? listId,
+        bool isDeleted = false,
+        params Guid[] categoryIds)
     {
         Todo todo = Todo.Create(
             Guid.NewGuid(),
@@ -60,17 +91,40 @@ public sealed class TodoReferenceCleanerTest : IAsyncLifetime
 
         foreach (Guid categoryId in categoryIds)
         {
-            todo.CategoryIds.Add(categoryId);
+            todo.AddCategory(categoryId, Now.AddDays(-1), "creator").IsSuccess.Should().BeTrue();
         }
 
+        if (isDeleted)
+        {
+            todo.Delete(isHard: false, Now.AddDays(-2), "creator").IsSuccess.Should().BeTrue();
+        }
+
+        todo.ClearUncommittedEvents();
         return todo;
+    }
+
+    private static Mock<IEventSourcedRepository<Todo, Guid>> CreateRepository(params Todo[] todos)
+    {
+        var repository = new Mock<IEventSourcedRepository<Todo, Guid>>();
+
+        repository
+            .Setup(store => store.LoadAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .Returns((Guid id, CancellationToken _) => Task.FromResult(
+                todos.FirstOrDefault(todo => todo.Id == id) is { } found
+                    ? Result<Todo>.Success(found)
+                    : Result<Todo>.Fail(RepositoryOutcome.Failure.NotFoundFor<Todo>(id))));
+
+        repository
+            .Setup(store => store.SaveAsync(It.IsAny<Todo>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok());
+
+        return repository;
     }
 
     [Fact(DisplayName = "ClearListAsync should clear only the matching tenant and list")]
     public async Task ClearListAsync_ShouldClearMatchingTodos()
     {
         // Arrange
-        await using var context = await CreateSeededContextAsync();
         Guid listId = Guid.NewGuid();
         Guid otherListId = Guid.NewGuid();
 
@@ -79,10 +133,11 @@ public sealed class TodoReferenceCleanerTest : IAsyncLifetime
         Todo otherList = CreateTodo(TenantId, otherListId);
         Todo otherTenant = CreateTodo(OtherTenantId, listId);
 
-        context.Set<Todo>().AddRange(matchingOne, matchingTwo, otherList, otherTenant);
-        await context.SaveChangesAsync();
-
-        var cleaner = new TodoReferenceCleaner(context);
+        await using ApplicationDbContext context = await CreateSeededContextAsync(
+            matchingOne, matchingTwo, otherList, otherTenant);
+        Mock<IEventSourcedRepository<Todo, Guid>> repository = CreateRepository(
+            matchingOne, matchingTwo, otherList, otherTenant);
+        var cleaner = new TodoReferenceCleaner(context, repository.Object);
 
         // Act
         Result<int> result = await cleaner.ClearListAsync(
@@ -100,14 +155,46 @@ public sealed class TodoReferenceCleanerTest : IAsyncLifetime
         matchingOne.ModifiedAtUtc.Should().Be(Now.ToUniversalTime());
         matchingOne.ModifiedBy.Should().Be("editor");
         otherList.ModifiedAtUtc.Should().BeNull();
+
+        repository.Verify(
+            store => store.SaveAsync(It.IsAny<Todo>(), It.IsAny<CancellationToken>()),
+            Times.Exactly(2));
+    }
+
+    [Fact(DisplayName = "ClearListAsync should clear soft-deleted todos so restore keeps no dangling reference")]
+    public async Task ClearListAsync_ShouldClearSoftDeletedTodos()
+    {
+        // Arrange
+        Guid listId = Guid.NewGuid();
+        Todo live = CreateTodo(TenantId, listId);
+        Todo deleted = CreateTodo(TenantId, listId, isDeleted: true);
+
+        await using ApplicationDbContext context = await CreateSeededContextAsync(live, deleted);
+        Mock<IEventSourcedRepository<Todo, Guid>> repository = CreateRepository(live, deleted);
+        var cleaner = new TodoReferenceCleaner(context, repository.Object);
+
+        // Act
+        Result<int> result = await cleaner.ClearListAsync(
+            TenantId, listId, Now, "editor", TestContext.Current.CancellationToken);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().Be(2);
+
+        live.ListId.Should().BeNull();
+        deleted.ListId.Should().BeNull();
+        deleted.IsDeleted.Should().BeTrue();
+        deleted.UncommittedEvents.Should().ContainSingle()
+            .Which.Should().BeOfType<TodoListChanged>();
     }
 
     [Fact(DisplayName = "ClearListAsync should succeed when no todo references the list")]
     public async Task ClearListAsync_WhenNoMatch_ShouldReturnZero()
     {
         // Arrange
-        await using var context = await CreateSeededContextAsync();
-        var cleaner = new TodoReferenceCleaner(context);
+        await using ApplicationDbContext context = await CreateSeededContextAsync();
+        Mock<IEventSourcedRepository<Todo, Guid>> repository = CreateRepository();
+        var cleaner = new TodoReferenceCleaner(context, repository.Object);
 
         // Act
         Result<int> result = await cleaner.ClearListAsync(
@@ -122,18 +209,19 @@ public sealed class TodoReferenceCleanerTest : IAsyncLifetime
     public async Task RemoveCategoryAsync_ShouldRemoveCategoryFromMatchingTodos()
     {
         // Arrange
-        await using var context = await CreateSeededContextAsync();
         Guid categoryId = Guid.NewGuid();
         Guid otherCategoryId = Guid.NewGuid();
 
-        Todo withCategory = CreateTodo(TenantId, null, categoryId, otherCategoryId);
-        Todo withoutCategory = CreateTodo(TenantId, null, otherCategoryId);
-        Todo otherTenant = CreateTodo(OtherTenantId, null, categoryId);
+        Todo withCategory = CreateTodo(TenantId, null, categoryIds: [categoryId, otherCategoryId]);
+        Todo withoutCategory = CreateTodo(TenantId, null, categoryIds: [otherCategoryId]);
+        Todo otherTenant = CreateTodo(OtherTenantId, null, categoryIds: [categoryId]);
 
-        context.Set<Todo>().AddRange(withCategory, withoutCategory, otherTenant);
-        await context.SaveChangesAsync();
-
-        var cleaner = new TodoReferenceCleaner(context);
+        await using ApplicationDbContext context = await CreateSeededContextAsync(
+            withCategory, withoutCategory, otherTenant);
+        Mock<IEventSourcedRepository<Todo, Guid>> repository = CreateRepository(
+            withCategory, withoutCategory, otherTenant);
+        var cleaner = new TodoReferenceCleaner(context, repository.Object);
+        DateTimeOffset? untouchedModifiedAt = withoutCategory.ModifiedAtUtc;
 
         // Act
         Result<int> result = await cleaner.RemoveCategoryAsync(
@@ -149,19 +237,42 @@ public sealed class TodoReferenceCleanerTest : IAsyncLifetime
 
         withCategory.ModifiedAtUtc.Should().Be(Now.ToUniversalTime());
         withCategory.ModifiedBy.Should().Be("editor");
-        withoutCategory.ModifiedAtUtc.Should().BeNull();
+        withoutCategory.ModifiedAtUtc.Should().Be(untouchedModifiedAt);
+    }
+
+    [Fact(DisplayName = "RemoveCategoryAsync should remove the category from soft-deleted todos")]
+    public async Task RemoveCategoryAsync_ShouldRemoveCategoryFromSoftDeletedTodos()
+    {
+        // Arrange
+        Guid categoryId = Guid.NewGuid();
+        Todo deleted = CreateTodo(TenantId, null, isDeleted: true, categoryIds: [categoryId]);
+
+        await using ApplicationDbContext context = await CreateSeededContextAsync(deleted);
+        Mock<IEventSourcedRepository<Todo, Guid>> repository = CreateRepository(deleted);
+        var cleaner = new TodoReferenceCleaner(context, repository.Object);
+
+        // Act
+        Result<int> result = await cleaner.RemoveCategoryAsync(
+            TenantId, categoryId, Now, "editor", TestContext.Current.CancellationToken);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().Be(1);
+        deleted.CategoryIds.Should().BeEmpty();
+        deleted.IsDeleted.Should().BeTrue();
+        deleted.UncommittedEvents.Should().ContainSingle()
+            .Which.Should().BeOfType<TodoCategoryRemoved>();
     }
 
     [Fact(DisplayName = "RemoveCategoryAsync should succeed when no todo uses the category")]
     public async Task RemoveCategoryAsync_WhenNoMatch_ShouldReturnZero()
     {
         // Arrange
-        await using var context = await CreateSeededContextAsync();
-        Todo todo = CreateTodo(TenantId, null, Guid.NewGuid());
-        context.Set<Todo>().Add(todo);
-        await context.SaveChangesAsync();
-
-        var cleaner = new TodoReferenceCleaner(context);
+        Todo todo = CreateTodo(TenantId, null, categoryIds: [Guid.NewGuid()]);
+        await using ApplicationDbContext context = await CreateSeededContextAsync(todo);
+        Mock<IEventSourcedRepository<Todo, Guid>> repository = CreateRepository(todo);
+        var cleaner = new TodoReferenceCleaner(context, repository.Object);
+        DateTimeOffset? untouchedModifiedAt = todo.ModifiedAtUtc;
 
         // Act
         Result<int> result = await cleaner.RemoveCategoryAsync(
@@ -170,7 +281,7 @@ public sealed class TodoReferenceCleanerTest : IAsyncLifetime
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.Should().Be(0);
-        todo.ModifiedAtUtc.Should().BeNull();
+        todo.ModifiedAtUtc.Should().Be(untouchedModifiedAt);
     }
 
     [Fact(DisplayName = "ClearListAsync should translate a provider failure")]
@@ -179,7 +290,7 @@ public sealed class TodoReferenceCleanerTest : IAsyncLifetime
         // Arrange
         var context = new ApplicationDbContext(_options);
         await context.DisposeAsync();
-        var cleaner = new TodoReferenceCleaner(context);
+        var cleaner = new TodoReferenceCleaner(context, CreateRepository().Object);
 
         // Act
         Result<int> result = await cleaner.ClearListAsync(
@@ -196,7 +307,7 @@ public sealed class TodoReferenceCleanerTest : IAsyncLifetime
         // Arrange
         var context = new ApplicationDbContext(_options);
         await context.DisposeAsync();
-        var cleaner = new TodoReferenceCleaner(context);
+        var cleaner = new TodoReferenceCleaner(context, CreateRepository().Object);
 
         // Act
         Result<int> result = await cleaner.RemoveCategoryAsync(
@@ -207,21 +318,20 @@ public sealed class TodoReferenceCleanerTest : IAsyncLifetime
         result.Errors[0].Code.Should().Be("UnitOfWork.Operation.Invalid");
     }
 
-    [Fact(DisplayName = "ClearListAsync should observe cancellation")]
-    public async Task ClearListAsync_WhenCancelled_ShouldReturnFailure()
+    [Fact(DisplayName = "ClearListAsync should propagate cancellation")]
+    public async Task ClearListAsync_WhenCancelled_ShouldPropagate()
     {
         // Arrange
-        await using var context = await CreateSeededContextAsync();
-        var cleaner = new TodoReferenceCleaner(context);
+        await using ApplicationDbContext context = await CreateSeededContextAsync();
+        var cleaner = new TodoReferenceCleaner(context, CreateRepository().Object);
         using var cts = new CancellationTokenSource();
-        cts.Cancel();
+        await cts.CancelAsync();
 
         // Act
-        Result<int> result = await cleaner.ClearListAsync(
+        Func<Task> act = () => cleaner.ClearListAsync(
             TenantId, Guid.NewGuid(), Now, null, cts.Token);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        result.Errors[0].Code.Should().Be("UnitOfWork.Operation.Invalid");
+        await act.Should().ThrowAsync<OperationCanceledException>();
     }
 }

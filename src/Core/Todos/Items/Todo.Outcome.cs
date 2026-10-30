@@ -83,5 +83,10 @@ public static class TodoOutcome
         public static Error DeletedNotMutable => Error.Conflict(
             code: "Todo.Deleted.NotMutable",
             message: "A deleted todo cannot be modified.");
+
+        /// <summary>Error returned when a hard-deleted stream is restored or mutated.</summary>
+        public static Error HardDeletedNotFound => Error.NotFound(
+            code: "Todo.Deleted.Hard",
+            message: "The todo was permanently deleted.");
     }
 }

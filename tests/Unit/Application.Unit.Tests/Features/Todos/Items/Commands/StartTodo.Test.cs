@@ -75,6 +75,33 @@ public sealed class StartTodoTest
         result.Errors.Should().Contain(error => error.Code == "Repository.Entity.NotFound");
     }
 
+    [Fact(DisplayName = "Start should treat a soft-deleted stream as not found")]
+    public async Task Handle_WhenSoftDeleted_ShouldReturnNotFound()
+    {
+        // Arrange
+        var fixture = new TodoHandlerFixture();
+        Todo todo = fixture.CreateTodo();
+        todo.Delete(
+            isHard: false,
+            TodoHandlerFixture.Now,
+            TodoHandlerFixture.Actor).IsSuccess.Should().BeTrue();
+        fixture.RegisterTodo(todo);
+
+        // Act
+        Result<StartTodo.Response> result = await CreateHandler(fixture).Handle(
+            new StartTodo.UseCase(new StartTodo.Request(todo.Id)),
+            CancellationToken.None);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(error =>
+            error.Code == "Repository.Entity.NotFound" && error.Status == 404);
+        todo.UncommittedEvents.OfType<TodoStatusChanged>().Should().BeEmpty();
+        fixture.TodoRepository.Verify(
+            store => store.SaveAsync(It.IsAny<Todo>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
     [Fact(DisplayName = "Start validator should reject a missing id")]
     public void Validate_WithEmptyId_ShouldFail()
     {

@@ -130,6 +130,58 @@ public sealed class UpdateTodoTest
         foreign.UncommittedEvents.OfType<TodoUpdated>().Should().BeEmpty();
     }
 
+    [Fact(DisplayName = "Update should prefer ListId over ClearList when both are supplied")]
+    public async Task Handle_WithListIdAndClearList_ShouldKeepTheList()
+    {
+        // Arrange
+        var fixture = new TodoHandlerFixture();
+        Todo todo = fixture.CreateTodo();
+        Guid listId = Guid.NewGuid();
+        fixture.RegisterTodo(todo);
+
+        // Act
+        Result<UpdateTodo.Response> result = await UpdateAsync(
+            fixture,
+            new UpdateTodo.Request
+            {
+                Id = todo.Id,
+                ListId = listId,
+                ClearList = true,
+            });
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.ListId.Should().Be(listId);
+        todo.ListId.Should().Be(listId);
+    }
+
+    [Fact(DisplayName = "Update should treat a soft-deleted stream as not found")]
+    public async Task Handle_WhenSoftDeleted_ShouldReturnNotFound()
+    {
+        // Arrange
+        var fixture = new TodoHandlerFixture();
+        Todo todo = fixture.CreateTodo();
+        todo.Delete(
+            isHard: false,
+            TodoHandlerFixture.Now,
+            TodoHandlerFixture.Actor).IsSuccess.Should().BeTrue();
+        fixture.RegisterTodo(todo);
+
+        // Act
+        Result<UpdateTodo.Response> result = await UpdateAsync(
+            fixture,
+            new UpdateTodo.Request { Id = todo.Id, Title = "edited" });
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(error =>
+            error.Code == RepositoryOutcome.Codes.EntityNotFound && error.Status == 404);
+        todo.UncommittedEvents.OfType<TodoUpdated>().Should().BeEmpty();
+        fixture.TodoRepository.Verify(
+            store => store.SaveAsync(It.IsAny<Todo>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
     [Fact(DisplayName = "Update should fail when the tenant is missing")]
     public async Task Handle_WithoutTenant_ShouldFail()
     {

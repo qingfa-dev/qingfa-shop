@@ -17,6 +17,7 @@ public sealed record TodoSnapshot(
     DateTimeOffset? ModifiedAtUtc,
     string? ModifiedBy,
     bool IsDeleted,
+    bool IsHardDeleted,
     DateTimeOffset? DeletedAtUtc,
     string? DeletedBy,
     long Version);

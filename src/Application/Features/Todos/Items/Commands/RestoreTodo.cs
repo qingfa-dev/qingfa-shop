@@ -56,7 +56,7 @@ public static class RestoreTodo
                 return Result<Response>.Fail(tenant.Errors);
 
             Result<Todo> loaded = await repository
-                .LoadOwnedAsync(request.Id, tenant.Value, cancellationToken)
+                .LoadOwnedAsync(request.Id, tenant.Value, cancellationToken, includeDeleted: true)
                 .ConfigureAwait(false);
             if (loaded.IsFailure)
                 return Result<Response>.Fail(loaded.Errors);

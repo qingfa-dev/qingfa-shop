@@ -179,16 +179,6 @@ public sealed class TodoHandlerFixture
     public TodoCategory CreateCategory(string name = "Errands") =>
         TodoCategory.Create(TenantId, name, Now, Actor, id: Guid.NewGuid()).Value;
 
-    /// <summary>Registers the minimal todo query map used by generic query-builder tests.</summary>
-    public void RegisterTodoMap() =>
-        Registry.Register(QueryMapBuilder<Todo>.Create()
-            .Map("id", todo => todo.Id, field => field.Filterable().Sortable().Groupable())
-            .Map("tenantId", todo => todo.TenantId, field => field.Filterable().Sortable().Groupable())
-            .Map("isDeleted", todo => todo.IsDeleted, field => field.Filterable())
-            .Map("createdAtUtc", todo => todo.CreatedAtUtc, field => field.Filterable().Sortable())
-            .Map("title", todo => todo.Title, field => field.Filterable().Searchable().Groupable())
-            .Build().Value);
-
     /// <summary>Registers the todo read-model query map used by search tests.</summary>
     public void RegisterTodoReadModelMap() =>
         Registry.Register(QueryMapBuilder<TodoReadModel>.Create()

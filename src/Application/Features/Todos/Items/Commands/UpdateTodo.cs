@@ -83,7 +83,7 @@ public static class UpdateTodo
             DateTimeOffset? dueAtUtc = request.ClearDueAt
                 ? null
                 : request.DueAtUtc ?? todo.DueAtUtc;
-            Guid? listId = request.ClearList ? null : request.ListId ?? todo.ListId;
+            Guid? listId = request.ListId ?? (request.ClearList ? null : todo.ListId);
 
             Result updated = todo.Update(
                 title,

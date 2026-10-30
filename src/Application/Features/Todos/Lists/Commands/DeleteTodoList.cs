@@ -28,6 +28,11 @@ public static class DeleteTodoList
     #endregion
 
     #region Handler
+    /// <summary>Deletes a list and clears the list reference from every todo.</summary>
+    /// <remarks>
+    /// Each todo stream commits independently, so a failed list delete can leave
+    /// references cleared. The operation is idempotent and safe to retry.
+    /// </remarks>
     public sealed class UseCaseHandler(
         IPersistentRepository<TodoList, Guid> repository,
         ITodoReferenceCleaner cleaner,
@@ -47,8 +52,6 @@ public static class DeleteTodoList
             Request request = command.Request;
             DateTimeOffset nowUtc = clock.GetUtcNow();
 
-            // Note: each todo stream commits independently; a failed list delete can leave references
-            // cleared. The operation is idempotent and safe to retry.
             return await tenantContext.RequireTenant()
                 .BindAsync(
                     (tenantId, ct) => repository.FindOwnedAsync(

@@ -1,3 +1,4 @@
+using Core.Common.Domain.Events;
 using Core.Todos.Items;
 
 namespace Core.Unit.Tests.Todos.Items;
@@ -141,6 +142,45 @@ public sealed class TodoEventSourcedSpec
         restored.CategoryIds.Should().BeEquivalentTo(todo.CategoryIds);
         restored.Version.Should().Be(3);
         restored.CaptureSnapshot().Should().Be(state);
+    }
+
+    [Fact]
+    public void Snapshot_HardDeleted_ShouldRoundTripAndRejectRestore()
+    {
+        Todo todo = Create();
+        todo.Delete(isHard: true, Now.AddMinutes(1), "alice");
+        string state = todo.CaptureSnapshot();
+
+        Todo restored = new TodoFactory().Create();
+        restored.RestoreSnapshot(state);
+
+        restored.IsDeleted.Should().BeTrue();
+        restored.IsHardDeleted.Should().BeTrue();
+        restored.CaptureSnapshot().Should().Be(state);
+
+        Result restore = restored.Restore(Now.AddMinutes(2), "alice");
+
+        restore.IsFailure.Should().BeTrue();
+        restore.Errors[0].Code.Should().Be(TodoOutcome.Failure.HardDeletedNotFound.Code);
+    }
+
+    [Fact]
+    public void Replay_TodoRestored_ShouldClearTheHardDeletionFlag()
+    {
+        Todo created = Create();
+        var replayed = new TodoFactory().Create();
+        IReadOnlyList<IDomainEvent> history =
+        [
+            created.UncommittedEvents[0],
+            new TodoDeleted(created.Id, IsHard: true, Now.AddMinutes(1), "alice"),
+            new TodoRestored(created.Id, Now.AddMinutes(2), "alice"),
+        ];
+
+        Result loaded = replayed.TryLoadFromHistory(3, history);
+
+        loaded.IsSuccess.Should().BeTrue();
+        replayed.IsDeleted.Should().BeFalse();
+        replayed.IsHardDeleted.Should().BeFalse();
     }
 
     [Fact]

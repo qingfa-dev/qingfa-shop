@@ -57,6 +57,32 @@ public sealed class RestoreTodoTest
         todo.UncommittedEvents.OfType<TodoRestored>().Should().BeEmpty();
     }
 
+    [Fact(DisplayName = "Restore should reject a hard-deleted stream")]
+    public async Task Handle_WhenHardDeleted_ShouldFailWithoutSaving()
+    {
+        // Arrange
+        var fixture = new TodoHandlerFixture();
+        Todo todo = fixture.CreateTodo();
+        todo.Delete(isHard: true, TodoHandlerFixture.Now, TodoHandlerFixture.Actor)
+            .IsSuccess.Should().BeTrue();
+        todo.ClearUncommittedEvents();
+        fixture.RegisterTodo(todo);
+
+        // Act
+        Result<RestoreTodo.Response> result = await CreateHandler(fixture).Handle(
+            new RestoreTodo.UseCase(new RestoreTodo.Request(todo.Id)),
+            CancellationToken.None);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(error =>
+            error.Code == TodoOutcome.Failure.HardDeletedNotFound.Code);
+        todo.UncommittedEvents.Should().BeEmpty();
+        fixture.TodoRepository.Verify(
+            store => store.SaveAsync(It.IsAny<Todo>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
     [Fact(DisplayName = "Restore validator should reject a missing id")]
     public void Validate_WithEmptyId_ShouldFail()
     {

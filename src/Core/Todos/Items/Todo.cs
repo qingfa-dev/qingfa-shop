@@ -65,6 +65,9 @@ public sealed class Todo : EventSourcedAggregate<Guid>, ITodo, ISnapshotable
     /// <inheritdoc />
     public bool IsDeleted { get; private set; }
 
+    /// <summary>Gets a value indicating whether the todo was permanently deleted.</summary>
+    public bool IsHardDeleted { get; private set; }
+
     /// <inheritdoc />
     public DateTimeOffset? DeletedAtUtc { get; private set; }
 
@@ -210,9 +213,14 @@ public sealed class Todo : EventSourcedAggregate<Guid>, ITodo, ISnapshotable
     }
 
     /// <summary>Clears the list reference.</summary>
-    public Result ClearList(DateTimeOffset nowUtc, string? actor)
+    /// <param name="nowUtc">The UTC moment of the change.</param>
+    /// <param name="actor">The optional actor.</param>
+    /// <param name="allowDeleted">
+    /// True to mutate a soft-deleted stream during cross-aggregate reference cleanup.
+    /// </param>
+    public Result ClearList(DateTimeOffset nowUtc, string? actor, bool allowDeleted = false)
     {
-        Result validation = TodoValidator.ValidateNotDeleted(IsDeleted);
+        Result validation = ValidateMutable(allowDeleted);
         if (validation.IsFailure)
             return validation;
 
@@ -236,9 +244,19 @@ public sealed class Todo : EventSourcedAggregate<Guid>, ITodo, ISnapshotable
     }
 
     /// <summary>Removes a category reference.</summary>
-    public Result RemoveCategory(Guid categoryId, DateTimeOffset nowUtc, string? actor)
+    /// <param name="categoryId">The category identifier to remove.</param>
+    /// <param name="nowUtc">The UTC moment of the change.</param>
+    /// <param name="actor">The optional actor.</param>
+    /// <param name="allowDeleted">
+    /// True to mutate a soft-deleted stream during cross-aggregate reference cleanup.
+    /// </param>
+    public Result RemoveCategory(
+        Guid categoryId,
+        DateTimeOffset nowUtc,
+        string? actor,
+        bool allowDeleted = false)
     {
-        Result validation = TodoValidator.ValidateNotDeleted(IsDeleted);
+        Result validation = ValidateMutable(allowDeleted);
         if (validation.IsFailure)
             return validation;
 
@@ -263,6 +281,10 @@ public sealed class Todo : EventSourcedAggregate<Guid>, ITodo, ISnapshotable
     /// <summary>Restores a soft-deleted todo.</summary>
     public Result Restore(DateTimeOffset nowUtc, string? actor)
     {
+        // Guard: a hard-deleted stream has no projection row to restore.
+        if (IsHardDeleted)
+            return Result.Fail(TodoOutcome.Failure.HardDeletedNotFound);
+
         // Handle: Restoring a live todo is an intentional idempotent no-op; no event is raised.
         if (!IsDeleted)
             return Result.Ok();
@@ -289,6 +311,7 @@ public sealed class Todo : EventSourcedAggregate<Guid>, ITodo, ISnapshotable
             ModifiedAtUtc,
             ModifiedBy,
             IsDeleted,
+            IsHardDeleted,
             DeletedAtUtc,
             DeletedBy,
             Version),
@@ -328,6 +351,7 @@ public sealed class Todo : EventSourcedAggregate<Guid>, ITodo, ISnapshotable
         ModifiedAtUtc = snapshot.ModifiedAtUtc;
         ModifiedBy = snapshot.ModifiedBy;
         IsDeleted = snapshot.IsDeleted;
+        IsHardDeleted = snapshot.IsHardDeleted;
         DeletedAtUtc = snapshot.DeletedAtUtc;
         DeletedBy = snapshot.DeletedBy;
         RestoreVersion(snapshot.Version);
@@ -350,6 +374,7 @@ public sealed class Todo : EventSourcedAggregate<Guid>, ITodo, ISnapshotable
                 CreatedAtUtc = created.CreatedAtUtc;
                 CreatedBy = created.CreatedBy;
                 IsDeleted = false;
+                IsHardDeleted = false;
                 _categoryIds.Clear();
                 break;
 
@@ -391,12 +416,14 @@ public sealed class Todo : EventSourcedAggregate<Guid>, ITodo, ISnapshotable
 
             case TodoDeleted deleted:
                 IsDeleted = true;
+                IsHardDeleted = deleted.IsHard;
                 DeletedAtUtc = deleted.OccurredAtUtc;
                 DeletedBy = deleted.Actor;
                 break;
 
             case TodoRestored restored:
                 IsDeleted = false;
+                IsHardDeleted = false;
                 DeletedAtUtc = null;
                 DeletedBy = null;
                 ModifiedAtUtc = restored.OccurredAtUtc;
@@ -414,6 +441,18 @@ public sealed class Todo : EventSourcedAggregate<Guid>, ITodo, ISnapshotable
     {
         var trimmed = actor?.Trim();
         return string.IsNullOrEmpty(trimmed) ? null : trimmed;
+    }
+
+    /// <summary>Guards cleanup-aware mutators that may target a soft-deleted stream.</summary>
+    private Result ValidateMutable(bool allowDeleted)
+    {
+        // Guard: a hard-deleted stream is permanently gone; even cleanup cannot append to it.
+        if (IsHardDeleted)
+            return Result.Fail(TodoOutcome.Failure.HardDeletedNotFound);
+
+        return allowDeleted
+            ? Result.Ok()
+            : TodoValidator.ValidateNotDeleted(IsDeleted);
     }
 
     private Result Transition(TodoStatus next, DateTimeOffset nowUtc, string? actor)

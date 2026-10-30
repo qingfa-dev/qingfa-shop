@@ -18,7 +18,7 @@ public sealed class TodoStatusChangedIntegrationHandler(IIntegrationEventPublish
     {
         ArgumentNullException.ThrowIfNull(notification);
 
-        // Ignore: only completion has an external contract today.
+        // Skip: only completion has an external contract today.
         if (notification.To != TodoStatus.Completed)
             return;
 
