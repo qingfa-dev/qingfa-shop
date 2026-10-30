@@ -100,6 +100,9 @@ jobs:
       - name: Api integration tests (pull request)
         if: github.event_name == 'pull_request'
         run: make api.test
+      - name: RabbitMQ broker integration tests (pull request)
+        if: github.event_name == 'pull_request'
+        run: make test.infra.broker
       - name: Upload .NET coverage
         if: always()
         uses: actions/upload-artifact@v4

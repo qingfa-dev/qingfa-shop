@@ -1,10 +1,13 @@
 ##@ Tests
 
-.PHONY: test test.all test.dotnet.unit test.dotnet.integration test.dotnet.integration.fast test.web.unit test.web.integration test.web.e2e
+.PHONY: test test.all test.dotnet.unit test.dotnet.integration test.dotnet.integration.fast test.infra.broker test.web.unit test.web.integration test.web.e2e
 
 test.dotnet.unit: lib.test ## .NET unit suites: Core -> Application -> Infrastructure -> Architecture
 
 test.dotnet.integration.fast: api.test ## Fast .NET integration: Api only
+
+test.infra.broker: _dotnet.build ## RabbitMQ broker suite (production composition + transport)
+	$(call run,$@,$(ROOT)/scripts/backend/test-broker.backend.sh)
 
 test.dotnet.integration: api.test host.test infra.test ## .NET integration: Api -> AppHost/Gateway -> Infrastructure
 

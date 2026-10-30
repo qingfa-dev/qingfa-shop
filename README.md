@@ -1,6 +1,6 @@
 # QingFa.Shop
 
-A modern e-commerce platform built with .NET Aspire, Vue 3 + TypeScript, PostgreSQL, and Redis.
+A modern e-commerce platform built with .NET Aspire, Vue 3 + TypeScript, PostgreSQL, Redis, and RabbitMQ.
 
 ## Overview
 
@@ -8,12 +8,12 @@ QingFa.Shop is a cloud-native e-commerce solution leveraging .NET Aspire for ser
 
 ## Tech Stack
 
-- **Frontend**: Vue 3 + TypeScript + Vite + Pinia + Vue Router
-- **Backend**: .NET 9 + ASP.NET Core + Entity Framework Core
+- **Frontend**: Vue 3 + TypeScript + Vite + StyleX + Vue Router
+- **Backend**: .NET 10 + ASP.NET Core + Entity Framework Core
 - **Orchestration**: .NET Aspire (Service Discovery, Telemetry, Health Checks)
-- **Database**: PostgreSQL 16 + EF Core Migrations
+- **Database**: PostgreSQL 17 + EF Core Migrations
 - **Cache/Session**: Redis 7 (StackExchange.Redis)
-- **Messaging**: MassTransit + RabbitMQ (Aspire component)
+- **Messaging**: Wolverine + RabbitMQ (Aspire resource and Compose service)
 - **Auth**: JWT + Refresh Tokens (ASP.NET Core Identity)
 - **Payments**: Stripe .NET SDK
 - **Observability**: OpenTelemetry + Prometheus + Grafana (via Aspire Dashboard)
@@ -28,7 +28,7 @@ QingFa.Shop/
 │   ├── pnpm-workspace.yaml    # Web.Storefront + Web.Admin members
 │   ├── AppHost/               # Aspire orchestration (api, gateway, Vite apps)
 │   ├── Gateway/               # YARP edge: routing, JWT validation, rate limiting
-│   ├── Infrastructure/        # Postgres + Redis image definitions
+│   ├── Infrastructure/        # Postgres, Redis, and RabbitMQ image definitions
 │   ├── Web.Api/               # Backend API (ASP.NET Core)
 │   ├── Web.Admin/             # Admin SPA (Vite, served under /admin/)
 │   └── Web.Storefront/        # Storefront SPA (Vite)
@@ -69,7 +69,7 @@ dotnet run --project app/AppHost
 
 This starts:
 - **Aspire Dashboard** → the URL printed in the console (observability, service graph, logs)
-- **PostgreSQL** and **Redis** containers
+- **PostgreSQL**, **Redis**, and **RabbitMQ** containers
 - **API** → `api` resource
 - **Gateway** → `gateway` resource (the browser entry point)
 - **Storefront** and **Admin** → Vite dev servers behind the gateway
@@ -102,7 +102,8 @@ make lint            # formatting, structure, and vue-tsc checks
 make format          # write C# and Prettier fixes
 make test            # .NET unit, Api, then web tests
 make test.all        # every suite, including AppHost and infra
-make coverage        # .NET unit + web coverage gates (line 80 / branch 70)
+make test.infra.broker  # RabbitMQ composition + transport (Testcontainers)
+make coverage        # .NET unit + web coverage gates (line 90 / branch 80)
 make coverage.all    # every suite plus the merged .NET coverage gate
 
 # Libraries
@@ -159,13 +160,19 @@ make admin.publish
 
 # Infra
 make infra.config
-make infra.build     # gateway, api, shopfront, admin, postgres, redis
+make infra.build     # gateway, api, shopfront, admin, postgres, redis, rabbitmq
 make infra.test
 make infra.up        # docker compose up -d --build
-make infra.smoke     # assert the gateway edge and both SPA titles
+make infra.backing.up      # postgres, redis, and rabbitmq only
+make infra.backing.health  # probe all three
+make infra.backing.down    # stop them, keep volumes
+make infra.smoke     # assert the gateway edge, SPA titles, and backing health
 make infra.logs SERVICE=gateway
 make infra.down
 ```
+
+When the Compose stack is running, the RabbitMQ management UI is at
+`http://localhost:15672` (`qingfa` / `qingfa` by default).
 
 ## API contract
 
@@ -221,14 +228,19 @@ pnpm format:check
 
 ## Environment Variables
 
-### API (`app/Web.Api/.env`)
+### API (exported by the shell, AppHost, or Compose)
 
 ```env
 # Database
-CONNECTION_STRING=Host=localhost;Database=qingfa_shop;Username=postgres;Password=postgres
+ConnectionStrings__db=Host=localhost;Port=5432;Database=db;Username=qingfa;Password=qingfa
+EfCore__ConnectionStringName=db
 
 # Redis
-REDIS_CONNECTION_STRING=localhost:6379
+ConnectionStrings__redis=localhost:6379
+
+# RabbitMQ (leave unset for Wolverine's in-process transport)
+ConnectionStrings__rabbitmq=amqp://qingfa:qingfa@localhost:5672
+Messaging__Transport=RabbitMq
 
 # JWT
 JWT_SECRET=your-super-secret-key-min-32-chars
@@ -244,6 +256,13 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 # Aspire (auto-injected when running via AppHost)
 ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL=http://localhost:4317
 ```
+
+### Compose broker overrides
+
+`RABBITMQ_USER`, `RABBITMQ_PASS`, `RABBITMQ_PORT`, and
+`RABBITMQ_MANAGEMENT_PORT` change the Compose broker. The API's
+`ConnectionStrings__rabbitmq` is built from the same user/password pair, so
+override both together.
 
 ### Web
 

@@ -10,8 +10,8 @@ var db = builder
 
 var redis = builder.AddRedis("redis");
 
-// Initialize: the broker is a backing service like PostgreSQL and Redis, so it pins
-// the same named volume Compose mounts.
+// Initialize: the broker is a backing service like PostgreSQL and Redis; the named
+// volume keeps queues across AppHost restarts. Compose declares its own volume.
 var rabbitmq = builder
     .AddRabbitMQ("rabbitmq")
     .WithDataVolume("rabbitmq-data");

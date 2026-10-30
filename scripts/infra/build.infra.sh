@@ -5,7 +5,7 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 . "$ROOT/scripts/common/trace.common.sh"
 REGISTRY="${REGISTRY:-qingfa-shop}"
 TAG="${TAG:-local}"
-SERVICES="${SERVICES:-gateway api shopfront admin postgres redis}"
+SERVICES="${SERVICES:-gateway api shopfront admin postgres redis rabbitmq}"
 
 build() {
   local name="$1" dockerfile="$2"
@@ -21,8 +21,9 @@ for service in $SERVICES; do
     admin)      build admin      app/Web.Admin/Dockerfile ;;
     postgres)   build postgres   app/Infrastructure/Postgres/Dockerfile ;;
     redis)      build redis      app/Infrastructure/Redis/Dockerfile ;;
+    rabbitmq)   build rabbitmq   app/Infrastructure/RabbitMQ/Dockerfile ;;
     *)
-      echo "build: unknown service '$service' (want: gateway api shopfront admin postgres redis)" >&2
+      echo "build: unknown service '$service' (want: gateway api shopfront admin postgres redis rabbitmq)" >&2
       exit 1
       ;;
   esac

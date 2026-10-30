@@ -17,10 +17,10 @@ _dotnet.tools:
 lib.install: _dotnet.restore ## Restore NuGet packages (locked mode under CI=true)
 
 lib.format: _dotnet.restore ## Format shared libraries and their test projects
-	$(call run,$@,$(ROOT)/scripts/backend/format.backend.sh src tests/Unit tests/Architecture.Tests tests/Testing)
+	$(call run,$@,$(ROOT)/scripts/backend/format.backend.sh src tests/Unit tests/Architecture.Tests tests/Testing tests/Integration/Infrastructure.Integration.Tests)
 
 lib.format.check: _dotnet.restore ## Verify shared-library formatting without writing
-	$(call run,$@,$(ROOT)/scripts/backend/format-check.backend.sh src tests/Unit tests/Architecture.Tests tests/Testing)
+	$(call run,$@,$(ROOT)/scripts/backend/format-check.backend.sh src tests/Unit tests/Architecture.Tests tests/Testing tests/Integration/Infrastructure.Integration.Tests)
 
 lib.lint: lib.format.check structure.check ## Formatting and structure checks
 

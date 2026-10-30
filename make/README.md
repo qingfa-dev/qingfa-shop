@@ -23,7 +23,7 @@ the same command works locally and in CI.
 | `host.mk` | config | `##@ Host`: install, format, lint, build, test |
 | `store.mk` | config | `##@ Store`: install, format, lint, `test` (`unit` -> `integration`), optional `e2e`, build, publish |
 | `admin.mk` | config | `##@ Admin`: install, format, lint, `test` (`unit` -> `integration`), optional `e2e`, build, publish |
-| `infra.mk` | config | `##@ Infra`: `config`, `build`, `size`, `test`, `up`, `down`, `ps`, `logs`, `smoke`, and the symmetric `backing.up/down/health` lifecycle |
+| `infra.mk` | config | `##@ Infra`: `config`, `build` (seven images), `size`, `test`, `up`, `down`, `ps`, `logs`, `smoke`, and the symmetric `backing.up/down/health` lifecycle; `backing.up` waits for every healthcheck |
 | `test.mk` | config | `##@ Tests`: `test`, `test.all`, and the layered `test.dotnet.*` / `test.web.*` targets |
 | `coverage.mk` | config | `##@ Coverage`: `coverage` (PR gate), per-suite collectors, `coverage.report`, `coverage.all`, `coverage.clean` |
 | `ci.mk` | config | `##@ CI/CD`: `ci`, `ci.full`, `cd` |
@@ -63,9 +63,9 @@ Out of scope:
   `test.integration`, and optional `e2e`.
 - `make ci` never starts the Compose stack; `make ci.full` is the only target
   that does.
-- `make ci` runs `coverage.unit`, the Api integration suite, then
-  `coverage.web`; `make ci.full` adds the merged `coverage.report` gate after
-  every integration collector.
+- `make ci` runs `coverage.unit`, the Api integration suite, the RabbitMQ broker
+  suite, then `coverage.web`; `make ci.full` adds the merged `coverage.report`
+  gate after every integration collector.
 - Test aggregates live in `test.mk` and run lowest layer first: .NET unit →
   .NET integration → web unit → web integration → optional e2e.
 - `ci.full` includes the AppHost, infrastructure, and Compose suites.
@@ -77,6 +77,8 @@ Out of scope:
 - `COVERAGE_LINES`, `COVERAGE_BRANCHES` — per-assembly/per-app coverage floors,
   default `90` and `80`.
 - `REGISTRY`, `TAG` — consumed by `make infra.build` and `make cd`.
+- `SERVICES` — optional space-separated subset for `make infra.build`
+  (`gateway api shopfront admin postgres redis rabbitmq`).
 - `SERVICE` — forwarded by `make infra.logs`.
 - `make help` is the source of truth for the target list.
 

@@ -48,8 +48,9 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__db: Host=postgres;Port=5432;Database=db;Username=qingfa;Password=qingfa
+      EfCore__ConnectionStringName: db
       ConnectionStrings__redis: redis:6379
-      ConnectionStrings__rabbitmq: amqp://qingfa:qingfa@rabbitmq:5672
+      ConnectionStrings__rabbitmq: amqp://${RABBITMQ_USER:-qingfa}:${RABBITMQ_PASS:-qingfa}@rabbitmq:5672
       Messaging__Transport: RabbitMq
     ports:
       - "8080:8080"
@@ -126,26 +127,30 @@ services:
         max-file: "3"
 
   rabbitmq:
-    image: rabbitmq:4-management
+    image: ${DOCKER_REGISTRY:-qingfa-shop}/rabbitmq:${IMAGE_TAG:-local}
+    build:
+      context: .
+      dockerfile: app/Infrastructure/RabbitMQ/Dockerfile
     restart: unless-stopped
     environment:
-      RABBITMQ_DEFAULT_USER: qingfa
-      RABBITMQ_DEFAULT_PASS: qingfa
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-qingfa}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-qingfa}
     ports:
-      - "5672:5672"
-      - "15672:15672"
+      - "127.0.0.1:${RABBITMQ_PORT:-5672}:5672"
+      - "127.0.0.1:${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
     volumes:
       - rabbitmq-data:/var/lib/rabbitmq
     healthcheck:
-      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
       interval: 10s
       timeout: 5s
+      start_period: 20s
       retries: 10
     deploy:
       resources:
         limits:
           cpus: "0.50"
-          memory: 256M
+          memory: 512M
     logging:
       driver: json-file
       options:

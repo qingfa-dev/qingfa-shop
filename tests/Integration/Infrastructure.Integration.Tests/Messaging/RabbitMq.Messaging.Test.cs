@@ -32,6 +32,9 @@ public sealed class RabbitMqMessagingTest(RabbitMqFixture fixture) : IAsyncLifet
     [Fact]
     public async Task Publish_ShouldDeliverToTheConsumer()
     {
+        // Validate: the fixture cannot start a broker without a container engine.
+        RabbitMqTestGuard.RequireContainer();
+
         // Arrange
         string exchange = $"test.{Guid.NewGuid():N}";
         string queue = $"test.{Guid.NewGuid():N}";
@@ -53,6 +56,9 @@ public sealed class RabbitMqMessagingTest(RabbitMqFixture fixture) : IAsyncLifet
     [Fact]
     public async Task ConsumerFailure_ShouldRetryUntilSuccess()
     {
+        // Validate: the fixture cannot start a broker without a container engine.
+        RabbitMqTestGuard.RequireContainer();
+
         // Arrange
         string exchange = $"test.{Guid.NewGuid():N}";
         string queue = $"test.{Guid.NewGuid():N}";

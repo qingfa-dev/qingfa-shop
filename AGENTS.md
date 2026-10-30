@@ -2,13 +2,13 @@
 
 ## Repository map
 
-- .NET 10 Aspire solution. `global.json` pins SDK `10.0.401`; `README.md` still says .NET 9 and Pinia — trust `global.json` and `package.json`.
+- .NET 10 Aspire solution. `global.json` pins SDK `10.0.401`; trust `global.json` and `package.json`.
 - Layers: `src/Core` (no refs) ← `src/Application` (Core) ← `src/Infrastructure` (Application + ServiceDefaults). `app/Web.Api` is the composition root.
-- `app/Gateway` is the YARP edge in front of the Api. `app/AppHost` wires Postgres, Redis, Api, Gateway, and both Vite apps. The storefront is served at `/`, admin under `/admin`.
+- `app/Gateway` is the YARP edge in front of the Api. `app/AppHost` wires Postgres, Redis, RabbitMQ, Api, Gateway, and both Vite apps. The storefront is served at `/`, admin under `/admin`.
 - `app/Web.Storefront` and `app/Web.Admin` are one pnpm workspace rooted at `app/`, not the repo root.
 - `make` is the public command surface; `make help` is authoritative. `make/*.mk` declares targets, `scripts/**` implements them.
 - Goals are dotted (`api.test`, `coverage.api`). Bare group names (`api`, `store`, `web`, `integration`) are not targets: `make coverage api` means two goals and fails after `coverage`. Use `make coverage.api` or `make coverage api.test`.
-- AppHost injects `ConnectionStrings__db`, `ConnectionStrings__redis`, and `Persistence__AutoMigrate=true`. The standalone API reads `appsettings*.json` + environment variables; there is no `.env` loader despite the README.
+- AppHost injects `ConnectionStrings__db`, `ConnectionStrings__redis`, `ConnectionStrings__rabbitmq`, `Messaging__Transport=RabbitMq`, and `Persistence__AutoMigrate=true`. The standalone API reads `appsettings*.json` + environment variables; `Messaging:Transport` defaults to `InMemory`, so no broker is required outside AppHost/Compose. There is no `.env` loader despite the README.
 
 ## Commands
 
@@ -17,9 +17,10 @@
 - `make lint` — `dotnet format --verify-no-changes`, structure check, `vue-tsc`. `make format` writes fixes.
 - `make build` — solution + both SPA bundles.
 - `make test` — fast gate: .NET unit → Api integration → web unit → web integration.
+- `make test.infra.broker` — RabbitMQ composition + transport suite; uses Testcontainers and skips without Docker.
 - `make test.all` — adds AppHost/Infrastructure integration and optional e2e; needs Docker (Testcontainers) and node/pnpm.
 - `make coverage` / `make coverage.all` — coverage gates (90% line / 80% branch).
-- `make ci` = lint + build + .NET/web coverage + Api tests. `make ci.full` = every suite + Compose smoke (starts Docker Compose).
+- `make ci` = lint + build + .NET/web coverage + Api tests + RabbitMQ broker tests. `make ci.full` = every suite + Compose smoke (starts Docker Compose).
 - Test targets build first; the underlying scripts use `--no-build`, so build before invoking `dotnet test` directly.
 
 ## Test layout and order
@@ -57,13 +58,13 @@
 ## Web conventions
 
 - Install once via `make store.install` / `make install` (frozen lockfile). Run pnpm commands from `app/` or through make.
-- Vue 3 + TypeScript + Vite + StyleX. `API_BASE_URL` is injected by AppHost and proxied by Vite to the Gateway; there is no Pinia store despite the README.
+- Vue 3 + TypeScript + Vite + StyleX. `API_BASE_URL` is injected by AppHost and proxied by Vite to the Gateway; there is no Pinia store.
 - Vitest uses the v8 provider (`@vitest/coverage-v8`) and writes reports under `artifacts/coverage/web-*`. `src/**/__tests__/**` is excluded from coverage.
 - Keep unit specs under `__tests__/unit` and router/API-flow specs under `__tests__/integration`; `test.web.sh` filters by those directories.
 
 ## CI
 
-- PR: `backend` job runs lint/build/unit coverage + Api tests; `web` job runs web coverage.
+- PR: `backend` job runs lint/build/unit coverage + Api tests + the RabbitMQ broker suite; `web` job runs web coverage.
 - `main`, nightly, and manual runs add AppHost, Infrastructure, merged coverage, and optional e2e. Compose smoke runs only when Compose/images inputs change.
 - `cd.yml` runs `make ci` before building/tagging images; tags and `main` push it.
 - Docs caveat: older folder READMEs can lag the implementation; trust the `.csproj` files and `make help`.

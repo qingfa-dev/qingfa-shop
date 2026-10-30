@@ -15,9 +15,9 @@ upward.
 | Path | Role | Notes |
 |---|---|---|
 | `common/` | util | `doctor`, `clean`, `structure.check`, `restore-tools`, `trace.common.sh` (shared command echo), `coverage.common.sh` + `coverage-check.*` (report paths, merge, thresholds) |
-| `backend/` | util | solution restore/build, scoped `dotnet format`, Api/Gateway/AppHost/lib test runners, coverage collectors, Api/Gateway publish |
+| `backend/` | util | solution restore/build, scoped `dotnet format`, Api/Gateway/AppHost/lib test runners, the RabbitMQ broker runner, coverage collectors, Api/Gateway publish |
 | `web/` | util | workspace install, per-app Prettier, `vue-tsc`, Vitest unit/integration, optional Playwright e2e, coverage, build, publish |
-| `infra/` | util | `config`, `build` (six images), `size`, `test`, `up`, `down`, `logs`, `ps`, `smoke`, plus `backing-up/down/health` for PostgreSQL, Redis, and RabbitMQ |
+| `infra/` | util | `config`, `build` (seven images), `size`, `test`, `up`, `down`, `logs`, `ps`, `smoke`, plus `backing-up/down/health` for PostgreSQL, Redis, and RabbitMQ |
 
 ## Boundaries
 
@@ -66,7 +66,7 @@ Environment variables read by scripts:
 | `CI` | `backend/restore` | Enables locked restore through MSBuild |
 | `ALL` | `clean` | `1` also removes the workspace `node_modules` |
 | `REGISTRY`, `TAG` | `infra/build`, `infra/size` | Image coordinates, default `qingfa-shop`, `local` |
-| `SERVICES` | `infra/build` | Optional space-separated subset of `gateway api shopfront admin postgres redis` |
+| `SERVICES` | `infra/build` | Optional space-separated subset of `gateway api shopfront admin postgres redis rabbitmq` |
 | `SERVICE` | `infra/logs` | Optional Compose service filter |
 | `GATEWAY_URL` | `infra/smoke` | Default `http://localhost:5050` |
 | `COVERAGE_LINES`, `COVERAGE_BRANCHES` | `common/coverage-check`, `web/coverage` | Per-assembly/per-app floors, default `90` / `80` |
@@ -98,9 +98,17 @@ Environment variables read by scripts:
 ## Notes
 
 - `infra/smoke` waits up to three minutes for the gateway, then asserts the edge
-  paths and both SPA titles. It prints the gateway log tail when readiness fails.
+  paths, both SPA titles, and backend listener health. It prints the gateway log
+  tail when readiness fails.
+- `infra/backing-up` uses `docker compose up --wait`, so callers never race a
+  broker that is still booting. `backing-health` and `smoke` probe RabbitMQ with
+  `check_port_connectivity`, which covers the AMQP listener rather than only the
+  Erlang process.
 - `backend/test-gateway` filters the shared AppHost suite to
   `AppHost.Integration.Tests.GatewayRoutingSpec`.
+- `backend/test-broker` filters the Infrastructure suite to `*RabbitMq*` and
+  skips when the broker specs are absent; the specs themselves skip when no
+  container engine is available.
 - `backend/coverage-*` write raw Cobertura under
   `artifacts/coverage/dotnet/raw/`; `coverage.report` merges every raw file and
   enforces the gated assemblies. `common/coverage-check.common.py` deliberately

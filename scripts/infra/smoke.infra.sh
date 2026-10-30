@@ -40,7 +40,7 @@ check_body() {
 
 (cd "$ROOT" && docker compose exec -T postgres pg_isready -U qingfa -d db >/dev/null)
 (cd "$ROOT" && docker compose exec -T redis redis-cli ping >/dev/null)
-(cd "$ROOT" && docker compose exec -T rabbitmq rabbitmq-diagnostics -q ping >/dev/null)
+(cd "$ROOT" && docker compose exec -T rabbitmq rabbitmq-diagnostics -q check_port_connectivity >/dev/null)
 
 wait_for gateway "$GATEWAY_URL/alive"
 

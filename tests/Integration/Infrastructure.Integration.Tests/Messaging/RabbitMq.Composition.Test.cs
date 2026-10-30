@@ -23,6 +23,9 @@ public sealed class RabbitMqCompositionTest(RabbitMqFixture fixture)
     [Fact]
     public async Task AddMessaging_ShouldDeliverThroughTheProductionComposition()
     {
+        // Validate: the fixture cannot start a broker without a container engine.
+        RabbitMqTestGuard.RequireContainer();
+
         // Arrange
         var cache = new RecordingCache();
         var inbox = new PassthroughInbox();
