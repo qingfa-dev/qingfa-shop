@@ -156,7 +156,20 @@ public static class MessagingComposition
             return;
         }
 
-        options.UseRabbitMq(new Uri(connectionString));
+        var transport = options
+            .UseRabbitMq(new Uri(connectionString))
+            .AutoProvision()
+            .ConfigureChannelCreation(channel =>
+            {
+                // Confirm: the outbox marks a row processed only after the broker acknowledges it.
+                channel.PublisherConfirmationsEnabled = true;
+                channel.PublisherConfirmationTrackingEnabled = true;
+            });
+
+        string queueName = $"{setting.QueuePrefix}.{TodoCompletedEventName}";
+        transport
+            .BindExchange(setting.ExchangeName, ExchangeType.Topic)
+            .ToQueue(queueName, TodoCompletedEventName);
 
         // Publish: one topic exchange; the routing key is the stable event name.
         options
@@ -168,7 +181,7 @@ public static class MessagingComposition
 
         // Listen: one queue per consumer, tuned by prefetch and concurrency settings.
         options
-            .ListenToRabbitQueue($"{setting.QueuePrefix}.{TodoCompletedEventName}")
+            .ListenToRabbitQueue(queueName)
             .PreFetchCount((ushort)setting.PrefetchCount)
             .MaximumParallelMessages(setting.MaxConcurrency);
     }
