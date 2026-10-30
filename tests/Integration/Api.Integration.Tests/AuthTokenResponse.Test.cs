@@ -8,9 +8,10 @@ using Core.Common.Monad.Results;
 
 using Infrastructure.Integrations.Serialization;
 
-using Application.Features.Identity.Models;
+using Application.Features.Identity.Auth.Mappings;
+using Application.Features.Identity.Auth.Models;
+
 using Web.Api.Endpoints.Identity;
-using Application.Features.Identity.Mappings;
 
 namespace Api.Integration.Tests;
 
@@ -35,7 +36,7 @@ public sealed class AuthTokenResponseTest
             new RefreshTokenIssue("refresh-token", CreateRefreshToken(now)),
             user);
 
-        AuthTokenResponse mapped = IdentityMapper.ToTokenResponse(response);
+        AuthTokenResponse mapped = AuthMapper.ToResponse(response);
 
         mapped.AccessToken.Should().Be("access-token");
         mapped.ExpiresAtUtc.Should().Be(now.AddMinutes(15));
@@ -62,7 +63,7 @@ public sealed class AuthTokenResponseTest
             user);
 
         string json = JsonSerializer.Serialize(
-            IdentityMapper.ToTokenResponse(response),
+            AuthMapper.ToResponse(response),
             ApiJson.Options);
 
         using JsonDocument document = JsonDocument.Parse(json);

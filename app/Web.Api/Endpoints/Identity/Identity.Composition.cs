@@ -1,5 +1,3 @@
-using Application.Features.Identity;
-
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Web.Api.Endpoints.Identity;
@@ -14,7 +12,6 @@ public static class IdentityComposition
     {
         ArgumentNullException.ThrowIfNull(services);
         services.AddScoped<ExternalCodeStore>();
-        services.AddScoped<IdentityFeature>();
         return services;
     }
 }

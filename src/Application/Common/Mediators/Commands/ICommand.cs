@@ -18,3 +18,12 @@ public interface ICommand : IRequest<Result>;
 /// </summary>
 /// <typeparam name="TResponse">The type of data returned on success.</typeparam>
 public interface ICommand<TResponse> : ICommandBase<TResponse>;
+
+/// <summary>
+/// Marker interface for commands that own their persistence boundary.
+/// </summary>
+/// <remarks>
+/// The transaction behavior skips these commands, so a slice backed by an external
+/// service (for example ASP.NET Core Identity) does not open an ambient unit of work.
+/// </remarks>
+public interface INonTransactionalCommand;

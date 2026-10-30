@@ -1,4 +1,4 @@
-using Application.Features.Identity.Models;
+using Application.Features.Identity.Auth.Models;
 
 namespace Application.Features.Identity.External.Abstractions;
 

@@ -8,8 +8,8 @@ using Core.Common.Monad.Results;
 
 using Microsoft.AspNetCore.Http;
 
-using Application.Features.Identity;
-using Application.Features.Identity.Models;
+using Application.Features.Identity.Auth;
+using Application.Features.Identity.Auth.Commands;
 using Web.Api.Endpoints.Identity;
 using Infrastructure.Integrations.Serialization;
 
@@ -29,7 +29,7 @@ public sealed class IdentityEndpointTest
     {
         Guid userId = Guid.NewGuid();
 
-        Result<Guid> result = IdentityFeature.RequireUserId(
+        Result<Guid> result = AuthGuard.RequireUserId(
             new StubUserContext(userId.ToString()));
 
         result.IsSuccess.Should().BeTrue();
@@ -42,7 +42,7 @@ public sealed class IdentityEndpointTest
     [InlineData("not-a-guid")]
     public void RequireUserId_WithoutValidIdentifier_ShouldReturnUnauthorized(string? userId)
     {
-        Result<Guid> result = IdentityFeature.RequireUserId(new StubUserContext(userId));
+        Result<Guid> result = AuthGuard.RequireUserId(new StubUserContext(userId));
 
         result.IsFailure.Should().BeTrue();
         result.StatusCode.Should().Be(401);
@@ -57,8 +57,8 @@ public sealed class IdentityEndpointTest
             new Claim(JwtRegisteredClaimNames.Jti, "access-jti"),
             new Claim(JwtRegisteredClaimNames.Exp, "1893456000"));
 
-        var mapped = IdentityFeature.ToLogoutRequest(
-            new LogoutRequest("refresh-token"),
+        var mapped = Logout.FromPrincipal(
+            new Logout.Request("refresh-token"),
             principal);
 
         mapped.RefreshToken.Should().Be("refresh-token");
@@ -74,7 +74,7 @@ public sealed class IdentityEndpointTest
             new Claim(JwtRegisteredClaimNames.Jti, "access-jti"),
             new Claim(JwtRegisteredClaimNames.Exp, "1893456000"));
 
-        var mapped = IdentityFeature.ToLogoutRequest(null, principal);
+        var mapped = Logout.FromPrincipal(null, principal);
 
         mapped.RefreshToken.Should().BeNull();
         mapped.AccessTokenJti.Should().Be("access-jti");
@@ -89,7 +89,7 @@ public sealed class IdentityEndpointTest
     {
         var principal = Principal(new Claim(JwtRegisteredClaimNames.Exp, value));
 
-        DateTimeOffset? expiresAt = IdentityFeature.ReadAccessTokenExpiry(principal);
+        DateTimeOffset? expiresAt = Logout.ReadAccessTokenExpiry(principal);
 
         expiresAt.Should().Be(DateTimeOffset.FromUnixTimeSeconds(long.Parse(
             value,
@@ -108,7 +108,7 @@ public sealed class IdentityEndpointTest
         var principal = Principal(
             value is null ? [] : [new Claim(JwtRegisteredClaimNames.Exp, value)]);
 
-        DateTimeOffset? expiresAt = IdentityFeature.ReadAccessTokenExpiry(principal);
+        DateTimeOffset? expiresAt = Logout.ReadAccessTokenExpiry(principal);
 
         expiresAt.Should().BeNull();
     }

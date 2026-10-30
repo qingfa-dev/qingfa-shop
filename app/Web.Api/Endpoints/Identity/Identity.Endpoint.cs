@@ -1,11 +1,11 @@
-using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
-
-using Application.Features.Identity;
-using Application.Features.Identity.Mappings;
-using Application.Features.Identity.Models;
+using Application.Features.Identity.Auth.Commands;
+using Application.Features.Identity.Auth.Mappings;
+using Application.Features.Identity.Auth.Models;
+using Application.Features.Identity.Auth.Queries;
+using Application.Features.Identity.External.Models;
 
 using IExternalAuthenticationService = Application.Common.Security.Authentication.Identity.IExternalAuthenticationService;
 using ExternalProviderModel = Application.Common.Security.Authentication.Identity.ExternalProviderModel;
@@ -13,19 +13,16 @@ using ExternalUserInfo = Application.Common.Security.Authentication.Identity.Ext
 using ExternalAuthOption = Application.Common.Security.Authentication.Identity.ExternalAuthOption;
 using IdentityConstant = Application.Common.Security.Authentication.Identity.IdentityConstant;
 
-
 using Carter;
 
 using Core.Common.Monad.Errors;
 using Core.Common.Monad.Results;
 
-using Microsoft.AspNetCore.Authentication;
-
 using Infrastructure.Integrations.Serialization;
 
+using MediatR;
 
-
-
+using Microsoft.AspNetCore.Authentication;
 
 namespace Web.Api.Endpoints.Identity;
 
@@ -226,7 +223,7 @@ public sealed class IdentityEndpoint : ICarterModule
         Result<AuthTokenResponse> token = (await external.LoginAsync(
                 user.Value,
                 cancellationToken))
-            .Map(IdentityMapper.ToTokenResponse);
+            .Map(AuthMapper.ToResponse);
 
         if (token.IsFailure)
             return token.ToApiResult();
@@ -259,73 +256,91 @@ public sealed class IdentityEndpoint : ICarterModule
             .ToApiResult();
 
     private static async Task<IResult> RegisterAsync(
-        RegisterRequest request,
-        IdentityFeature feature,
+        RegisterUser.Request request,
+        IMediator mediator,
         CancellationToken cancellationToken)
-        => (await feature.RegisterAsync(request, cancellationToken)).ToApiResult();
+        => (await mediator.Send(new RegisterUser.UseCase(request), cancellationToken))
+            .ToApiResult();
 
     private static async Task<IResult> LoginAsync(
-        LoginRequest request,
-        IdentityFeature feature,
+        Login.Request request,
+        IMediator mediator,
         CancellationToken cancellationToken)
-        => (await feature.LoginAsync(request, cancellationToken)).ToApiResult();
+        => (await mediator.Send(new Login.UseCase(request), cancellationToken))
+            .ToApiResult();
 
     private static async Task<IResult> RefreshAsync(
-        RefreshRequest request,
-        IdentityFeature feature,
+        RefreshToken.Request request,
+        IMediator mediator,
         CancellationToken cancellationToken)
-        => (await feature.RefreshAsync(request, cancellationToken)).ToApiResult();
+        => (await mediator.Send(new RefreshToken.UseCase(request), cancellationToken))
+            .ToApiResult();
 
     private static async Task<IResult> LogoutAsync(
-        LogoutRequest? request,
+        Logout.Request? request,
         ClaimsPrincipal principal,
-        IdentityFeature feature,
+        IMediator mediator,
         CancellationToken cancellationToken)
-        => (await feature.LogoutAsync(request, principal, cancellationToken)).ToApiResult();
+        => (await mediator.Send(
+                new Logout.UseCase(Logout.FromPrincipal(request, principal)),
+                cancellationToken))
+            .ToApiResult();
 
     private static async Task<IResult> ConfirmEmailAsync(
-        ConfirmEmailRequest request,
-        IdentityFeature feature,
+        ConfirmEmail.Request request,
+        IMediator mediator,
         CancellationToken cancellationToken)
-        => (await feature.ConfirmEmailAsync(request, cancellationToken)).ToApiResult();
+        => (await mediator.Send(new ConfirmEmail.UseCase(request), cancellationToken))
+            .ToApiResult();
 
     private static async Task<IResult> ResendConfirmationAsync(
-        ResendConfirmationEmailRequest request,
-        IdentityFeature feature,
+        ResendConfirmation.Request request,
+        IMediator mediator,
         CancellationToken cancellationToken)
-        => (await feature.ResendConfirmationAsync(request, cancellationToken)).ToApiResult();
+        => (await mediator.Send(new ResendConfirmation.UseCase(request), cancellationToken))
+            .ToApiResult();
 
     private static async Task<IResult> ForgotPasswordAsync(
-        ForgotPasswordRequest request,
-        IdentityFeature feature,
+        ForgotPassword.Request request,
+        IMediator mediator,
         CancellationToken cancellationToken)
-        => (await feature.ForgotPasswordAsync(request, cancellationToken)).ToApiResult();
+        => (await mediator.Send(new ForgotPassword.UseCase(request), cancellationToken))
+            .ToApiResult();
 
     private static async Task<IResult> ResetPasswordAsync(
-        ResetPasswordRequest request,
-        IdentityFeature feature,
+        ResetPassword.Request request,
+        IMediator mediator,
         CancellationToken cancellationToken)
-        => (await feature.ResetPasswordAsync(request, cancellationToken)).ToApiResult();
+        => (await mediator.Send(new ResetPassword.UseCase(request), cancellationToken))
+            .ToApiResult();
 
     private static async Task<IResult> GetMeAsync(
-        IdentityFeature feature,
+        IMediator mediator,
         CancellationToken cancellationToken)
-        => (await feature.GetMeAsync(cancellationToken)).ToApiResult();
+        => (await mediator.Send(
+                new GetCurrentUser.UseCase(new GetCurrentUser.Request()),
+                cancellationToken))
+            .ToApiResult();
 
     private static async Task<IResult> UpdateMeAsync(
-        UpdateInfoRequest request,
-        IdentityFeature feature,
+        UpdateCurrentUser.Request request,
+        IMediator mediator,
         CancellationToken cancellationToken)
-        => (await feature.UpdateMeAsync(request, cancellationToken)).ToApiResult();
+        => (await mediator.Send(new UpdateCurrentUser.UseCase(request), cancellationToken))
+            .ToApiResult();
 
     private static async Task<IResult> GetTwoFactorAsync(
-        IdentityFeature feature,
+        IMediator mediator,
         CancellationToken cancellationToken)
-        => (await feature.GetTwoFactorAsync(cancellationToken)).ToApiResult();
+        => (await mediator.Send(
+                new GetTwoFactor.UseCase(new GetTwoFactor.Request()),
+                cancellationToken))
+            .ToApiResult();
 
     private static async Task<IResult> UpdateTwoFactorAsync(
-        TwoFactorRequest request,
-        IdentityFeature feature,
+        UpdateTwoFactor.Request request,
+        IMediator mediator,
         CancellationToken cancellationToken)
-        => (await feature.UpdateTwoFactorAsync(request, cancellationToken)).ToApiResult();
+        => (await mediator.Send(new UpdateTwoFactor.UseCase(request), cancellationToken))
+            .ToApiResult();
 }

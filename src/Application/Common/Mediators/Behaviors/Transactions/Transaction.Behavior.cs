@@ -76,8 +76,9 @@ public sealed class TransactionBehavior<TRequest, TResponse>(
     /// <param name="request">The request to inspect.</param>
     /// <returns><c>true</c> for commands; otherwise <c>false</c>.</returns>
     private static bool IsCommand(TRequest request)
-        => request is ICommand
-            || typeof(TRequest).GetInterfaces().Any(
-                contract => contract.IsGenericType
-                    && contract.GetGenericTypeDefinition() == typeof(ICommandBase<>));
+        => request is not INonTransactionalCommand
+            && (request is ICommand
+                || typeof(TRequest).GetInterfaces().Any(
+                    contract => contract.IsGenericType
+                        && contract.GetGenericTypeDefinition() == typeof(ICommandBase<>)));
 }

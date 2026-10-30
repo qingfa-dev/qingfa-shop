@@ -84,6 +84,31 @@ public sealed class TransactionBehaviorTest
             Times.Never);
     }
 
+    [Fact(DisplayName = "Non-transactional command should bypass the transaction")]
+    public async Task Handle_WhenNonTransactionalCommand_ShouldNotBeginTransaction()
+    {
+        // Arrange
+        var unitOfWork = new Mock<IUnitOfWork>();
+        var behavior = new TransactionBehavior<TestNonTransactionalCommand, Result<string>>(
+            unitOfWork.Object);
+
+        // Act
+        Result<string> result = await behavior.Handle(
+            new TestNonTransactionalCommand(),
+            _ => Task.FromResult(Result<string>.Success("own-boundary")),
+            TestContext.Current.CancellationToken);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().Be("own-boundary");
+        unitOfWork.Verify(
+            work => work.BeginTransactionAsync(
+                It.IsAny<IsolationLevel?>(),
+                It.IsAny<bool>(),
+                It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
     [Fact(DisplayName = "Exception should roll back and rethrow")]
     public async Task Handle_WhenHandlerThrows_ShouldRollbackAndRethrow()
     {
@@ -166,6 +191,9 @@ public sealed class TransactionBehaviorTest
     }
 
     private sealed record TestCommand : ICommand<string>;
+
+    private sealed record TestNonTransactionalCommand
+        : ICommand<string>, INonTransactionalCommand;
 
     private sealed record TestQuery : IQuery<string>;
 

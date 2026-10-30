@@ -12,7 +12,7 @@ using Infrastructure.Integrations.Serialization;
 using Microsoft.Extensions.Caching.Distributed;
 
 
-using Application.Features.Identity.Models;
+using Application.Features.Identity.Auth.Models;
 
 namespace Web.Api.Endpoints.Identity;
 
