@@ -132,7 +132,15 @@ public sealed class IdentityService(
                     .ConfigureAwait(false);
 
                 if (!recovery.Succeeded)
-                    return Result<AuthTokenResponse>.Fail(IdentityOutcome.Failure.TwoFactorInvalid);
+                {
+                    await userManager.AccessFailedAsync(user).ConfigureAwait(false);
+                    return Result<AuthTokenResponse>.Fail(
+                        await userManager.IsLockedOutAsync(user).ConfigureAwait(false)
+                            ? IdentityOutcome.Failure.LockedOut
+                            : IdentityOutcome.Failure.TwoFactorInvalid);
+                }
+
+                await userManager.ResetAccessFailedCountAsync(user).ConfigureAwait(false);
             }
             else if (!string.IsNullOrWhiteSpace(request.TwoFactorCode))
             {
@@ -144,7 +152,15 @@ public sealed class IdentityService(
                     .ConfigureAwait(false);
 
                 if (!valid)
-                    return Result<AuthTokenResponse>.Fail(IdentityOutcome.Failure.TwoFactorInvalid);
+                {
+                    await userManager.AccessFailedAsync(user).ConfigureAwait(false);
+                    return Result<AuthTokenResponse>.Fail(
+                        await userManager.IsLockedOutAsync(user).ConfigureAwait(false)
+                            ? IdentityOutcome.Failure.LockedOut
+                            : IdentityOutcome.Failure.TwoFactorInvalid);
+                }
+
+                await userManager.ResetAccessFailedCountAsync(user).ConfigureAwait(false);
             }
             else
             {

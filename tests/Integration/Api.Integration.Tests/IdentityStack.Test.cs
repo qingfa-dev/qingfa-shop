@@ -15,7 +15,7 @@ public abstract class IdentityStackTestBase
     protected IdentityStackTestBase(ResultContractStackFixture fixture)
     {
         Fixture = fixture;
-        Fixture.Factory.Email.Clear();
+        Fixture.Factory?.Email.Clear();
     }
 
     /// <summary>The container-backed host shared by the identity suites.</summary>

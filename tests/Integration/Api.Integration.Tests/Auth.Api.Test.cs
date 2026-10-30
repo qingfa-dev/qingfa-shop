@@ -332,6 +332,15 @@ public sealed class AuthApiTest : IdentityStackTestBase
             HttpStatusCode.Unauthorized,
             "Identity.TwoFactor.Required");
 
+        using HttpResponseMessage invalidCode = await anonymous.PostAsJsonAsync(
+            "/api/auth/login",
+            new { identifier = userName, password = Password, twoFactorCode = "000000" });
+
+        await AssertFailureCodeAsync(
+            invalidCode,
+            HttpStatusCode.Unauthorized,
+            "Identity.TwoFactor.Invalid");
+
         using HttpResponseMessage withCode = await anonymous.PostAsJsonAsync(
             "/api/auth/login",
             new { identifier = userName, password = Password, twoFactorCode = code });
