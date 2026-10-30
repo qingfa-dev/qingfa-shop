@@ -1,9 +1,35 @@
 # API Result Contract, Identity Surface, and Full API Test Host
 
-- **Status:** Proposed
+- **Status:** Implemented
 - **Date:** 2026-10-30
 - **Branch:** `feature/service-foundation`
 - **Depends on:** event-sourcing slice ④ (Todo migration)
+
+## Implementation note
+
+Implemented on `feature/service-foundation`; the final locations differ from the proposal in a few
+places:
+
+- `ApiResult`, `ApiResult<T>`, `ToApiResult`, `ApiJson.Options`, and `AddApiJsonOptions()` live in
+  `src/Infrastructure/Integrations/Serialization`, not `Web.Api`. The Api project only references
+  the serializer and composition helpers.
+- `app/Web.Api/Program.cs` is a thin composition root that calls `AddApi()` / `UseApi()` from
+  `app/Web.Api/Composition/Api.Composition.cs`; that composition registers the JSON contract, the
+  Carter modules, and the `/time` probe.
+- Identity endpoints are Carter modules over five MediatR slices under
+  `Application/Features/Identity/{Auth,Users,Roles,Permissions,External}`. The public routes are
+  `/api/auth/*`, `/api/identity/users/*`, `/api/identity/roles/*`, and
+  `/api/identity/permissions/*`. `/api/authorization/*` is removed and now returns `404`.
+- The external callback stores the token response behind a hashed one-time code in Redis and
+  redirects with only the code; `POST /api/auth/external/exchange` consumes it atomically.
+- Backing services are symmetric: PostgreSQL, Redis, and RabbitMQ are declared the same way in the
+  AppHost and `compose.yaml` (data volume, health check, `Messaging__Transport=RabbitMq` on the Api)
+  and share `infra.backing.up|down|health`. There is no `compose.rabbitmq.yaml` and no
+  `infra.rabbit.*` target.
+- API integration tests boot the real pipeline against a PostgreSQL Testcontainer, apply migrations,
+  seed the stores, and Respawn across `public` and `messaging`. Messaging is covered by the
+  Infrastructure suite and the Compose smoke, not by a broker-specific API suite. Container-less runs
+  skip rather than fail.
 
 ## 1. Context
 
@@ -196,12 +222,9 @@ Codes are random 32-byte base64url values, stored hashed, single-use, and never 
 
 ### Fixtures
 
-- `RabbitMqFixture` — Testcontainers RabbitMQ.
-- `ApiStackFixture` — PostgreSQL + Redis + RabbitMQ, migrations, seeders, Respawn across `public` and `messaging`.
+- `IdentityStackFactory` and `ResultContractStackFactory` — real PostgreSQL Testcontainer, migrations, seeders, and Respawn across `public` and `messaging`. Tests skip cleanly when no container engine is available.
 - `ShopApiFactory` gains:
   - `DatabaseConnectionString`
-  - `RedisConnectionString`
-  - `RabbitMqConnectionString`
   - `UseTestAuth`
   - `MessagingEnabled`
   - `OutboxEnabled`
@@ -216,13 +239,16 @@ Codes are random 32-byte base64url values, stored hashed, single-use, and never 
 
 ### Suites
 
-- `Auth.Api.Test.cs`: real seeded login, refresh, logout, profile, 2FA, register, confirm email and forgot/reset using the recorded email links, provider discovery, external callback/exchange with a fake handler.
-- `Todo.Api.Test.cs`: create → get → update → start → complete → delete; category/list operations; tenant isolation; 400/404/409/422.
-- `TodoReminder.Api.Test.cs`: schedule → snooze → dismiss → list.
-- `Authorization.Api.Test.cs`: admin bypass, permission denied 403, unauthenticated 401.
-- `ResultContract.Api.Test.cs`: 200/201/204/400/404/409/422 bodies, serializer conventions, and `value` absence on failure.
+- `Auth.Api.Test.cs`: real seeded login, refresh, logout, profile, 2FA, register, confirm email and forgot/reset using the recorded email links.
+- `ExternalAuth.Api.Test.cs`: provider discovery, challenge, callback, and code exchange with a fake handler.
+- `IdentityApi.Test.cs`, `IdentityUsers.Api.Test.cs`, `IdentityRoles.Api.Test.cs`, `IdentityPermissions.Api.Test.cs`: the shared identity surface and the admin management slices.
+- `TodoRoutes.Api.Test.cs`: create → get → update → start → complete → delete; category/list and reminder operations; tenant isolation; 400/404/409/422.
+- `ResultContract.Api.Test.cs`, `ResultContractFlow.Api.Test.cs`, `ResultSerialization.Test.cs`: 200/201/204/400/404/409/422 bodies, serializer conventions, and `value` absence on failure.
 
-Tests that need RabbitMQ use the real container with a unique queue prefix per run. Outbox dispatch is flushed deterministically through `IOutboxDispatcher.DispatchBatchAsync` before integration-event assertions. Suites skip cleanly when Docker is unavailable.
+The Api suites run against PostgreSQL. Messaging is exercised by the Infrastructure suite and the
+Compose smoke, not by a broker-specific API suite. Outbox dispatch is flushed deterministically
+through `IOutboxDispatcher.DispatchBatchAsync` before integration-event assertions. Suites skip
+cleanly when Docker is unavailable.
 
 ## 10. RabbitMQ infrastructure
 
@@ -246,16 +272,14 @@ Tests that need RabbitMQ use the real container with a unique queue prefix per r
 ### Make targets
 
 ```text
-infra.rabbit.up       start only RabbitMQ
-infra.rabbit.down     stop RabbitMQ, keep the volume
-infra.rabbit.logs     follow RabbitMQ logs
-infra.rabbit.health   run rabbitmq-diagnostics ping and list_queues
-infra.rabbit.ui       print the management URL and credentials
-infra.rabbit.smoke    wait for broker, assert ping and management API
-infra.rabbit.reset    delete the broker volume; requires RABBITMQ_RESET=1
+infra.backing.up       start postgres, redis, and rabbitmq only
+infra.backing.down     stop them, keep the volumes
+infra.backing.health   check all three the way their container health checks do
 ```
 
-`infra.up` remains the full stack. The new targets are additive.
+`infra.up` remains the full stack; `infra.down`, `infra.ps`, `infra.logs`, and `infra.smoke` cover the
+whole stack. The backing-service targets are additive and use one shared lifecycle rather than a
+broker-only path.
 
 ## 11. Rollout
 
@@ -278,8 +302,8 @@ The result body is a public contract break. There are no frontend API consumers 
 - All identity routes in §8 are reachable and the raw domain `AuthResponse` never appears on the wire.
 - External callback never puts tokens in a URL; the one-time code is single-use.
 - Full API tests cover every identity route, every Todo route, every reminder route, and the result failure codes.
-- Real PostgreSQL, Redis, and RabbitMQ containers back the API test host.
-- `infra.rabbit.*` targets work; `make ci.full` passes.
+- Real PostgreSQL backs the API test host; Redis and RabbitMQ back the full stack proof.
+- `infra.backing.*` targets work; `make ci.full` passes.
 - Docker-unavailable runs skip messaging/API container suites cleanly.
 
 ## 13. Risks

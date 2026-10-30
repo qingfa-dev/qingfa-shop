@@ -167,6 +167,15 @@ make infra.logs SERVICE=gateway
 make infra.down
 ```
 
+## API contract
+
+Every `/api/*` response is the monad itself: `Result<T>` on success and the non-generic `Result`
+on failure. The HTTP status comes from `Result.StatusCode`; `201` carries a `Location`, `204` has no
+body. `ApiJson.Options` in `src/Infrastructure/Integrations/Serialization` is the single serializer.
+Identity routes live under `/api/auth/*` and `/api/identity/*`; the old `/api/authorization/*`
+surface is gone. The full contract is in
+[`docs/specs/2026-10-30-api-result-envelope-design.md`](docs/specs/2026-10-30-api-result-envelope-design.md).
+
 ### .NET Commands (Direct)
 
 ```bash
