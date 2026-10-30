@@ -47,10 +47,10 @@ public sealed class IntegrationEventHandlerTest
 
         var thrown = await act.Should().ThrowAsync<ResultException>();
 
-        // Handle: the thrown failure carries the exception wrapped by the inbox rollback, so the
-        // transport can retry the delivery.
+        // Handle: the inbox returns the consumer's failure unchanged, so its own code survives.
         thrown.Which.Errors.Should().ContainSingle()
-            .Which.Code.Should().Be(InboxOutcome.Codes.ExecutionFailed);
+            .Which.Code.Should().Be("Test.Consumer.Rejected");
+        thrown.Which.StatusCode.Should().Be(422);
         inbox.Calls.Should().ContainSingle();
         inbox.Calls[0].Result.IsFailure.Should().BeTrue();
         handler.Handled.Should().Be(1);

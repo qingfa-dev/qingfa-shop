@@ -38,11 +38,11 @@ public abstract class IntegrationEventHandler<TEvent>
             .ExecuteOnceAsync(
                 message.MessageId,
                 GetType().FullName ?? GetType().Name,
-                token => HandleOnceAsync(message, token),
+                token => HandleAsync(message, token),
                 cancellationToken)
             .ConfigureAwait(false);
 
-        // Retry: the inbox rolled back, so throwing keeps the message eligible for redelivery.
+        // Retry: the inbox already rolled back, so throwing keeps the message eligible for redelivery.
         result.ThrowIfFailure();
     }
 
@@ -53,16 +53,4 @@ public abstract class IntegrationEventHandler<TEvent>
     protected abstract Task<Result> HandleAsync(
         TEvent message,
         CancellationToken cancellationToken);
-
-    private async Task<Result> HandleOnceAsync(
-        TEvent message,
-        CancellationToken cancellationToken)
-    {
-        Result result = await HandleAsync(message, cancellationToken).ConfigureAwait(false);
-
-        // Compensate: throwing prevents the inbox from committing a marker for a failed consumer.
-        result.ThrowIfFailure();
-
-        return result;
-    }
 }
