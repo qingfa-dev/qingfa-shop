@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 using Core.Todos.Items;
 
 namespace Core.Unit.Tests.Todos.Items;
@@ -17,6 +19,15 @@ public sealed class TodoValidatorSpec
         return result.Value;
     }
 
+    private static Todo With(Func<TodoSnapshot, TodoSnapshot> mutate)
+    {
+        Todo valid = ValidTodo();
+        TodoSnapshot snapshot = JsonSerializer.Deserialize<TodoSnapshot>(valid.CaptureSnapshot())!;
+        Todo target = new TodoFactory().Create();
+        target.RestoreSnapshot(JsonSerializer.Serialize(mutate(snapshot)));
+        return target;
+    }
+
     private static void ShouldFailWith(Result result, string expectedCode)
     {
         result.IsFailure.Should().BeTrue();
@@ -33,127 +44,107 @@ public sealed class TodoValidatorSpec
     }
 
     [Fact]
+    public void Validate_EmptyId_ShouldFailWithIdentifiableIdRequired()
+    {
+        ShouldFailWith(
+            TodoValidator.Validate(With(snapshot => snapshot with { Id = Guid.Empty })),
+            "Identifiable.Id.Required");
+    }
+
+    [Fact]
     public void Validate_EmptyTenantId_ShouldFailWithTenantableTenantIdRequired()
     {
-        var todo = ValidTodo();
-        todo.TenantId = Guid.Empty;
-
         ShouldFailWith(
-            TodoValidator.Validate(todo),
+            TodoValidator.Validate(With(snapshot => snapshot with { TenantId = Guid.Empty })),
             "Tenantable.TenantId.Required");
     }
 
     [Fact]
     public void Validate_BlankTitle_ShouldFailWithTitleRequired()
     {
-        var todo = ValidTodo();
-        todo.Title = "   ";
-
         ShouldFailWith(
-            TodoValidator.Validate(todo),
+            TodoValidator.Validate(With(snapshot => snapshot with { Title = "   " })),
             "Todo.Title.Required");
     }
 
     [Fact]
     public void Validate_LongTitle_ShouldFailWithTitleTooLong()
     {
-        var todo = ValidTodo();
-        todo.Title = new string('a', TodoConstant.Constraints.Title.MaxLength + 1);
-
         ShouldFailWith(
-            TodoValidator.Validate(todo),
+            TodoValidator.Validate(With(snapshot =>
+                snapshot with { Title = new string('a', TodoConstant.Constraints.Title.MaxLength + 1) })),
             "Todo.Title.TooLong");
     }
 
     [Fact]
     public void Validate_LongDescription_ShouldFailWithDescriptionTooLong()
     {
-        var todo = ValidTodo();
-        todo.Description = new string('a', TodoConstant.Constraints.Description.MaxLength + 1);
-
         ShouldFailWith(
-            TodoValidator.Validate(todo),
+            TodoValidator.Validate(With(snapshot =>
+                snapshot with { Description = new string('a', TodoConstant.Constraints.Description.MaxLength + 1) })),
             "Todo.Description.TooLong");
     }
 
     [Fact]
     public void Validate_UndefinedStatus_ShouldFailWithStatusInvalid()
     {
-        var todo = ValidTodo();
-        todo.Status = (TodoStatus)99;
-
         ShouldFailWith(
-            TodoValidator.Validate(todo),
+            TodoValidator.Validate(With(snapshot => snapshot with { Status = (TodoStatus)99 })),
             "Todo.Status.Invalid");
     }
 
     [Fact]
     public void Validate_UndefinedPriority_ShouldFailWithPriorityInvalid()
     {
-        var todo = ValidTodo();
-        todo.Priority = (TodoPriority)99;
-
         ShouldFailWith(
-            TodoValidator.Validate(todo),
+            TodoValidator.Validate(With(snapshot => snapshot with { Priority = (TodoPriority)99 })),
             "Todo.Priority.Invalid");
     }
 
     [Fact]
     public void Validate_DueAtBeforeCreated_ShouldFailWithDueAtBeforeCreated()
     {
-        var todo = ValidTodo();
-        todo.DueAtUtc = CreatedAt.AddDays(-1);
-
         ShouldFailWith(
-            TodoValidator.Validate(todo),
+            TodoValidator.Validate(With(snapshot => snapshot with { DueAtUtc = CreatedAt.AddDays(-1) })),
             "Todo.DueAt.BeforeCreated");
     }
 
     [Fact]
     public void Validate_EmptyCategoryId_ShouldFailWithCategoryRequired()
     {
-        var todo = ValidTodo();
-        todo.CategoryIds.Add(Guid.Empty);
-
         ShouldFailWith(
-            TodoValidator.Validate(todo),
+            TodoValidator.Validate(With(snapshot => snapshot with { CategoryIds = [Guid.Empty] })),
             "Todo.Category.Required");
     }
 
     [Fact]
     public void Validate_DuplicateCategories_ShouldFailWithCategoryDuplicate()
     {
-        var todo = ValidTodo();
-        var categoryId = Guid.NewGuid();
-        todo.CategoryIds.Add(categoryId);
-        todo.CategoryIds.Add(categoryId);
+        Guid categoryId = Guid.NewGuid();
 
         ShouldFailWith(
-            TodoValidator.Validate(todo),
+            TodoValidator.Validate(With(snapshot =>
+                snapshot with { CategoryIds = [categoryId, categoryId] })),
             "Todo.Category.Duplicate");
     }
 
     [Fact]
     public void Validate_TooManyCategories_ShouldFailWithCategoriesTooMany()
     {
-        var todo = ValidTodo();
-
-        for (var i = 0; i <= TodoConstant.Constraints.Collection.MaxCategories; i++)
-            todo.CategoryIds.Add(Guid.NewGuid());
+        Guid[] categories = [.. Enumerable
+            .Range(0, TodoConstant.Constraints.Collection.MaxCategories + 1)
+            .Select(_ => Guid.NewGuid())];
 
         ShouldFailWith(
-            TodoValidator.Validate(todo),
+            TodoValidator.Validate(With(snapshot => snapshot with { CategoryIds = categories })),
             "Todo.Categories.TooMany");
     }
 
     [Fact]
     public void Validate_EmptyListId_ShouldFailWithListIdRequired()
     {
-        var todo = ValidTodo();
-        todo.ListId = Guid.Empty;
-
         ShouldFailWith(
-            TodoValidator.Validate(todo),
+            TodoValidator.Validate(With(snapshot => snapshot with { ListId = Guid.Empty })),
             "Todo.ListId.Required");
     }
 
@@ -179,5 +170,21 @@ public sealed class TodoValidatorSpec
         ShouldFailWith(
             TodoValidator.ValidateTransition(TodoStatus.Pending, TodoStatus.Completed),
             "Todo.Status.TransitionInvalid");
+    }
+
+    [Fact]
+    public void ValidateDeleted_DeletedTodo_ShouldSucceed()
+    {
+        Result result = TodoValidator.ValidateDeleted(isDeleted: true);
+
+        result.IsSuccess.Should().BeTrue();
+    }
+
+    [Fact]
+    public void ValidateDeleted_LiveTodo_ShouldFailWithDeletedNotMutable()
+    {
+        ShouldFailWith(
+            TodoValidator.ValidateDeleted(isDeleted: false),
+            "Todo.Deleted.NotMutable");
     }
 }

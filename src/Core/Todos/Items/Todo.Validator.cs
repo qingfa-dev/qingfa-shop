@@ -20,9 +20,21 @@ public static class TodoValidator
                 TodoOutcome.Failure.EntityRequired);
         }
 
+        // Guard: A persisted todo must carry an identifier.
+        if (todo.Id == Guid.Empty)
+        {
+            return Result<Todo>.Fail(
+                IdentifiableOutcome.Failure.IdRequired);
+        }
+
+        // Guard: A persisted todo must belong to a tenant.
+        if (todo.TenantId == Guid.Empty)
+        {
+            return Result<Todo>.Fail(
+                TenantableOutcome.Failure.TenantIdRequired);
+        }
+
         return Result<Todo>.Success(todo)
-            .Bind(entity => IdentifiableValidator.ValidateIdentification<Todo, Guid>(entity))
-            .Bind(entity => TenantableValidator.ValidateTenancy<Todo, Guid>(entity))
             .Ensure(entity => ValidateTitle(entity.Title))
             .Ensure(entity => ValidateDescription(entity.Description))
             .Ensure(entity => ValidateStatus(entity.Status))
@@ -62,6 +74,12 @@ public static class TodoValidator
 
         return Result.Success();
     }
+
+    /// <summary>Validates that a todo is deleted before it is restored.</summary>
+    /// <param name="isDeleted">The deletion state of the todo.</param>
+    /// <returns>Success when the todo is deleted; otherwise a failure.</returns>
+    public static Result ValidateDeleted(bool isDeleted)
+        => isDeleted ? Result.Success() : Result.Fail(TodoOutcome.Failure.DeletedNotMutable);
 
     /// <summary>Validates a title against the todo's title rules.</summary>
     /// <param name="title">The title to validate.</param>

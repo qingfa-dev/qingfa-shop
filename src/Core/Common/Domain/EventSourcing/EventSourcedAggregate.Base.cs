@@ -105,6 +105,15 @@ public abstract class EventSourcedAggregate<TKey> : IEventSourcedAggregate<TKey>
         _uncommittedEvents.Add(domainEvent);
     }
 
+    /// <summary>Restores the stream version after a snapshot is applied.</summary>
+    /// <param name="version">The stream version captured in the snapshot.</param>
+    protected void RestoreVersion(long version)
+    {
+        // Restore: A snapshot stands in for history, so the version must not reset to zero
+        // before the caller replays any events newer than the snapshot.
+        Version = version;
+    }
+
     /// <summary>Applies one event to the aggregate state.</summary>
     /// <param name="domainEvent">The event to apply.</param>
     /// <exception cref="InvalidOperationException">The event type is not handled.</exception>

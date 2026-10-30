@@ -1,118 +1,80 @@
+using System.Text.Json.Serialization;
+
 using Core.Common.Domain.Events;
+using Core.Common.Monad.Metadata;
 
 namespace Core.Todos.Items;
 
 /// <summary>Raised when a todo is created.</summary>
-public sealed record TodoCreated : DomainEvent
-{
-    /// <summary>Initializes the event.</summary>
-    /// <param name="todoId">The identifier of the todo.</param>
-    /// <param name="tenantId">The tenant the todo belongs to.</param>
-    /// <param name="title">The title of the todo.</param>
-    /// <param name="metadata">The optional metadata to merge with this event.</param>
-    public TodoCreated(Guid todoId, Guid tenantId, string title, DefaultMetadata? metadata = null)
-        : base(metadata: metadata)
-    {
-        TodoId = todoId;
-        TenantId = tenantId;
-        Title = title;
-    }
+public sealed record TodoCreated(
+    Guid TodoId,
+    Guid TenantId,
+    string Title,
+    string? Description,
+    TodoPriority Priority,
+    DateTimeOffset? DueAtUtc,
+    Guid? ListId,
+    DateTimeOffset CreatedAtUtc,
+    string? CreatedBy,
+    [property: JsonIgnore] DefaultMetadata? metadata = null) : DomainEvent(metadata: metadata);
 
-    /// <summary>Gets the identifier of the todo.</summary>
-    public Guid TodoId { get; }
+/// <summary>Raised when a todo's editable fields change.</summary>
+public sealed record TodoUpdated(
+    Guid TodoId,
+    string Title,
+    string? Description,
+    TodoPriority Priority,
+    DateTimeOffset? DueAtUtc,
+    Guid? ListId,
+    DateTimeOffset ModifiedAtUtc,
+    string? ModifiedBy,
+    [property: JsonIgnore] DefaultMetadata? metadata = null) : DomainEvent(metadata: metadata);
 
-    /// <summary>Gets the tenant the todo belongs to.</summary>
-    public Guid TenantId { get; }
+/// <summary>Raised for start, complete, cancel and reopen.</summary>
+public sealed record TodoStatusChanged(
+    Guid TodoId,
+    Guid TenantId,
+    TodoStatus From,
+    TodoStatus To,
+    DateTimeOffset OccurredAtUtc,
+    string? Actor,
+    [property: JsonIgnore] DefaultMetadata? metadata = null) : DomainEvent(metadata: metadata);
 
-    /// <summary>Gets the title of the todo.</summary>
-    public string Title { get; }
-}
+/// <summary>Raised when a category reference is added.</summary>
+public sealed record TodoCategoryAdded(
+    Guid TodoId,
+    Guid CategoryId,
+    DateTimeOffset OccurredAtUtc,
+    string? Actor,
+    [property: JsonIgnore] DefaultMetadata? metadata = null) : DomainEvent(metadata: metadata);
 
-/// <summary>Raised when a todo moves into progress.</summary>
-public sealed record TodoStarted : DomainEvent
-{
-    /// <summary>Initializes the event.</summary>
-    /// <param name="todoId">The identifier of the todo.</param>
-    /// <param name="tenantId">The tenant the todo belongs to.</param>
-    /// <param name="metadata">The optional metadata to merge with this event.</param>
-    public TodoStarted(Guid todoId, Guid tenantId, DefaultMetadata? metadata = null)
-        : base(metadata: metadata)
-    {
-        TodoId = todoId;
-        TenantId = tenantId;
-    }
+/// <summary>Raised when a category reference is removed.</summary>
+public sealed record TodoCategoryRemoved(
+    Guid TodoId,
+    Guid CategoryId,
+    DateTimeOffset OccurredAtUtc,
+    string? Actor,
+    [property: JsonIgnore] DefaultMetadata? metadata = null) : DomainEvent(metadata: metadata);
 
-    /// <summary>Gets the identifier of the todo.</summary>
-    public Guid TodoId { get; }
+/// <summary>Raised when the list reference changes; a null list clears it.</summary>
+public sealed record TodoListChanged(
+    Guid TodoId,
+    Guid? ListId,
+    DateTimeOffset OccurredAtUtc,
+    string? Actor,
+    [property: JsonIgnore] DefaultMetadata? metadata = null) : DomainEvent(metadata: metadata);
 
-    /// <summary>Gets the tenant the todo belongs to.</summary>
-    public Guid TenantId { get; }
-}
+/// <summary>Raised when a todo is deleted; hard deletes remove the projection row.</summary>
+public sealed record TodoDeleted(
+    Guid TodoId,
+    bool IsHard,
+    DateTimeOffset OccurredAtUtc,
+    string? Actor,
+    [property: JsonIgnore] DefaultMetadata? metadata = null) : DomainEvent(metadata: metadata);
 
-/// <summary>Raised when a todo is completed.</summary>
-public sealed record TodoCompleted : DomainEvent
-{
-    /// <summary>Initializes the event.</summary>
-    /// <param name="todoId">The identifier of the todo.</param>
-    /// <param name="tenantId">The tenant the todo belongs to.</param>
-    /// <param name="completedAtUtc">The UTC date the todo was completed.</param>
-    /// <param name="metadata">The optional metadata to merge with this event.</param>
-    public TodoCompleted(Guid todoId, Guid tenantId, DateTimeOffset completedAtUtc, DefaultMetadata? metadata = null)
-        : base(metadata: metadata)
-    {
-        TodoId = todoId;
-        TenantId = tenantId;
-        CompletedAtUtc = completedAtUtc;
-    }
-
-    /// <summary>Gets the identifier of the todo.</summary>
-    public Guid TodoId { get; }
-
-    /// <summary>Gets the tenant the todo belongs to.</summary>
-    public Guid TenantId { get; }
-
-    /// <summary>Gets the UTC date the todo was completed.</summary>
-    public DateTimeOffset CompletedAtUtc { get; }
-}
-
-/// <summary>Raised when a todo is cancelled.</summary>
-public sealed record TodoCancelled : DomainEvent
-{
-    /// <summary>Initializes the event.</summary>
-    /// <param name="todoId">The identifier of the todo.</param>
-    /// <param name="tenantId">The tenant the todo belongs to.</param>
-    /// <param name="metadata">The optional metadata to merge with this event.</param>
-    public TodoCancelled(Guid todoId, Guid tenantId, DefaultMetadata? metadata = null)
-        : base(metadata: metadata)
-    {
-        TodoId = todoId;
-        TenantId = tenantId;
-    }
-
-    /// <summary>Gets the identifier of the todo.</summary>
-    public Guid TodoId { get; }
-
-    /// <summary>Gets the tenant the todo belongs to.</summary>
-    public Guid TenantId { get; }
-}
-
-/// <summary>Raised when a finished todo is reopened.</summary>
-public sealed record TodoReopened : DomainEvent
-{
-    /// <summary>Initializes the event.</summary>
-    /// <param name="todoId">The identifier of the todo.</param>
-    /// <param name="tenantId">The tenant the todo belongs to.</param>
-    /// <param name="metadata">The optional metadata to merge with this event.</param>
-    public TodoReopened(Guid todoId, Guid tenantId, DefaultMetadata? metadata = null)
-        : base(metadata: metadata)
-    {
-        TodoId = todoId;
-        TenantId = tenantId;
-    }
-
-    /// <summary>Gets the identifier of the todo.</summary>
-    public Guid TodoId { get; }
-
-    /// <summary>Gets the tenant the todo belongs to.</summary>
-    public Guid TenantId { get; }
-}
+/// <summary>Raised when a soft-deleted todo is restored.</summary>
+public sealed record TodoRestored(
+    Guid TodoId,
+    DateTimeOffset OccurredAtUtc,
+    string? Actor,
+    [property: JsonIgnore] DefaultMetadata? metadata = null) : DomainEvent(metadata: metadata);
