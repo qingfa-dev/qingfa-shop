@@ -39,7 +39,7 @@ public static class ApiComposition
         return builder;
     }
 
-    /// <summary>Maps the API endpoints and default infrastructure endpoints.</summary>
+    /// <summary>Maps the API endpoints.</summary>
     /// <param name="app">The built application.</param>
     /// <returns>The same application, for chaining.</returns>
     public static WebApplication UseApi(this WebApplication app)
@@ -48,7 +48,6 @@ public static class ApiComposition
 
         app.UseExceptionHandler();
         app.MapCarter();
-        app.MapDefaultEndpoints();
 
         // Handle: /time exposes the injected TimeProvider so integration tests can prove
         // the fake clock is wired through DI rather than the endpoint reading the system clock.

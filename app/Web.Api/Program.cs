@@ -23,5 +23,6 @@ app.UseInfrastructure();
 
 // Map: Carter modules, health endpoints, and the clock probe.
 app.UseApi();
+app.MapDefaultEndpoints();
 
 app.Run();
