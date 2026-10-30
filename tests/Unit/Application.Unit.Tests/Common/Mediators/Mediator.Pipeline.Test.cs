@@ -1,5 +1,6 @@
 using Application.Common.Mediators;
 using Application.Common.Mediators.Behaviors.Logging;
+using Application.Common.Persistence.UnitOfWorks;
 using Application.Unit.Tests.Common.Mediators.Fixtures;
 
 using FluentValidation;
@@ -37,6 +38,10 @@ public class MediatorPipelineTest
         // Initialize: validators live outside AddMediators; the host registers them
         // through AddApplication.
         builder.Services.AddValidatorsFromAssemblyContaining<TestRequestValidator>();
+
+        // Initialize: commands need a unit of work; these fixtures are plain requests,
+        // so an unconfigured mock is enough to satisfy the behavior constructor.
+        builder.Services.AddSingleton(new Mock<IUnitOfWork>().Object);
 
         builder.AddMediators(typeof(TestRequestHandler).Assembly);
         return builder.Services.BuildServiceProvider();

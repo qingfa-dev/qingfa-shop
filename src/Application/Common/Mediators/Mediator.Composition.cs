@@ -2,6 +2,7 @@ using System.Reflection;
 
 using Application.Common.Mediators.Behaviors.Exceptions;
 using Application.Common.Mediators.Behaviors.Logging;
+using Application.Common.Mediators.Behaviors.Transactions;
 using Application.Common.Mediators.Behaviors.Validation;
 
 using FluentValidation;
@@ -63,6 +64,7 @@ public static class MediatorComposition
             // Add: Pipeline behaviors in priority order (Outer to Inner)
             cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(LoggingBehavior<,>));
             cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ValidationBehavior<,>));
+            cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(TransactionBehavior<,>));
             cfg.AddBehavior(typeof(IPipelineBehavior<,>), typeof(ExceptionMappingBehavior<,>));
         });
 
