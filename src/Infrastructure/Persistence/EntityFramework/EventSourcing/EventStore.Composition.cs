@@ -1,8 +1,8 @@
 using Application.Common.EventSourcing;
+using Application.Common.Validation.FluentValidation;
 
 using Core.Common.Domain.EventSourcing;
 using Core.Todos.Reminders;
-using Application.Common.Validation.FluentValidation;
 
 using FluentValidation;
 
@@ -49,6 +49,8 @@ public static class EventStoreComposition
         builder.Services.TryAddScoped(typeof(IEventSourcedRepository<,>), typeof(EventSourcedRepository<,>));
         builder.Services.TryAddScoped<IAggregateFactory<TodoReminder>, TodoReminderFactory>();
         builder.Services.TryAddScoped<IProjection, TodoReminderProjection>();
+        // Register: TryAddScoped is keyed by the service type, so the second projection needs AddScoped.
+        builder.Services.AddScoped<IProjection, TodoProjection>();
         builder.Services.TryAddScoped<ProjectionRunner>();
         builder.Services.AddHostedService<ProjectionWorker>();
 

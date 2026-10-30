@@ -61,4 +61,59 @@ public static class TodoMapper
             CreatedAtUtc = todo.CreatedAtUtc,
         };
     }
+
+    /// <summary>Maps the projected todo into a new full response of the requested type.</summary>
+    /// <typeparam name="T">The response model type.</typeparam>
+    /// <param name="readModel">The projected todo to map.</param>
+    /// <returns>The mapped response.</returns>
+    public static T ToModel<T>(this TodoReadModel readModel)
+        where T : TodoResponseModel, new()
+    {
+        ArgumentNullException.ThrowIfNull(readModel);
+
+        return new T
+        {
+            Id = readModel.Id,
+            TenantId = readModel.TenantId,
+            Title = readModel.Title,
+            Description = readModel.Description,
+            Status = readModel.Status,
+            Priority = readModel.Priority,
+            DueAtUtc = readModel.DueAtUtc,
+            CompletedAtUtc = readModel.CompletedAtUtc,
+            ListId = readModel.ListId,
+            CategoryIds = [.. readModel.CategoryIds],
+            IsCompleted = readModel.IsCompleted,
+            CreatedAtUtc = readModel.CreatedAtUtc,
+            CreatedBy = readModel.CreatedBy,
+            ModifiedAtUtc = readModel.ModifiedAtUtc,
+            ModifiedBy = readModel.ModifiedBy,
+            IsDeleted = readModel.IsDeleted,
+            DeletedAtUtc = readModel.DeletedAtUtc,
+            DeletedBy = readModel.DeletedBy,
+        };
+    }
+
+    /// <summary>Maps the projected todo into a new summary response of the requested type.</summary>
+    /// <typeparam name="T">The summary response type.</typeparam>
+    /// <param name="readModel">The projected todo to map.</param>
+    /// <returns>The mapped summary.</returns>
+    public static T ToSummary<T>(this TodoReadModel readModel)
+        where T : TodoSummaryResponseModel, new()
+    {
+        ArgumentNullException.ThrowIfNull(readModel);
+
+        return new T
+        {
+            Id = readModel.Id,
+            Title = readModel.Title,
+            Status = readModel.Status,
+            Priority = readModel.Priority,
+            DueAtUtc = readModel.DueAtUtc,
+            ListId = readModel.ListId,
+            CategoryIds = [.. readModel.CategoryIds],
+            IsCompleted = readModel.IsCompleted,
+            CreatedAtUtc = readModel.CreatedAtUtc,
+        };
+    }
 }

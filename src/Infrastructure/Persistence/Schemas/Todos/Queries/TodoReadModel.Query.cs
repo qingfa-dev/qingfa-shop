@@ -1,18 +1,17 @@
 using Application.Common.Querying.Mapping;
-
-using Core.Todos.Items;
+using Application.Features.Todos.Items.Models;
 
 namespace Infrastructure.Persistence.Schemas.Todos.Queries;
 
 /// <summary>
-/// Pre-configured query map for <see cref="Todo"/> enabling filtering, sorting, searching, and projection.
+/// Pre-configured query map for <see cref="TodoReadModel"/> enabling filtering, sorting, searching, and projection.
 /// </summary>
-public static class TodoQueryMap
+public static class TodoReadModelQueryMap
 {
-    /// <summary>Creates a query map covering all queryable fields on the Todo aggregate.</summary>
-    public static QueryMap<Todo> Create()
+    /// <summary>Creates a query map covering all queryable fields on the todo read model.</summary>
+    public static QueryMap<TodoReadModel> Create()
     {
-        var builder = QueryMapBuilder<Todo>.Create()
+        var builder = QueryMapBuilder<TodoReadModel>.Create()
             .Map("id", t => t.Id, field => field
                 .Filterable()
                 .Sortable()
@@ -75,19 +74,19 @@ public static class TodoQueryMap
         var result = builder.Build();
         if (result.IsFailure)
             throw new InvalidOperationException(
-                $"Failed to build Todo query map: {string.Join(", ", result.Errors.Select(e => e.Message))}");
+                $"Failed to build TodoReadModel query map: {string.Join(", ", result.Errors.Select(e => e.Message))}");
 
         return result.Value;
     }
 }
 
-/// <summary>Registers the Todo query map during composition.</summary>
-public sealed class TodoQueryMapDefinition : IQueryMapDefinition
+/// <summary>Registers the todo read-model query map during composition.</summary>
+public sealed class TodoReadModelQueryMapDefinition : IQueryMapDefinition
 {
     /// <inheritdoc />
     public Result Register(QueryMapRegistry registry)
     {
         ArgumentNullException.ThrowIfNull(registry);
-        return registry.Register(TodoQueryMap.Create());
+        return registry.Register(TodoReadModelQueryMap.Create());
     }
 }

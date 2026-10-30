@@ -1,0 +1,286 @@
+using Application.Common.EventSourcing;
+using Application.Common.Messaging.Serialization;
+using Application.Features.Todos.Items.Models;
+
+using Core.Common.Domain.Events;
+using Core.Todos.Categories;
+using Core.Todos.Items;
+using Core.Todos.Lists;
+using Core.Todos.Reminders;
+
+using Infrastructure.Integrations.Messaging.Serialization;
+using Infrastructure.Persistence.EntityFramework.Projections;
+using Infrastructure.Persistence.Schemas.Todos.EntityConfiguration;
+
+using Microsoft.Data.Sqlite;
+using Microsoft.EntityFrameworkCore;
+
+namespace Infrastructure.Unit.Tests.Persistence.EntityFramework.Projections;
+
+/// <summary>Tests for the todo read-model projection.</summary>
+[Trait("Category", "Unit")]
+[Trait("Module", "Infrastructure")]
+[Trait("Feature", "EventSourcing")]
+public sealed class TodoProjectionTest : IAsyncLifetime
+{
+    private SqliteConnection _connection = null!;
+    private ProjectionTestContext _context = null!;
+    private JsonMessageSerializer _serializer = null!;
+    private TodoProjection _projection = null!;
+    private readonly DateTimeOffset _now = new(2026, 10, 30, 12, 0, 0, TimeSpan.Zero);
+
+    public async ValueTask InitializeAsync()
+    {
+        _connection = new SqliteConnection("Filename=:memory:");
+        await _connection.OpenAsync();
+        var options = new DbContextOptionsBuilder<ProjectionTestContext>()
+            .UseSqlite(_connection)
+            .Options;
+        _context = new ProjectionTestContext(options);
+        await _context.Database.EnsureCreatedAsync();
+        _serializer = new JsonMessageSerializer(new EventTypeRegistry(typeof(DomainEvent).Assembly));
+        _projection = new TodoProjection(_context, _serializer);
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        await _context.DisposeAsync();
+        await _connection.DisposeAsync();
+    }
+
+    [Fact]
+    public async Task Apply_WithTodoCreated_ShouldInsertAPendingRow()
+    {
+        Guid id = Guid.NewGuid();
+        Guid tenantId = Guid.NewGuid();
+        Guid listId = Guid.NewGuid();
+
+        Result result = await _projection.ApplyAsync(
+            Stored(
+                new TodoCreated(
+                    id,
+                    tenantId,
+                    "Write report",
+                    "Draft the quarterly report",
+                    TodoPriority.High,
+                    _now.AddDays(1),
+                    listId,
+                    _now,
+                    "creator"),
+                1));
+
+        result.IsSuccess.Should().BeTrue();
+        TodoReadModel model = await _context.Todos.SingleAsync();
+        model.Id.Should().Be(id);
+        model.TenantId.Should().Be(tenantId);
+        model.Title.Should().Be("Write report");
+        model.Description.Should().Be("Draft the quarterly report");
+        model.Status.Should().Be(TodoStatus.Pending);
+        model.Priority.Should().Be(TodoPriority.High);
+        model.DueAtUtc.Should().Be(_now.AddDays(1));
+        model.CompletedAtUtc.Should().BeNull();
+        model.ListId.Should().Be(listId);
+        model.CategoryIds.Should().BeEmpty();
+        model.IsCompleted.Should().BeFalse();
+        model.CreatedAtUtc.Should().Be(_now);
+        model.CreatedBy.Should().Be("creator");
+        model.IsDeleted.Should().BeFalse();
+        model.Version.Should().Be(1);
+    }
+
+    [Fact]
+    public async Task Apply_ShouldMutateTheRowForEveryTodoEvent()
+    {
+        Guid id = Guid.NewGuid();
+        Guid tenantId = Guid.NewGuid();
+        Guid categoryId = Guid.NewGuid();
+        Guid listId = Guid.NewGuid();
+        await CreateAsync(id, tenantId);
+
+        await _projection.ApplyAsync(
+            Stored(
+                new TodoUpdated(
+                    id,
+                    "Write final report",
+                    "Final draft",
+                    TodoPriority.Low,
+                    _now.AddDays(2),
+                    listId,
+                    _now.AddMinutes(1),
+                    "editor"),
+                2));
+
+        await _projection.ApplyAsync(
+            Stored(
+                new TodoStatusChanged(
+                    id,
+                    tenantId,
+                    TodoStatus.Pending,
+                    TodoStatus.Completed,
+                    _now.AddMinutes(2),
+                    "editor"),
+                3));
+
+        await _projection.ApplyAsync(
+            Stored(new TodoCategoryAdded(id, categoryId, _now.AddMinutes(3), "editor"), 4));
+
+        await _projection.ApplyAsync(
+            Stored(new TodoCategoryRemoved(id, categoryId, _now.AddMinutes(4), "editor"), 5));
+
+        Guid nextCategoryId = Guid.NewGuid();
+        await _projection.ApplyAsync(
+            Stored(new TodoCategoryAdded(id, nextCategoryId, _now.AddMinutes(5), "editor"), 6));
+
+        await _projection.ApplyAsync(
+            Stored(new TodoListChanged(id, null, _now.AddMinutes(6), "editor"), 7));
+
+        TodoReadModel model = await _context.Todos.SingleAsync();
+        model.Title.Should().Be("Write final report");
+        model.Description.Should().Be("Final draft");
+        model.Priority.Should().Be(TodoPriority.Low);
+        model.DueAtUtc.Should().Be(_now.AddDays(2));
+        model.Status.Should().Be(TodoStatus.Completed);
+        model.CompletedAtUtc.Should().Be(_now.AddMinutes(2));
+        model.IsCompleted.Should().BeTrue();
+        model.CategoryIds.Should().Equal(nextCategoryId);
+        model.ListId.Should().BeNull();
+        model.ModifiedAtUtc.Should().Be(_now.AddMinutes(6));
+        model.ModifiedBy.Should().Be("editor");
+        model.Version.Should().Be(7);
+    }
+
+    [Fact]
+    public async Task Apply_WithSoftDeleteAndRestore_ShouldToggleTheLifecycleFlags()
+    {
+        Guid id = Guid.NewGuid();
+        Guid tenantId = Guid.NewGuid();
+        await CreateAsync(id, tenantId);
+
+        await _projection.ApplyAsync(
+            Stored(new TodoDeleted(id, false, _now.AddMinutes(1), "deleter"), 2));
+
+        TodoReadModel model = await _context.Todos.SingleAsync();
+        model.IsDeleted.Should().BeTrue();
+        model.DeletedAtUtc.Should().Be(_now.AddMinutes(1));
+        model.DeletedBy.Should().Be("deleter");
+        model.Version.Should().Be(2);
+
+        await _projection.ApplyAsync(
+            Stored(new TodoRestored(id, _now.AddMinutes(2), "restorer"), 3));
+
+        await _context.Entry(model).ReloadAsync();
+        model.IsDeleted.Should().BeFalse();
+        model.DeletedAtUtc.Should().BeNull();
+        model.DeletedBy.Should().BeNull();
+        model.ModifiedAtUtc.Should().Be(_now.AddMinutes(2));
+        model.ModifiedBy.Should().Be("restorer");
+        model.Version.Should().Be(3);
+    }
+
+    [Fact]
+    public async Task Apply_WithHardDelete_ShouldRemoveTheRow()
+    {
+        Guid id = Guid.NewGuid();
+        Guid tenantId = Guid.NewGuid();
+        await CreateAsync(id, tenantId);
+
+        await _projection.ApplyAsync(
+            Stored(new TodoDeleted(id, true, _now.AddMinutes(1), "deleter"), 2));
+
+        (await _context.Todos.CountAsync()).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Apply_ShouldIgnoreEventsOlderThanTheProjectedVersion()
+    {
+        Guid id = Guid.NewGuid();
+        Guid tenantId = Guid.NewGuid();
+        await CreateAsync(id, tenantId);
+
+        await _projection.ApplyAsync(
+            Stored(
+                new TodoUpdated(
+                    id,
+                    "Write final report",
+                    "Final draft",
+                    TodoPriority.Low,
+                    null,
+                    null,
+                    _now.AddMinutes(1),
+                    "editor"),
+                2));
+
+        // Replay: older and equal deliveries must not regress the row.
+        await _projection.ApplyAsync(Stored(new TodoCreated(id, tenantId, "Original", null, TodoPriority.High, null, null, _now, "creator"), 1));
+        await _projection.ApplyAsync(
+            Stored(
+                new TodoUpdated(
+                    id,
+                    "Stale title",
+                    null,
+                    TodoPriority.High,
+                    null,
+                    null,
+                    _now.AddMinutes(5),
+                    "editor"),
+                2));
+
+        TodoReadModel model = await _context.Todos.SingleAsync();
+        model.Title.Should().Be("Write final report");
+        model.Priority.Should().Be(TodoPriority.Low);
+        model.Version.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Apply_WithAnUnrelatedEvent_ShouldBeANoOp()
+    {
+        string name = _projection.Name;
+
+        Result result = await _projection.ApplyAsync(
+            Stored(new ReminderScheduled(Guid.NewGuid(), Guid.NewGuid(), Guid.NewGuid(), _now), 1));
+
+        name.Should().Be("todos");
+        result.IsSuccess.Should().BeTrue();
+        (await _context.Todos.CountAsync()).Should().Be(0);
+    }
+
+    private async Task CreateAsync(Guid id, Guid tenantId)
+        => await _projection.ApplyAsync(
+            Stored(
+                new TodoCreated(
+                    id,
+                    tenantId,
+                    "Write report",
+                    "Draft the quarterly report",
+                    TodoPriority.High,
+                    _now.AddDays(1),
+                    null,
+                    _now,
+                    "creator"),
+                1));
+
+    private StoredEvent Stored(IDomainEvent domainEvent, long version)
+        => new(
+            $"todo:{domainEvent.GetType().Name}",
+            version,
+            domainEvent.GetEventId() ?? Guid.NewGuid(),
+            domainEvent.EventName,
+            domainEvent.EventVersion,
+            _serializer.Serialize(domainEvent),
+            domainEvent.Metadata,
+            _now,
+            version);
+
+    private sealed class ProjectionTestContext(DbContextOptions<ProjectionTestContext> options)
+        : Microsoft.EntityFrameworkCore.DbContext(options)
+    {
+        public DbSet<TodoReadModel> Todos => Set<TodoReadModel>();
+
+        protected override void OnModelCreating(ModelBuilder modelBuilder)
+        {
+            modelBuilder.ApplyConfiguration(new TodoReadModelConfiguration());
+            modelBuilder.Ignore<TodoList>();
+            modelBuilder.Ignore<TodoCategory>();
+        }
+    }
+}

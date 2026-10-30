@@ -32,7 +32,7 @@ store strategy stub subscriber success table test test-case test-data test-host
 test-server tests theory transaction transformer translator transport trigger type unit
 unit-of-work use-case util utilities validator validation validation-result value-object
 view view-model webhook worker workflow write-model
-marker design tabular querymap queryconstant flow double base default generic config
+marker design tabular querymap queryconstant readmodel flow double base default generic config
 seed e2e-spec enumerate create update upsert update delete read abstract write streamable
 EOF
 
