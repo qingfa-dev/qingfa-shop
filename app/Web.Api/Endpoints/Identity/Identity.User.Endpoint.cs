@@ -130,11 +130,8 @@ public sealed class IdentityUserEndpoint : ICarterModule
         UpdateUser.Request request,
         IMediator mediator,
         CancellationToken cancellationToken)
-    {
-        request.Id = id;
-        return (await mediator.Send(new UpdateUser.UseCase(request), cancellationToken))
+        => (await mediator.Send(new UpdateUser.UseCase(id, request), cancellationToken))
             .ToApiResult();
-    }
 
     private static async Task<IResult> DeleteAsync(
         Guid id,
@@ -186,11 +183,8 @@ public sealed class IdentityUserEndpoint : ICarterModule
         ResetUserPassword.Request request,
         IMediator mediator,
         CancellationToken cancellationToken)
-    {
-        request.Id = id;
-        return (await mediator.Send(new ResetUserPassword.UseCase(request), cancellationToken))
+        => (await mediator.Send(new ResetUserPassword.UseCase(id, request), cancellationToken))
             .ToApiResult();
-    }
 
     private static async Task<IResult> ConfirmEmailAsync(
         Guid id,

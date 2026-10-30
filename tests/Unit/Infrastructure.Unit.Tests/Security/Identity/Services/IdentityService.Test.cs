@@ -131,6 +131,22 @@ public sealed class IdentityServiceTest
         info.IsSuccess.Should().BeTrue();
         info.Value.SharedKey.Should().NotBeNullOrWhiteSpace();
         info.Value.AuthenticatorUri.Should().StartWith("otpauth://");
+
+        Result<TwoFactorInfo> disabled = await host.Identity.UpdateTwoFactorAsync(
+            registered.Value.Id,
+            new TwoFactorRequest(Enable: false, ResetRecoveryCodes: true));
+
+        disabled.IsSuccess.Should().BeTrue();
+        disabled.Value.IsTwoFactorEnabled.Should().BeFalse();
+        disabled.Value.RecoveryCodes.Should().NotBeEmpty();
+
+        Result<TwoFactorInfo> invalid = await host.Identity.UpdateTwoFactorAsync(
+            registered.Value.Id,
+            new TwoFactorRequest(Enable: true, TwoFactorCode: "000000"));
+
+        invalid.IsFailure.Should().BeTrue();
+        invalid.Errors.Should().ContainSingle(
+            error => error.Code == "Identity.TwoFactor.Invalid");
     }
 
     [Fact(DisplayName = "Login should reject unknown users, bad passwords, and inactive accounts")]

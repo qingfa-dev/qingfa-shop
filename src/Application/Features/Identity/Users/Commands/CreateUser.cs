@@ -11,7 +11,7 @@ public static class CreateUser
     #endregion
 
     #region UseCase
-    public sealed record UseCase(Request Request) : ICommand<UserModel>, INonTransactionalCommand;
+    public sealed record UseCase(Request Request) : ICommand<UserModel>;
     #endregion
 
     #region Handler

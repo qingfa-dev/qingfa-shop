@@ -3,7 +3,9 @@ using Application.Common.Querying.Pagination;
 using Application.Common.Security.Authentication.Tokens.Abstractions.Refresh;
 using Application.Common.Security.Authentication.Tokens.Domain;
 using Application.Features.Identity.Abstractions;
+using Application.Features.Identity.Auth;
 using Application.Features.Identity.Auth.Outcome;
+using Application.Features.Identity.Auth.Validators;
 using Application.Features.Identity.Users.Models;
 using Application.Features.Identity.Users.Outcome;
 
@@ -33,11 +35,20 @@ public sealed class UserAccountService(
     private const string SystemActor = "System";
 
     /// <inheritdoc />
+    /// <remarks>
+    /// Supported parameters are <c>Search</c>, <c>Page</c>, and <c>PageSize</c>.
+    /// The richer query pipeline parameters are rejected with <c>Query.Unsupported</c>
+    /// so callers never receive silently ignored input.
+    /// </remarks>
     public async Task<Result<QueryPage<UserModel>>> SearchAsync(
         QueryParameters parameters,
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(parameters);
+
+        Result supported = ValidateSearchParameters(parameters);
+        if (supported.IsFailure)
+            return Result<QueryPage<UserModel>>.Fail(supported.Errors);
 
         IQueryable<User> query = dbContext.Users.AsNoTracking();
 
@@ -84,16 +95,19 @@ public sealed class UserAccountService(
         User? user = await userManager.FindByIdAsync(id.ToString()).ConfigureAwait(false);
 
         return user is null
-            ? Result<UserModel>.Fail(UserAccountOutcome.Failure.UserNotFound)
+            ? Result<UserModel>.Fail(IdentityOutcome.Failure.UserNotFound)
             : Result<UserModel>.Ok(await ToModelAsync(user).ConfigureAwait(false));
     }
 
     /// <inheritdoc />
     public async Task<Result<UserModel>> CreateAsync(
-        CreateUserSpec spec,
+        CreateUserRequestModel spec,
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(spec);
+
+        if (spec.RoleIds.Any(roleId => roleId == Guid.Empty))
+            return Result<UserModel>.Fail(UserAccountOutcome.Failure.RoleInvalid);
 
         if (await userManager.FindByNameAsync(spec.UserName).ConfigureAwait(false) is not null)
             return Result<UserModel>.Fail(IdentityOutcome.Failure.UserNameTaken);
@@ -148,9 +162,13 @@ public sealed class UserAccountService(
     {
         ArgumentNullException.ThrowIfNull(spec);
 
+        Result validated = ValidateUpdate(spec);
+        if (validated.IsFailure)
+            return Result<UserModel>.Fail(validated.Errors);
+
         User? user = await userManager.FindByIdAsync(id.ToString()).ConfigureAwait(false);
         if (user is null)
-            return Result<UserModel>.Fail(UserAccountOutcome.Failure.UserNotFound);
+            return Result<UserModel>.Fail(IdentityOutcome.Failure.UserNotFound);
 
         if (!string.IsNullOrWhiteSpace(spec.Email) &&
             !string.Equals(spec.Email, user.Email, StringComparison.OrdinalIgnoreCase))
@@ -193,7 +211,7 @@ public sealed class UserAccountService(
     {
         User? user = await userManager.FindByIdAsync(id.ToString()).ConfigureAwait(false);
         if (user is null)
-            return Result.Fail(UserAccountOutcome.Failure.UserNotFound);
+            return Result.Fail(IdentityOutcome.Failure.UserNotFound);
 
         IdentityResult result = await userManager.DeleteAsync(user).ConfigureAwait(false);
         return result.Succeeded ? Result.Ok() : Fail(result);
@@ -207,7 +225,7 @@ public sealed class UserAccountService(
     {
         User? user = await userManager.FindByIdAsync(id.ToString()).ConfigureAwait(false);
         if (user is null)
-            return Result<UserModel>.Fail(UserAccountOutcome.Failure.UserNotFound);
+            return Result<UserModel>.Fail(IdentityOutcome.Failure.UserNotFound);
 
         if (user.IsActive != active)
         {
@@ -231,7 +249,7 @@ public sealed class UserAccountService(
     {
         User? user = await userManager.FindByIdAsync(userId.ToString()).ConfigureAwait(false);
         if (user is null)
-            return Result<UserModel>.Fail(UserAccountOutcome.Failure.UserNotFound);
+            return Result<UserModel>.Fail(IdentityOutcome.Failure.UserNotFound);
 
         Role? role = await roleManager.FindByIdAsync(roleId.ToString()).ConfigureAwait(false);
         if (role is null || string.IsNullOrWhiteSpace(role.Name))
@@ -258,7 +276,7 @@ public sealed class UserAccountService(
     {
         User? user = await userManager.FindByIdAsync(userId.ToString()).ConfigureAwait(false);
         if (user is null)
-            return Result<UserModel>.Fail(UserAccountOutcome.Failure.UserNotFound);
+            return Result<UserModel>.Fail(IdentityOutcome.Failure.UserNotFound);
 
         Role? role = await roleManager.FindByIdAsync(roleId.ToString()).ConfigureAwait(false);
         if (role is null || string.IsNullOrWhiteSpace(role.Name))
@@ -285,7 +303,7 @@ public sealed class UserAccountService(
     {
         User? user = await userManager.FindByIdAsync(userId.ToString()).ConfigureAwait(false);
         if (user is null)
-            return Result.Fail(UserAccountOutcome.Failure.UserNotFound);
+            return Result.Fail(IdentityOutcome.Failure.UserNotFound);
 
         string token = await userManager
             .GeneratePasswordResetTokenAsync(user)
@@ -303,7 +321,7 @@ public sealed class UserAccountService(
     {
         User? user = await userManager.FindByIdAsync(userId.ToString()).ConfigureAwait(false);
         if (user is null)
-            return Result.Fail(UserAccountOutcome.Failure.UserNotFound);
+            return Result.Fail(IdentityOutcome.Failure.UserNotFound);
 
         if (user.EmailConfirmed)
             return Result.Ok();
@@ -327,7 +345,7 @@ public sealed class UserAccountService(
     {
         User? user = await userManager.FindByIdAsync(id.ToString()).ConfigureAwait(false);
         if (user is null)
-            return Result<UserModel>.Fail(UserAccountOutcome.Failure.UserNotFound);
+            return Result<UserModel>.Fail(IdentityOutcome.Failure.UserNotFound);
 
         if (locked && !user.LockoutEnabled)
         {
@@ -350,11 +368,16 @@ public sealed class UserAccountService(
     }
 
     /// <inheritdoc />
+    /// <remarks>
+    /// The security stamp is rotated and every refresh token is revoked. The JWT
+    /// bearer handler validates signatures and lifetimes only, so an access token
+    /// issued before the rotation remains valid until it expires.
+    /// </remarks>
     public async Task<Result> RevokeSessionsAsync(Guid userId, CancellationToken ct = default)
     {
         User? user = await userManager.FindByIdAsync(userId.ToString()).ConfigureAwait(false);
         if (user is null)
-            return Result.Fail(UserAccountOutcome.Failure.UserNotFound);
+            return Result.Fail(IdentityOutcome.Failure.UserNotFound);
 
         IdentityResult stamp = await userManager
             .UpdateSecurityStampAsync(user)
@@ -372,6 +395,69 @@ public sealed class UserAccountService(
             .ConfigureAwait(false);
 
         return revoked.ToResult();
+    }
+
+    private static Result ValidateSearchParameters(QueryParameters parameters)
+    {
+        if (parameters.Filter is not null)
+            return UnsupportedSearch("Filter");
+
+        if (parameters.OrderBy is not null)
+            return UnsupportedSearch("OrderBy");
+
+        if (parameters.SearchFields is not null)
+            return UnsupportedSearch("SearchFields");
+
+        if (parameters.SearchMode is not null)
+            return UnsupportedSearch("SearchMode");
+
+        if (parameters.SearchTermLogic is not null)
+            return UnsupportedSearch("SearchTermLogic");
+
+        if (parameters.SearchCaseInsensitive is not null)
+            return UnsupportedSearch("SearchCaseInsensitive");
+
+        if (parameters.Select is not null)
+            return UnsupportedSearch("Select");
+
+        if (parameters.GroupBy is not null)
+            return UnsupportedSearch("GroupBy");
+
+        if (parameters.Aggregate is not null)
+            return UnsupportedSearch("Aggregate");
+
+        return Result.Ok();
+    }
+
+    private static Result UnsupportedSearch(string parameter) => Result.Fail(
+        Error.BadRequest(
+            code: QueryErrorCodes.Unsupported,
+            message: $"{parameter} is not supported for user search."));
+
+    private static Result ValidateUpdate(UpdateUserSpec spec)
+    {
+        if (spec.Email is not null && !IdentityValidator.ValidateEmail(spec.Email).IsSuccess)
+            return Result.Fail(UserAccountOutcome.Failure.EmailInvalid);
+
+        if (spec.FirstName is not null &&
+            spec.FirstName.Length > IdentityConstant.Constraints.MaxFirstNameLength)
+        {
+            return Result.Fail(UserAccountOutcome.Failure.FirstNameTooLong);
+        }
+
+        if (spec.LastName is not null &&
+            spec.LastName.Length > IdentityConstant.Constraints.MaxLastNameLength)
+        {
+            return Result.Fail(UserAccountOutcome.Failure.LastNameTooLong);
+        }
+
+        if (spec.RoleIds is not null &&
+            spec.RoleIds.Any(roleId => roleId == Guid.Empty))
+        {
+            return Result.Fail(UserAccountOutcome.Failure.RoleInvalid);
+        }
+
+        return Result.Ok();
     }
 
     private async Task<Result> ReplaceRolesAsync(User user, IReadOnlyList<Guid> roleIds)

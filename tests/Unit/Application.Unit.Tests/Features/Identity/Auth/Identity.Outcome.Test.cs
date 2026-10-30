@@ -68,6 +68,10 @@ public sealed class IdentityOutcomeTest
             .Should().Be("Identity.UserName.Taken");
         IdentityOutcome.Failure.IdentityError("DuplicateEmail", "taken").Code
             .Should().Be("Identity.Email.Taken");
+        IdentityOutcome.Failure.IdentityError("DuplicateUserName", "taken").Status
+            .Should().Be(409);
+        IdentityOutcome.Failure.IdentityError("DuplicateEmail", "taken").Status
+            .Should().Be(409);
         IdentityOutcome.Failure.IdentityError("PasswordTooShort", "short").Code
             .Should().Be("Identity.Password.TooShort");
         IdentityOutcome.Failure.IdentityError("Unknown", "unknown").Code

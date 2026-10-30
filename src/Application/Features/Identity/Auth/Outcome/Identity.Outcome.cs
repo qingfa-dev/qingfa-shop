@@ -136,10 +136,15 @@ public static class IdentityOutcome
         /// <returns>The mapped error.</returns>
         public static Error IdentityError(string code, string description)
         {
+            // Enforce: duplicate identities stay 409 no matter which Identity path found them.
+            if (code == "DuplicateUserName")
+                return UserNameTaken;
+
+            if (code == "DuplicateEmail")
+                return EmailTaken;
+
             string stableCode = code switch
             {
-                "DuplicateUserName" => "Identity.UserName.Taken",
-                "DuplicateEmail" => "Identity.Email.Taken",
                 "InvalidUserName" => "Identity.UserName.Invalid",
                 "InvalidEmail" => "Identity.Email.Invalid",
                 "PasswordTooShort" => "Identity.Password.TooShort",

@@ -11,7 +11,8 @@ public static class UpdateUser
     #endregion
 
     #region UseCase
-    public sealed record UseCase(Request Request) : ICommand<UserModel>, INonTransactionalCommand;
+    /// <summary>Updates a user; <paramref name="Id"/> is the route identifier and always wins.</summary>
+    public sealed record UseCase(Guid Id, Request Request) : ICommand<UserModel>;
     #endregion
 
     #region Handler
@@ -27,7 +28,7 @@ public static class UpdateUser
 
             return await users
                 .UpdateAsync(
-                    command.Request.Id,
+                    command.Id,
                     UserMapper.ToSpec(command.Request),
                     cancellationToken)
                 .ConfigureAwait(false);

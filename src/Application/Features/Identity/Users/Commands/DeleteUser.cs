@@ -11,7 +11,7 @@ public static class DeleteUser
     #endregion
 
     #region UseCase
-    public sealed record UseCase(Request Request) : ICommand, INonTransactionalCommand;
+    public sealed record UseCase(Request Request) : ICommand;
     #endregion
 
     #region Handler

@@ -1,4 +1,3 @@
-using Application.Features.Identity.Users.Commands;
 using Application.Features.Identity.Users.Models;
 
 namespace Application.Features.Identity.Users.Mappings;
@@ -10,25 +9,27 @@ public static class UserMapper
     /// <param name="request">The request to map.</param>
     /// <returns>The creation spec.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="request"/> is <c>null</c>.</exception>
-    public static CreateUserSpec ToSpec(CreateUser.Request request)
+    public static CreateUserRequestModel ToSpec(CreateUserModel request)
     {
         ArgumentNullException.ThrowIfNull(request);
 
-        return new CreateUserSpec(
-            request.UserName.Trim(),
-            request.Email.Trim(),
-            request.Password,
-            Normalize(request.FirstName),
-            Normalize(request.LastName),
-            request.EmailConfirmed,
-            request.RoleIds);
+        return new CreateUserRequestModel
+        {
+            UserName = request.UserName.Trim(),
+            Email = request.Email.Trim(),
+            Password = request.Password,
+            FirstName = Normalize(request.FirstName),
+            LastName = Normalize(request.LastName),
+            EmailConfirmed = request.EmailConfirmed,
+            RoleIds = request.RoleIds,
+        };
     }
 
     /// <summary>Maps an update request onto the partial update spec.</summary>
     /// <param name="request">The request to map.</param>
     /// <returns>The update spec.</returns>
     /// <exception cref="ArgumentNullException"><paramref name="request"/> is <c>null</c>.</exception>
-    public static UpdateUserSpec ToSpec(UpdateUser.Request request)
+    public static UpdateUserSpec ToSpec(UpdateUserModel request)
     {
         ArgumentNullException.ThrowIfNull(request);
 

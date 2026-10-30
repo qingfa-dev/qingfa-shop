@@ -52,7 +52,7 @@ public sealed class IdentityPortsTest
 
     public static TheoryData<Type> SpecTypes => new()
     {
-        typeof(CreateUserSpec),
+        typeof(CreateUserRequestModel),
         typeof(UpdateUserSpec),
         typeof(CreateRoleSpec),
         typeof(UpdateRoleSpec),

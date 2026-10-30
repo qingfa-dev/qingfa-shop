@@ -12,8 +12,13 @@ namespace Application.Features.Identity.Abstractions;
 /// </remarks>
 public interface IUserAccountService
 {
-    /// <summary>Searches users using the shared query pipeline.</summary>
-    /// <param name="parameters">The filter, ordering, search, and paging inputs.</param>
+    /// <summary>Searches users by name or email with paging.</summary>
+    /// <remarks>
+    /// Only <c>Search</c>, <c>Page</c>, and <c>PageSize</c> are supported. The remaining
+    /// parameters of <see cref="QueryParameters"/> return a stable <c>Query.Unsupported</c>
+    /// failure instead of being ignored.
+    /// </remarks>
+    /// <param name="parameters">The search and paging inputs.</param>
     /// <param name="ct">The cancellation token.</param>
     /// <returns>One page of users, or a failure.</returns>
     Task<Result<QueryPage<UserModel>>> SearchAsync(
@@ -30,7 +35,7 @@ public interface IUserAccountService
     /// <param name="spec">The validated creation values.</param>
     /// <param name="ct">The cancellation token.</param>
     /// <returns>The created user, or a failure.</returns>
-    Task<Result<UserModel>> CreateAsync(CreateUserSpec spec, CancellationToken ct = default);
+    Task<Result<UserModel>> CreateAsync(CreateUserRequestModel spec, CancellationToken ct = default);
 
     /// <summary>Updates the mutable fields of a user.</summary>
     /// <param name="id">The user identifier.</param>
@@ -105,6 +110,10 @@ public interface IUserAccountService
         CancellationToken ct = default);
 
     /// <summary>Revokes every active session for a user.</summary>
+    /// <remarks>
+    /// Rotates the security stamp and revokes all refresh tokens. JWT validation does
+    /// not reject already-issued access tokens, so they remain valid until they expire.
+    /// </remarks>
     /// <param name="userId">The user identifier.</param>
     /// <param name="ct">The cancellation token.</param>
     /// <returns>A success result, or a failure.</returns>

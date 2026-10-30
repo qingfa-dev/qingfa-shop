@@ -14,7 +14,7 @@ public sealed class UserCommandsTest
         var fixture = new UserFixture();
         fixture.Users
             .Setup(service => service.CreateAsync(
-                It.Is<CreateUserSpec>(spec =>
+                It.Is<CreateUserRequestModel>(spec =>
                     spec.UserName == "admin" &&
                     spec.Email == "admin@example.com" &&
                     spec.EmailConfirmed &&
@@ -46,7 +46,7 @@ public sealed class UserCommandsTest
         var fixture = new UserFixture();
         fixture.Users
             .Setup(service => service.CreateAsync(
-                It.IsAny<CreateUserSpec>(),
+                It.IsAny<CreateUserRequestModel>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result<UserModel>.Fail(UserFixture.Failure));
 
@@ -57,6 +57,31 @@ public sealed class UserCommandsTest
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().ContainSingle(
             error => error.Code == "Identity.Test.NotFound");
+    }
+
+    [Fact(DisplayName = "Create should forward an empty request without pre-validating")]
+    public async Task Create_WhenRequestIsEmpty_ShouldReachTheService()
+    {
+        var fixture = new UserFixture();
+        fixture.Users
+            .Setup(service => service.CreateAsync(
+                It.IsAny<CreateUserRequestModel>(),
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<UserModel>.Ok(UserFixture.User));
+
+        Result<UserModel> result = await Handler(fixture).Handle(
+            new CreateUser.UseCase(new CreateUser.Request()),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        fixture.Users.Verify(
+            service => service.CreateAsync(
+                It.Is<CreateUserRequestModel>(spec =>
+                    spec.UserName == string.Empty &&
+                    spec.Email == string.Empty &&
+                    spec.Password == string.Empty),
+                It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact(DisplayName = "Update should map the partial specification")]
@@ -74,13 +99,14 @@ public sealed class UserCommandsTest
             .ReturnsAsync(Result<UserModel>.Ok(UserFixture.User));
 
         Result<UserModel> result = await UpdateHandler(fixture).Handle(
-            new UpdateUser.UseCase(new UpdateUser.Request
-            {
-                Id = UserFixture.UserId,
-                Email = "new@example.com",
-                FirstName = "New",
-                RoleIds = [UserFixture.RoleId],
-            }),
+            new UpdateUser.UseCase(
+                UserFixture.UserId,
+                new UpdateUser.Request
+                {
+                    Email = "new@example.com",
+                    FirstName = "New",
+                    RoleIds = [UserFixture.RoleId],
+                }),
             CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -98,10 +124,9 @@ public sealed class UserCommandsTest
             .ReturnsAsync(Result<UserModel>.Fail(UserFixture.Failure));
 
         Result<UserModel> result = await UpdateHandler(fixture).Handle(
-            new UpdateUser.UseCase(new UpdateUser.Request
-            {
-                Id = UserFixture.UserId,
-            }),
+            new UpdateUser.UseCase(
+                UserFixture.UserId,
+                new UpdateUser.Request()),
             CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
@@ -242,7 +267,7 @@ public sealed class UserCommandsTest
     }
 
     [Fact(DisplayName = "Password reset should return no content")]
-    public async Task ResetPassword_ShouldValidateAndReturnNoContent()
+    public async Task ResetPassword_ShouldReturnNoContent()
     {
         var fixture = new UserFixture();
         fixture.Users
@@ -254,7 +279,8 @@ public sealed class UserCommandsTest
 
         Result result = await new ResetUserPassword.UseCaseHandler(fixture.Users.Object).Handle(
             new ResetUserPassword.UseCase(
-                new ResetUserPassword.Request { Id = UserFixture.UserId, NewPassword = Password }),
+                UserFixture.UserId,
+                new ResetUserPassword.Request { NewPassword = Password }),
             CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();

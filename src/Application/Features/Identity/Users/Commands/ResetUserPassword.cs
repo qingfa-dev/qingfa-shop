@@ -11,7 +11,8 @@ public static class ResetUserPassword
     #endregion
 
     #region UseCase
-    public sealed record UseCase(Request Request) : ICommand, INonTransactionalCommand;
+    /// <summary>Resets a password; <paramref name="Id"/> is the route identifier and always wins.</summary>
+    public sealed record UseCase(Guid Id, Request Request) : ICommand;
     #endregion
 
     #region Handler
@@ -27,7 +28,7 @@ public static class ResetUserPassword
 
             Result result = await users
                 .ResetPasswordAsync(
-                    command.Request.Id,
+                    command.Id,
                     command.Request.NewPassword,
                     cancellationToken)
                 .ConfigureAwait(false);
