@@ -2,6 +2,7 @@ using System.Text.Json;
 
 using Application.Common.Messaging.Bus;
 using Application.Common.Messaging.Serialization;
+using Application.Features.Todos.Events;
 
 using Core.Common.Domain.Events;
 using Core.Todos.Items;
@@ -33,6 +34,7 @@ public sealed class JsonMessageSerializerTest
             typeof(RoleCreated).Assembly);
         registry.Register<TestDomainEvent>(nameof(TestDomainEvent), 1);
         registry.Register<TestIntegrationEvent>(IntegrationEventName, IntegrationEventVersion);
+        registry.Register<TodoCompletedIntegration>("todo.completed", 1);
 
         var serializer = new JsonMessageSerializer(registry);
         _domainSerializer = serializer;
@@ -218,6 +220,34 @@ public sealed class JsonMessageSerializerTest
         result.Version.Should().Be(IntegrationEventVersion);
         result.Metadata["tenant"].Should().Be("acme");
         result.As<TestIntegrationEvent>().Recipient.Should().Be("recipient@example.com");
+    }
+
+    [Fact(DisplayName = "Integration payload should omit the event name and version carried by the envelope")]
+    public void Serialize_WithIntegrationEvent_ShouldOmitEventNameAndVersion()
+    {
+        // Arrange
+        var integrationEvent = new TodoCompletedIntegration
+        {
+            TodoId = Guid.NewGuid(),
+            TenantId = Guid.NewGuid(),
+            CompletedAtUtc = DateTimeOffset.UtcNow,
+        };
+
+        // Act
+        string payload = _integrationSerializer.Serialize(integrationEvent);
+
+        // Assert
+        using JsonDocument document = JsonDocument.Parse(payload);
+        document.RootElement.TryGetProperty("eventName", out _).Should().BeFalse();
+        document.RootElement.TryGetProperty("version", out _).Should().BeFalse();
+        document.RootElement.TryGetProperty("todoId", out _).Should().BeTrue();
+
+        IIntegrationEvent roundTripped = _integrationSerializer.Deserialize(
+            "todo.completed",
+            1,
+            payload);
+        roundTripped.EventName.Should().Be("todo.completed");
+        roundTripped.Version.Should().Be(1);
     }
 
     [Fact(DisplayName = "Deserialize should throw when the event name is not registered")]

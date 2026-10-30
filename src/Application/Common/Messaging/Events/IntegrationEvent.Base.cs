@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 using Application.Common.Messaging.Bus;
 
 using Core.Common.Monad.Metadata;
@@ -14,10 +16,14 @@ public abstract record IntegrationEvent : IIntegrationEvent
     /// <inheritdoc />
     public DateTimeOffset OccurredOnUtc { get; init; } = DateTimeOffset.UtcNow;
 
-    /// <inheritdoc />
+    /// <summary>Gets the stable wire name of the event; defaults to the CLR type name.</summary>
+    /// <remarks>The serialized envelope carries the name separately, so the payload omits it.</remarks>
+    [JsonIgnore]
     public virtual string EventName => GetType().Name;
 
-    /// <inheritdoc />
+    /// <summary>Gets the payload version of the event; starts at <c>1</c>.</summary>
+    /// <remarks>The serialized envelope carries the version separately, so the payload omits it.</remarks>
+    [JsonIgnore]
     public virtual int Version => 1;
 
     /// <inheritdoc />

@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 using Application.Common.Messaging.Events;
 
 namespace Application.Features.Todos.Events;
@@ -15,8 +17,10 @@ public sealed record TodoCompletedIntegration : IntegrationEvent
     public DateTimeOffset CompletedAtUtc { get; init; }
 
     /// <inheritdoc />
+    [JsonIgnore]
     public override string EventName => "todo.completed";
 
     /// <inheritdoc />
+    [JsonIgnore]
     public override int Version => 1;
 }

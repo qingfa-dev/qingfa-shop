@@ -2,6 +2,7 @@ using Application.Common.Messaging.Bus;
 using Application.Features.Todos.Events;
 
 using Core.Common.Monad.Errors;
+using Core.Common.Monad.Metadata;
 using Core.Common.Monad.Results;
 using Core.Todos.Items;
 
@@ -34,6 +35,46 @@ public sealed class TodoCompletedIntegrationHandlerTest
         integration.CompletedAtUtc.Should().Be(CompletedAtUtc);
         integration.EventName.Should().Be("todo.completed");
         integration.Version.Should().Be(1);
+    }
+
+    #endregion
+
+    #region Metadata
+
+    [Fact(DisplayName = "Handle should stamp the tenant metadata when the source carries none")]
+    public async Task Handle_ShouldStampTenantMetadata()
+    {
+        var publisher = new RecordingIntegrationEventPublisher();
+        var handler = new TodoCompletedIntegrationHandler(publisher);
+        var domainEvent = new TodoCompleted(TodoId, TenantId, CompletedAtUtc);
+
+        domainEvent.GetTenantId().Should().BeNull();
+
+        await handler.Handle(domainEvent, TestContext.Current.CancellationToken);
+
+        var integration = (TodoCompletedIntegration)publisher.Published[0];
+        integration.GetTenantId().Should().Be(TenantId);
+    }
+
+    [Fact(DisplayName = "Handle should copy the metadata instead of aliasing it")]
+    public async Task Handle_ShouldNotAliasDomainEventMetadata()
+    {
+        var publisher = new RecordingIntegrationEventPublisher();
+        var handler = new TodoCompletedIntegrationHandler(publisher);
+        var domainEvent = new TodoCompleted(TodoId, TenantId, CompletedAtUtc);
+        domainEvent.Metadata["source"] = "domain";
+
+        await handler.Handle(domainEvent, TestContext.Current.CancellationToken);
+
+        var integration = (TodoCompletedIntegration)publisher.Published[0];
+
+        integration.Metadata.Should().NotBeSameAs(domainEvent.Metadata);
+
+        domainEvent.Metadata["marker"] = "domain-only";
+
+        integration.Metadata.Should().ContainKey("source");
+        integration.Metadata.Should().NotContainKey("marker");
+        domainEvent.Metadata.Should().NotContainKey(MetadataConstant.Keyword.TenantId);
     }
 
     #endregion
