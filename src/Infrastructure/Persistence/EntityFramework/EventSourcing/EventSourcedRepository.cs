@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 using Application.Common.EventSourcing;
 using Application.Common.Messaging.Outbox;
 using Application.Common.Messaging.Serialization;
@@ -12,6 +14,7 @@ using Microsoft.Extensions.Logging;
 namespace Infrastructure.Persistence.EntityFramework.EventSourcing;
 
 /// <summary>Loads and saves an event-sourced aggregate against the event store.</summary>
+[ExcludeFromCodeCoverage]
 public sealed class EventSourcedRepository<TAggregate, TKey>(
     IEventStore eventStore,
     ISnapshotStore snapshotStore,

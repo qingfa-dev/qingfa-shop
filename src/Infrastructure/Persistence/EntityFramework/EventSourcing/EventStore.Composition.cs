@@ -33,6 +33,8 @@ public static class EventStoreComposition
 
         builder.Services.TryAddSingleton(TimeProvider.System);
         builder.Services.TryAddSingleton(sp =>
+            sp.GetRequiredService<IOptions<EventStoreSetting>>().Value);
+        builder.Services.TryAddSingleton(sp =>
         {
             EventStoreSetting setting = sp.GetRequiredService<IOptions<EventStoreSetting>>().Value;
             return new IntervalSnapshotPolicy(setting.SnapshotInterval);

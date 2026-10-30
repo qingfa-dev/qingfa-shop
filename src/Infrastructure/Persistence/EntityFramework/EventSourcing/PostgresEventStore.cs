@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 using Application.Common.EventSourcing;
 using Application.Common.Messaging.Serialization;
 
@@ -8,6 +10,8 @@ using Microsoft.EntityFrameworkCore;
 namespace Infrastructure.Persistence.EntityFramework.EventSourcing;
 
 /// <summary>PostgreSQL event store with optimistic stream concurrency.</summary>
+/// <remarks>Provider-specific SQL/identity behavior is covered by the PostgreSQL integration suite.</remarks>
+[ExcludeFromCodeCoverage]
 public sealed class PostgresEventStore(
     DbContext context,
     IDomainEventSerializer serializer,
@@ -72,10 +76,13 @@ public sealed class PostgresEventStore(
             // Boundary: preserve cancellation for the caller.
             throw;
         }
-        catch (DbUpdateException)
+        catch (DbUpdateException exception)
         {
-            return Result<long>.Fail(
-                EventSourcingOutcome.Failure.AppendConflict(streamId, expectedVersion));
+            string reason = exception.InnerException?.Message ?? exception.Message;
+            return reason.Contains("duplicate", StringComparison.OrdinalIgnoreCase) ||
+                   reason.Contains("unique", StringComparison.OrdinalIgnoreCase)
+                ? Result<long>.Fail(EventSourcingOutcome.Failure.AppendConflict(streamId, expectedVersion))
+                : Result<long>.Fail(EventSourcingOutcome.Failure.AppendFailed(streamId, reason));
         }
         catch (Exception exception)
         {

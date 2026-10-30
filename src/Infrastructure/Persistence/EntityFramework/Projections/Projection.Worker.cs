@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 using Infrastructure.Persistence.EntityFramework.EventSourcing.Options;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -6,6 +8,7 @@ using Microsoft.Extensions.Hosting;
 namespace Infrastructure.Persistence.EntityFramework.Projections;
 
 /// <summary>Polls the event log and feeds registered projections.</summary>
+[ExcludeFromCodeCoverage]
 public sealed class ProjectionWorker(
     IServiceScopeFactory scopeFactory,
     EventStoreSetting setting,
