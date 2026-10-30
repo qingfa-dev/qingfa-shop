@@ -129,8 +129,8 @@ public sealed class TodoBackfillIntegrationTest(MessagingFixture fixture) : IAsy
         (await ReadVersionAsync(db, row.Id)).Should().Be(7);
     }
 
-    [Fact(DisplayName = "Backfill should recover a missing marker after a partial run")]
-    public async Task Backfill_WhenMarkerAndSnapshotAreMissing_ShouldRecoverThem()
+    [Fact(DisplayName = "Backfill should recover only the marker after a partial run")]
+    public async Task Backfill_WhenMarkerIsMissing_ShouldRecoverOnlyTheMarker()
     {
         // Arrange
         ApplicationDbContext db = fixture.DbContext;
@@ -152,7 +152,9 @@ public sealed class TodoBackfillIntegrationTest(MessagingFixture fixture) : IAsy
 
         (await seeder.ExecuteAsync(initialization)).IsSuccess.Should().BeTrue();
 
-        // Arrange: simulate a crash after the append but before the artifacts were durable.
+        // Arrange: simulate a crash after the append but before the marker was durable.
+        // The snapshot is removed as well to prove recovery must not rebuild it from the
+        // read model, which can lag the stream.
         await db.Set<Snapshot>()
             .Where(snapshot => snapshot.StreamId == streamId)
             .ExecuteDeleteAsync();
@@ -162,7 +164,7 @@ public sealed class TodoBackfillIntegrationTest(MessagingFixture fixture) : IAsy
         // Act
         Result recovered = await seeder.ExecuteAsync(initialization);
 
-        // Assert: the stream is untouched, while the snapshot and marker are re-created.
+        // Assert: the stream is untouched, the marker is restored, and no snapshot is written.
         recovered.IsSuccess.Should().BeTrue();
         Result<IReadOnlyList<StoredEvent>> stream = await eventStore.ReadStreamAsync(streamId, 1);
         stream.IsSuccess.Should().BeTrue();
@@ -170,8 +172,7 @@ public sealed class TodoBackfillIntegrationTest(MessagingFixture fixture) : IAsy
 
         Result<Maybe<Snapshot>> snapshot = await snapshots.LoadAsync(streamId);
         snapshot.IsSuccess.Should().BeTrue();
-        snapshot.Value.HasValue.Should().BeTrue();
-        snapshot.Value.Value.Version.Should().Be(7);
+        snapshot.Value.HasValue.Should().BeFalse();
 
         Result<long> restoredMarker = await checkpoints.GetPositionAsync(marker);
         restoredMarker.IsSuccess.Should().BeTrue();

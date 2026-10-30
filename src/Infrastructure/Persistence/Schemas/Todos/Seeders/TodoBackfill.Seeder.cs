@@ -151,17 +151,38 @@ public sealed class TodoBackfillSeeder(
                 if (existing.IsFailure)
                     return Result<IReadOnlyList<InitializationOperation>>.Fail(existing.Errors);
 
-                // Filter: rows with a stream are already backfilled.
-                if (existing.Value.Count > 0)
-                    continue;
-
-                operations.Add(new InitializationOperation
+                if (existing.Value.Count == 0)
                 {
-                    StepName = Name,
-                    Description = $"Backfill event stream '{streamId}'.",
-                    Type = InitializationOperationType.DataChange,
-                    EstimatedRowsAffected = 1,
-                });
+                    operations.Add(new InitializationOperation
+                    {
+                        StepName = Name,
+                        Description = $"Backfill event stream '{streamId}'.",
+                        Type = InitializationOperationType.DataChange,
+                        EstimatedRowsAffected = 1,
+                    });
+                }
+                else
+                {
+                    string marker = MarkerName(row.Id);
+                    Result<long> position = await checkpoints.GetPositionAsync(
+                        marker, cancellationToken);
+                    if (position.IsFailure)
+                        return Result<IReadOnlyList<InitializationOperation>>.Fail(position.Errors);
+
+                    // Filter: a positive marker means the stream is already complete.
+                    if (position.Value > 0)
+                        continue;
+
+                    // Audit: execute would re-save only the marker for this row, so preview
+                    // must report the same recovery work.
+                    operations.Add(new InitializationOperation
+                    {
+                        StepName = Name,
+                        Description = $"Recover backfill marker for stream '{streamId}'.",
+                        Type = InitializationOperationType.DataChange,
+                        EstimatedRowsAffected = 1,
+                    });
+                }
 
                 if (operations.Count >= batchSize)
                     break;
@@ -223,15 +244,13 @@ public sealed class TodoBackfillSeeder(
             if (position.Value > 0)
                 return Result<bool>.Success(false);
 
-            // Audit: the stream exists but the marker was lost, so re-save the artifacts
-            // idempotently instead of leaving the row unmigrated forever.
-            long version = existing.Value[^1].Version;
-            Result recoveredSnapshot = await SaveSnapshotAsync(row, version, cancellationToken);
-            if (recoveredSnapshot.IsFailure)
-                return Result<bool>.Fail(recoveredSnapshot.Errors);
-
+            // Audit: the stream exists but its marker was lost, so re-save only the marker.
+            // Never rebuild the snapshot here: the projection is asynchronous, so a lagging
+            // read model would be stamped at the stream's latest version and the repository
+            // would then trust that stale state and skip the unreplayed tail. A missing
+            // snapshot is safe because the repository falls back to a full replay.
             Result recoveredMarker = await checkpoints.SavePositionAsync(
-                marker, version, cancellationToken);
+                marker, existing.Value[^1].Version, cancellationToken);
             return recoveredMarker.IsFailure
                 ? Result<bool>.Fail(recoveredMarker.Errors)
                 : Result<bool>.Success(false);
