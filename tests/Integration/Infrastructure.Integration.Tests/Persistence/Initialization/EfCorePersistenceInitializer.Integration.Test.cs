@@ -3,12 +3,12 @@ using Application.Common.Persistence.Initialization.Migrations;
 using Application.Common.Persistence.Initialization.Resetters;
 using Application.Common.Persistence.Initialization.Seeders;
 
+using Infrastructure.Persistence.EntityFramework.Contexts;
 using Infrastructure.Persistence.EntityFramework.Initialization;
 using Infrastructure.Persistence.Initialization;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Infrastructure.Persistence.EntityFramework.Contexts;
 
 namespace Infrastructure.Integration.Tests.Persistence.Initialization;
 
@@ -187,14 +187,15 @@ public sealed class EfCorePersistenceInitializerIntegrationTest(PersistenceIniti
         // Assert
         result.IsSuccess.Should().BeTrue();
         reports.Should().NotBeEmpty();
-        reports.Should().OnlyContain(report => report.TotalSteps == 6);
+        reports.Should().OnlyContain(report => report.TotalSteps == 7);
         reports.Select(report => report.CurrentStepName)
             .Should().Contain("migrator:efcore")
             .And.Contain("seeder:identity-roles")
             .And.Contain("seeder:identity-users")
             .And.Contain("seeder:todo-categories")
             .And.Contain("seeder:todo-lists")
-            .And.Contain("seeder:todos");
+            .And.Contain("seeder:todos")
+            .And.Contain("seeder:todo-backfill");
     }
 
     [Fact(DisplayName = "InitializeAsync should fail without throwing when cancelled")]
@@ -225,7 +226,7 @@ public sealed class EfCorePersistenceInitializerIntegrationTest(PersistenceIniti
         var steps = initializer.GetPipeline().GetOrderedSteps();
 
         // Assert
-        steps.Should().HaveCount(6);
+        steps.Should().HaveCount(7);
         steps[0].Should().BeAssignableTo<IPersistenceMigrator>();
         steps.Skip(1).Should().AllBeAssignableTo<IPersistenceSeeder>();
         steps.Select(step => step.Name).Should().ContainInOrder(
@@ -234,6 +235,7 @@ public sealed class EfCorePersistenceInitializerIntegrationTest(PersistenceIniti
             "seeder:todo-lists",
             "seeder:identity-roles",
             "seeder:todos",
+            "seeder:todo-backfill",
             "seeder:identity-users");
     }
 
@@ -262,6 +264,7 @@ public sealed class EfCorePersistenceInitializerIntegrationTest(PersistenceIniti
             "seeder:todo-lists",
             "seeder:identity-roles",
             "seeder:todos",
+            "seeder:todo-backfill",
             "seeder:identity-users");
         result.Value.Operations.Should().Contain(op => op.Type == InitializationOperationType.SchemaCheck);
         result.Value.Operations.Should().Contain(op => op.Type == InitializationOperationType.DataChange);

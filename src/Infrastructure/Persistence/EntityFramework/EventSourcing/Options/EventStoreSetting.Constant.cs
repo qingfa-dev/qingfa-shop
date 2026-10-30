@@ -10,5 +10,6 @@ public static class EventStoreSettingConstant
         public const int BatchSize = 500;
         public const int SnapshotInterval = 50;
         public const int PollingIntervalSeconds = 2;
+        public const bool BackfillTodos = false;
     }
 }

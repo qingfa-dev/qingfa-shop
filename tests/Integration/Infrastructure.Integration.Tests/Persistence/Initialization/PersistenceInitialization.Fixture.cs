@@ -1,13 +1,20 @@
+using Application.Common.EventSourcing;
+using Application.Common.Messaging.Serialization;
 using Application.Common.Persistence.Initialization;
 using Application.Common.Persistence.UnitOfWorks;
 
+using Core.Todos.Items;
+
+using Infrastructure.Integrations.Messaging.Serialization;
 using Infrastructure.Persistence;
 using Infrastructure.Persistence.EntityFramework.Contexts;
+using Infrastructure.Persistence.EntityFramework.EventSourcing;
+using Infrastructure.Persistence.EntityFramework.EventSourcing.Options;
 using Infrastructure.Persistence.EntityFramework.Options;
 using Infrastructure.Persistence.EntityFramework.UnitOfWorks;
 
-using Microsoft.EntityFrameworkCore;
 using Microsoft.AspNetCore.Builder;
+using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 
 using Npgsql;
@@ -58,8 +65,33 @@ public sealed class PersistenceInitializationFixture : IAsyncLifetime
         // Register: the persistence initializer and module seeders through the same
         // composition root production uses, so wiring defects surface here too.
         builder.AddPersistenceInitialization<ApplicationDbContext>();
+        RegisterEventStoreCollaborators(services);
 
         Services = services.BuildServiceProvider();
+    }
+
+    /// <summary>Registers the collaborators the todo backfill seeder needs to be constructed.</summary>
+    private static void RegisterEventStoreCollaborators(IServiceCollection services)
+    {
+        // Initialize: the same serializer and stores production composes; the backfill
+        // setting stays disabled by default, so initialization remains a no-op.
+        var eventTypes = new EventTypeRegistry(
+            typeof(TodoCreated).Assembly,
+            typeof(Infrastructure.AssemblyMarker).Assembly);
+        var serializer = new JsonMessageSerializer(eventTypes);
+
+        services.AddSingleton(serializer);
+        services.AddSingleton<IDomainEventSerializer>(serializer);
+        services.AddSingleton(TimeProvider.System);
+        services.AddSingleton(new EventStoreSetting());
+        services.AddScoped<IEventStore>(sp => new PostgresEventStore(
+            sp.GetRequiredService<ApplicationDbContext>(),
+            serializer,
+            TimeProvider.System));
+        services.AddScoped<ISnapshotStore>(sp =>
+            new EfCoreSnapshotStore(sp.GetRequiredService<ApplicationDbContext>()));
+        services.AddScoped<IProjectionCheckpointStore>(sp =>
+            new EfCoreProjectionCheckpointStore(sp.GetRequiredService<ApplicationDbContext>()));
     }
 
     /// <summary>Creates a scope for one database operation.</summary>

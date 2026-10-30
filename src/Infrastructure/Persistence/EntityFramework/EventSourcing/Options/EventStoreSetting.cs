@@ -10,4 +10,5 @@ public sealed class EventStoreSetting
     public int BatchSize { get; set; } = EventStoreSettingConstant.Defaults.BatchSize;
     public int SnapshotInterval { get; set; } = EventStoreSettingConstant.Defaults.SnapshotInterval;
     public int PollingIntervalSeconds { get; set; } = EventStoreSettingConstant.Defaults.PollingIntervalSeconds;
+    public bool BackfillTodos { get; set; } = EventStoreSettingConstant.Defaults.BackfillTodos;
 }
