@@ -48,6 +48,48 @@ public sealed class InitializationPipelineTest
     }
 
     [Fact]
+    public void TryBuild_WithValidSteps_ShouldSucceed()
+    {
+        var builder = new InitializationPipelineBuilder();
+        builder.AddStep(CreateStep("step1", 1));
+
+        Result<IInitializationPipeline> result = builder.TryBuild();
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.GetOrderedSteps().Should().ContainSingle();
+    }
+
+    [Fact]
+    public void TryBuild_WithMissingDependency_ShouldReturnStableFailure()
+    {
+        var builder = new InitializationPipelineBuilder();
+        builder.AddStep(CreateStep("step1", 1));
+        builder.DependsOn("step1", "missing");
+
+        Result<IInitializationPipeline> result = builder.TryBuild();
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().ContainSingle()
+            .Which.Code.Should().Be(InitializationOutcome.Codes.MissingDependency);
+    }
+
+    [Fact]
+    public void TryBuild_WithCircularDependency_ShouldReturnStableFailure()
+    {
+        var builder = new InitializationPipelineBuilder();
+        builder.AddStep(CreateStep("step1", 1));
+        builder.AddStep(CreateStep("step2", 2));
+        builder.DependsOn("step1", "step2");
+        builder.DependsOn("step2", "step1");
+
+        Result<IInitializationPipeline> result = builder.TryBuild();
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().ContainSingle()
+            .Which.Code.Should().Be(InitializationOutcome.Codes.CircularDependency);
+    }
+
+    [Fact]
     public void AddSteps_WithArray_ShouldAddAll()
     {
         var builder = new InitializationPipelineBuilder();

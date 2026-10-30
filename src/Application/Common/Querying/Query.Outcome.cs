@@ -103,6 +103,16 @@ public static class QueryOutcome
             code: QueryErrorCodes.SearchNotConfigured,
             message: "No searchable field is mapped.");
 
+        /// <summary>The search text is missing or whitespace.</summary>
+        public static Error SearchRequired => Error.BadRequest(
+            code: QueryErrorCodes.SearchRequired,
+            message: "Search text is required.");
+
+        /// <summary>The requested search mode is not supported by the request type.</summary>
+        public static Error SearchModeMismatch(string mode) => Error.BadRequest(
+            code: QueryErrorCodes.SearchModeMismatch,
+            message: $"Search mode '{mode}' is not valid for this request.");
+
         /// <summary>The search text exceeds the maximum allowed length.</summary>
         public static Error SearchTooLong(int max) => Error.BadRequest(
             code: QueryErrorCodes.SearchTooLong,

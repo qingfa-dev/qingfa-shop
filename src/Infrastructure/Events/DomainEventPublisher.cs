@@ -43,6 +43,7 @@ public sealed class DomainEventPublisher : IDomainEventPublisher
             }
             catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
             {
+                // Boundary: preserve cancellation for the caller.
                 throw;
             }
             catch (Exception exception)

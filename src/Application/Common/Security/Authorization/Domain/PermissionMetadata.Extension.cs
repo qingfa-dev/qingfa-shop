@@ -78,6 +78,7 @@ public static class PermissionMetadataExtension
     private static PermissionMetadata Unwrap(
         Result<PermissionMetadata> result,
         string parameterName) =>
+        // Boundary: the With* methods are the throwing convenience API; use TryWith* in flow.
         result.IsSuccess
             ? result.Value
             : throw new ArgumentException(result.Errors[0].Message, parameterName);

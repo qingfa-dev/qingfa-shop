@@ -57,6 +57,7 @@ public static class EntityFrameworkComposition
             .ValidateWithConnectionString(setting, configuration);
         if (validationResult.IsFailure)
         {
+            // Boundary: startup configuration is invalid; fail before serving traffic.
             throw new InvalidOperationException(
                 string.Join("; ", PersistenceSettingValidation.Describe(validationResult)));
         }
@@ -108,6 +109,7 @@ public static class EntityFrameworkComposition
                         break;
 
                     default:
+                        // Boundary: an unsupported EF provider is a startup configuration error.
                         throw new NotSupportedException($"Provider '{opt.Provider}' is not supported.");
                 }
             },
@@ -196,6 +198,7 @@ public static class EntityFrameworkComposition
                         break;
 
                     default:
+                        // Boundary: an unsupported EF provider is a startup configuration error.
                         throw new NotSupportedException($"Provider '{setting.Provider}' is not supported.");
                 }
             },

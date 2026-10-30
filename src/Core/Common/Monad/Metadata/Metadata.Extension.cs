@@ -188,6 +188,37 @@ public static class MetadataExtensions
         return TryConvertValue(rawValue, out value);
     }
 
+    /// <summary>
+    /// Attempts to read a required metadata value without throwing.
+    /// </summary>
+    /// <typeparam name="TValue">The target type.</typeparam>
+    /// <param name="metadata">The metadata dictionary.</param>
+    /// <param name="metadataKey">The metadata key.</param>
+    /// <returns>The converted value, or a stable missing/invalid-type failure.</returns>
+    public static Result<TValue> TryGetRequiredValue<TValue>(
+        this IMetadata metadata,
+        string metadataKey)
+    {
+        ArgumentNullException.ThrowIfNull(metadata);
+        ArgumentException.ThrowIfNullOrWhiteSpace(metadataKey);
+
+        if (!metadata.TryGetValue(metadataKey, out object? rawValue) || rawValue is null)
+        {
+            return Result<TValue>.Fail(Error.NotFound(
+                MetadataOutcome.Failure.Key.Metadata.NotFound.Code,
+                MetadataOutcome.Failure.Key.Metadata.NotFound.Message));
+        }
+
+        if (!TryConvertValue(rawValue, out TValue? convertedValue) || convertedValue is null)
+        {
+            return Result<TValue>.Fail(Error.Validation(
+                MetadataOutcome.Failure.Value.Metadata.InvalidType.Code,
+                MetadataOutcome.Failure.Value.Metadata.InvalidType.Message));
+        }
+
+        return Result<TValue>.Success(convertedValue);
+    }
+
     #endregion
 
     #region Presence

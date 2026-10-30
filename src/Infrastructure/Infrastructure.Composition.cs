@@ -89,6 +89,7 @@ public static class InfrastructureComposition
 
         if (result.IsFailure)
         {
+            // Boundary: startup initialization failed; the host must not start with a broken database.
             throw new InvalidOperationException(
                 $"Database initialization failed: {string.Join("; ", result.Errors.Select(error => error.Message))}");
         }

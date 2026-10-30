@@ -62,6 +62,7 @@ public sealed class TransactionBehavior<TRequest, TResponse>(
         catch (OperationCanceledException)
         {
             await transaction.RollbackAsync(CancellationToken.None).ConfigureAwait(false);
+            // Boundary: cancellation and unexpected exceptions must reach the caller/exception behavior.
             throw;
         }
         catch

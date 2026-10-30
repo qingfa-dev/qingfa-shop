@@ -68,23 +68,16 @@ internal static class SearchText
         // Default: Contains is the most common search mode — partial substring match.
         var mode = parameters.SearchMode ?? SearchMode.Contains;
 
-        // Select: FullText uses a specialized request type; all other modes use BasicSearchRequest.
-        SearchRequest request = mode switch
-        {
-            SearchMode.FullText => new FullTextSearchRequest(query)
-            {
-                Fields = fields,
-                TermLogic = parameters.SearchTermLogic ?? SearchTermLogic.And,
-                CaseInsensitive = parameters.SearchCaseInsensitive ?? true,
-            },
-            _ => new BasicSearchRequest(query, mode)
-            {
-                Fields = fields,
-                TermLogic = parameters.SearchTermLogic ?? SearchTermLogic.And,
-                CaseInsensitive = parameters.SearchCaseInsensitive ?? true,
-            }
-        };
+        // Create: the factory validates the query and mode without throwing.
+        Result<SearchRequest> created = SearchRequest.TryCreate(query, mode);
+        if (created.IsFailure)
+            return created;
 
-        return Result<SearchRequest>.Success(request);
+        return Result<SearchRequest>.Success(created.Value with
+        {
+            Fields = fields,
+            TermLogic = parameters.SearchTermLogic ?? SearchTermLogic.And,
+            CaseInsensitive = parameters.SearchCaseInsensitive ?? true,
+        });
     }
 }

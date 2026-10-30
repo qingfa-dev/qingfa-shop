@@ -70,6 +70,12 @@ public static class QueryErrorCodes
     /// <summary>A search was requested but no field in the map is marked as searchable.</summary>
     public const string SearchNotConfigured = "Query.Search.NotConfigured";
 
+    /// <summary>The search text is missing or whitespace.</summary>
+    public const string SearchRequired = "Query.Search.Required";
+
+    /// <summary>The requested search mode is not supported by the request type.</summary>
+    public const string SearchModeMismatch = "Query.Search.ModeMismatch";
+
     /// <summary>The search text exceeds the maximum allowed length.</summary>
     public const string SearchTooLong = "Query.Search.TooLong";
 

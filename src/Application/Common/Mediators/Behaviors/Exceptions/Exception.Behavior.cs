@@ -27,7 +27,7 @@ public sealed partial class ExceptionMappingBehavior<TRequest, TResponse>(
         }
         catch (OperationCanceledException)
         {
-            // Cancellation: propagate it; a cancelled request is not a failure result.
+            // Boundary: cancellation is not a failure result; propagate it.
             throw;
         }
         catch (Exception ex)

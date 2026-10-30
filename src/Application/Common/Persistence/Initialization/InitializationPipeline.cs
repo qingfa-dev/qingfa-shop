@@ -147,35 +147,54 @@ public sealed class InitializationPipelineBuilder : IInitializationPipelineBuild
 
     public IInitializationPipeline Build()
     {
-        var orderedSteps = ResolveOrder();
-        ApplyMetadata(orderedSteps);
-        return new InitializationPipeline(orderedSteps);
+        Result<IInitializationPipeline> result = TryBuild();
+
+        // Boundary: the builder interface predates Result; use TryBuild inside a flow.
+        return result.IsSuccess
+            ? result.Value
+            : throw new InvalidOperationException(result.Errors[0].Message);
     }
 
-    private IReadOnlyList<IInitializationStep> ResolveOrder()
+    /// <summary>Builds the pipeline without throwing when the dependency graph is invalid.</summary>
+    /// <returns>The pipeline, or a stable graph failure.</returns>
+    public Result<IInitializationPipeline> TryBuild()
+    {
+        Result<IReadOnlyList<IInitializationStep>> ordered = ResolveOrder();
+        if (ordered.IsFailure)
+            return Result<IInitializationPipeline>.Fail(ordered.Errors);
+
+        ApplyMetadata(ordered.Value);
+        return Result<IInitializationPipeline>.Success(new InitializationPipeline(ordered.Value));
+    }
+
+    private Result<IReadOnlyList<IInitializationStep>> ResolveOrder()
     {
         if (_orderFunc != null)
         {
-            return _orderFunc(_steps);
+            return Result<IReadOnlyList<IInitializationStep>>.Success(_orderFunc(_steps));
         }
 
         // Default: topological sort by DependsOn, then by Order
         var graph = _steps.ToDictionary(s => s.Name, s => _dependencies.GetValueOrDefault(s.Name, []));
-        var sorted = TopologicalSort(graph);
-        return sorted.Select(name => _steps.First(s => s.Name == name)).ToList();
+        Result<List<string>> sorted = TopologicalSort(graph);
+        if (sorted.IsFailure)
+            return Result<IReadOnlyList<IInitializationStep>>.Fail(sorted.Errors);
+
+        return Result<IReadOnlyList<IInitializationStep>>.Success(
+            sorted.Value.Select(name => _steps.First(s => s.Name == name)).ToList());
     }
 
-    private static List<string> TopologicalSort(Dictionary<string, string[]> graph)
+    private static Result<List<string>> TopologicalSort(Dictionary<string, string[]> graph)
     {
         var visited = new HashSet<string>();
         var visiting = new HashSet<string>();
         var result = new List<string>();
 
-        void Visit(string node)
+        Result Visit(string node)
         {
-            if (visited.Contains(node)) return;
+            if (visited.Contains(node)) return Result.Ok();
             if (visiting.Contains(node))
-                throw new InvalidOperationException($"Circular dependency detected involving '{node}'.");
+                return Result.Fail(InitializationOutcome.Failure.CircularDependency(node));
 
             visiting.Add(node);
             if (graph.TryGetValue(node, out var deps))
@@ -183,21 +202,27 @@ public sealed class InitializationPipelineBuilder : IInitializationPipelineBuild
                 foreach (var dep in deps)
                 {
                     if (!graph.ContainsKey(dep))
-                        throw new InvalidOperationException($"Step '{node}' depends on unknown step '{dep}'.");
-                    Visit(dep);
+                        return Result.Fail(InitializationOutcome.Failure.MissingDependency(node, dep));
+
+                    Result visitedDependency = Visit(dep);
+                    if (visitedDependency.IsFailure)
+                        return visitedDependency;
                 }
             }
             visiting.Remove(node);
             visited.Add(node);
             result.Add(node);
+            return Result.Ok();
         }
 
         foreach (var node in graph.Keys)
         {
-            Visit(node);
+            Result visitedNode = Visit(node);
+            if (visitedNode.IsFailure)
+                return Result<List<string>>.Fail(visitedNode.Errors);
         }
 
-        return result;
+        return Result<List<string>>.Success(result);
     }
 
     private static IReadOnlyList<IInitializationStep> DefaultOrder(IEnumerable<IInitializationStep> steps)

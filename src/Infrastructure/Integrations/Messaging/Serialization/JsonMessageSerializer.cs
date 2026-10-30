@@ -84,6 +84,7 @@ public sealed class JsonMessageSerializer : IDomainEventSerializer, IIntegration
 
         // Fail: a null payload means the stored outbox row cannot be replayed.
         object message = document.RootElement.Deserialize(eventType, _options)
+            // Boundary: the payload is not a valid event; the dispatcher converts this to a Result.
             ?? throw new InvalidOperationException(
                 $"The payload for '{eventType.FullName}' deserialized to null.");
 

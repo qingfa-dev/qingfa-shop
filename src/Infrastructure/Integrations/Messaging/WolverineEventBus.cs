@@ -35,6 +35,7 @@ public sealed class WolverineEventBus(IMessageBus bus) : IEventBus
         }
         catch (OperationCanceledException) when (cancellationToken.IsCancellationRequested)
         {
+            // Boundary: cancellation must propagate to the transport.
             throw;
         }
         catch (Exception exception)

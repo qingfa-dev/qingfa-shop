@@ -125,6 +125,7 @@ public sealed class EfCoreInboxStore : IInboxStore
             await RollbackAsync(transaction);
 
             // Escalate: cancellation keeps its own meaning and never becomes an internal failure.
+            // Boundary: cancellation must propagate; the transaction is already rolled back.
             throw;
         }
         catch (Exception exception)

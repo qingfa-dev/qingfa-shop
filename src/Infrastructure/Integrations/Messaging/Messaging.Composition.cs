@@ -76,6 +76,7 @@ public static class MessagingComposition
         if (setting.Transport == MessagingTransport.RabbitMq &&
             string.IsNullOrWhiteSpace(connectionString))
         {
+            // Boundary: RabbitMQ was selected without an address; fail before serving traffic.
             throw new InvalidOperationException(
                 "Messaging:Transport is RabbitMq but no connection string was found in " +
                 "'ConnectionStrings:messaging', 'ConnectionStrings:rabbitmq', or 'Messaging:ConnectionString'.");

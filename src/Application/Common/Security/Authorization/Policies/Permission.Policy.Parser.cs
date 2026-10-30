@@ -26,25 +26,46 @@ public static class PermissionPolicyParser
     {
         ArgumentNullException.ThrowIfNull(permissions);
 
+        Result<string> result = TryCompose(permissions, matchMode);
+
+        // Boundary: the attribute constructor cannot return Result; callers inside a flow
+        // must use TryCompose instead.
+        return result.IsSuccess
+            ? result.Value
+            : throw new ArgumentException(result.Errors[0].Message, nameof(permissions));
+    }
+
+    /// <summary>Composes a policy name without throwing.</summary>
+    /// <param name="permissions">The permission identifiers.</param>
+    /// <param name="matchMode">How the identifiers combine.</param>
+    /// <returns>The composed policy name, or a stable validation failure.</returns>
+    public static Result<string> TryCompose(
+        IEnumerable<string> permissions,
+        PermissionMatchMode matchMode)
+    {
+        if (permissions is null)
+            return Result<string>.Fail(PermissionPolicyOutcome.Failure.NoPermissions);
+
         string[] normalized = [.. permissions
             .Where(permission => !string.IsNullOrWhiteSpace(permission))
             .Select(PermissionMetadataConstant.NormalizeIdentifier)
             .Distinct(StringComparer.Ordinal)];
 
         if (normalized.Length == 0)
-            throw new ArgumentException("At least one permission identifier is required.", nameof(permissions));
+            return Result<string>.Fail(PermissionPolicyOutcome.Failure.NoPermissions);
 
         string? invalid = normalized.FirstOrDefault(
             permission => !PermissionMetadataConstant.IsValidIdentifier(permission));
 
         if (invalid is not null)
-            throw new ArgumentException($"'{invalid}' is not a canonical permission identifier.", nameof(permissions));
+            return Result<string>.Fail(PermissionPolicyOutcome.Failure.InvalidIdentifier(invalid));
 
         if (normalized.Length == 1)
-            return normalized[0];
+            return Result<string>.Success(normalized[0]);
 
         string mode = matchMode == PermissionMatchMode.Any ? "any" : "all";
-        return $"{Prefix}{ModeSeparator}{mode}{ModeSeparator}{string.Join(PermissionSeparator, normalized)}";
+        return Result<string>.Success(
+            $"{Prefix}{ModeSeparator}{mode}{ModeSeparator}{string.Join(PermissionSeparator, normalized)}");
     }
 
     /// <summary>Attempts to parse an encoded multi-permission policy name.</summary>

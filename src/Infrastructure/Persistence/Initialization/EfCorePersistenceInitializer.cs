@@ -132,9 +132,15 @@ public sealed class EfCorePersistenceInitializer<TContext> : IPersistenceInitial
                 }
             }
 
-            var builtPipeline = builder.Build();
+            Result<IInitializationPipeline> built = builder.TryBuild();
+            if (built.IsFailure)
+            {
+                Error graphError = built.Errors[0];
+                PersistenceInitializerLoggers.Failed(_logger, graphError.Code, graphError.Message);
+                return Result.Fail(built.Errors);
+            }
 
-            var result = await builtPipeline.ExecuteAsync(initContext, progress, cancellationToken);
+            var result = await built.Value.ExecuteAsync(initContext, progress, cancellationToken);
 
             if (result.IsSuccess)
             {

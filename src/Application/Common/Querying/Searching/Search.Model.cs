@@ -18,6 +18,7 @@ public abstract record SearchRequest
     /// <param name="mode">The search algorithm (Contains, StartsWith, Exact, FullText, Fuzzy).</param>
     protected SearchRequest(string query, SearchMode mode)
     {
+        // Boundary: constructors are the throwing convenience API; callers should use TryCreate.
         if (string.IsNullOrWhiteSpace(query))
             throw new ArgumentException("Search query is required.", nameof(query));
         if (query.Length > QueryConstant.Limits.Search.MaxLength)
@@ -26,6 +27,30 @@ public abstract record SearchRequest
 
         Query = query;
         Mode = mode;
+    }
+
+    /// <summary>
+    /// Creates a validated search request without throwing.
+    /// </summary>
+    /// <param name="query">The text to search for.</param>
+    /// <param name="mode">The search algorithm.</param>
+    /// <returns>The request, or a stable validation failure.</returns>
+    public static Result<SearchRequest> TryCreate(string query, SearchMode mode)
+    {
+        if (string.IsNullOrWhiteSpace(query))
+            return Result<SearchRequest>.Fail(QueryOutcome.Failure.SearchRequired);
+
+        if (query.Length > QueryConstant.Limits.Search.MaxLength)
+            return Result<SearchRequest>.Fail(
+                QueryOutcome.Failure.SearchTooLong(QueryConstant.Limits.Search.MaxLength));
+
+        if (!Enum.IsDefined(mode))
+            return Result<SearchRequest>.Fail(QueryOutcome.Failure.SearchModeMismatch(mode.ToString()));
+
+        return Result<SearchRequest>.Success(
+            mode == SearchMode.FullText
+                ? new FullTextSearchRequest(query)
+                : new BasicSearchRequest(query, mode));
     }
 
     /// <summary>The text to search for. May contain multiple terms; how they combine is
@@ -61,6 +86,7 @@ public sealed record BasicSearchRequest : SearchRequest
     /// <param name="mode">The search mode; must not be FullText (use FullTextSearchRequest instead).</param>
     public BasicSearchRequest(string query, SearchMode mode) : base(query, mode)
     {
+        // Boundary: constructors are the throwing convenience API; callers should use TryCreate.
         if (mode == SearchMode.FullText)
             throw new ArgumentException("Use FullTextSearchRequest for FullText mode.", nameof(mode));
     }

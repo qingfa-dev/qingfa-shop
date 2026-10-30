@@ -39,31 +39,59 @@ public abstract class EventSourcedAggregate<TKey> : IEventSourcedAggregate<TKey>
     /// </exception>
     public void LoadFromHistory(long version, IEnumerable<IDomainEvent> history)
     {
+        Result result = TryLoadFromHistory(version, history);
+
+        if (result.IsFailure)
+        {
+            Error error = result.Errors[0];
+
+            // Boundary: keep the legacy throwing API for existing callers. New flow code
+            // must use TryLoadFromHistory and handle the Result.
+            if (error.Code == EventSourcingOutcome.Codes.AlreadyLoaded)
+                throw new InvalidOperationException(error.Message);
+
+            if (error.Code == EventSourcingOutcome.Codes.VersionInvalid)
+                throw new ArgumentOutOfRangeException(nameof(version), error.Message);
+
+            throw new InvalidOperationException(error.Message);
+        }
+    }
+
+    /// <summary>Replays history without throwing on a corrupt or repeated stream.</summary>
+    /// <param name="version">The stream version of the last supplied event.</param>
+    /// <param name="history">The events to replay.</param>
+    /// <returns>Success with the replayed state; otherwise a stable replay failure.</returns>
+    public Result TryLoadFromHistory(long version, IEnumerable<IDomainEvent> history)
+    {
         ArgumentNullException.ThrowIfNull(history);
-        ArgumentOutOfRangeException.ThrowIfNegative(version);
 
-        // Guard: rehydration is a one-time transition from an empty aggregate to a stream state.
         if (_historyLoaded || _uncommittedEvents.Count > 0)
-            throw new InvalidOperationException(
-                "History can only be loaded once, before the aggregate raises new events.");
+            return Result.Fail(EventSourcingOutcome.Failure.AlreadyLoaded);
 
-        // Materialize: enumerate the stream exactly once so counting and replay see the same events.
         IReadOnlyCollection<IDomainEvent> events = history as IReadOnlyCollection<IDomainEvent>
             ?? history.ToList();
 
-        // Validate: the stream version counts applied events, so it cannot be below that count.
-        if (version < events.Count)
-            throw new ArgumentOutOfRangeException(
-                nameof(version),
-                version,
-                "The stream version cannot be below the number of supplied events.");
+        if (version < 0 || version < events.Count)
+            return Result.Fail(EventSourcingOutcome.Failure.VersionInvalid(version, events.Count));
 
-        // Apply: a When failure leaves partial state; the caller must discard the aggregate.
         foreach (IDomainEvent domainEvent in events)
-            When(domainEvent);
+        {
+            try
+            {
+                When(domainEvent);
+            }
+            catch (Exception exception) when (exception is not OperationCanceledException)
+            {
+                // Boundary: a When failure leaves partial state; the caller must discard the aggregate.
+                return Result.Fail(EventSourcingOutcome.Failure.ApplyFailed(
+                    domainEvent.GetType().Name,
+                    exception.Message));
+            }
+        }
 
         _historyLoaded = true;
         Version = version;
+        return Result.Ok();
     }
 
     /// <summary>Applies a new event and records it for the next append.</summary>

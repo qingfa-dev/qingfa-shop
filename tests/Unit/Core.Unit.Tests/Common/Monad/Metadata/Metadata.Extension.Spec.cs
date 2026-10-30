@@ -1112,6 +1112,54 @@ public class MetadataExtensionSpec
 
     #endregion
 
+    #region Try required value
+
+    [Fact]
+    public void TryGetRequiredValue_WhenKeyIsPresent_ShouldReturnTypedValue()
+    {
+        // Arrange
+        IMetadata metadata = StubWith("k", 42);
+
+        // Act
+        Result<int> result = metadata.TryGetRequiredValue<int>("k");
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().Be(42);
+    }
+
+    [Fact]
+    public void TryGetRequiredValue_WhenKeyIsMissing_ShouldReturnNotFound()
+    {
+        // Arrange
+        IMetadata metadata = new MetadataStub();
+
+        // Act
+        Result<int> result = metadata.TryGetRequiredValue<int>("missing");
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().ContainSingle()
+            .Which.Code.Should().Be(MetadataOutcome.Failure.Key.Metadata.NotFound.Code);
+    }
+
+    [Fact]
+    public void TryGetRequiredValue_WhenValueIsNotConvertible_ShouldReturnValidation()
+    {
+        // Arrange
+        IMetadata metadata = StubWith("k", "not-an-int");
+
+        // Act
+        Result<int> result = metadata.TryGetRequiredValue<int>("k");
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().ContainSingle()
+            .Which.Code.Should().Be(MetadataOutcome.Failure.Value.Metadata.InvalidType.Code);
+    }
+
+    #endregion
+
     #region Contract
 
     [Fact]

@@ -401,11 +401,11 @@ public sealed partial class QueryBuilder<T>
         if (_map is null || !_map.Fields.Any(field => field.Searchable))
             return Result<Query<T>>.Fail(QueryOutcome.Failure.SearchNotConfigured);
 
-        SearchRequest request = mode == SearchMode.FullText
-            ? new FullTextSearchRequest(text)
-            : new BasicSearchRequest(text, mode);
+        Result<SearchRequest> created = SearchRequest.TryCreate(text, mode);
+        if (created.IsFailure)
+            return Result<Query<T>>.Fail(created.Errors);
 
-        return Result<Query<T>>.Ok(current with { Search = request });
+        return Result<Query<T>>.Ok(current with { Search = created.Value });
     }
 
     private Result<Query<T>> ApplySearch(Query<T> current, SearchRequest request)

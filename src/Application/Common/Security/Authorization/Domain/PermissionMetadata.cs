@@ -97,6 +97,8 @@ public sealed record PermissionMetadata
             description,
             example,
             identifier);
+        // Boundary: this is the throwing convenience factory for static metadata definitions;
+        // use TryCreate inside request flow.
         s_validator.ValidateAndThrow(metadata);
         return metadata;
     }
@@ -109,6 +111,7 @@ public sealed record PermissionMetadata
     {
         Result<PermissionMetadata> result = TryParse(identifier);
 
+        // Boundary: this compatibility API throws for malformed input; use TryParse internally.
         return result.IsSuccess
             ? result.Value
             : throw new FormatException(result.Errors[0].Message);

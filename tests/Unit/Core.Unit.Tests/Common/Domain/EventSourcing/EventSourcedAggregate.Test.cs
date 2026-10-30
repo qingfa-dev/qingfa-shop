@@ -89,6 +89,74 @@ public sealed class EventSourcedAggregateTest
     }
 
     [Fact]
+    public void TryLoadFromHistory_WithValidHistory_ShouldReplay()
+    {
+        // Arrange
+        var history = new IDomainEvent[]
+        {
+            new Created(Guid.NewGuid(), "first"),
+            new Renamed("second"),
+        };
+        var aggregate = new TestAggregate();
+
+        // Act
+        Result result = aggregate.TryLoadFromHistory(2, history);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        aggregate.Version.Should().Be(2);
+        aggregate.Name.Should().Be("second");
+    }
+
+    [Fact]
+    public void TryLoadFromHistory_WhenCalledTwice_ShouldReturnAlreadyLoaded()
+    {
+        // Arrange
+        var aggregate = new TestAggregate();
+        aggregate.TryLoadFromHistory(0, []);
+
+        // Act
+        Result result = aggregate.TryLoadFromHistory(0, []);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().ContainSingle()
+            .Which.Code.Should().Be(EventSourcingOutcome.Codes.AlreadyLoaded);
+    }
+
+    [Fact]
+    public void TryLoadFromHistory_WhenVersionIsBelowEventCount_ShouldReturnVersionInvalid()
+    {
+        // Arrange
+        var aggregate = new TestAggregate();
+
+        // Act
+        Result result = aggregate.TryLoadFromHistory(
+            1,
+            [new Created(Guid.NewGuid(), "first"), new Renamed("second")]);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().ContainSingle()
+            .Which.Code.Should().Be(EventSourcingOutcome.Codes.VersionInvalid);
+    }
+
+    [Fact]
+    public void TryLoadFromHistory_WhenApplyFails_ShouldReturnApplyFailed()
+    {
+        // Arrange
+        var aggregate = new TestAggregate();
+
+        // Act
+        Result result = aggregate.TryLoadFromHistory(1, [new Unknown("x")]);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().ContainSingle()
+            .Which.Code.Should().Be(EventSourcingOutcome.Codes.ApplyFailed);
+    }
+
+    [Fact]
     public void ClearUncommittedEvents_RemovesOnlyUncommittedEvents()
     {
         // Arrange

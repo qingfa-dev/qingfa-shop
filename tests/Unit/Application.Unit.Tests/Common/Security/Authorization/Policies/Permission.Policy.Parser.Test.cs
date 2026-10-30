@@ -65,6 +65,39 @@ public sealed class PermissionPolicyParserTests
             .WithMessage("*not-a-permission*");
     }
 
+    [Fact(DisplayName = "TryCompose: should return a stable failure for no permissions")]
+    public void TryCompose_WithNoPermissions_ShouldFail()
+    {
+        Result<string> result = PermissionPolicyParser.TryCompose([], PermissionMatchMode.All);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().ContainSingle()
+            .Which.Code.Should().Be(PermissionPolicyOutcome.Codes.NoPermissions);
+    }
+
+    [Fact(DisplayName = "TryCompose: should return a stable failure for a malformed identifier")]
+    public void TryCompose_WithMalformedIdentifier_ShouldFail()
+    {
+        Result<string> result = PermissionPolicyParser.TryCompose(
+            ["not-a-permission"],
+            PermissionMatchMode.All);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().ContainSingle()
+            .Which.Code.Should().Be(PermissionPolicyOutcome.Codes.InvalidIdentifier);
+    }
+
+    [Fact(DisplayName = "TryCompose: should encode multiple permissions without throwing")]
+    public void TryCompose_WithMultiplePermissions_ShouldEncode()
+    {
+        Result<string> result = PermissionPolicyParser.TryCompose(
+            ["catalog.products.product.publish", "catalog.products.product.retire"],
+            PermissionMatchMode.Any);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().StartWith("permission:any:");
+    }
+
     [Fact(DisplayName = "TryParse: should parse an ALL policy")]
     public void TryParse_All_ShouldSucceed()
     {

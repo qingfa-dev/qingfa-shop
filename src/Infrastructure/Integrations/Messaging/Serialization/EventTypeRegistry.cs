@@ -81,7 +81,8 @@ public sealed class EventTypeRegistry : IEventTypeRegistry
         // Fail: an unregistered identity means the consumer cannot safely materialise the payload.
         return _types.TryGetValue(Key(eventName, eventVersion), out Type? type)
             ? type
-            : throw new InvalidOperationException(
+            : // Boundary: misconfigured wire contract; resolved by the serializer adapter.
+            throw new InvalidOperationException(
                 $"No event type is registered for '{eventName}' version {eventVersion}.");
     }
 
