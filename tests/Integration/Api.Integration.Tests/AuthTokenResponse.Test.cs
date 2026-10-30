@@ -41,34 +41,57 @@ public sealed class AuthTokenResponseTest
         mapped.User.Should().Be(user);
     }
 
-    [Fact(DisplayName = "Serialization should not leak the refresh-token entity")]
-    public void Serialization_ShouldNotLeakRefreshTokenEntity()
+    [Fact(DisplayName = "Serialization should expose only the public token and user fields")]
+    public void Serialization_ShouldExposeOnlyPublicFields()
     {
         DateTimeOffset now = new(2026, 10, 30, 12, 0, 0, TimeSpan.Zero);
+        Guid userId = Guid.NewGuid();
+        var user = new IdentityUserModel(
+            userId,
+            "admin",
+            "admin@example.com",
+            "Admin",
+            null,
+            true,
+            false);
         var response = new AuthResponse(
             new AccessToken("access-token", "Bearer", now, now.AddMinutes(15), "jti-1"),
             new RefreshTokenIssue("refresh-token", CreateRefreshToken(now)),
-            new IdentityUserModel(
-                Guid.NewGuid(),
-                "admin",
-                "admin@example.com",
-                "Admin",
-                null,
-                true,
-                false));
+            user);
 
         string json = JsonSerializer.Serialize(
             AuthTokenResponse.FromAuthResponse(response),
             ApiJson.Options);
 
         using JsonDocument document = JsonDocument.Parse(json);
+        JsonElement root = document.RootElement;
 
-        document.RootElement.EnumerateObject()
+        root.EnumerateObject()
             .Select(property => property.Name)
             .Should()
             .BeEquivalentTo("accessToken", "expiresAtUtc", "refreshToken", "user");
-        json.Should().NotContain("tokenHash");
-        json.Should().NotContain("entity");
+        root.GetProperty("accessToken").GetString().Should().Be("access-token");
+        root.GetProperty("refreshToken").GetString().Should().Be("refresh-token");
+
+        JsonElement serializedUser = root.GetProperty("user");
+        serializedUser.EnumerateObject()
+            .Select(property => property.Name)
+            .Should()
+            .BeEquivalentTo(
+                "id",
+                "userName",
+                "email",
+                "firstName",
+                "lastName",
+                "emailConfirmed",
+                "twoFactorEnabled");
+        serializedUser.GetProperty("id").GetGuid().Should().Be(userId);
+        serializedUser.GetProperty("userName").GetString().Should().Be("admin");
+        serializedUser.GetProperty("email").GetString().Should().Be("admin@example.com");
+        serializedUser.GetProperty("firstName").GetString().Should().Be("Admin");
+        serializedUser.GetProperty("lastName").ValueKind.Should().Be(JsonValueKind.Null);
+        serializedUser.GetProperty("emailConfirmed").GetBoolean().Should().BeTrue();
+        serializedUser.GetProperty("twoFactorEnabled").GetBoolean().Should().BeFalse();
     }
 
     private static RefreshToken CreateRefreshToken(DateTimeOffset now)

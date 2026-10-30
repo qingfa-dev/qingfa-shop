@@ -164,6 +164,11 @@ New module `app/Web.Api/Endpoints/Identity/Identity.Endpoint.cs`.
 | GET | `/api/auth/external/{provider}/callback` | public | callback + one-time code |
 | POST | `/api/auth/external/exchange` | public | consume one-time code |
 
+`POST /api/auth/register` returns `200 OK` with the created user projection. A
+`201 Created` + `Location` response is deferred: there is no addressable per-user
+resource route yet (`/api/auth/me` resolves the caller, not an arbitrary new user), so
+a `Location` header would point at a route that does not exist.
+
 ### Public DTOs
 
 ```csharp

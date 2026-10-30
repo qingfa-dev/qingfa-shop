@@ -21,6 +21,8 @@ public sealed class IdentityEndpoint : ICarterModule
 {
     private const string BasePath = "/api/auth";
 
+    private static readonly long MaxUnixSeconds = DateTimeOffset.MaxValue.ToUnixTimeSeconds();
+
     /// <inheritdoc />
     public void AddRoutes(IEndpointRouteBuilder app)
     {
@@ -54,6 +56,63 @@ public sealed class IdentityEndpoint : ICarterModule
                 "The authenticated user identifier is missing or invalid."));
     }
 
+    /// <summary>Runs an authenticated action with the resolved user identifier.</summary>
+    /// <param name="userContext">The current request's user context.</param>
+    /// <param name="action">The action to run when the identifier is valid.</param>
+    /// <param name="cancellationToken">The request cancellation token.</param>
+    /// <returns>The action result, or a Result-shaped 401 when the identifier is missing.</returns>
+    internal static Task<IResult> WithUserIdAsync(
+        IUserContext userContext,
+        Func<Guid, CancellationToken, Task<IResult>> action,
+        CancellationToken cancellationToken)
+    {
+        ArgumentNullException.ThrowIfNull(action);
+
+        Result<Guid> userId = RequireUserId(userContext);
+
+        return userId.IsFailure
+            ? Task.FromResult(userId.ToApiResult())
+            : action(userId.Value, cancellationToken);
+    }
+
+    /// <summary>Builds the logout command from the body and the authenticated principal.</summary>
+    /// <param name="request">The optional body carrying a refresh token.</param>
+    /// <param name="principal">The authenticated principal.</param>
+    /// <returns>The application logout request.</returns>
+    internal static ApplicationLogoutRequest ToLogoutRequest(
+        LogoutRequest? request,
+        ClaimsPrincipal principal)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+
+        return (request ?? new LogoutRequest()).ToApplication(
+            principal.FindFirstValue(JwtRegisteredClaimNames.Jti),
+            ReadAccessTokenExpiry(principal));
+    }
+
+    /// <summary>Reads the access-token expiry from the principal's <c>exp</c> claim.</summary>
+    /// <param name="principal">The authenticated principal.</param>
+    /// <returns>The expiry, or <c>null</c> when the claim is absent or out of range.</returns>
+    internal static DateTimeOffset? ReadAccessTokenExpiry(ClaimsPrincipal principal)
+    {
+        ArgumentNullException.ThrowIfNull(principal);
+
+        string? expiresAt = principal.FindFirstValue(JwtRegisteredClaimNames.Exp);
+
+        if (!long.TryParse(
+            expiresAt,
+            NumberStyles.Integer,
+            CultureInfo.InvariantCulture,
+            out long seconds))
+        {
+            return null;
+        }
+
+        return seconds >= 0 && seconds <= MaxUnixSeconds
+            ? DateTimeOffset.FromUnixTimeSeconds(seconds)
+            : null;
+    }
+
     private static async Task<IResult> RegisterAsync(
         RegisterRequest request,
         IIdentityService identity,
@@ -82,14 +141,9 @@ public sealed class IdentityEndpoint : ICarterModule
         ClaimsPrincipal principal,
         IIdentityService identity,
         CancellationToken cancellationToken)
-    {
-        var logout = new ApplicationLogoutRequest(
-            request?.RefreshToken,
-            principal.FindFirstValue(JwtRegisteredClaimNames.Jti),
-            ReadAccessTokenExpiry(principal));
-
-        return ToNoContent(await identity.LogoutAsync(logout, cancellationToken));
-    }
+        => ToNoContent(await identity.LogoutAsync(
+            ToLogoutRequest(request, principal),
+            cancellationToken));
 
     private static async Task<IResult> ConfirmEmailAsync(
         ConfirmEmailRequest request,
@@ -123,75 +177,50 @@ public sealed class IdentityEndpoint : ICarterModule
             request.ToApplication(),
             cancellationToken));
 
-    private static async Task<IResult> GetMeAsync(
+    private static Task<IResult> GetMeAsync(
         IUserContext userContext,
         IIdentityService identity,
         CancellationToken cancellationToken)
-    {
-        Result<Guid> userId = RequireUserId(userContext);
+        => WithUserIdAsync(
+            userContext,
+            async (userId, token) => (await identity.GetInfoAsync(userId, token)).ToApiResult(),
+            cancellationToken);
 
-        return userId.IsFailure
-            ? userId.ToApiResult()
-            : (await identity.GetInfoAsync(userId.Value, cancellationToken)).ToApiResult();
-    }
-
-    private static async Task<IResult> UpdateMeAsync(
+    private static Task<IResult> UpdateMeAsync(
         UpdateInfoRequest request,
         IUserContext userContext,
         IIdentityService identity,
         CancellationToken cancellationToken)
-    {
-        Result<Guid> userId = RequireUserId(userContext);
-
-        return userId.IsFailure
-            ? userId.ToApiResult()
-            : (await identity.UpdateInfoAsync(
-                userId.Value,
+        => WithUserIdAsync(
+            userContext,
+            async (userId, token) => (await identity.UpdateInfoAsync(
+                userId,
                 request.ToApplication(),
-                cancellationToken)).ToApiResult();
-    }
+                token)).ToApiResult(),
+            cancellationToken);
 
-    private static async Task<IResult> GetTwoFactorAsync(
+    private static Task<IResult> GetTwoFactorAsync(
         IUserContext userContext,
         IIdentityService identity,
         CancellationToken cancellationToken)
-    {
-        Result<Guid> userId = RequireUserId(userContext);
+        => WithUserIdAsync(
+            userContext,
+            async (userId, token) => (await identity.GetTwoFactorInfoAsync(userId, token)).ToApiResult(),
+            cancellationToken);
 
-        return userId.IsFailure
-            ? userId.ToApiResult()
-            : (await identity.GetTwoFactorInfoAsync(userId.Value, cancellationToken)).ToApiResult();
-    }
-
-    private static async Task<IResult> UpdateTwoFactorAsync(
+    private static Task<IResult> UpdateTwoFactorAsync(
         TwoFactorRequest request,
         IUserContext userContext,
         IIdentityService identity,
         CancellationToken cancellationToken)
-    {
-        Result<Guid> userId = RequireUserId(userContext);
-
-        return userId.IsFailure
-            ? userId.ToApiResult()
-            : (await identity.UpdateTwoFactorAsync(
-                userId.Value,
+        => WithUserIdAsync(
+            userContext,
+            async (userId, token) => (await identity.UpdateTwoFactorAsync(
+                userId,
                 request.ToApplication(),
-                cancellationToken)).ToApiResult();
-    }
+                token)).ToApiResult(),
+            cancellationToken);
 
     private static IResult ToNoContent(Result result) =>
         result.IsSuccess ? Result.NoContent().ToApiResult() : result.ToApiResult();
-
-    private static DateTimeOffset? ReadAccessTokenExpiry(ClaimsPrincipal principal)
-    {
-        string? expiresAt = principal.FindFirstValue(JwtRegisteredClaimNames.Exp);
-
-        return long.TryParse(
-            expiresAt,
-            NumberStyles.Integer,
-            CultureInfo.InvariantCulture,
-            out long seconds)
-            ? DateTimeOffset.FromUnixTimeSeconds(seconds)
-            : null;
-    }
 }
