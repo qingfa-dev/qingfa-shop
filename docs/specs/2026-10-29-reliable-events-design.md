@@ -360,6 +360,13 @@ public sealed class TransactionBehavior<TRequest, TResponse>(
   behavior maps it.
 - Always disposes the transaction.
 
+### Provider constraint
+
+Do not enable EF Core's retrying execution strategy for the request context. Command and
+inbox transactions are user-initiated, and EF rejects `SaveChanges` inside a user-initiated
+transaction when `EnableRetryOnFailure` is active. Retries belong at the command or HTTP
+boundary.
+
 ### Pipeline order
 
 `Logging → Validation → Transaction → ExceptionMapping`

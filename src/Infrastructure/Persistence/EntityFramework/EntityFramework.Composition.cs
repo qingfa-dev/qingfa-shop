@@ -98,13 +98,12 @@ public static class EntityFrameworkComposition
                     case "postgresql":
                         optionsBuilder.UseNpgsql(cs, npgsqlOptions =>
                         {
+                            // Enforce: command and inbox transactions are user-initiated;
+                            // EF's retrying execution strategy rejects them. Retries belong
+                            // at the command/HTTP boundary, not inside the DbContext.
                             npgsqlOptions
                                 .UsePersistenceMigrationHistory()
-                                .CommandTimeout(opt.CommandTimeoutSeconds)
-                                .EnableRetryOnFailure(
-                                    opt.MaxRetryAttempts,
-                                    TimeSpan.FromMilliseconds(opt.RetryBaseDelayMs),
-                                    null);
+                                .CommandTimeout(opt.CommandTimeoutSeconds);
                         });
                         break;
 
@@ -187,13 +186,12 @@ public static class EntityFrameworkComposition
                     case "postgresql":
                         optionsBuilder.UseNpgsql(connectionString, npgsqlOptions =>
                         {
+                            // Enforce: command and inbox transactions are user-initiated;
+                            // EF's retrying execution strategy rejects them. Retries belong
+                            // at the command/HTTP boundary, not inside the DbContext.
                             npgsqlOptions
                                 .UsePersistenceMigrationHistory()
-                                .CommandTimeout(setting.CommandTimeoutSeconds)
-                                .EnableRetryOnFailure(
-                                    setting.MaxRetryAttempts,
-                                    TimeSpan.FromMilliseconds(setting.RetryBaseDelayMs),
-                                    null);
+                                .CommandTimeout(setting.CommandTimeoutSeconds);
                         });
                         break;
 
