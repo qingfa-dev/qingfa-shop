@@ -103,7 +103,7 @@ HTTP status from `Result.StatusCode`, body is the non-generic `Result` so the fa
 
 ## 6. Serialization
 
-One shared options object, `ApiJson.Options`:
+One shared options object, `ApiJson.Options` in `src/Infrastructure/Integrations/Serialization`, applied to the host by `AddApiJsonOptions()`:
 
 ```csharp
 new JsonSerializerOptions(JsonSerializerDefaults.Web)

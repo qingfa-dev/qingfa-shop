@@ -6,7 +6,7 @@ using Microsoft.Extensions.Options;
 
 using Testing.Fixtures;
 
-using Web.Api.Endpoints.Results;
+using Infrastructure.Integrations.Serialization;
 
 namespace Api.Integration.Tests;
 

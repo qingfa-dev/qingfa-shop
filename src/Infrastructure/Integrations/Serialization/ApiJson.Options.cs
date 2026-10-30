@@ -1,7 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
-namespace Web.Api.Endpoints.Results;
+namespace Infrastructure.Integrations.Serialization;
 
 /// <summary>The single JSON configuration for API requests and responses.</summary>
 public static class ApiJson

@@ -11,7 +11,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using ServiceDefaults;
 
 using Web.Api.Endpoints.Authorization;
-using Web.Api.Endpoints.Results;
+using Infrastructure.Integrations.Serialization;
 using Web.Api.Endpoints.Todos;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -43,35 +43,9 @@ builder.Services.TryAddSingleton(TimeProvider.System);
 // everything else as a 500 problem response.
 builder.Services.AddProblemDetails();
 
-// Initialize: one serializer governs request binding and response writing, so results
-// and endpoint payloads share naming, enum, escaping, and null-handling rules.
-// Enforce: JsonOptions.SerializerOptions is read-only, so mirror every setting that
-// changes the wire format; a partial copy would let escaping or numbers drift.
-builder.Services.ConfigureHttpJsonOptions(options =>
-{
-    JsonSerializerOptions target = options.SerializerOptions;
-    JsonSerializerOptions source = ApiJson.Options;
-
-    target.AllowTrailingCommas = source.AllowTrailingCommas;
-    target.DefaultIgnoreCondition = source.DefaultIgnoreCondition;
-    target.DictionaryKeyPolicy = source.DictionaryKeyPolicy;
-    target.Encoder = source.Encoder;
-    target.IgnoreReadOnlyFields = source.IgnoreReadOnlyFields;
-    target.IgnoreReadOnlyProperties = source.IgnoreReadOnlyProperties;
-    target.IncludeFields = source.IncludeFields;
-    target.MaxDepth = source.MaxDepth;
-    target.NumberHandling = source.NumberHandling;
-    target.PropertyNameCaseInsensitive = source.PropertyNameCaseInsensitive;
-    target.PropertyNamingPolicy = source.PropertyNamingPolicy;
-    target.ReadCommentHandling = source.ReadCommentHandling;
-    target.ReferenceHandler = source.ReferenceHandler;
-    target.UnmappedMemberHandling = source.UnmappedMemberHandling;
-    target.WriteIndented = source.WriteIndented;
-
-    target.Converters.Clear();
-    foreach (var converter in source.Converters)
-        target.Converters.Add(converter);
-});
+// Initialize: one serializer governs request binding and response writing, so
+// results and endpoint payloads share naming, enum, escaping, and null rules.
+builder.AddApiJsonOptions();
 
 WebApplication app = builder.Build();
 

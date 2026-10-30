@@ -2,6 +2,8 @@ using System.Text.Json;
 
 using Core.Common.Monad.Results;
 
+using Infrastructure.Integrations.Serialization;
+
 using Microsoft.AspNetCore.Http;
 
 namespace Web.Api.Endpoints.Results;

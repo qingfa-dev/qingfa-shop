@@ -3,7 +3,7 @@ using System.Text.Json;
 using Core.Common.Monad.Errors;
 using Core.Common.Monad.Results;
 
-using Web.Api.Endpoints.Results;
+using Infrastructure.Integrations.Serialization;
 
 namespace Api.Integration.Tests;
 
