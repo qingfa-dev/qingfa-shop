@@ -2,8 +2,6 @@ using Application.Common.Mediators.Queries;
 using Application.Features.Todos.Items.Mappings;
 using Application.Features.Todos.Items.Models;
 
-using Core.Todos.Items;
-
 namespace Application.Features.Todos.Items.Queries;
 
 public static class GetTodo
@@ -22,7 +20,7 @@ public static class GetTodo
 
     #region Handler
     public sealed class UseCaseHandler(
-        IPersistentRepository<Todo, Guid> repository,
+        IPersistentRepository<TodoReadModel, Guid> repository,
         ITenantContext tenantContext)
         : IQueryHandler<UseCase, Response>
     {

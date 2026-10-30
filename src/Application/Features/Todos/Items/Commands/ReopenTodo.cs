@@ -1,3 +1,5 @@
+using Application.Common.EventSourcing;
+using Application.Features.Todos.Common;
 using Application.Features.Todos.Items.Mappings;
 using Application.Features.Todos.Items.Models;
 
@@ -34,8 +36,7 @@ public static class ReopenTodo
 
     #region Handler
     public sealed class UseCaseHandler(
-        IPersistentRepository<Todo, Guid> repository,
-        IUnitOfWork unitOfWork,
+        IEventSourcedRepository<Todo, Guid> repository,
         ITenantContext tenantContext,
         IUserContext actorContext,
         TimeProvider clock)
@@ -50,23 +51,27 @@ public static class ReopenTodo
 
             Request request = command.Request;
 
-            return await tenantContext.RequireTenant()
-                .BindAsync(
-                    (tenantId, ct) => repository.FindOwnedAsync(
-                        request.Id,
-                        tenantId,
-                        ct),
-                    cancellationToken)
-                .BindAsync(todo => Result<Todo>.Ok(todo).Reopen())
-                .BindAsync(
-                    (todo, ct) => repository.SaveUpdateAsync(
-                        unitOfWork,
-                        todo,
-                        clock.GetUtcNow(),
-                        actorContext.Actor(),
-                        ct),
-                    cancellationToken)
-                .MapAsync(todo => todo.ToModel<Response>());
+            Result<Guid> tenant = tenantContext.RequireTenant();
+            if (tenant.IsFailure)
+                return Result<Response>.Fail(tenant.Errors);
+
+            Result<Todo> loaded = await repository
+                .LoadOwnedAsync(request.Id, tenant.Value, cancellationToken)
+                .ConfigureAwait(false);
+            if (loaded.IsFailure)
+                return Result<Response>.Fail(loaded.Errors);
+
+            Result transition = loaded.Value.Reopen(clock.GetUtcNow(), actorContext.Actor());
+            if (transition.IsFailure)
+                return Result<Response>.Fail(transition.Errors);
+
+            Result saved = await repository
+                .SaveAsync(loaded.Value, cancellationToken)
+                .ConfigureAwait(false);
+
+            return saved.IsFailure
+                ? Result<Response>.Fail(saved.Errors)
+                : Result<Response>.Success(loaded.Value.ToModel<Response>());
         }
     }
     #endregion

@@ -11,7 +11,6 @@ public sealed class AddTodoCategoryTest
     private static AddTodoCategory.UseCaseHandler CreateHandler(TodoHandlerFixture fixture) =>
         new(
             fixture.TodoRepository.Object,
-            fixture.UnitOfWork.Object,
             fixture.Tenant,
             fixture.ActorContext,
             fixture.Clock);
@@ -33,6 +32,8 @@ public sealed class AddTodoCategoryTest
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.CategoryIds.Should().Contain(categoryId);
+        todo.UncommittedEvents.OfType<TodoCategoryAdded>().Should().ContainSingle()
+            .Which.CategoryId.Should().Be(categoryId);
     }
 
     [Fact(DisplayName = "AddCategory should reject a duplicate reference")]
@@ -42,7 +43,8 @@ public sealed class AddTodoCategoryTest
         var fixture = new TodoHandlerFixture();
         Todo todo = fixture.CreateTodo();
         Guid categoryId = Guid.NewGuid();
-        todo.CategoryIds.Add(categoryId);
+        todo.AddCategory(categoryId, TodoHandlerFixture.Now, TodoHandlerFixture.Actor)
+            .IsSuccess.Should().BeTrue();
         fixture.RegisterTodo(todo);
 
         // Act
@@ -52,6 +54,9 @@ public sealed class AddTodoCategoryTest
 
         // Assert
         result.IsFailure.Should().BeTrue();
+        fixture.TodoRepository.Verify(
+            store => store.SaveAsync(It.IsAny<Todo>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact(DisplayName = "AddCategory validator should reject a missing category id")]

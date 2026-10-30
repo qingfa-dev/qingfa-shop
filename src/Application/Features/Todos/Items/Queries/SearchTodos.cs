@@ -6,8 +6,6 @@ using Application.Features.Todos.Common;
 using Application.Features.Todos.Items.Mappings;
 using Application.Features.Todos.Items.Models;
 
-using Core.Todos.Items;
-
 namespace Application.Features.Todos.Items.Queries;
 
 public static class SearchTodos
@@ -27,7 +25,7 @@ public static class SearchTodos
 
     #region Handler
     public sealed class UseCaseHandler(
-        IMappableRepository<Todo, Guid> repository,
+        IMappableRepository<TodoReadModel, Guid> repository,
         IQueryMapProvider mapProvider,
         ITenantContext tenantContext)
         : IQueryHandler<UseCase, QueryPage<Response>>
@@ -42,7 +40,7 @@ public static class SearchTodos
             Request request = query.Request;
 
             return await tenantContext.RequireTenant()
-                .Bind(tenantId => QueryBuilder<Todo>.FromParameters(
+                .Bind(tenantId => QueryBuilder<TodoReadModel>.FromParameters(
                         mapProvider,
                         request.Parameters)
                     .ApplyTodoScope(tenantId, request.IncludeDeleted)

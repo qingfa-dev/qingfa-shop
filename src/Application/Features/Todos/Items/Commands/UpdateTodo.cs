@@ -1,3 +1,5 @@
+using Application.Common.EventSourcing;
+using Application.Features.Todos.Common;
 using Application.Features.Todos.Items.Mappings;
 using Application.Features.Todos.Items.Models;
 using Application.Features.Todos.Items.Validators;
@@ -47,8 +49,7 @@ public static class UpdateTodo
 
     #region Handler
     public sealed class UseCaseHandler(
-        IPersistentRepository<Todo, Guid> repository,
-        IUnitOfWork unitOfWork,
+        IEventSourcedRepository<Todo, Guid> repository,
         ITenantContext tenantContext,
         IUserContext actorContext,
         TimeProvider clock)
@@ -63,64 +64,45 @@ public static class UpdateTodo
 
             Request request = command.Request;
 
-            return await tenantContext.RequireTenant()
-                .BindAsync(
-                    (tenantId, ct) => repository.FindOwnedAsync(request.Id, tenantId, ct),
-                    cancellationToken)
-                .BindAsync(todo => ApplyChanges(todo, request))
-                .BindAsync(
-                    (todo, ct) => repository.SaveUpdateAsync(
-                        unitOfWork,
-                        todo,
-                        clock.GetUtcNow(),
-                        actorContext.Actor(),
-                        ct),
-                    cancellationToken)
-                .MapAsync(todo => todo.ToModel<Response>());
-        }
+            Result<Guid> tenant = tenantContext.RequireTenant();
+            if (tenant.IsFailure)
+                return Result<Response>.Fail(tenant.Errors);
 
-        private static Result<Todo> ApplyChanges(Todo todo, Request request)
-        {
-            Result<Todo> updated = Result<Todo>.Ok(todo);
+            Result<Todo> loaded = await repository
+                .LoadOwnedAsync(request.Id, tenant.Value, cancellationToken)
+                .ConfigureAwait(false);
+            if (loaded.IsFailure)
+                return Result<Response>.Fail(loaded.Errors);
 
-            if (request.Title is not null)
-            {
-                updated = updated.SetTitle(request.Title);
-            }
+            Todo todo = loaded.Value;
+            string title = request.Title ?? todo.Title;
+            string? description = request.ClearDescription
+                ? null
+                : request.Description ?? todo.Description;
+            TodoPriority priority = request.Priority ?? todo.Priority;
+            DateTimeOffset? dueAtUtc = request.ClearDueAt
+                ? null
+                : request.DueAtUtc ?? todo.DueAtUtc;
+            Guid? listId = request.ClearList ? null : request.ListId ?? todo.ListId;
 
-            if (request.ClearDescription)
-            {
-                updated = updated.SetDescription(null);
-            }
-            else if (request.Description is not null)
-            {
-                updated = updated.SetDescription(request.Description);
-            }
+            Result updated = todo.Update(
+                title,
+                description,
+                priority,
+                dueAtUtc,
+                listId,
+                clock.GetUtcNow(),
+                actorContext.Actor());
+            if (updated.IsFailure)
+                return Result<Response>.Fail(updated.Errors);
 
-            if (request.Priority is { } priority)
-            {
-                updated = updated.SetPriority(priority);
-            }
+            Result saved = await repository
+                .SaveAsync(todo, cancellationToken)
+                .ConfigureAwait(false);
 
-            if (request.ClearDueAt)
-            {
-                updated = updated.ClearDueDate();
-            }
-            else if (request.DueAtUtc is { } dueAtUtc)
-            {
-                updated = updated.SetDueDate(dueAtUtc);
-            }
-
-            if (request.ListId is { } listId)
-            {
-                updated = updated.AssignToList(listId);
-            }
-            else if (request.ClearList)
-            {
-                updated = updated.ClearList();
-            }
-
-            return updated;
+            return saved.IsFailure
+                ? Result<Response>.Fail(saved.Errors)
+                : Result<Response>.Success(todo.ToModel<Response>());
         }
     }
     #endregion

@@ -14,7 +14,6 @@ public sealed class CreateTodoTest
     {
         var handler = new CreateTodo.UseCaseHandler(
             fixture.TodoRepository.Object,
-            fixture.UnitOfWork.Object,
             fixture.Tenant,
             fixture.ActorContext,
             fixture.Clock);
@@ -31,9 +30,9 @@ public sealed class CreateTodoTest
         var fixture = new TodoHandlerFixture();
         Todo? stored = null;
         fixture.TodoRepository
-            .Setup(repository => repository.AddAsync(It.IsAny<Todo>(), It.IsAny<CancellationToken>()))
+            .Setup(store => store.SaveAsync(It.IsAny<Todo>(), It.IsAny<CancellationToken>()))
             .Callback<Todo, CancellationToken>((todo, _) => stored = todo)
-            .ReturnsAsync(Result.Success());
+            .ReturnsAsync(Result.Ok());
 
         // Act
         Result<CreateTodo.Response> result = await CreateAsync(
@@ -51,9 +50,12 @@ public sealed class CreateTodoTest
         stored!.TenantId.Should().Be(TodoHandlerFixture.TenantId);
         stored.Status.Should().Be(TodoStatus.Pending);
         stored.Title.Should().Be("Ship the feature");
+        stored.UncommittedEvents.Should().ContainSingle()
+            .Which.Should().BeOfType<TodoCreated>();
         result.Value.Title.Should().Be("Ship the feature");
-        fixture.UnitOfWork.Verify(
-            unit => unit.SaveChangesAsync(It.IsAny<CancellationToken>()), Times.Once);
+        fixture.TodoRepository.Verify(
+            store => store.SaveAsync(It.IsAny<Todo>(), It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 
     [Fact(DisplayName = "Create should fail when the tenant is missing")]
@@ -72,7 +74,7 @@ public sealed class CreateTodoTest
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().Contain(error => error.Code == "Tenantable.TenantId.Required");
         fixture.TodoRepository.Verify(
-            repository => repository.AddAsync(It.IsAny<Todo>(), It.IsAny<CancellationToken>()),
+            store => store.SaveAsync(It.IsAny<Todo>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -84,9 +86,9 @@ public sealed class CreateTodoTest
         Guid categoryId = Guid.NewGuid();
         Todo? stored = null;
         fixture.TodoRepository
-            .Setup(repository => repository.AddAsync(It.IsAny<Todo>(), It.IsAny<CancellationToken>()))
+            .Setup(store => store.SaveAsync(It.IsAny<Todo>(), It.IsAny<CancellationToken>()))
             .Callback<Todo, CancellationToken>((todo, _) => stored = todo)
-            .ReturnsAsync(Result.Success());
+            .ReturnsAsync(Result.Ok());
 
         // Act
         Result<CreateTodo.Response> result = await CreateAsync(
@@ -100,6 +102,26 @@ public sealed class CreateTodoTest
         // Assert
         result.IsSuccess.Should().BeTrue();
         stored!.CategoryIds.Should().Contain(categoryId);
+        stored.UncommittedEvents.OfType<TodoCategoryAdded>().Should().ContainSingle();
+    }
+
+    [Fact(DisplayName = "Create should fail when the repository save fails")]
+    public async Task Handle_WhenSaveFails_ShouldReturnFailure()
+    {
+        // Arrange
+        var fixture = new TodoHandlerFixture();
+        fixture.TodoRepository
+            .Setup(store => store.SaveAsync(It.IsAny<Todo>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Fail(Error.InternalServerError("test.save", "save failed")));
+
+        // Act
+        Result<CreateTodo.Response> result = await CreateAsync(
+            fixture,
+            new CreateTodo.Request { Title = "Task" });
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(error => error.Code == "test.save");
     }
 
     [Fact(DisplayName = "Create validator should reject a blank title")]

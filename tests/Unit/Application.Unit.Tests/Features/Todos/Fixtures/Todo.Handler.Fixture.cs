@@ -1,7 +1,9 @@
+using Application.Common.EventSourcing;
 using Application.Common.Persistence.Repositories;
 using Application.Common.Persistence.UnitOfWorks;
 using Application.Common.Querying.Mapping;
 using Application.Common.Security.Authentication.Contexts;
+using Application.Features.Todos.Items.Models;
 using Application.Features.Todos.Reminders.Models;
 using Application.Features.Todos.Abstractions;
 
@@ -23,14 +25,17 @@ public sealed class TodoHandlerFixture
     /// <summary>The fixed instant used by the test clock.</summary>
     public static readonly DateTimeOffset Now = DateTimeOffset.UtcNow.Date;
 
-    /// <summary>Gets the todo repository mock.</summary>
-    public Mock<IPersistentRepository<Todo, Guid>> TodoRepository { get; } = new();
+    /// <summary>Gets the todo event-stream repository mock.</summary>
+    public Mock<IEventSourcedRepository<Todo, Guid>> TodoRepository { get; } = new();
 
-    /// <summary>Gets the todo mapping repository mock.</summary>
-    public Mock<IMappableRepository<Todo, Guid>> TodoMapperRepository { get; } = new();
+    /// <summary>Gets the todo read-model repository mock.</summary>
+    public Mock<IPersistentRepository<TodoReadModel, Guid>> TodoReadRepository { get; } = new();
 
-    /// <summary>Gets the todo projection repository mock.</summary>
-    public Mock<IProjectionRepository<Todo, Guid>> TodoProjectionRepository { get; } = new();
+    /// <summary>Gets the todo read-model mapping repository mock.</summary>
+    public Mock<IMappableRepository<TodoReadModel, Guid>> TodoMapperRepository { get; } = new();
+
+    /// <summary>Gets the todo read-model projection repository mock.</summary>
+    public Mock<IProjectionRepository<TodoReadModel, Guid>> TodoProjectionRepository { get; } = new();
 
     /// <summary>Gets the list repository mock.</summary>
     public Mock<IPersistentRepository<TodoList, Guid>> ListRepository { get; } = new();
@@ -76,20 +81,13 @@ public sealed class TodoHandlerFixture
             .ReturnsAsync(Result.Success());
 
         TodoRepository
-            .Setup(repository => repository.FindByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<Maybe<Todo>>.Success(Maybe<Todo>.Empty()));
+            .Setup(store => store.LoadAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
+            .Returns((Guid id, CancellationToken _) =>
+                Task.FromResult(Result<Todo>.Fail(RepositoryOutcome.Failure.NotFoundFor<Todo>(id))));
 
         TodoRepository
-            .Setup(repository => repository.AddAsync(It.IsAny<Todo>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success());
-
-        TodoRepository
-            .Setup(repository => repository.UpdateAsync(It.IsAny<Todo>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success());
-
-        TodoRepository
-            .Setup(repository => repository.RemoveAsync(It.IsAny<Todo>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Success());
+            .Setup(store => store.SaveAsync(It.IsAny<Todo>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok());
 
         ListRepository
             .Setup(repository => repository.FindByIdAsync(It.IsAny<Guid>(), It.IsAny<CancellationToken>()))
@@ -142,12 +140,12 @@ public sealed class TodoHandlerFixture
             .ReturnsAsync(Result<int>.Success(0));
     }
 
-    /// <summary>Registers a todo as found by identifier.</summary>
+    /// <summary>Registers a todo stream as loadable by identifier.</summary>
     /// <param name="todo">The todo to return.</param>
     public void RegisterTodo(Todo todo) =>
         TodoRepository
-            .Setup(repository => repository.FindByIdAsync(todo.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<Maybe<Todo>>.Success(Maybe<Todo>.From(todo)));
+            .Setup(store => store.LoadAsync(todo.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<Todo>.Success(todo));
 
     /// <summary>Registers a list as found by identifier.</summary>
     /// <param name="list">The list to return.</param>
@@ -181,7 +179,7 @@ public sealed class TodoHandlerFixture
     public TodoCategory CreateCategory(string name = "Errands") =>
         TodoCategory.Create(TenantId, name, Now, Actor, id: Guid.NewGuid()).Value;
 
-    /// <summary>Registers the minimal todo query map used by search tests.</summary>
+    /// <summary>Registers the minimal todo query map used by generic query-builder tests.</summary>
     public void RegisterTodoMap() =>
         Registry.Register(QueryMapBuilder<Todo>.Create()
             .Map("id", todo => todo.Id, field => field.Filterable().Sortable().Groupable())
@@ -189,6 +187,22 @@ public sealed class TodoHandlerFixture
             .Map("isDeleted", todo => todo.IsDeleted, field => field.Filterable())
             .Map("createdAtUtc", todo => todo.CreatedAtUtc, field => field.Filterable().Sortable())
             .Map("title", todo => todo.Title, field => field.Filterable().Searchable().Groupable())
+            .Build().Value);
+
+    /// <summary>Registers the todo read-model query map used by search tests.</summary>
+    public void RegisterTodoReadModelMap() =>
+        Registry.Register(QueryMapBuilder<TodoReadModel>.Create()
+            .Map("id", todo => todo.Id, field => field.Filterable().Sortable().Groupable())
+            .Map("tenantId", todo => todo.TenantId, field => field.Filterable().Sortable().Groupable())
+            .Map("isDeleted", todo => todo.IsDeleted, field => field.Filterable())
+            .Map("createdAtUtc", todo => todo.CreatedAtUtc, field => field.Filterable().Sortable())
+            .Map("title", todo => todo.Title, field => field.Filterable().Searchable().Groupable())
+            .Map("description", todo => todo.Description, field => field.Filterable().Searchable())
+            .Map("status", todo => todo.Status, field => field.Filterable().Sortable().Groupable())
+            .Map("priority", todo => todo.Priority, field => field.Filterable().Sortable().Groupable())
+            .Map("dueAtUtc", todo => todo.DueAtUtc, field => field.Filterable().Sortable())
+            .Map("listId", todo => todo.ListId, field => field.Filterable().Sortable().Groupable())
+            .Map("isCompleted", todo => todo.IsCompleted, field => field.Filterable().Sortable().Groupable())
             .Build().Value);
 
     /// <summary>Registers the minimal list query map used by search tests.</summary>

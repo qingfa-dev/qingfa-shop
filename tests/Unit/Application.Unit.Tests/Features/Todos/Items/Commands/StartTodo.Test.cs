@@ -1,4 +1,3 @@
-using Application.Common.Persistence.Repositories;
 using Application.Features.Todos.Items.Commands;
 using Application.Unit.Tests.Features.Todos.Fixtures;
 
@@ -12,7 +11,6 @@ public sealed class StartTodoTest
     private static StartTodo.UseCaseHandler CreateHandler(TodoHandlerFixture fixture) =>
         new(
             fixture.TodoRepository.Object,
-            fixture.UnitOfWork.Object,
             fixture.Tenant,
             fixture.ActorContext,
             fixture.Clock);
@@ -34,6 +32,8 @@ public sealed class StartTodoTest
         result.IsSuccess.Should().BeTrue();
         result.Value.Status.Should().Be(TodoStatus.InProgress);
         result.Value.ModifiedAtUtc.Should().Be(TodoHandlerFixture.Now);
+        todo.UncommittedEvents.OfType<TodoStatusChanged>().Should().ContainSingle()
+            .Which.To.Should().Be(TodoStatus.InProgress);
     }
 
     [Fact(DisplayName = "Start should reject a completed todo")]
@@ -42,7 +42,8 @@ public sealed class StartTodoTest
         // Arrange
         var fixture = new TodoHandlerFixture();
         Todo todo = fixture.CreateTodo();
-        todo.Status = TodoStatus.Completed;
+        todo.Start(TodoHandlerFixture.Now, TodoHandlerFixture.Actor).IsSuccess.Should().BeTrue();
+        todo.Complete(TodoHandlerFixture.Now, TodoHandlerFixture.Actor).IsSuccess.Should().BeTrue();
         fixture.RegisterTodo(todo);
 
         // Act
@@ -53,7 +54,7 @@ public sealed class StartTodoTest
         // Assert
         result.IsFailure.Should().BeTrue();
         fixture.TodoRepository.Verify(
-            repository => repository.UpdateAsync(It.IsAny<Todo>(), It.IsAny<CancellationToken>()),
+            store => store.SaveAsync(It.IsAny<Todo>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -71,7 +72,7 @@ public sealed class StartTodoTest
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == RepositoryOutcome.Failure.NotFoundFor<Todo>(id).Code);
+        result.Errors.Should().Contain(error => error.Code == "Repository.Entity.NotFound");
     }
 
     [Fact(DisplayName = "Start validator should reject a missing id")]

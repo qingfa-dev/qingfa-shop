@@ -11,7 +11,6 @@ public sealed class RestoreTodoTest
     private static RestoreTodo.UseCaseHandler CreateHandler(TodoHandlerFixture fixture) =>
         new(
             fixture.TodoRepository.Object,
-            fixture.UnitOfWork.Object,
             fixture.Tenant,
             fixture.ActorContext,
             fixture.Clock);
@@ -22,9 +21,8 @@ public sealed class RestoreTodoTest
         // Arrange
         var fixture = new TodoHandlerFixture();
         Todo todo = fixture.CreateTodo();
-        todo.IsDeleted = true;
-        todo.DeletedAtUtc = TodoHandlerFixture.Now;
-        todo.DeletedBy = TodoHandlerFixture.Actor;
+        todo.Delete(isHard: false, TodoHandlerFixture.Now, TodoHandlerFixture.Actor)
+            .IsSuccess.Should().BeTrue();
         fixture.RegisterTodo(todo);
 
         // Act
@@ -38,10 +36,11 @@ public sealed class RestoreTodoTest
         result.Value.DeletedAtUtc.Should().BeNull();
         result.Value.DeletedBy.Should().BeNull();
         result.Value.ModifiedAtUtc.Should().Be(TodoHandlerFixture.Now);
+        todo.UncommittedEvents.OfType<TodoRestored>().Should().ContainSingle();
     }
 
-    [Fact(DisplayName = "Restore should reject a todo that is not deleted")]
-    public async Task Handle_WhenNotDeleted_ShouldFail()
+    [Fact(DisplayName = "Restore should be an idempotent no-op for a live todo")]
+    public async Task Handle_WhenNotDeleted_ShouldBeIdempotent()
     {
         // Arrange
         var fixture = new TodoHandlerFixture();
@@ -54,10 +53,8 @@ public sealed class RestoreTodoTest
             CancellationToken.None);
 
         // Assert
-        result.IsFailure.Should().BeTrue();
-        fixture.TodoRepository.Verify(
-            repository => repository.UpdateAsync(It.IsAny<Todo>(), It.IsAny<CancellationToken>()),
-            Times.Never);
+        result.IsSuccess.Should().BeTrue();
+        todo.UncommittedEvents.OfType<TodoRestored>().Should().BeEmpty();
     }
 
     [Fact(DisplayName = "Restore validator should reject a missing id")]

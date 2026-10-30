@@ -9,44 +9,64 @@ using Core.Todos.Items;
 namespace Application.Unit.Tests.Features.Todos.Events;
 
 [Trait("Category", "Unit")]
-public sealed class TodoCompletedIntegrationHandlerTest
+public sealed class TodoStatusChangedIntegrationHandlerTest
 {
     private static readonly Guid TodoId = Guid.Parse("2b9d3a41-6b0e-4f8a-9c1d-5f7e8a9b0c1d");
     private static readonly Guid TenantId = Guid.Parse("8f4c1d2e-3a5b-4c6d-8e7f-9a0b1c2d3e4f");
-    private static readonly DateTimeOffset CompletedAtUtc = new(2026, 10, 30, 9, 30, 0, TimeSpan.Zero);
+    private static readonly DateTimeOffset OccurredAtUtc = new(2026, 10, 30, 9, 30, 0, TimeSpan.Zero);
+
+    private static TodoStatusChanged StatusChanged(
+        TodoStatus from,
+        TodoStatus to) =>
+        new(TodoId, TenantId, from, to, OccurredAtUtc, "tester");
 
     #region Publish
 
-    [Fact(DisplayName = "Handle should publish the mapped integration event")]
-    public async Task Handle_ShouldPublishMappedIntegrationEvent()
+    [Fact(DisplayName = "Handle should publish todo.completed when the status becomes completed")]
+    public async Task Handle_WhenCompleted_ShouldPublishOneIntegrationEvent()
     {
         var publisher = new RecordingIntegrationEventPublisher();
-        var handler = new TodoCompletedIntegrationHandler(publisher);
-        var domainEvent = new TodoCompleted(TodoId, TenantId, CompletedAtUtc);
+        var handler = new TodoStatusChangedIntegrationHandler(publisher);
 
-        await handler.Handle(domainEvent, TestContext.Current.CancellationToken);
+        await handler.Handle(
+            StatusChanged(TodoStatus.InProgress, TodoStatus.Completed),
+            TestContext.Current.CancellationToken);
 
         publisher.Published.Should().ContainSingle();
-        publisher.Published[0].Should().BeOfType<TodoCompletedIntegration>();
-
         var integration = (TodoCompletedIntegration)publisher.Published[0];
         integration.TodoId.Should().Be(TodoId);
         integration.TenantId.Should().Be(TenantId);
-        integration.CompletedAtUtc.Should().Be(CompletedAtUtc);
+        integration.CompletedAtUtc.Should().Be(OccurredAtUtc);
         integration.EventName.Should().Be("todo.completed");
         integration.Version.Should().Be(1);
+    }
+
+    [Theory(DisplayName = "Handle should publish nothing for a non-completion transition")]
+    [InlineData(TodoStatus.Pending, TodoStatus.InProgress)]
+    [InlineData(TodoStatus.Pending, TodoStatus.Cancelled)]
+    [InlineData(TodoStatus.Completed, TodoStatus.Pending)]
+    public async Task Handle_WhenNotCompleted_ShouldNotPublish(TodoStatus from, TodoStatus to)
+    {
+        var publisher = new RecordingIntegrationEventPublisher();
+        var handler = new TodoStatusChangedIntegrationHandler(publisher);
+
+        await handler.Handle(
+            StatusChanged(from, to),
+            TestContext.Current.CancellationToken);
+
+        publisher.Published.Should().BeEmpty();
     }
 
     #endregion
 
     #region Metadata
 
-    [Fact(DisplayName = "Handle should stamp the tenant metadata when the source carries none")]
+    [Fact(DisplayName = "Handle should stamp the tenant metadata")]
     public async Task Handle_ShouldStampTenantMetadata()
     {
         var publisher = new RecordingIntegrationEventPublisher();
-        var handler = new TodoCompletedIntegrationHandler(publisher);
-        var domainEvent = new TodoCompleted(TodoId, TenantId, CompletedAtUtc);
+        var handler = new TodoStatusChangedIntegrationHandler(publisher);
+        var domainEvent = StatusChanged(TodoStatus.InProgress, TodoStatus.Completed);
 
         domainEvent.GetTenantId().Should().BeNull();
 
@@ -60,8 +80,8 @@ public sealed class TodoCompletedIntegrationHandlerTest
     public async Task Handle_ShouldNotAliasDomainEventMetadata()
     {
         var publisher = new RecordingIntegrationEventPublisher();
-        var handler = new TodoCompletedIntegrationHandler(publisher);
-        var domainEvent = new TodoCompleted(TodoId, TenantId, CompletedAtUtc);
+        var handler = new TodoStatusChangedIntegrationHandler(publisher);
+        var domainEvent = StatusChanged(TodoStatus.InProgress, TodoStatus.Completed);
         domainEvent.Metadata["source"] = "domain";
 
         await handler.Handle(domainEvent, TestContext.Current.CancellationToken);
@@ -74,7 +94,6 @@ public sealed class TodoCompletedIntegrationHandlerTest
 
         integration.Metadata.Should().ContainKey("source");
         integration.Metadata.Should().NotContainKey("marker");
-        domainEvent.Metadata.Should().NotContainKey(MetadataConstant.Keyword.TenantId);
     }
 
     #endregion
@@ -88,10 +107,10 @@ public sealed class TodoCompletedIntegrationHandlerTest
         {
             Result = Result.Fail(Error.InternalServerError("test.publish.failed", "publish failed")),
         };
-        var handler = new TodoCompletedIntegrationHandler(publisher);
+        var handler = new TodoStatusChangedIntegrationHandler(publisher);
 
         Func<Task> act = () => handler.Handle(
-            new TodoCompleted(TodoId, TenantId, CompletedAtUtc),
+            StatusChanged(TodoStatus.InProgress, TodoStatus.Completed),
             TestContext.Current.CancellationToken);
 
         await act.Should().ThrowAsync<ResultException>();

@@ -2,6 +2,7 @@ using Application.Common.Querying;
 using Application.Common.Querying.Filtering;
 using Application.Common.Querying.Pagination;
 using Application.Features.Todos.Items.Mappings;
+using Application.Features.Todos.Items.Models;
 using Application.Features.Todos.Items.Queries;
 using Application.Unit.Tests.Features.Todos.Fixtures;
 
@@ -20,18 +21,29 @@ public sealed class SearchTodosTest
             ? group.Children.SelectMany(Flatten)
             : [node];
 
+    private static TodoReadModel CreateReadModel(string title) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            TenantId = TodoHandlerFixture.TenantId,
+            Title = title,
+            Status = TodoStatus.Pending,
+            Priority = TodoPriority.Medium,
+            CreatedAtUtc = TodoHandlerFixture.Now,
+        };
+
     [Fact(DisplayName = "Search should map matching todos into a page")]
     public async Task Handle_WithResults_ShouldMapPage()
     {
         // Arrange
         var fixture = new TodoHandlerFixture();
-        fixture.RegisterTodoMap();
-        Todo first = fixture.CreateTodo("First");
-        Todo second = fixture.CreateTodo("Second");
+        fixture.RegisterTodoReadModelMap();
+        TodoReadModel first = CreateReadModel("First");
+        TodoReadModel second = CreateReadModel("Second");
         fixture.TodoMapperRepository
             .Setup(repository => repository.MapAsync(
-                It.IsAny<Query<Todo>>(),
-                It.IsAny<Func<Todo, SearchTodos.Response>>(),
+                It.IsAny<Query<TodoReadModel>>(),
+                It.IsAny<Func<TodoReadModel, SearchTodos.Response>>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result<QueryPage<SearchTodos.Response>>.Success(
                 new QueryPage<SearchTodos.Response>(
@@ -62,14 +74,14 @@ public sealed class SearchTodosTest
     {
         // Arrange
         var fixture = new TodoHandlerFixture();
-        fixture.RegisterTodoMap();
-        Query<Todo>? captured = null;
+        fixture.RegisterTodoReadModelMap();
+        Query<TodoReadModel>? captured = null;
         fixture.TodoMapperRepository
             .Setup(repository => repository.MapAsync(
-                It.IsAny<Query<Todo>>(),
-                It.IsAny<Func<Todo, SearchTodos.Response>>(),
+                It.IsAny<Query<TodoReadModel>>(),
+                It.IsAny<Func<TodoReadModel, SearchTodos.Response>>(),
                 It.IsAny<CancellationToken>()))
-            .Callback<Query<Todo>, Func<Todo, SearchTodos.Response>, CancellationToken>(
+            .Callback<Query<TodoReadModel>, Func<TodoReadModel, SearchTodos.Response>, CancellationToken>(
                 (query, _, _) => captured = query)
             .ReturnsAsync(Result<QueryPage<SearchTodos.Response>>.Success(
                 new QueryPage<SearchTodos.Response>([], 1, 10, 0)));
@@ -106,7 +118,7 @@ public sealed class SearchTodosTest
     {
         // Arrange
         var fixture = new TodoHandlerFixture();
-        fixture.RegisterTodoMap();
+        fixture.RegisterTodoReadModelMap();
 
         // Act
         Result<QueryPage<SearchTodos.Response>> result = await CreateHandler(fixture).Handle(
@@ -119,8 +131,8 @@ public sealed class SearchTodosTest
         result.Errors.Should().Contain(error => error.Code == "Todos.Query.TabularUnsupported");
         fixture.TodoMapperRepository.Verify(
             repository => repository.MapAsync(
-                It.IsAny<Query<Todo>>(),
-                It.IsAny<Func<Todo, SearchTodos.Response>>(),
+                It.IsAny<Query<TodoReadModel>>(),
+                It.IsAny<Func<TodoReadModel, SearchTodos.Response>>(),
                 It.IsAny<CancellationToken>()),
             Times.Never);
     }
@@ -130,7 +142,7 @@ public sealed class SearchTodosTest
     {
         // Arrange
         var fixture = new TodoHandlerFixture();
-        fixture.RegisterTodoMap();
+        fixture.RegisterTodoReadModelMap();
         fixture.Tenant.TenantId = Guid.Empty;
 
         // Act

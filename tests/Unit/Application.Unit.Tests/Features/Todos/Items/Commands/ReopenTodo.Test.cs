@@ -11,7 +11,6 @@ public sealed class ReopenTodoTest
     private static ReopenTodo.UseCaseHandler CreateHandler(TodoHandlerFixture fixture) =>
         new(
             fixture.TodoRepository.Object,
-            fixture.UnitOfWork.Object,
             fixture.Tenant,
             fixture.ActorContext,
             fixture.Clock);
@@ -22,8 +21,9 @@ public sealed class ReopenTodoTest
         // Arrange
         var fixture = new TodoHandlerFixture();
         Todo todo = fixture.CreateTodo();
-        todo.Status = TodoStatus.Completed;
-        todo.CompletedAtUtc = TodoHandlerFixture.Now;
+        todo.Start(TodoHandlerFixture.Now, TodoHandlerFixture.Actor).IsSuccess.Should().BeTrue();
+        todo.Complete(TodoHandlerFixture.Now, TodoHandlerFixture.Actor).IsSuccess.Should().BeTrue();
+        todo.ClearUncommittedEvents();
         fixture.RegisterTodo(todo);
 
         // Act
@@ -35,6 +35,8 @@ public sealed class ReopenTodoTest
         result.IsSuccess.Should().BeTrue();
         result.Value.Status.Should().Be(TodoStatus.Pending);
         result.Value.CompletedAtUtc.Should().BeNull();
+        todo.UncommittedEvents.OfType<TodoStatusChanged>().Should().ContainSingle()
+            .Which.To.Should().Be(TodoStatus.Pending);
     }
 
     [Fact(DisplayName = "Reopen validator should reject a missing id")]

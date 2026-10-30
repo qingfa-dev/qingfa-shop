@@ -1,5 +1,7 @@
-using Application.Common.Persistence.UnitOfWorks;
+using Application.Common.EventSourcing;
 using Application.Features.Todos.Abstractions;
+using Application.Features.Todos.Common;
+using Application.Features.Todos.Items.Models;
 
 using Core.Todos.Items;
 
@@ -9,15 +11,16 @@ using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Services.Todos;
 
-/// <summary>
-/// EF Core implementation of <see cref="ITodoReferenceCleaner"/>.
-/// </summary>
+/// <summary>Event-sourced implementation of <see cref="ITodoReferenceCleaner"/>.</summary>
 /// <remarks>
-/// Mutates tracked todos so the cleanup commits in the same
-/// <c>SaveChanges</c> as the list or category delete.
+/// Finds affected streams through the todo projection, then appends one
+/// <c>TodoListChanged</c> or <c>TodoCategoryRemoved</c> event per stream.
 /// </remarks>
 /// <param name="context">The application DbContext.</param>
-public sealed class TodoReferenceCleaner(ApplicationDbContext context) : ITodoReferenceCleaner
+/// <param name="repository">The todo event-stream repository.</param>
+public sealed class TodoReferenceCleaner(
+    ApplicationDbContext context,
+    IEventSourcedRepository<Todo, Guid> repository) : ITodoReferenceCleaner
 {
     /// <inheritdoc />
     public async Task<Result<int>> ClearListAsync(
@@ -27,27 +30,18 @@ public sealed class TodoReferenceCleaner(ApplicationDbContext context) : ITodoRe
         string? actor,
         CancellationToken cancellationToken = default)
     {
-        try
-        {
-            List<Todo> todos = await context
-                .Set<Todo>()
-                .Where(todo => todo.TenantId == tenantId && todo.ListId == listId)
-                .ToListAsync(cancellationToken);
+        List<Guid> ids = await context.Set<TodoReadModel>()
+            .Where(todo => todo.TenantId == tenantId && todo.ListId == listId)
+            .Select(todo => todo.Id)
+            .ToListAsync(cancellationToken);
 
-            foreach (Todo todo in todos)
-            {
-                todo.ListId = null;
-                Touch(todo, nowUtc, actor);
-            }
-
-            return Result<int>.Success(todos.Count);
-        }
-        catch (Exception exception)
-        {
-            // Translate: any unexpected error to a typed persistence outcome.
-            return Result<int>.Fail(
-                UnitOfWorkOutcome.Failure.InvalidOperationFor(exception.Message));
-        }
+        return await CleanAsync(
+            ids,
+            tenantId,
+            nowUtc,
+            actor,
+            (todo, at, by) => todo.ClearList(at, by),
+            cancellationToken);
     }
 
     /// <inheritdoc />
@@ -58,41 +52,55 @@ public sealed class TodoReferenceCleaner(ApplicationDbContext context) : ITodoRe
         string? actor,
         CancellationToken cancellationToken = default)
     {
-        try
-        {
-            // Load: the category identifiers are a value-converted JSON array, so the
-            // provider cannot translate a containment predicate. Scope by tenant only.
-            List<Todo> todos = await context
-                .Set<Todo>()
-                .Where(todo => todo.TenantId == tenantId)
-                .ToListAsync(cancellationToken);
+        // Load: category identifiers are a value-converted JSON array, so the provider
+        // cannot translate a containment predicate. Scope by tenant and filter in memory.
+        List<TodoReadModel> rows = await context.Set<TodoReadModel>()
+            .Where(todo => todo.TenantId == tenantId)
+            .ToListAsync(cancellationToken);
 
-            var changed = 0;
-            foreach (Todo todo in todos)
-            {
-                if (!todo.CategoryIds.Remove(categoryId))
-                {
-                    continue;
-                }
+        List<Guid> ids = [.. rows
+            .Where(todo => todo.CategoryIds.Contains(categoryId))
+            .Select(todo => todo.Id)];
 
-                Touch(todo, nowUtc, actor);
-                changed++;
-            }
-
-            return Result<int>.Success(changed);
-        }
-        catch (Exception exception)
-        {
-            // Translate: any unexpected error to a typed persistence outcome.
-            return Result<int>.Fail(
-                UnitOfWorkOutcome.Failure.InvalidOperationFor(exception.Message));
-        }
+        return await CleanAsync(
+            ids,
+            tenantId,
+            nowUtc,
+            actor,
+            (todo, at, by) => todo.RemoveCategory(categoryId, at, by),
+            cancellationToken);
     }
 
-    private static void Touch(Todo todo, DateTimeOffset nowUtc, string? actor)
+    private async Task<Result<int>> CleanAsync(
+        IReadOnlyList<Guid> ids,
+        Guid tenantId,
+        DateTimeOffset nowUtc,
+        string? actor,
+        Func<Todo, DateTimeOffset, string?, Result> mutate,
+        CancellationToken cancellationToken)
     {
-        // Update: audit fields to reflect the reference change.
-        todo.ModifiedAtUtc = nowUtc.ToUniversalTime();
-        todo.ModifiedBy = actor?.Trim();
+        var changed = 0;
+        foreach (Guid id in ids)
+        {
+            Result<Todo> loaded = await repository
+                .LoadOwnedAsync(id, tenantId, cancellationToken)
+                .ConfigureAwait(false);
+            if (loaded.IsFailure)
+                return Result<int>.Fail(loaded.Errors);
+
+            Result mutated = mutate(loaded.Value, nowUtc, actor);
+            if (mutated.IsFailure)
+                return Result<int>.Fail(mutated.Errors);
+
+            Result saved = await repository
+                .SaveAsync(loaded.Value, cancellationToken)
+                .ConfigureAwait(false);
+            if (saved.IsFailure)
+                return Result<int>.Fail(saved.Errors);
+
+            changed++;
+        }
+
+        return Result<int>.Success(changed);
     }
 }

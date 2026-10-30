@@ -11,7 +11,6 @@ public sealed class RemoveTodoCategoryTest
     private static RemoveTodoCategory.UseCaseHandler CreateHandler(TodoHandlerFixture fixture) =>
         new(
             fixture.TodoRepository.Object,
-            fixture.UnitOfWork.Object,
             fixture.Tenant,
             fixture.ActorContext,
             fixture.Clock);
@@ -23,7 +22,8 @@ public sealed class RemoveTodoCategoryTest
         var fixture = new TodoHandlerFixture();
         Todo todo = fixture.CreateTodo();
         Guid categoryId = Guid.NewGuid();
-        todo.CategoryIds.Add(categoryId);
+        todo.AddCategory(categoryId, TodoHandlerFixture.Now, TodoHandlerFixture.Actor)
+            .IsSuccess.Should().BeTrue();
         fixture.RegisterTodo(todo);
 
         // Act
@@ -35,6 +35,29 @@ public sealed class RemoveTodoCategoryTest
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.CategoryIds.Should().NotContain(categoryId);
+        todo.UncommittedEvents.OfType<TodoCategoryRemoved>().Should().ContainSingle()
+            .Which.CategoryId.Should().Be(categoryId);
+    }
+
+    [Fact(DisplayName = "RemoveCategory should reject an unknown reference")]
+    public async Task Handle_WhenMissingReference_ShouldFail()
+    {
+        // Arrange
+        var fixture = new TodoHandlerFixture();
+        Todo todo = fixture.CreateTodo();
+        fixture.RegisterTodo(todo);
+
+        // Act
+        Result<RemoveTodoCategory.Response> result = await CreateHandler(fixture).Handle(
+            new RemoveTodoCategory.UseCase(
+                new RemoveTodoCategory.Request(todo.Id, Guid.NewGuid())),
+            CancellationToken.None);
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        fixture.TodoRepository.Verify(
+            store => store.SaveAsync(It.IsAny<Todo>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact(DisplayName = "RemoveCategory validator should reject a missing category id")]

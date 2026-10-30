@@ -15,7 +15,6 @@ public sealed class UpdateTodoTest
     {
         var handler = new UpdateTodo.UseCaseHandler(
             fixture.TodoRepository.Object,
-            fixture.UnitOfWork.Object,
             fixture.Tenant,
             fixture.ActorContext,
             fixture.Clock);
@@ -31,6 +30,7 @@ public sealed class UpdateTodoTest
         // Arrange
         var fixture = new TodoHandlerFixture();
         Todo todo = fixture.CreateTodo("old");
+        todo.ClearUncommittedEvents();
         fixture.RegisterTodo(todo);
 
         // Act
@@ -47,6 +47,8 @@ public sealed class UpdateTodoTest
         result.Value.Title.Should().Be("new");
         result.Value.ModifiedAtUtc.Should().Be(TodoHandlerFixture.Now);
         result.Value.ModifiedBy.Should().Be(TodoHandlerFixture.Actor);
+        todo.UncommittedEvents.Should().ContainSingle()
+            .Which.Should().BeOfType<TodoUpdated>();
     }
 
     [Fact(DisplayName = "Update should clear the description when asked")]
@@ -91,9 +93,9 @@ public sealed class UpdateTodoTest
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == RepositoryOutcome.Failure.NotFoundFor<Todo>(id).Code);
+        result.Errors.Should().Contain(error => error.Code == RepositoryOutcome.Codes.EntityNotFound);
         fixture.TodoRepository.Verify(
-            repository => repository.UpdateAsync(It.IsAny<Todo>(), It.IsAny<CancellationToken>()),
+            store => store.SaveAsync(It.IsAny<Todo>(), It.IsAny<CancellationToken>()),
             Times.Never);
     }
 
@@ -121,7 +123,11 @@ public sealed class UpdateTodoTest
 
         // Assert
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == RepositoryOutcome.Failure.NotFoundFor<Todo>(foreign.Id).Code);
+        result.Errors.Should().Contain(error => error.Code == RepositoryOutcome.Codes.EntityNotFound);
+        fixture.TodoRepository.Verify(
+            store => store.SaveAsync(It.IsAny<Todo>(), It.IsAny<CancellationToken>()),
+            Times.Never);
+        foreign.UncommittedEvents.OfType<TodoUpdated>().Should().BeEmpty();
     }
 
     [Fact(DisplayName = "Update should fail when the tenant is missing")]

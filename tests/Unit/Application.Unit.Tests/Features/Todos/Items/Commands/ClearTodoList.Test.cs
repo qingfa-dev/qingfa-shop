@@ -11,7 +11,6 @@ public sealed class ClearTodoListTest
     private static ClearTodoList.UseCaseHandler CreateHandler(TodoHandlerFixture fixture) =>
         new(
             fixture.TodoRepository.Object,
-            fixture.UnitOfWork.Object,
             fixture.Tenant,
             fixture.ActorContext,
             fixture.Clock);
@@ -22,7 +21,9 @@ public sealed class ClearTodoListTest
         // Arrange
         var fixture = new TodoHandlerFixture();
         Todo todo = fixture.CreateTodo();
-        todo.ListId = Guid.NewGuid();
+        todo.AssignToList(Guid.NewGuid(), TodoHandlerFixture.Now, TodoHandlerFixture.Actor)
+            .IsSuccess.Should().BeTrue();
+        todo.ClearUncommittedEvents();
         fixture.RegisterTodo(todo);
 
         // Act
@@ -33,6 +34,8 @@ public sealed class ClearTodoListTest
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.ListId.Should().BeNull();
+        todo.UncommittedEvents.OfType<TodoListChanged>().Should().ContainSingle()
+            .Which.ListId.Should().BeNull();
     }
 
     [Fact(DisplayName = "Clear validator should reject a missing id")]

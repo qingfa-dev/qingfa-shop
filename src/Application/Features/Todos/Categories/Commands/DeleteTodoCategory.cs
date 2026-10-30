@@ -47,6 +47,8 @@ public static class DeleteTodoCategory
             Request request = command.Request;
             DateTimeOffset nowUtc = clock.GetUtcNow();
 
+            // Note: each todo stream commits independently; a failed category delete can leave references
+            // cleared. The operation is idempotent and safe to retry.
             return await tenantContext.RequireTenant()
                 .BindAsync(
                     (tenantId, ct) => repository.FindOwnedAsync(

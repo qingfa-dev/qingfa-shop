@@ -11,7 +11,6 @@ public sealed class CancelTodoTest
     private static CancelTodo.UseCaseHandler CreateHandler(TodoHandlerFixture fixture) =>
         new(
             fixture.TodoRepository.Object,
-            fixture.UnitOfWork.Object,
             fixture.Tenant,
             fixture.ActorContext,
             fixture.Clock);
@@ -32,6 +31,8 @@ public sealed class CancelTodoTest
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.Status.Should().Be(TodoStatus.Cancelled);
+        todo.UncommittedEvents.OfType<TodoStatusChanged>().Should().ContainSingle()
+            .Which.To.Should().Be(TodoStatus.Cancelled);
     }
 
     [Fact(DisplayName = "Cancel validator should reject a missing id")]

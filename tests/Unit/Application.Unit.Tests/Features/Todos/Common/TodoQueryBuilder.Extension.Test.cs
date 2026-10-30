@@ -3,6 +3,7 @@ using Application.Common.Querying.Filtering;
 using Application.Common.Querying.Mapping;
 using Application.Common.Querying.Sorting;
 using Application.Features.Todos.Common;
+using Application.Features.Todos.Items.Models;
 using Application.Unit.Tests.Features.Todos.Fixtures;
 
 using Core.Todos.Items;
@@ -12,13 +13,13 @@ namespace Application.Unit.Tests.Features.Todos.Common;
 /// <summary>Unit tests for the Todo query builder scope extensions.</summary>
 public sealed class TodoQueryBuilderExtensionTest
 {
-    private static QueryBuilder<Todo> CreateBuilder()
+    private static QueryBuilder<TodoReadModel> CreateBuilder()
     {
         var fixture = new TodoHandlerFixture();
-        fixture.RegisterTodoMap();
-        fixture.Registry.TryGet<Todo>(out QueryMap<Todo>? map).Should().BeTrue(
+        fixture.RegisterTodoReadModelMap();
+        fixture.Registry.TryGet<TodoReadModel>(out QueryMap<TodoReadModel>? map).Should().BeTrue(
             because: "the fixture registers the todo query map");
-        return QueryBuilder<Todo>.Create(map!);
+        return QueryBuilder<TodoReadModel>.Create(map!);
     }
 
     [Fact(DisplayName = "ForTenant should add a tenantId equality condition")]

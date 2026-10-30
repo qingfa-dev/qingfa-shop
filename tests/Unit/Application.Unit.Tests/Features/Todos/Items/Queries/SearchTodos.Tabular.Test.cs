@@ -2,6 +2,7 @@ using Application.Common.Querying;
 using Application.Common.Querying.Filtering;
 using Application.Common.Querying.Projection;
 using Application.Common.Querying.Sorting;
+using Application.Features.Todos.Items.Models;
 using Application.Features.Todos.Items.Queries;
 using Application.Unit.Tests.Features.Todos.Fixtures;
 
@@ -25,13 +26,13 @@ public sealed class SearchTodosTabularTest
     {
         // Arrange
         var fixture = new TodoHandlerFixture();
-        fixture.RegisterTodoMap();
+        fixture.RegisterTodoReadModelMap();
         var expected = new TabularResult(
             [new TabularColumn("title", typeof(string))],
             [new TabularRow(["First"])]);
         fixture.TodoProjectionRepository
             .Setup(repository => repository.QueryTabularAsync(
-                It.IsAny<Query<Todo>>(),
+                It.IsAny<Query<TodoReadModel>>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result<TabularResult>.Success(expected));
 
@@ -53,13 +54,13 @@ public sealed class SearchTodosTabularTest
     {
         // Arrange
         var fixture = new TodoHandlerFixture();
-        fixture.RegisterTodoMap();
-        Query<Todo>? captured = null;
+        fixture.RegisterTodoReadModelMap();
+        Query<TodoReadModel>? captured = null;
         fixture.TodoProjectionRepository
             .Setup(repository => repository.QueryTabularAsync(
-                It.IsAny<Query<Todo>>(),
+                It.IsAny<Query<TodoReadModel>>(),
                 It.IsAny<CancellationToken>()))
-            .Callback<Query<Todo>, CancellationToken>((query, _) => captured = query)
+            .Callback<Query<TodoReadModel>, CancellationToken>((query, _) => captured = query)
             .ReturnsAsync(Result<TabularResult>.Success(new TabularResult([], [])));
 
         // Act
@@ -83,13 +84,13 @@ public sealed class SearchTodosTabularTest
     {
         // Arrange
         var fixture = new TodoHandlerFixture();
-        fixture.RegisterTodoMap();
-        Query<Todo>? captured = null;
+        fixture.RegisterTodoReadModelMap();
+        Query<TodoReadModel>? captured = null;
         fixture.TodoProjectionRepository
             .Setup(repository => repository.QueryTabularAsync(
-                It.IsAny<Query<Todo>>(),
+                It.IsAny<Query<TodoReadModel>>(),
                 It.IsAny<CancellationToken>()))
-            .Callback<Query<Todo>, CancellationToken>((query, _) => captured = query)
+            .Callback<Query<TodoReadModel>, CancellationToken>((query, _) => captured = query)
             .ReturnsAsync(Result<TabularResult>.Success(new TabularResult([], [])));
 
         // Act
@@ -115,13 +116,13 @@ public sealed class SearchTodosTabularTest
     {
         // Arrange
         var fixture = new TodoHandlerFixture();
-        fixture.RegisterTodoMap();
-        Query<Todo>? captured = null;
+        fixture.RegisterTodoReadModelMap();
+        Query<TodoReadModel>? captured = null;
         fixture.TodoProjectionRepository
             .Setup(repository => repository.QueryTabularAsync(
-                It.IsAny<Query<Todo>>(),
+                It.IsAny<Query<TodoReadModel>>(),
                 It.IsAny<CancellationToken>()))
-            .Callback<Query<Todo>, CancellationToken>((query, _) => captured = query)
+            .Callback<Query<TodoReadModel>, CancellationToken>((query, _) => captured = query)
             .ReturnsAsync(Result<TabularResult>.Success(new TabularResult([], [])));
 
         // Act
@@ -141,13 +142,13 @@ public sealed class SearchTodosTabularTest
     {
         // Arrange
         var fixture = new TodoHandlerFixture();
-        fixture.RegisterTodoMap();
-        Query<Todo>? captured = null;
+        fixture.RegisterTodoReadModelMap();
+        Query<TodoReadModel>? captured = null;
         fixture.TodoProjectionRepository
             .Setup(repository => repository.QueryTabularAsync(
-                It.IsAny<Query<Todo>>(),
+                It.IsAny<Query<TodoReadModel>>(),
                 It.IsAny<CancellationToken>()))
-            .Callback<Query<Todo>, CancellationToken>((query, _) => captured = query)
+            .Callback<Query<TodoReadModel>, CancellationToken>((query, _) => captured = query)
             .ReturnsAsync(Result<TabularResult>.Success(new TabularResult([], [])));
 
         // Act
@@ -171,13 +172,13 @@ public sealed class SearchTodosTabularTest
     {
         // Arrange
         var fixture = new TodoHandlerFixture();
-        fixture.RegisterTodoMap();
-        Query<Todo>? captured = null;
+        fixture.RegisterTodoReadModelMap();
+        Query<TodoReadModel>? captured = null;
         fixture.TodoProjectionRepository
             .Setup(repository => repository.QueryTabularAsync(
-                It.IsAny<Query<Todo>>(),
+                It.IsAny<Query<TodoReadModel>>(),
                 It.IsAny<CancellationToken>()))
-            .Callback<Query<Todo>, CancellationToken>((query, _) => captured = query)
+            .Callback<Query<TodoReadModel>, CancellationToken>((query, _) => captured = query)
             .ReturnsAsync(Result<TabularResult>.Success(new TabularResult([], [])));
 
         // Act
@@ -202,13 +203,13 @@ public sealed class SearchTodosTabularTest
     {
         // Arrange
         var fixture = new TodoHandlerFixture();
-        fixture.RegisterTodoMap();
-        Query<Todo>? captured = null;
+        fixture.RegisterTodoReadModelMap();
+        Query<TodoReadModel>? captured = null;
         fixture.TodoProjectionRepository
             .Setup(repository => repository.QueryTabularAsync(
-                It.IsAny<Query<Todo>>(),
+                It.IsAny<Query<TodoReadModel>>(),
                 It.IsAny<CancellationToken>()))
-            .Callback<Query<Todo>, CancellationToken>((query, _) => captured = query)
+            .Callback<Query<TodoReadModel>, CancellationToken>((query, _) => captured = query)
             .ReturnsAsync(Result<TabularResult>.Success(new TabularResult([], [])));
 
         // Act
@@ -230,7 +231,7 @@ public sealed class SearchTodosTabularTest
     {
         // Arrange
         var fixture = new TodoHandlerFixture();
-        fixture.RegisterTodoMap();
+        fixture.RegisterTodoReadModelMap();
 
         // Act
         Result<SearchTodosTabular.Response> result = await CreateHandler(fixture).Handle(
@@ -243,7 +244,7 @@ public sealed class SearchTodosTabularTest
         result.Errors.Should().Contain(error => error.Code == "Todos.Query.EntityUnsupported");
         fixture.TodoProjectionRepository.Verify(
             repository => repository.QueryTabularAsync(
-                It.IsAny<Query<Todo>>(),
+                It.IsAny<Query<TodoReadModel>>(),
                 It.IsAny<CancellationToken>()),
             Times.Never);
     }
@@ -253,7 +254,7 @@ public sealed class SearchTodosTabularTest
     {
         // Arrange
         var fixture = new TodoHandlerFixture();
-        fixture.RegisterTodoMap();
+        fixture.RegisterTodoReadModelMap();
         fixture.Tenant.TenantId = Guid.Empty;
 
         // Act

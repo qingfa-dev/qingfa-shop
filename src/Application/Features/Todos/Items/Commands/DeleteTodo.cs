@@ -1,3 +1,6 @@
+using Application.Common.EventSourcing;
+using Application.Features.Todos.Common;
+
 using Core.Todos.Items;
 
 using FluentValidation;
@@ -27,8 +30,7 @@ public static class DeleteTodo
 
     #region Handler
     public sealed class UseCaseHandler(
-        IPersistentRepository<Todo, Guid> repository,
-        IUnitOfWork unitOfWork,
+        IEventSourcedRepository<Todo, Guid> repository,
         ITenantContext tenantContext,
         IUserContext actorContext,
         TimeProvider clock)
@@ -43,23 +45,26 @@ public static class DeleteTodo
 
             Request request = command.Request;
 
-            return await tenantContext.RequireTenant()
-                .BindAsync(
-                    (tenantId, ct) => repository.FindOwnedAsync(
-                        request.Id,
-                        tenantId,
-                        ct,
-                        includeDeleted: true),
-                    cancellationToken)
-                .BindAsync(
-                    (todo, ct) => repository.SaveDeleteAsync(
-                        unitOfWork,
-                        todo,
-                        request.Mode,
-                        clock.GetUtcNow(),
-                        actorContext.Actor(),
-                        ct),
-                    cancellationToken);
+            Result<Guid> tenant = tenantContext.RequireTenant();
+            if (tenant.IsFailure)
+                return Result.Fail(tenant.Errors);
+
+            Result<Todo> loaded = await repository
+                .LoadOwnedAsync(request.Id, tenant.Value, cancellationToken)
+                .ConfigureAwait(false);
+            if (loaded.IsFailure)
+                return Result.Fail(loaded.Errors);
+
+            Result deleted = loaded.Value.Delete(
+                request.Mode == DeleteMode.Hard,
+                clock.GetUtcNow(),
+                actorContext.Actor());
+            if (deleted.IsFailure)
+                return deleted;
+
+            return await repository
+                .SaveAsync(loaded.Value, cancellationToken)
+                .ConfigureAwait(false);
         }
     }
     #endregion

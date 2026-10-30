@@ -11,7 +11,6 @@ public sealed class AssignTodoToListTest
     private static AssignTodoToList.UseCaseHandler CreateHandler(TodoHandlerFixture fixture) =>
         new(
             fixture.TodoRepository.Object,
-            fixture.UnitOfWork.Object,
             fixture.Tenant,
             fixture.ActorContext,
             fixture.Clock);
@@ -33,6 +32,8 @@ public sealed class AssignTodoToListTest
         // Assert
         result.IsSuccess.Should().BeTrue();
         result.Value.ListId.Should().Be(listId);
+        todo.UncommittedEvents.OfType<TodoListChanged>().Should().ContainSingle()
+            .Which.ListId.Should().Be(listId);
     }
 
     [Fact(DisplayName = "Assign validator should reject a missing list id")]

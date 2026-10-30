@@ -12,13 +12,12 @@ public sealed class DeleteTodoTest
     private static DeleteTodo.UseCaseHandler CreateHandler(TodoHandlerFixture fixture) =>
         new(
             fixture.TodoRepository.Object,
-            fixture.UnitOfWork.Object,
             fixture.Tenant,
             fixture.ActorContext,
             fixture.Clock);
 
-    [Fact(DisplayName = "Soft delete should mark the todo deleted")]
-    public async Task Handle_Soft_ShouldMarkDeleted()
+    [Fact(DisplayName = "Soft delete should raise a soft delete event")]
+    public async Task Handle_Soft_ShouldRaiseSoftDeleteEvent()
     {
         // Arrange
         var fixture = new TodoHandlerFixture();
@@ -34,16 +33,15 @@ public sealed class DeleteTodoTest
         result.IsSuccess.Should().BeTrue();
         todo.IsDeleted.Should().BeTrue();
         todo.DeletedAtUtc.Should().Be(TodoHandlerFixture.Now);
+        TodoDeleted deleted = todo.UncommittedEvents.OfType<TodoDeleted>().Should().ContainSingle().Subject;
+        deleted.IsHard.Should().BeFalse();
         fixture.TodoRepository.Verify(
-            repository => repository.UpdateAsync(todo, It.IsAny<CancellationToken>()),
+            store => store.SaveAsync(todo, It.IsAny<CancellationToken>()),
             Times.Once);
-        fixture.TodoRepository.Verify(
-            repository => repository.RemoveAsync(It.IsAny<Todo>(), It.IsAny<CancellationToken>()),
-            Times.Never);
     }
 
-    [Fact(DisplayName = "Hard delete should remove the todo permanently")]
-    public async Task Handle_Hard_ShouldRemoveTodo()
+    [Fact(DisplayName = "Hard delete should raise a hard delete event")]
+    public async Task Handle_Hard_ShouldRaiseHardDeleteEvent()
     {
         // Arrange
         var fixture = new TodoHandlerFixture();
@@ -58,10 +56,11 @@ public sealed class DeleteTodoTest
 
         // Assert
         result.IsSuccess.Should().BeTrue();
+        TodoDeleted deleted = todo.UncommittedEvents.OfType<TodoDeleted>().Should().ContainSingle().Subject;
+        deleted.IsHard.Should().BeTrue();
         fixture.TodoRepository.Verify(
-            repository => repository.RemoveAsync(todo, It.IsAny<CancellationToken>()),
+            store => store.SaveAsync(todo, It.IsAny<CancellationToken>()),
             Times.Once);
-        todo.IsDeleted.Should().BeFalse();
     }
 
     [Fact(DisplayName = "Delete should return not found for an unknown todo")]
@@ -77,6 +76,10 @@ public sealed class DeleteTodoTest
 
         // Assert
         result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(error => error.Code == "Repository.Entity.NotFound");
+        fixture.TodoRepository.Verify(
+            store => store.SaveAsync(It.IsAny<Todo>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact(DisplayName = "Delete should fail when the tenant is missing")]

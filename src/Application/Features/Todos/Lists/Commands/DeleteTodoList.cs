@@ -47,6 +47,8 @@ public static class DeleteTodoList
             Request request = command.Request;
             DateTimeOffset nowUtc = clock.GetUtcNow();
 
+            // Note: each todo stream commits independently; a failed list delete can leave references
+            // cleared. The operation is idempotent and safe to retry.
             return await tenantContext.RequireTenant()
                 .BindAsync(
                     (tenantId, ct) => repository.FindOwnedAsync(

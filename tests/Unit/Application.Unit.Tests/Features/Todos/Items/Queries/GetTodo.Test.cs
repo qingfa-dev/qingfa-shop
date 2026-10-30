@@ -1,3 +1,5 @@
+using Application.Common.Persistence.Repositories;
+using Application.Features.Todos.Items.Models;
 using Application.Features.Todos.Items.Queries;
 using Application.Unit.Tests.Features.Todos.Fixtures;
 
@@ -9,24 +11,47 @@ namespace Application.Unit.Tests.Features.Todos.Items.Queries;
 public sealed class GetTodoTest
 {
     private static GetTodo.UseCaseHandler CreateHandler(TodoHandlerFixture fixture) =>
-        new(fixture.TodoRepository.Object, fixture.Tenant);
+        new(fixture.TodoReadRepository.Object, fixture.Tenant);
+
+    private static TodoReadModel CreateReadModel(
+        Guid? tenantId = null,
+        bool isDeleted = false) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId ?? TodoHandlerFixture.TenantId,
+            Title = "Read me",
+            Status = TodoStatus.Pending,
+            Priority = TodoPriority.Medium,
+            CreatedAtUtc = TodoHandlerFixture.Now,
+            IsDeleted = isDeleted,
+        };
+
+    private static void Register(
+        TodoHandlerFixture fixture,
+        TodoReadModel model) =>
+        fixture.TodoReadRepository
+            .Setup(repository => repository.FindByIdAsync(
+                model.Id,
+                It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<Maybe<TodoReadModel>>.Success(Maybe<TodoReadModel>.From(model)));
 
     [Fact(DisplayName = "Get should return the todo for the ambient tenant")]
     public async Task Handle_WhenFound_ShouldReturnModel()
     {
         // Arrange
         var fixture = new TodoHandlerFixture();
-        Todo todo = fixture.CreateTodo("Read me");
-        fixture.RegisterTodo(todo);
+        TodoReadModel model = CreateReadModel();
+        Register(fixture, model);
 
         // Act
         Result<GetTodo.Response> result = await CreateHandler(fixture).Handle(
-            new GetTodo.UseCase(new GetTodo.Request(todo.Id)),
+            new GetTodo.UseCase(new GetTodo.Request(model.Id)),
             CancellationToken.None);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Id.Should().Be(todo.Id);
+        result.Value.Id.Should().Be(model.Id);
         result.Value.Title.Should().Be("Read me");
     }
 
@@ -35,17 +60,17 @@ public sealed class GetTodoTest
     {
         // Arrange
         var fixture = new TodoHandlerFixture();
-        Todo todo = fixture.CreateTodo();
-        todo.IsDeleted = true;
-        fixture.RegisterTodo(todo);
+        TodoReadModel model = CreateReadModel(isDeleted: true);
+        Register(fixture, model);
 
         // Act
         Result<GetTodo.Response> result = await CreateHandler(fixture).Handle(
-            new GetTodo.UseCase(new GetTodo.Request(todo.Id)),
+            new GetTodo.UseCase(new GetTodo.Request(model.Id)),
             CancellationToken.None);
 
         // Assert
         result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(error => error.Code == RepositoryOutcome.Codes.EntityNotFound);
     }
 
     [Fact(DisplayName = "Get should return a soft-deleted todo when IncludeDeleted is set")]
@@ -53,13 +78,12 @@ public sealed class GetTodoTest
     {
         // Arrange
         var fixture = new TodoHandlerFixture();
-        Todo todo = fixture.CreateTodo();
-        todo.IsDeleted = true;
-        fixture.RegisterTodo(todo);
+        TodoReadModel model = CreateReadModel(isDeleted: true);
+        Register(fixture, model);
 
         // Act
         Result<GetTodo.Response> result = await CreateHandler(fixture).Handle(
-            new GetTodo.UseCase(new GetTodo.Request(todo.Id, IncludeDeleted: true)),
+            new GetTodo.UseCase(new GetTodo.Request(model.Id, IncludeDeleted: true)),
             CancellationToken.None);
 
         // Assert
@@ -72,20 +96,16 @@ public sealed class GetTodoTest
     {
         // Arrange
         var fixture = new TodoHandlerFixture();
-        Todo todo = Todo.Create(
-            Guid.NewGuid(),
-            Guid.NewGuid(),
-            "foreign",
-            TodoHandlerFixture.Now,
-            TodoHandlerFixture.Actor).Value;
-        fixture.RegisterTodo(todo);
+        TodoReadModel model = CreateReadModel(tenantId: Guid.NewGuid());
+        Register(fixture, model);
 
         // Act
         Result<GetTodo.Response> result = await CreateHandler(fixture).Handle(
-            new GetTodo.UseCase(new GetTodo.Request(todo.Id)),
+            new GetTodo.UseCase(new GetTodo.Request(model.Id)),
             CancellationToken.None);
 
         // Assert
         result.IsFailure.Should().BeTrue();
+        result.Errors.Should().Contain(error => error.Code == RepositoryOutcome.Codes.EntityNotFound);
     }
 }

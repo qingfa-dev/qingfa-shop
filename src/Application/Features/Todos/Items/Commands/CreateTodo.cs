@@ -1,3 +1,4 @@
+using Application.Common.EventSourcing;
 using Application.Features.Todos.Items.Mappings;
 using Application.Features.Todos.Items.Models;
 using Application.Features.Todos.Items.Validators;
@@ -35,8 +36,7 @@ public static class CreateTodo
 
     #region Handler
     public sealed class UseCaseHandler(
-        IPersistentRepository<Todo, Guid> repository,
-        IUnitOfWork unitOfWork,
+        IEventSourcedRepository<Todo, Guid> repository,
         ITenantContext tenantContext,
         IUserContext actorContext,
         TimeProvider clock)
@@ -51,36 +51,40 @@ public static class CreateTodo
 
             Request request = command.Request;
 
-            return await tenantContext.RequireTenant()
-                .Bind(tenantId => Todo.Create(
-                    id: Guid.NewGuid(),
-                    tenantId: tenantId,
-                    title: request.Title,
-                    nowUtc: clock.GetUtcNow(),
-                    actor: actorContext.Actor(),
-                    description: request.Description,
-                    priority: request.Priority ?? TodoConstant.Defaults.Priority,
-                    dueAtUtc: request.DueAtUtc,
-                    listId: request.ListId))
-                .Bind(created => AddCategories(created, request.CategoryIds))
-                .BindAsync(
-                    (created, ct) => repository.SaveNewAsync(unitOfWork, created, ct),
-                    cancellationToken)
-                .MapAsync(created => created.ToModel<Response>());
-        }
+            Result<Guid> tenant = tenantContext.RequireTenant();
+            if (tenant.IsFailure)
+                return Result<Response>.Fail(tenant.Errors);
 
-        private static Result<Todo> AddCategories(
-            Result<Todo> created,
-            IReadOnlyCollection<Guid>? categoryIds)
-        {
-            if (categoryIds is null || categoryIds.Count == 0)
+            DateTimeOffset nowUtc = clock.GetUtcNow();
+            string? actor = actorContext.Actor();
+
+            Result<Todo> created = Todo.Create(
+                id: Guid.NewGuid(),
+                tenantId: tenant.Value,
+                title: request.Title,
+                nowUtc: nowUtc,
+                actor: actor,
+                description: request.Description,
+                priority: request.Priority ?? TodoConstant.Defaults.Priority,
+                dueAtUtc: request.DueAtUtc,
+                listId: request.ListId);
+            if (created.IsFailure)
+                return Result<Response>.Fail(created.Errors);
+
+            foreach (Guid categoryId in request.CategoryIds)
             {
-                return created;
+                Result added = created.Value.AddCategory(categoryId, nowUtc, actor);
+                if (added.IsFailure)
+                    return Result<Response>.Fail(added.Errors);
             }
 
-            return categoryIds.Aggregate(
-                created,
-                (current, categoryId) => current.AddCategory(categoryId));
+            Result saved = await repository
+                .SaveAsync(created.Value, cancellationToken)
+                .ConfigureAwait(false);
+
+            return saved.IsFailure
+                ? Result<Response>.Fail(saved.Errors)
+                : Result<Response>.Success(created.Value.ToModel<Response>());
         }
     }
     #endregion

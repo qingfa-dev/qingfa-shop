@@ -11,7 +11,6 @@ public sealed class CompleteTodoTest
     private static CompleteTodo.UseCaseHandler CreateHandler(TodoHandlerFixture fixture) =>
         new(
             fixture.TodoRepository.Object,
-            fixture.UnitOfWork.Object,
             fixture.Tenant,
             fixture.ActorContext,
             fixture.Clock);
@@ -22,7 +21,8 @@ public sealed class CompleteTodoTest
         // Arrange
         var fixture = new TodoHandlerFixture();
         Todo todo = fixture.CreateTodo();
-        todo.Status = TodoStatus.InProgress;
+        todo.Start(TodoHandlerFixture.Now, TodoHandlerFixture.Actor).IsSuccess.Should().BeTrue();
+        todo.ClearUncommittedEvents();
         fixture.RegisterTodo(todo);
 
         // Act
@@ -34,6 +34,8 @@ public sealed class CompleteTodoTest
         result.IsSuccess.Should().BeTrue();
         result.Value.Status.Should().Be(TodoStatus.Completed);
         result.Value.CompletedAtUtc.Should().Be(TodoHandlerFixture.Now);
+        todo.UncommittedEvents.OfType<TodoStatusChanged>().Should().ContainSingle()
+            .Which.To.Should().Be(TodoStatus.Completed);
     }
 
     [Fact(DisplayName = "Complete should reject a pending todo")]
@@ -51,6 +53,9 @@ public sealed class CompleteTodoTest
 
         // Assert
         result.IsFailure.Should().BeTrue();
+        fixture.TodoRepository.Verify(
+            store => store.SaveAsync(It.IsAny<Todo>(), It.IsAny<CancellationToken>()),
+            Times.Never);
     }
 
     [Fact(DisplayName = "Complete validator should reject a missing id")]
