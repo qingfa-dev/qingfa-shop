@@ -1,3 +1,7 @@
+using Application.Features.Identity.External.Abstractions;
+
+using Infrastructure.Integrations.Security;
+
 using Microsoft.Extensions.DependencyInjection;
 
 namespace Web.Api.Endpoints.Identity;
@@ -11,7 +15,7 @@ public static class IdentityComposition
     public static IServiceCollection AddIdentityFeature(this IServiceCollection services)
     {
         ArgumentNullException.ThrowIfNull(services);
-        services.AddScoped<ExternalCodeStore>();
+        services.AddScoped<IExternalCodeStore, ExternalCodeStore>();
         return services;
     }
 }

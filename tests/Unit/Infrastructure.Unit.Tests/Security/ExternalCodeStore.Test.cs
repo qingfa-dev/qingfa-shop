@@ -4,18 +4,13 @@ using System.Text;
 using Application.Features.Identity.Auth.Models;
 using Application.Features.Identity.External.Options;
 
-using Core.Common.Monad.Results;
+using Infrastructure.Integrations.Security;
 
 using Microsoft.Extensions.Caching.Distributed;
-using Microsoft.Extensions.Time.Testing;
 
-using Web.Api.Endpoints.Identity;
-
-
-namespace Api.Integration.Tests;
+namespace Infrastructure.Unit.Tests.Security;
 
 /// <summary>Locks the one-time-code storage contract used by the external sign-in routes.</summary>
-[Trait("Category", "Unit")]
 public sealed class ExternalCodeStoreTest
 {
     [Fact(DisplayName = "Stored codes should be 32-byte base64url values")]
@@ -81,7 +76,7 @@ public sealed class ExternalCodeStoreTest
     [Fact(DisplayName = "A code should expire after the configured lifetime")]
     public async Task ConsumeAsync_AfterLifetime_ShouldReturn401()
     {
-        (ExternalCodeStore store, _, FakeTimeProvider clock) = CreateStore();
+        (ExternalCodeStore store, _, ManualClock clock) = CreateStore();
 
         Result<string> stored = await store.StoreAsync(
             CreateResponse(),
@@ -187,10 +182,10 @@ public sealed class ExternalCodeStoreTest
         "auth:external:" + Convert.ToHexString(
             SHA256.HashData(Encoding.UTF8.GetBytes(code)));
 
-    private static (ExternalCodeStore Store, FakeDistributedCache Cache, FakeTimeProvider Clock)
+    private static (ExternalCodeStore Store, FakeDistributedCache Cache, ManualClock Clock)
         CreateStore()
     {
-        var clock = new FakeTimeProvider(DateTimeOffset.UtcNow);
+        var clock = new ManualClock();
         var cache = new FakeDistributedCache(clock);
         var store = new ExternalCodeStore(
             cache,
@@ -213,7 +208,14 @@ public sealed class ExternalCodeStoreTest
                 true,
                 false));
 
-    private sealed class FakeDistributedCache(FakeTimeProvider clock) : IDistributedCache
+    private sealed class ManualClock
+    {
+        public DateTimeOffset UtcNow { get; private set; } = DateTimeOffset.UtcNow;
+
+        public void Advance(TimeSpan delta) => UtcNow += delta;
+    }
+
+    private sealed class FakeDistributedCache(ManualClock clock) : IDistributedCache
     {
         private readonly Dictionary<string, Entry> _entries = [];
 
@@ -227,7 +229,7 @@ public sealed class ExternalCodeStoreTest
         public void Set(string key, byte[] value, DistributedCacheEntryOptions options)
         {
             DateTimeOffset? expiresAt = options.AbsoluteExpirationRelativeToNow is { } relative
-                ? clock.GetUtcNow() + relative
+                ? clock.UtcNow + relative
                 : options.AbsoluteExpiration;
 
             _entries[key] = new Entry([.. value], expiresAt);
@@ -263,7 +265,7 @@ public sealed class ExternalCodeStoreTest
             if (!_entries.TryGetValue(key, out Entry? entry))
                 return null;
 
-            if (entry.ExpiresAt is { } expiresAt && expiresAt <= clock.GetUtcNow())
+            if (entry.ExpiresAt is { } expiresAt && expiresAt <= clock.UtcNow)
             {
                 _entries.Remove(key);
                 return null;

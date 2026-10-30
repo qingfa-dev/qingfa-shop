@@ -2,19 +2,15 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
+using Application.Features.Identity.Auth.Models;
+using Application.Features.Identity.External.Abstractions;
 using Application.Features.Identity.External.Options;
-
-using Core.Common.Monad.Errors;
-using Core.Common.Monad.Results;
 
 using Infrastructure.Integrations.Serialization;
 
 using Microsoft.Extensions.Caching.Distributed;
 
-
-using Application.Features.Identity.Auth.Models;
-
-namespace Web.Api.Endpoints.Identity;
+namespace Infrastructure.Integrations.Security;
 
 /// <summary>Stores single-use codes that carry an issued external sign-in token pair.</summary>
 /// <remarks>
@@ -23,16 +19,14 @@ namespace Web.Api.Endpoints.Identity;
 /// itself is never logged.
 /// </remarks>
 public sealed class ExternalCodeStore(IDistributedCache cache, ExternalAuthOption option)
+    : IExternalCodeStore
 {
     private const string KeyPrefix = "auth:external:";
     private const int CodeByteLength = 32;
 
     private TimeSpan Lifetime => TimeSpan.FromSeconds(Math.Max(1, option.CodeLifetimeSeconds));
 
-    /// <summary>Stores the token pair under a fresh one-time code.</summary>
-    /// <param name="response">The token pair to hand to the client.</param>
-    /// <param name="cancellationToken">The request cancellation token.</param>
-    /// <returns>The plaintext code, or a failure when the cache write fails.</returns>
+    /// <inheritdoc />
     public async Task<Result<string>> StoreAsync(
         AuthTokenResponse response,
         CancellationToken cancellationToken = default)
@@ -63,10 +57,7 @@ public sealed class ExternalCodeStore(IDistributedCache cache, ExternalAuthOptio
         return Result<string>.Ok(code);
     }
 
-    /// <summary>Reads and removes the token pair bound to a one-time code.</summary>
-    /// <param name="code">The plaintext code from the client redirect.</param>
-    /// <param name="cancellationToken">The request cancellation token.</param>
-    /// <returns>The token pair, or a 401 failure when the code is unknown or expired.</returns>
+    /// <inheritdoc />
     public async Task<Result<AuthTokenResponse>> ConsumeAsync(
         string code,
         CancellationToken cancellationToken = default)

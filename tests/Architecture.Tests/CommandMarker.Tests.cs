@@ -5,10 +5,14 @@ namespace QingFa.Shop.Architecture.Tests;
 /// <summary>Architecture tests for shared MediatR command markers.</summary>
 public sealed class CommandMarkerArchitectureTests
 {
-    private const string AuthSliceNamespace = "Application.Features.Identity.Auth";
+    private static readonly string[] SelfManagedNamespaces =
+    [
+        "Application.Features.Identity.Auth",
+        "Application.Features.Identity.External",
+    ];
 
-    [Fact(DisplayName = "Non-transactional commands should only live in the auth slice")]
-    public void NonTransactionalCommand_ShouldOnlyBeImplementedByAuthSlice()
+    [Fact(DisplayName = "Non-transactional commands should only live in self-managed identity slices")]
+    public void NonTransactionalCommand_ShouldOnlyBeImplementedBySelfManagedSlices()
     {
         Type[] implementations = typeof(INonTransactionalCommand).Assembly
             .GetTypes()
@@ -20,7 +24,8 @@ public sealed class CommandMarkerArchitectureTests
             "the auth slice commands should opt out of the ambient transaction");
         implementations.Should().OnlyContain(type =>
             type.Namespace != null &&
-            (type.Namespace == AuthSliceNamespace ||
-                type.Namespace.StartsWith(AuthSliceNamespace + ".", StringComparison.Ordinal)));
+            SelfManagedNamespaces.Any(ns =>
+                type.Namespace == ns ||
+                type.Namespace.StartsWith(ns + ".", StringComparison.Ordinal)));
     }
 }
