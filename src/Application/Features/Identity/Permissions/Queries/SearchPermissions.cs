@@ -29,7 +29,7 @@ public static class SearchPermissions
                 .SearchAsync(query.Parameters, cancellationToken)
                 .ConfigureAwait(false);
 
-            return snapshot.Map(value => value.ToPage(query.Parameters));
+            return snapshot.Bind(value => value.ToPage(query.Parameters));
         }
     }
     #endregion

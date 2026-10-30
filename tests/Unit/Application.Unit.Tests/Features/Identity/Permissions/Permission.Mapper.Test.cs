@@ -49,7 +49,8 @@ public sealed class PermissionMapperTest
     [Fact(DisplayName = "Snapshot should page with defaults")]
     public void ToPage_ShouldApplyDefaults()
     {
-        QueryPage<PermissionItemModel> page = PermissionFixture.Snapshot.ToPage(new QueryParameters());
+        Result<QueryPage<PermissionItemModel>> result = PermissionFixture.Snapshot.ToPage(new QueryParameters());
+        QueryPage<PermissionItemModel> page = result.Value;
 
         page.Page.Should().Be(1);
         page.PageSize.Should().Be(20);
@@ -59,36 +60,34 @@ public sealed class PermissionMapperTest
         page.HasNext.Should().BeFalse();
     }
 
-    [Fact(DisplayName = "Snapshot should page and clamp the page size")]
-    public void ToPage_ShouldPageAndClamp()
+    [Fact(DisplayName = "Snapshot should reject a page size above the shared maximum")]
+    public void ToPage_ShouldRejectOversizedPage()
     {
-        QueryPage<PermissionItemModel> page = PermissionFixture.Snapshot.ToPage(
+        Result<QueryPage<PermissionItemModel>> result = PermissionFixture.Snapshot.ToPage(
             new QueryParameters { Page = 2, PageSize = 500 });
 
-        page.Page.Should().Be(2);
-        page.PageSize.Should().Be(200);
-        page.TotalCount.Should().Be(3);
-        page.Items.Should().BeEmpty();
-        page.HasPrevious.Should().BeTrue();
-        page.HasNext.Should().BeFalse();
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().ContainSingle()
+            .Which.Code.Should().Be(QueryErrorCodes.PageSizeInvalid);
     }
 
-    [Fact(DisplayName = "Snapshot should treat a non-positive page as the first page")]
-    public void ToPage_WhenPageIsNonPositive_ShouldUseFirstPage()
+    [Fact(DisplayName = "Snapshot should reject a non-positive page")]
+    public void ToPage_WhenPageIsNonPositive_ShouldFail()
     {
-        QueryPage<PermissionItemModel> page = PermissionFixture.Snapshot.ToPage(
-            new QueryParameters { Page = 0, PageSize = 0 });
+        Result<QueryPage<PermissionItemModel>> result = PermissionFixture.Snapshot.ToPage(
+            new QueryParameters { Page = 0 });
 
-        page.Page.Should().Be(1);
-        page.PageSize.Should().Be(20);
-        page.Items.Should().HaveCount(3);
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should().ContainSingle()
+            .Which.Code.Should().Be(QueryErrorCodes.PageInvalid);
     }
 
     [Fact(DisplayName = "Snapshot should return an empty page past the end")]
     public void ToPage_WhenPageIsPastTheEnd_ShouldReturnEmpty()
     {
-        QueryPage<PermissionItemModel> page = PermissionFixture.Snapshot.ToPage(
+        Result<QueryPage<PermissionItemModel>> result = PermissionFixture.Snapshot.ToPage(
             new QueryParameters { Page = int.MaxValue, PageSize = 1 });
+        QueryPage<PermissionItemModel> page = result.Value;
 
         page.Items.Should().BeEmpty();
         page.TotalCount.Should().Be(3);
