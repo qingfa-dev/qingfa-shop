@@ -5,12 +5,8 @@ namespace Application.Features.Identity.Users.Commands;
 
 public static class ActivateUser
 {
-    #region Request
-    public sealed record Request : UserTargetModel;
-    #endregion
-
     #region UseCase
-    public sealed record UseCase(Request Request) : ICommand<UserModel>;
+    public sealed record UseCase(Guid Id) : ICommand<UserModel>;
     #endregion
 
     #region Handler
@@ -22,10 +18,9 @@ public static class ActivateUser
             CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(command);
-            ArgumentNullException.ThrowIfNull(command.Request);
 
             return await users
-                .SetActiveAsync(command.Request.Id, active: true, ct: cancellationToken)
+                .SetActiveAsync(command.Id, active: true, ct: cancellationToken)
                 .ConfigureAwait(false);
         }
     }

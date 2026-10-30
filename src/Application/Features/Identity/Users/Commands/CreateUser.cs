@@ -1,5 +1,4 @@
 using Application.Features.Identity.Abstractions;
-using Application.Features.Identity.Users.Mappings;
 using Application.Features.Identity.Users.Models;
 
 namespace Application.Features.Identity.Users.Commands;
@@ -7,7 +6,7 @@ namespace Application.Features.Identity.Users.Commands;
 public static class CreateUser
 {
     #region Request
-    public sealed record Request : CreateUserModel;
+    public sealed record Request : CreateUserRequestModel;
     #endregion
 
     #region UseCase
@@ -26,7 +25,7 @@ public static class CreateUser
             ArgumentNullException.ThrowIfNull(command.Request);
 
             Result<UserModel> created = await users
-                .CreateAsync(UserMapper.ToSpec(command.Request), cancellationToken)
+                .CreateAsync(command.Request, cancellationToken)
                 .ConfigureAwait(false);
 
             return created.IsSuccess

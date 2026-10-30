@@ -6,12 +6,8 @@ namespace Application.Features.Identity.Users.Queries;
 
 public static class GetUser
 {
-    #region Request
-    public sealed record Request : UserTargetModel;
-    #endregion
-
     #region UseCase
-    public sealed record UseCase(Request Request) : IQuery<UserModel>;
+    public sealed record UseCase(Guid Id) : IQuery<UserModel>;
     #endregion
 
     #region Handler
@@ -23,10 +19,9 @@ public static class GetUser
             CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(query);
-            ArgumentNullException.ThrowIfNull(query.Request);
 
             return await users
-                .GetAsync(query.Request.Id, cancellationToken)
+                .GetAsync(query.Id, cancellationToken)
                 .ConfigureAwait(false);
         }
     }

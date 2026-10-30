@@ -8,12 +8,9 @@ namespace Application.Features.Identity.Users.Queries;
 
 public static class SearchUsers
 {
-    #region Request
-    public sealed record Request : SearchUsersModel;
-    #endregion
 
     #region UseCase
-    public sealed record UseCase(Request Request) : IQuery<QueryPage<UserModel>>;
+    public sealed record UseCase(QueryParameters Parameters) : IQuery<QueryPage<UserModel>>;
     #endregion
 
     #region Handler
@@ -25,10 +22,10 @@ public static class SearchUsers
             CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(query);
-            ArgumentNullException.ThrowIfNull(query.Request);
+            ArgumentNullException.ThrowIfNull(query.Parameters);
 
             return await users
-                .SearchAsync(query.Request.Parameters, cancellationToken)
+                .SearchAsync(query.Parameters, cancellationToken)
                 .ConfigureAwait(false);
         }
     }

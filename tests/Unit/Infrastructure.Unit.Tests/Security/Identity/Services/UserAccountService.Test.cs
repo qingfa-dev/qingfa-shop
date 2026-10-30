@@ -6,6 +6,8 @@ using Application.Common.Security.Authentication.Tokens.Domain;
 using Application.Features.Identity.Auth;
 using Application.Features.Identity.Users.Models;
 
+using FluentEmail.Core;
+
 using Infrastructure.Persistence.EntityFramework.Contexts;
 using Infrastructure.Security.Identity;
 using Infrastructure.Security.Identity.Domain.Roles;
@@ -184,7 +186,13 @@ public sealed class UserAccountServiceTest
 
         Result<UserModel> updated = await host.Accounts.UpdateAsync(
             created.Value.Id,
-            new UpdateUserSpec("alice.new@example.com", "Alicia", "Smith", [host.EditorRoleId]));
+            new UpdateUserRequestModel()
+            {
+                Email = "alice.new@example.com",
+                FirstName = "Alicia",
+                LastName = "Smith",
+                RoleIds = [host.EditorRoleId]
+            });
 
         updated.IsSuccess.Should().BeTrue();
         updated.Value.Email.Should().Be("alice.new@example.com");
@@ -204,15 +212,30 @@ public sealed class UserAccountServiceTest
         await using TestHost host = await TestHost.CreateAsync();
         Result<UserModel> created = await host.CreateAsync("alice");
 
-        (UpdateUserSpec Spec, string Code)[] cases =
+        (UpdateUserRequestModel Spec, string Code)[] cases =
         [
-            (new UpdateUserSpec("not-an-email", null, null, null), "Identity.Email.Invalid"),
-            (new UpdateUserSpec(null, new string('a', 51), null, null), "Identity.User.FirstName.TooLong"),
-            (new UpdateUserSpec(null, null, new string('a', 51), null), "Identity.User.LastName.TooLong"),
-            (new UpdateUserSpec(null, null, null, [Guid.Empty]), "Identity.Role.Invalid"),
+            (new UpdateUserRequestModel()
+            {
+                Email = "not-an-email"
+            }, "Identity.Email.Invalid"),
+
+            (new UpdateUserRequestModel()
+            {
+                FirstName = new string('a', 51)
+            }, "Identity.User.FirstName.TooLong"),
+
+            (new UpdateUserRequestModel()
+            {
+                LastName = new string('a', 51)
+            }, "Identity.User.LastName.TooLong"),
+
+            (new UpdateUserRequestModel()
+            {
+                RoleIds = [Guid.Empty]
+            }, "Identity.Role.Invalid"),
         ];
 
-        foreach ((UpdateUserSpec spec, string code) in cases)
+        foreach ((UpdateUserRequestModel spec, string code) in cases)
         {
             Result<UserModel> result = await host.Accounts.UpdateAsync(created.Value.Id, spec);
 
@@ -223,7 +246,10 @@ public sealed class UserAccountServiceTest
 
         Result<UserModel> unknownRole = await host.Accounts.UpdateAsync(
             created.Value.Id,
-            new UpdateUserSpec(null, null, null, [Guid.NewGuid()]));
+            new UpdateUserRequestModel()
+            {
+                RoleIds = [Guid.NewGuid()]
+            });
 
         unknownRole.StatusCode.Should().Be(404);
         unknownRole.Errors.Should().ContainSingle(
@@ -239,7 +265,10 @@ public sealed class UserAccountServiceTest
 
         Result<UserModel> result = await host.Accounts.UpdateAsync(
             alice.Value.Id,
-            new UpdateUserSpec("bob@example.com", null, null, null));
+            new UpdateUserRequestModel()
+            {
+                Email = "bob@example.com"
+            });
 
         result.StatusCode.Should().Be(409);
         result.Errors.Should().ContainSingle(
@@ -427,7 +456,7 @@ public sealed class UserAccountServiceTest
         Result[] results =
         [
             await host.Accounts.GetAsync(missing),
-            await host.Accounts.UpdateAsync(missing, new UpdateUserSpec(null, null, null, null)),
+            await host.Accounts.UpdateAsync(missing, new UpdateUserRequestModel()),
             await host.Accounts.DeleteAsync(missing),
             await host.Accounts.SetActiveAsync(missing, true),
             await host.Accounts.AssignRoleAsync(missing, host.AdminRoleId),

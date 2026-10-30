@@ -26,7 +26,7 @@ public sealed class IdentityPortsTest
         },
         {
             typeof(UserSummaryModel),
-            ["Id", "UserName", "Email", "IsActive", "IsLockedOut", "Roles"]
+            ["UserName", "Email", "FirstName", "LastName", "IsActive", "IsLockedOut", "Roles"]
         },
         {
             typeof(RoleModel),
@@ -53,7 +53,7 @@ public sealed class IdentityPortsTest
     public static TheoryData<Type> SpecTypes => new()
     {
         typeof(CreateUserRequestModel),
-        typeof(UpdateUserSpec),
+        typeof(UpdateUserRequestModel),
         typeof(CreateRoleSpec),
         typeof(UpdateRoleSpec),
     };
@@ -64,14 +64,13 @@ public sealed class IdentityPortsTest
     {
         model.GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .Select(property => property.Name)
-            .Should().Equal(expected);
+            .Should().BeEquivalentTo(expected);
     }
 
-    [Theory(DisplayName = "Spec Is Sealed Init Only Record")]
+    [Theory(DisplayName = "Spec Is An Init Only Record")]
     [MemberData(nameof(SpecTypes))]
     public void Spec_ShouldBeImmutable(Type spec)
     {
-        spec.IsSealed.Should().BeTrue();
         spec.GetProperties(BindingFlags.Public | BindingFlags.Instance)
             .Should().NotBeEmpty();
 

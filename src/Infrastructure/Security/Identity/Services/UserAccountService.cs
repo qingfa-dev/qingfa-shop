@@ -157,7 +157,7 @@ public sealed class UserAccountService(
     /// <inheritdoc />
     public async Task<Result<UserModel>> UpdateAsync(
         Guid id,
-        UpdateUserSpec spec,
+        UpdateUserRequestModel spec,
         CancellationToken ct = default)
     {
         ArgumentNullException.ThrowIfNull(spec);
@@ -434,7 +434,7 @@ public sealed class UserAccountService(
             code: QueryErrorCodes.Unsupported,
             message: $"{parameter} is not supported for user search."));
 
-    private static Result ValidateUpdate(UpdateUserSpec spec)
+    private static Result ValidateUpdate(UpdateUserRequestModel spec)
     {
         if (spec.Email is not null && !IdentityValidator.ValidateEmail(spec.Email).IsSuccess)
             return Result.Fail(UserAccountOutcome.Failure.EmailInvalid);
@@ -558,18 +558,20 @@ public sealed class UserAccountService(
         DateTimeOffset nowUtc = clock.GetUtcNow();
         bool isLockedOut = user.LockoutEnd is not null && user.LockoutEnd > nowUtc;
 
-        return new UserModel(
-            user.Id,
-            user.UserName ?? string.Empty,
-            user.Email ?? string.Empty,
-            user.FirstName,
-            user.LastName,
-            user.EmailConfirmed,
-            user.TwoFactorEnabled,
-            user.IsActive,
-            isLockedOut,
-            user.LockoutEnd,
-            roles);
+        return new UserModel()
+        {
+            Id = user.Id,
+            UserName = user.UserName ?? string.Empty,
+            Email = user.Email ?? string.Empty,
+            FirstName = user.FirstName,
+            LastName = user.LastName,
+            EmailConfirmed = user.EmailConfirmed,
+            TwoFactorEnabled = user.TwoFactorEnabled,
+            IsActive = user.IsActive,
+            IsLockedOut = isLockedOut,
+            LockoutEndUtc = user.LockoutEnd,
+            Roles = roles
+        };
     }
 
     private static Result<T> Fail<T>(IdentityResult result) =>

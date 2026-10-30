@@ -18,18 +18,20 @@ public sealed class UserFixture
     public Mock<IUserAccountService> Users { get; } = new();
 
     /// <summary>Gets a representative user projection.</summary>
-    public static UserModel User => new(
-        UserId,
-        "admin",
-        "admin@example.com",
-        "Admin",
-        "User",
-        true,
-        false,
-        true,
-        false,
-        null,
-        ["Admin"]);
+    public static UserModel User => new()
+    {
+        Id = UserId,
+        UserName = "admin",
+        Email = "admin@example.com",
+        FirstName = "Admin",
+        LastName = "User",
+        EmailConfirmed = true,
+        TwoFactorEnabled = false,
+        IsActive = true,
+        IsLockedOut = false,
+        LockoutEndUtc = null,
+        Roles = ["Admin"],
+    };
 
     /// <summary>Gets a representative search page.</summary>
     public static QueryPage<UserModel> Page => new([User], 1, 20, 1);

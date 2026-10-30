@@ -44,7 +44,7 @@ public interface IUserAccountService
     /// <returns>The updated user, or a failure.</returns>
     Task<Result<UserModel>> UpdateAsync(
         Guid id,
-        UpdateUserSpec spec,
+        UpdateUserRequestModel spec,
         CancellationToken ct = default);
 
     /// <summary>Deletes a user account.</summary>

@@ -1,5 +1,4 @@
 using Application.Features.Identity.Abstractions;
-using Application.Features.Identity.Users.Mappings;
 using Application.Features.Identity.Users.Models;
 
 namespace Application.Features.Identity.Users.Commands;
@@ -7,11 +6,10 @@ namespace Application.Features.Identity.Users.Commands;
 public static class UpdateUser
 {
     #region Request
-    public sealed record Request : UpdateUserModel;
+    public sealed record Request : UpdateUserRequestModel;
     #endregion
 
     #region UseCase
-    /// <summary>Updates a user; <paramref name="Id"/> is the route identifier and always wins.</summary>
     public sealed record UseCase(Guid Id, Request Request) : ICommand<UserModel>;
     #endregion
 
@@ -29,7 +27,7 @@ public static class UpdateUser
             return await users
                 .UpdateAsync(
                     command.Id,
-                    UserMapper.ToSpec(command.Request),
+                    command.Request,
                     cancellationToken)
                 .ConfigureAwait(false);
         }

@@ -20,7 +20,7 @@ public sealed class UserQueriesTest
 
         Result<QueryPage<UserModel>> result = await new SearchUsers.UseCaseHandler(fixture.Users.Object)
             .Handle(
-                new SearchUsers.UseCase(new SearchUsers.Request { Parameters = UserFixture.Parameters }),
+                new SearchUsers.UseCase(UserFixture.Parameters),
                 CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -41,7 +41,7 @@ public sealed class UserQueriesTest
 
         Result<QueryPage<UserModel>> result = await new SearchUsers.UseCaseHandler(fixture.Users.Object)
             .Handle(
-                new SearchUsers.UseCase(new SearchUsers.Request { Parameters = UserFixture.Parameters }),
+                new SearchUsers.UseCase(UserFixture.Parameters),
                 CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
@@ -60,7 +60,7 @@ public sealed class UserQueriesTest
 
         Result<UserModel> result = await new GetUser.UseCaseHandler(fixture.Users.Object)
             .Handle(
-                new GetUser.UseCase(new GetUser.Request { Id = UserFixture.UserId }),
+                new GetUser.UseCase(UserFixture.UserId),
                 CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -79,7 +79,7 @@ public sealed class UserQueriesTest
 
         Result<UserModel> result = await new GetUser.UseCaseHandler(fixture.Users.Object)
             .Handle(
-                new GetUser.UseCase(new GetUser.Request { Id = UserFixture.UserId }),
+                new GetUser.UseCase(UserFixture.UserId),
                 CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
@@ -98,7 +98,7 @@ public sealed class UserQueriesTest
 
         Result<IReadOnlyList<string>> result = await new GetUserRoles.UseCaseHandler(fixture.Users.Object)
             .Handle(
-                new GetUserRoles.UseCase(new GetUserRoles.Request { Id = UserFixture.UserId }),
+                new GetUserRoles.UseCase(UserFixture.UserId),
                 CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -117,7 +117,7 @@ public sealed class UserQueriesTest
 
         Result<IReadOnlyList<string>> result = await new GetUserRoles.UseCaseHandler(fixture.Users.Object)
             .Handle(
-                new GetUserRoles.UseCase(new GetUserRoles.Request { Id = UserFixture.UserId }),
+                new GetUserRoles.UseCase(UserFixture.UserId),
                 CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();

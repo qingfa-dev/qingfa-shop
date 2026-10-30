@@ -105,7 +105,7 @@ public sealed class IdentityUserEndpoint : ICarterModule
         IMediator mediator,
         CancellationToken cancellationToken)
         => (await mediator.Send(
-                new SearchUsers.UseCase(new SearchUsers.Request { Parameters = parameters }),
+                new SearchUsers.UseCase(parameters),
                 cancellationToken))
             .ToApiResult();
 
@@ -114,7 +114,7 @@ public sealed class IdentityUserEndpoint : ICarterModule
         IMediator mediator,
         CancellationToken cancellationToken)
         => (await mediator.Send(
-                new GetUser.UseCase(new GetUser.Request { Id = id }),
+                new GetUser.UseCase(id),
                 cancellationToken))
             .ToApiResult();
 
@@ -138,7 +138,7 @@ public sealed class IdentityUserEndpoint : ICarterModule
         IMediator mediator,
         CancellationToken cancellationToken)
         => (await mediator.Send(
-                new DeleteUser.UseCase(new DeleteUser.Request { Id = id }),
+                new DeleteUser.UseCase(id),
                 cancellationToken))
             .ToApiResult();
 
@@ -147,7 +147,7 @@ public sealed class IdentityUserEndpoint : ICarterModule
         IMediator mediator,
         CancellationToken cancellationToken)
         => (await mediator.Send(
-                new ActivateUser.UseCase(new ActivateUser.Request { Id = id }),
+                new ActivateUser.UseCase(id),
                 cancellationToken))
             .ToApiResult();
 
@@ -156,7 +156,7 @@ public sealed class IdentityUserEndpoint : ICarterModule
         IMediator mediator,
         CancellationToken cancellationToken)
         => (await mediator.Send(
-                new DeactivateUser.UseCase(new DeactivateUser.Request { Id = id }),
+                new DeactivateUser.UseCase(id),
                 cancellationToken))
             .ToApiResult();
 
@@ -165,7 +165,7 @@ public sealed class IdentityUserEndpoint : ICarterModule
         IMediator mediator,
         CancellationToken cancellationToken)
         => (await mediator.Send(
-                new LockUser.UseCase(new LockUser.Request { Id = id }),
+                new LockUser.UseCase(id),
                 cancellationToken))
             .ToApiResult();
 
@@ -174,7 +174,7 @@ public sealed class IdentityUserEndpoint : ICarterModule
         IMediator mediator,
         CancellationToken cancellationToken)
         => (await mediator.Send(
-                new UnlockUser.UseCase(new UnlockUser.Request { Id = id }),
+                new UnlockUser.UseCase(id),
                 cancellationToken))
             .ToApiResult();
 
@@ -191,7 +191,7 @@ public sealed class IdentityUserEndpoint : ICarterModule
         IMediator mediator,
         CancellationToken cancellationToken)
         => (await mediator.Send(
-                new ConfirmUserEmail.UseCase(new ConfirmUserEmail.Request { Id = id }),
+                new ConfirmUserEmail.UseCase(id),
                 cancellationToken))
             .ToApiResult();
 
@@ -200,7 +200,7 @@ public sealed class IdentityUserEndpoint : ICarterModule
         IMediator mediator,
         CancellationToken cancellationToken)
         => (await mediator.Send(
-                new RevokeUserSessions.UseCase(new RevokeUserSessions.Request { Id = id }),
+                new RevokeUserSessions.UseCase(id),
                 cancellationToken))
             .ToApiResult();
 
@@ -209,7 +209,7 @@ public sealed class IdentityUserEndpoint : ICarterModule
         IMediator mediator,
         CancellationToken cancellationToken)
         => (await mediator.Send(
-                new GetUserRoles.UseCase(new GetUserRoles.Request { Id = id }),
+                new GetUserRoles.UseCase(id),
                 cancellationToken))
             .ToApiResult();
 

@@ -1,17 +1,11 @@
 using Application.Features.Identity.Abstractions;
 
-using Application.Features.Identity.Users.Models;
-
 namespace Application.Features.Identity.Users.Commands;
 
 public static class RevokeUserSessions
 {
-    #region Request
-    public sealed record Request : UserTargetModel;
-    #endregion
-
     #region UseCase
-    public sealed record UseCase(Request Request) : ICommand;
+    public sealed record UseCase(Guid Id) : ICommand;
     #endregion
 
     #region Handler
@@ -23,10 +17,9 @@ public static class RevokeUserSessions
             CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(command);
-            ArgumentNullException.ThrowIfNull(command.Request);
 
             Result result = await users
-                .RevokeSessionsAsync(command.Request.Id, cancellationToken)
+                .RevokeSessionsAsync(command.Id, cancellationToken)
                 .ConfigureAwait(false);
 
             return result.IsSuccess ? Result.NoContent() : result;

@@ -91,7 +91,7 @@ public sealed class UserCommandsTest
         fixture.Users
             .Setup(service => service.UpdateAsync(
                 UserFixture.UserId,
-                It.Is<UpdateUserSpec>(spec =>
+                It.Is<UpdateUserRequestModel>(spec =>
                     spec.Email == "new@example.com" &&
                     spec.FirstName == "New" &&
                     spec.RoleIds != null),
@@ -119,7 +119,7 @@ public sealed class UserCommandsTest
         fixture.Users
             .Setup(service => service.UpdateAsync(
                 It.IsAny<Guid>(),
-                It.IsAny<UpdateUserSpec>(),
+                It.IsAny<UpdateUserRequestModel>(),
                 It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result<UserModel>.Fail(UserFixture.Failure));
 
@@ -144,7 +144,7 @@ public sealed class UserCommandsTest
             .ReturnsAsync(Result.Ok());
 
         Result result = await new DeleteUser.UseCaseHandler(fixture.Users.Object).Handle(
-            new DeleteUser.UseCase(new DeleteUser.Request { Id = UserFixture.UserId }),
+            new DeleteUser.UseCase(UserFixture.UserId),
             CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -162,7 +162,7 @@ public sealed class UserCommandsTest
             .ReturnsAsync(Result.Fail(UserFixture.Failure));
 
         Result result = await new DeleteUser.UseCaseHandler(fixture.Users.Object).Handle(
-            new DeleteUser.UseCase(new DeleteUser.Request { Id = UserFixture.UserId }),
+            new DeleteUser.UseCase(UserFixture.UserId),
             CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
@@ -188,11 +188,11 @@ public sealed class UserCommandsTest
 
         Result<UserModel> activated = await new ActivateUser.UseCaseHandler(fixture.Users.Object)
             .Handle(
-                new ActivateUser.UseCase(new ActivateUser.Request { Id = UserFixture.UserId }),
+                new ActivateUser.UseCase(UserFixture.UserId),
                 CancellationToken.None);
         Result<UserModel> deactivated = await new DeactivateUser.UseCaseHandler(fixture.Users.Object)
             .Handle(
-                new DeactivateUser.UseCase(new DeactivateUser.Request { Id = UserFixture.UserId }),
+                new DeactivateUser.UseCase(UserFixture.UserId),
                 CancellationToken.None);
 
         activated.IsSuccess.Should().BeTrue();
@@ -304,7 +304,7 @@ public sealed class UserCommandsTest
             .ReturnsAsync(Result.Ok());
 
         Result result = await new ConfirmUserEmail.UseCaseHandler(fixture.Users.Object).Handle(
-            new ConfirmUserEmail.UseCase(new ConfirmUserEmail.Request { Id = UserFixture.UserId }),
+            new ConfirmUserEmail.UseCase(UserFixture.UserId),
             CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
@@ -330,11 +330,11 @@ public sealed class UserCommandsTest
 
         Result<UserModel> locked = await new LockUser.UseCaseHandler(fixture.Users.Object)
             .Handle(
-                new LockUser.UseCase(new LockUser.Request { Id = UserFixture.UserId }),
+                new LockUser.UseCase(UserFixture.UserId),
                 CancellationToken.None);
         Result<UserModel> unlocked = await new UnlockUser.UseCaseHandler(fixture.Users.Object)
             .Handle(
-                new UnlockUser.UseCase(new UnlockUser.Request { Id = UserFixture.UserId }),
+                new UnlockUser.UseCase(UserFixture.UserId),
                 CancellationToken.None);
 
         locked.IsSuccess.Should().BeTrue();
@@ -370,12 +370,11 @@ public sealed class UserCommandsTest
 
         Result success = await new RevokeUserSessions.UseCaseHandler(fixture.Users.Object)
             .Handle(
-                new RevokeUserSessions.UseCase(
-                    new RevokeUserSessions.Request { Id = UserFixture.UserId }),
+                new RevokeUserSessions.UseCase(UserFixture.UserId),
                 CancellationToken.None);
         Result failure = await new RevokeUserSessions.UseCaseHandler(fixture.Users.Object)
             .Handle(
-                new RevokeUserSessions.UseCase(new RevokeUserSessions.Request { Id = Guid.Empty }),
+                new RevokeUserSessions.UseCase(Guid.Empty),
                 CancellationToken.None);
 
         success.IsSuccess.Should().BeTrue();

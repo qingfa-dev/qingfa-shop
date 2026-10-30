@@ -6,12 +6,8 @@ namespace Application.Features.Identity.Users.Commands;
 
 public static class ConfirmUserEmail
 {
-    #region Request
-    public sealed record Request : UserTargetModel;
-    #endregion
-
     #region UseCase
-    public sealed record UseCase(Request Request) : ICommand;
+    public sealed record UseCase(Guid Id) : ICommand;
     #endregion
 
     #region Handler
@@ -23,10 +19,9 @@ public static class ConfirmUserEmail
             CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(command);
-            ArgumentNullException.ThrowIfNull(command.Request);
 
             Result result = await users
-                .ConfirmEmailAsync(command.Request.Id, cancellationToken)
+                .ConfirmEmailAsync(command.Id, cancellationToken)
                 .ConfigureAwait(false);
 
             return result.IsSuccess ? Result.NoContent() : result;
