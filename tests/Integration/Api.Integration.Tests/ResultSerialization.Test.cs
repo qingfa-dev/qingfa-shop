@@ -33,7 +33,11 @@ public sealed class ResultSerializationTest
 
         using JsonDocument document = JsonDocument.Parse(json);
         document.RootElement.GetProperty("isSuccess").GetBoolean().Should().BeFalse();
-        document.RootElement.GetProperty("errors")[0]
-            .GetProperty("severity").GetString().Should().Be("warning");
+        document.RootElement.TryGetProperty("value", out _).Should().BeFalse();
+        document.RootElement.GetProperty("metadata").GetRawText().Should().Be("{}");
+
+        JsonElement error = document.RootElement.GetProperty("errors")[0];
+        error.GetProperty("severity").GetString().Should().Be("warning");
+        error.GetProperty("type").GetString().Should().Be("https://errors.kernel/not-found");
     }
 }

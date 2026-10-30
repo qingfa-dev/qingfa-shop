@@ -1,15 +1,13 @@
-using System.Reflection;
 using System.Text.Json;
 
 using Core.Common.Monad.Results;
 
 using Microsoft.AspNetCore.Http;
-using Microsoft.AspNetCore.Http.Metadata;
 
 namespace Web.Api.Endpoints.Results;
 
 /// <summary>Writes a value-less <see cref="Result"/> with its own status code.</summary>
-public sealed class ApiResult : IResult, IEndpointMetadataProvider
+public sealed class ApiResult : IResult
 {
     private readonly Result _result;
 
@@ -31,18 +29,10 @@ public sealed class ApiResult : IResult, IEndpointMetadataProvider
         httpContext.Response.ContentType = "application/json; charset=utf-8";
         return httpContext.Response.WriteAsync(JsonSerializer.Serialize(_result, ApiJson.Options));
     }
-
-    public static void PopulateMetadata(MethodInfo method, EndpointBuilder builder)
-    {
-        builder.Metadata.Add(new ProducesResponseTypeMetadata(
-            StatusCodes.Status200OK,
-            typeof(Result),
-            ["application/json"]));
-    }
 }
 
 /// <summary>Writes a typed <see cref="Result{T}"/> with its own status code.</summary>
-public sealed class ApiResult<T> : IResult, IEndpointMetadataProvider
+public sealed class ApiResult<T> : IResult
 {
     private readonly Result<T> _result;
     private readonly string? _location;
@@ -74,13 +64,5 @@ public sealed class ApiResult<T> : IResult, IEndpointMetadataProvider
         httpContext.Response.StatusCode = statusCode;
         httpContext.Response.ContentType = "application/json; charset=utf-8";
         return httpContext.Response.WriteAsync(JsonSerializer.Serialize(_result, ApiJson.Options));
-    }
-
-    public static void PopulateMetadata(MethodInfo method, EndpointBuilder builder)
-    {
-        builder.Metadata.Add(new ProducesResponseTypeMetadata(
-            StatusCodes.Status200OK,
-            typeof(Result<T>),
-            ["application/json"]));
     }
 }

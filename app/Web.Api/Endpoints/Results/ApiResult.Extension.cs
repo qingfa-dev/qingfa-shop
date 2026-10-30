@@ -1,5 +1,7 @@
 using Core.Common.Monad.Results;
 
+using Microsoft.AspNetCore.Http;
+
 namespace Web.Api.Endpoints.Results;
 
 /// <summary>Maps a monadic result to the shared HTTP result.</summary>
@@ -12,7 +14,9 @@ public static class ApiResultExtension
     {
         ArgumentNullException.ThrowIfNull(result);
 
-        string? uri = result.IsSuccess && location is not null
+        string? uri = result.IsSuccess
+            && result.StatusCode == StatusCodes.Status201Created
+            && location is not null
             ? location(result.Value)
             : null;
 

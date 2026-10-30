@@ -1,3 +1,5 @@
+using System.Text.Json;
+
 using Carter;
 
 using Application;
@@ -42,16 +44,33 @@ builder.Services.TryAddSingleton(TimeProvider.System);
 builder.Services.AddProblemDetails();
 
 // Initialize: one serializer governs request binding and response writing, so results
-// and endpoint payloads share naming, enum, and null-handling rules.
+// and endpoint payloads share naming, enum, escaping, and null-handling rules.
+// Enforce: JsonOptions.SerializerOptions is read-only, so mirror every setting that
+// changes the wire format; a partial copy would let escaping or numbers drift.
 builder.Services.ConfigureHttpJsonOptions(options =>
 {
-    options.SerializerOptions.PropertyNamingPolicy = ApiJson.Options.PropertyNamingPolicy;
-    options.SerializerOptions.PropertyNameCaseInsensitive = ApiJson.Options.PropertyNameCaseInsensitive;
-    options.SerializerOptions.DefaultIgnoreCondition = ApiJson.Options.DefaultIgnoreCondition;
-    options.SerializerOptions.WriteIndented = ApiJson.Options.WriteIndented;
-    options.SerializerOptions.Converters.Clear();
-    foreach (var converter in ApiJson.Options.Converters)
-        options.SerializerOptions.Converters.Add(converter);
+    JsonSerializerOptions target = options.SerializerOptions;
+    JsonSerializerOptions source = ApiJson.Options;
+
+    target.AllowTrailingCommas = source.AllowTrailingCommas;
+    target.DefaultIgnoreCondition = source.DefaultIgnoreCondition;
+    target.DictionaryKeyPolicy = source.DictionaryKeyPolicy;
+    target.Encoder = source.Encoder;
+    target.IgnoreReadOnlyFields = source.IgnoreReadOnlyFields;
+    target.IgnoreReadOnlyProperties = source.IgnoreReadOnlyProperties;
+    target.IncludeFields = source.IncludeFields;
+    target.MaxDepth = source.MaxDepth;
+    target.NumberHandling = source.NumberHandling;
+    target.PropertyNameCaseInsensitive = source.PropertyNameCaseInsensitive;
+    target.PropertyNamingPolicy = source.PropertyNamingPolicy;
+    target.ReadCommentHandling = source.ReadCommentHandling;
+    target.ReferenceHandler = source.ReferenceHandler;
+    target.UnmappedMemberHandling = source.UnmappedMemberHandling;
+    target.WriteIndented = source.WriteIndented;
+
+    target.Converters.Clear();
+    foreach (var converter in source.Converters)
+        target.Converters.Add(converter);
 });
 
 WebApplication app = builder.Build();
