@@ -30,8 +30,10 @@
 - External sign-in (providers, challenge, callback, exchange) is a command/query slice. The callback
   stores the token response in Redis behind a random one-time code, redirects with only
   `?code=<code>`, and the client exchanges it at `POST /api/auth/external/exchange`. Only a SHA-256
-  hash of the code is stored; the entry is consumed atomically, expires after
-  `ExternalAuth:CodeLifetimeSeconds` (60 by default), and is never logged.
+  hash of the code is stored; the entry is read and then removed, expires after
+  `ExternalAuth:CodeLifetimeSeconds` (60 by default), and is never logged. Concurrent
+  exchange is serialized per process; a multi-instance deployment still relies on the
+  Redis entry disappearing between the read and the remove.
 
 ### Breaking route change
 
@@ -58,6 +60,8 @@ PostgreSQL, Redis, and RabbitMQ now have the same local shape:
   `15672`, and the transport environment on the Api.
 - `infra.backing.up`, `infra.backing.down`, and `infra.backing.health` start, stop, and probe all
   three services. `infra.up/down/ps/logs/smoke` still cover the whole stack.
+- The broker uses the locally tuned `app/Infrastructure/RabbitMQ` image, a `rabbitmq-data` volume,
+  a `check_port_connectivity` health check, and a `127.0.0.1`-bound management UI.
 
 There is deliberately no `compose.rabbitmq.yaml` and no `infra.rabbit.*` target. A broker-only path
 would duplicate the lifecycle that the other backing services already share.
@@ -69,9 +73,10 @@ would duplicate the lifecycle that the other backing services already share.
   `messaging`. A container engine (Docker or Podman) is required; without one those tests report
   `Assert.Skip`, so a green run with skips does not mean the identity or persistence stack was
   exercised.
-- Messaging is covered by the Infrastructure suite and the Compose smoke, not by a broker-specific
-  Api suite. `make infra.test` and `make ci.full` need the full Compose stack (PostgreSQL, Redis,
-  RabbitMQ, Api, Gateway, both SPAs), including a running RabbitMQ container.
+- Messaging is covered by `make test.infra.broker` (RabbitMQ composition + transport), the
+  Infrastructure suite, and the Compose smoke, not by a broker-specific Api suite. `make ci`
+  includes the broker suite; `make infra.test` and `make ci.full` need the full Compose stack
+  (PostgreSQL, Redis, RabbitMQ, Api, Gateway, both SPAs), including a running RabbitMQ container.
 - If RabbitMQ loses the container start race, rerun the gate once before treating it as a failure.
 
 ## Compatibility
