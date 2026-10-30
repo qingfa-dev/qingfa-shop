@@ -1,10 +1,11 @@
 using System.Text;
 
 using Application.Common.Security.Authentication.Contexts;
-using Application.Common.Security.Authentication.Identity;
 using Application.Features.Identity.Auth;
 using Application.Features.Identity.Auth.Abstractions;
+using Application.Features.Identity.Auth.Options;
 using Application.Features.Identity.External.Abstractions;
+using Application.Features.Identity.External.Options;
 using Application.Common.Security.Authentication.Tokens;
 using Application.Common.Security.Authentication.Tokens.Abstractions.Blacklist;
 using Application.Common.Security.Authentication.Tokens.Abstractions.Jwt;

@@ -2,6 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 
 using Application.Features.Identity.Auth.Models;
+using Application.Features.Identity.External.Options;
 
 using Core.Common.Monad.Results;
 
@@ -10,7 +11,6 @@ using Microsoft.Extensions.Time.Testing;
 
 using Web.Api.Endpoints.Identity;
 
-using ExternalAuthOption = Application.Common.Security.Authentication.Identity.ExternalAuthOption;
 
 namespace Api.Integration.Tests;
 

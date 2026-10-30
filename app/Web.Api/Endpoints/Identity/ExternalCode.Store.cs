@@ -2,7 +2,7 @@ using System.Security.Cryptography;
 using System.Text;
 using System.Text.Json;
 
-using Application.Common.Security.Authentication.Identity;
+using Application.Features.Identity.External.Options;
 
 using Core.Common.Monad.Errors;
 using Core.Common.Monad.Results;

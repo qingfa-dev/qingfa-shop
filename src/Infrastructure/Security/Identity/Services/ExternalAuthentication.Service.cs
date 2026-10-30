@@ -1,10 +1,10 @@
-using Application.Common.Security.Authentication.Identity;
 using Application.Features.Identity.Auth;
 using Application.Features.Identity.Auth.Models;
 using Application.Features.Identity.Auth.Outcome;
 using Application.Features.Identity.Auth.Validators;
 using Application.Features.Identity.External.Abstractions;
 using Application.Features.Identity.External.Models;
+using Application.Features.Identity.External.Options;
 
 using Infrastructure.Security.Identity.Domain.Roles;
 using Infrastructure.Security.Identity.Domain.Users;

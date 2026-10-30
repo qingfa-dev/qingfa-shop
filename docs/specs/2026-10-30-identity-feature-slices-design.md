@@ -409,10 +409,43 @@ The Carter handler authenticates the scheme, maps the principal to `ExternalPrin
 
 ## 10. Models and mapping
 
-- Auth models move to `Auth/Models`; `AuthMapper` maps `AuthResponse` → `AuthTokenResponse`.
+- Auth models live in `Features/Identity/Auth/Models` and are the single contract
+  for both MediatR use cases and `IIdentityService`. `AuthTokenResponse` is the
+  public token pair.
+- `AuthResponse` is an Infrastructure-internal model; `IdentityService` maps it
+  to `AuthTokenResponse` before returning.
 - User/Role/Permission models are new public application models.
-- External models are new; the existing `ExternalProviderModel` from `Common/Security/Authentication/Identity` is reused.
+- External models live in `Features/Identity/External/Models`; the external
+  authentication port lives in `Features/Identity/External/Abstractions`.
+- Options moved with their slices: `IdentityApiOption` lives in
+  `Features/Identity/Auth/Options`, and `ExternalAuthOption` lives in
+  `Features/Identity/External/Options`.
 - Carter endpoints only bind and dispatch; they do not contain identity logic.
+
+### Auth status contract
+
+Auth endpoints do not add endpoint-level 422 coercion. Failures keep the
+`Result` status code produced by `IdentityValidator` or `IIdentityService`:
+
+| Case | Status | Code |
+|---|---|---|
+| Empty login identifier/password | 401 | `Identity.Credentials.Invalid` |
+| Weak registration password | 400 | `Identity.Password.Invalid` |
+| Registration username length invalid | 400 | `Identity.Operation.Failed` |
+| Registration malformed email | 401 | `Identity.Credentials.Invalid` |
+| Blank refresh token | 400 | `Identity.RefreshToken.Required` |
+| Confirmation invalid user id or token | 400 | `Identity.Token.Invalid` |
+| Resend/forgot malformed email | 401 | `Identity.Credentials.Invalid` |
+| Reset malformed email | 401 | `Identity.Credentials.Invalid` |
+| Reset invalid token or weak password | 400 | `Identity.Token.Invalid` / `Identity.Password.Invalid` |
+| Profile update malformed email | 401 | `Identity.Credentials.Invalid` |
+| Profile new password without old password | 400 | `Identity.Password.CurrentRequired` |
+| Enable two-factor without a code | 401 | `Identity.TwoFactor.Required` |
+
+Specific service outcomes (user not found, locked out, email not confirmed,
+inactive, and similar `IdentityOutcome` failures) keep their own status codes.
+Integration stubs must reuse `IdentityValidator` so tests cannot drift from the
+real service.
 
 ## 11. Tests
 
@@ -434,6 +467,7 @@ The Carter handler authenticates the scheme, maps the principal to `ExternalPrin
 ### API
 
 - Existing auth flows keep working.
+- Auth invalid-input assertions follow the status contract above.
 - Admin user/role/permission routes enforce permissions.
 - Storefront-style caller without admin permissions gets 403 on management routes.
 - External callback still redirects with a one-time code and exchange is single-use.

@@ -50,4 +50,21 @@ public sealed class LogoutTest
         result.IsFailure.Should().BeTrue();
         result.StatusCode.Should().Be(400);
     }
+
+    [Fact(DisplayName = "Logout handler should reject a missing command or request")]
+    public async Task Handle_WithMissingInputs_ShouldThrow()
+    {
+        // Arrange
+        var fixture = new AuthFixture();
+        Logout.UseCaseHandler handler = CreateHandler(fixture);
+
+        Func<Task> missingCommand = () => handler.Handle(null!, CancellationToken.None);
+        Func<Task> missingRequest = () => handler.Handle(
+            new Logout.UseCase(null!),
+            CancellationToken.None);
+
+        // Act & Assert
+        await missingCommand.Should().ThrowAsync<ArgumentNullException>();
+        await missingRequest.Should().ThrowAsync<ArgumentNullException>();
+    }
 }

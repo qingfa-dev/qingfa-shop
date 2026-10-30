@@ -47,8 +47,8 @@ public sealed class IdentityApiTest
         await AssertFailureAsync(response, HttpStatusCode.Unauthorized);
     }
 
-    [Fact(DisplayName = "POST /api/auth/register with a weak password should return a Result 422")]
-    public async Task Register_WithWeakPassword_ShouldReturn422Result()
+    [Fact(DisplayName = "POST /api/auth/register with a weak password should return 400")]
+    public async Task Register_WithWeakPassword_ShouldReturn400Result()
     {
         using HttpClient client = _factory.CreateClient();
 
@@ -61,11 +61,54 @@ public sealed class IdentityApiTest
                 password = "short"
             });
 
-        await AssertFailureAsync(response, HttpStatusCode.UnprocessableEntity);
+        await AssertFailureCodeAsync(
+            response,
+            HttpStatusCode.BadRequest,
+            "Identity.Password.Invalid");
     }
 
-    [Fact(DisplayName = "POST /api/auth/login with an empty password should return a Result 400")]
-    public async Task Login_WithEmptyPassword_ShouldReturn400Result()
+    [Fact(DisplayName = "POST /api/auth/register with a short username should return 400")]
+    public async Task Register_WithShortUserName_ShouldReturn400Result()
+    {
+        using HttpClient client = _factory.CreateClient();
+
+        using HttpResponseMessage response = await client.PostAsJsonAsync(
+            "/api/auth/register",
+            new
+            {
+                userName = "ab",
+                email = "new@example.com",
+                password = "Password@123"
+            });
+
+        await AssertFailureCodeAsync(
+            response,
+            HttpStatusCode.BadRequest,
+            "Identity.Operation.Failed");
+    }
+
+    [Fact(DisplayName = "POST /api/auth/register with a malformed email should return 401")]
+    public async Task Register_WithMalformedEmail_ShouldReturn401Result()
+    {
+        using HttpClient client = _factory.CreateClient();
+
+        using HttpResponseMessage response = await client.PostAsJsonAsync(
+            "/api/auth/register",
+            new
+            {
+                userName = "new-user",
+                email = "not-an-email",
+                password = "Password@123"
+            });
+
+        await AssertFailureCodeAsync(
+            response,
+            HttpStatusCode.Unauthorized,
+            "Identity.Credentials.Invalid");
+    }
+
+    [Fact(DisplayName = "POST /api/auth/login with an empty password should return 401")]
+    public async Task Login_WithEmptyPassword_ShouldReturn401Result()
     {
         using HttpClient client = _factory.CreateClient();
 
@@ -73,7 +116,25 @@ public sealed class IdentityApiTest
             "/api/auth/login",
             new { identifier = "admin", password = string.Empty });
 
-        await AssertFailureAsync(response, HttpStatusCode.BadRequest);
+        await AssertFailureCodeAsync(
+            response,
+            HttpStatusCode.Unauthorized,
+            "Identity.Credentials.Invalid");
+    }
+
+    [Fact(DisplayName = "POST /api/auth/login with an empty identifier should return 401")]
+    public async Task Login_WithEmptyIdentifier_ShouldReturn401Result()
+    {
+        using HttpClient client = _factory.CreateClient();
+
+        using HttpResponseMessage response = await client.PostAsJsonAsync(
+            "/api/auth/login",
+            new { identifier = string.Empty, password = "Password@123" });
+
+        await AssertFailureCodeAsync(
+            response,
+            HttpStatusCode.Unauthorized,
+            "Identity.Credentials.Invalid");
     }
 
     [Fact(DisplayName = "POST /api/auth/register should return 200 with the created user")]
@@ -198,6 +259,36 @@ public sealed class IdentityApiTest
         await AssertNoContentAsync(response);
     }
 
+    [Fact(DisplayName = "POST /api/auth/confirm-email with an invalid user id should return 400")]
+    public async Task ConfirmEmail_WithInvalidUserId_ShouldReturn400Result()
+    {
+        using HttpClient client = _factory.CreateClient();
+
+        using HttpResponseMessage response = await client.PostAsJsonAsync(
+            "/api/auth/confirm-email",
+            new { userId = "not-a-guid", token = "confirmation-token" });
+
+        await AssertFailureCodeAsync(
+            response,
+            HttpStatusCode.BadRequest,
+            "Identity.Token.Invalid");
+    }
+
+    [Fact(DisplayName = "POST /api/auth/confirm-email with an empty token should return 400")]
+    public async Task ConfirmEmail_WithEmptyToken_ShouldReturn400Result()
+    {
+        using HttpClient client = _factory.CreateClient();
+
+        using HttpResponseMessage response = await client.PostAsJsonAsync(
+            "/api/auth/confirm-email",
+            new { userId = Guid.NewGuid().ToString(), token = string.Empty });
+
+        await AssertFailureCodeAsync(
+            response,
+            HttpStatusCode.BadRequest,
+            "Identity.Token.Invalid");
+    }
+
     [Fact(DisplayName = "POST /api/auth/resend-confirmation should return 204")]
     public async Task ResendConfirmation_ShouldReturn204()
     {
@@ -210,6 +301,21 @@ public sealed class IdentityApiTest
         await AssertNoContentAsync(response);
     }
 
+    [Fact(DisplayName = "POST /api/auth/resend-confirmation with a malformed email should return 401")]
+    public async Task ResendConfirmation_WithMalformedEmail_ShouldReturn401Result()
+    {
+        using HttpClient client = _factory.CreateClient();
+
+        using HttpResponseMessage response = await client.PostAsJsonAsync(
+            "/api/auth/resend-confirmation",
+            new { email = "not-an-email" });
+
+        await AssertFailureCodeAsync(
+            response,
+            HttpStatusCode.Unauthorized,
+            "Identity.Credentials.Invalid");
+    }
+
     [Fact(DisplayName = "POST /api/auth/forgot-password should return 204")]
     public async Task ForgotPassword_ShouldReturn204()
     {
@@ -220,6 +326,21 @@ public sealed class IdentityApiTest
             new { email = "admin@example.com" });
 
         await AssertNoContentAsync(response);
+    }
+
+    [Fact(DisplayName = "POST /api/auth/forgot-password with a malformed email should return 401")]
+    public async Task ForgotPassword_WithMalformedEmail_ShouldReturn401Result()
+    {
+        using HttpClient client = _factory.CreateClient();
+
+        using HttpResponseMessage response = await client.PostAsJsonAsync(
+            "/api/auth/forgot-password",
+            new { email = "not-an-email" });
+
+        await AssertFailureCodeAsync(
+            response,
+            HttpStatusCode.Unauthorized,
+            "Identity.Credentials.Invalid");
     }
 
     [Fact(DisplayName = "POST /api/auth/forgot-password should preserve a service failure")]
@@ -252,6 +373,66 @@ public sealed class IdentityApiTest
             });
 
         await AssertNoContentAsync(response);
+    }
+
+    [Fact(DisplayName = "POST /api/auth/reset-password with an empty token should return 400")]
+    public async Task ResetPassword_WithEmptyToken_ShouldReturn400Result()
+    {
+        using HttpClient client = _factory.CreateClient();
+
+        using HttpResponseMessage response = await client.PostAsJsonAsync(
+            "/api/auth/reset-password",
+            new
+            {
+                email = "admin@example.com",
+                token = string.Empty,
+                newPassword = "Password@123"
+            });
+
+        await AssertFailureCodeAsync(
+            response,
+            HttpStatusCode.BadRequest,
+            "Identity.Token.Invalid");
+    }
+
+    [Fact(DisplayName = "POST /api/auth/reset-password with a malformed email should return 401")]
+    public async Task ResetPassword_WithMalformedEmail_ShouldReturn401Result()
+    {
+        using HttpClient client = _factory.CreateClient();
+
+        using HttpResponseMessage response = await client.PostAsJsonAsync(
+            "/api/auth/reset-password",
+            new
+            {
+                email = "not-an-email",
+                token = "reset-token",
+                newPassword = "Password@123"
+            });
+
+        await AssertFailureCodeAsync(
+            response,
+            HttpStatusCode.Unauthorized,
+            "Identity.Credentials.Invalid");
+    }
+
+    [Fact(DisplayName = "POST /api/auth/reset-password with a weak password should return 400")]
+    public async Task ResetPassword_WithWeakPassword_ShouldReturn400Result()
+    {
+        using HttpClient client = _factory.CreateClient();
+
+        using HttpResponseMessage response = await client.PostAsJsonAsync(
+            "/api/auth/reset-password",
+            new
+            {
+                email = "admin@example.com",
+                token = "reset-token",
+                newPassword = "short"
+            });
+
+        await AssertFailureCodeAsync(
+            response,
+            HttpStatusCode.BadRequest,
+            "Identity.Password.Invalid");
     }
 
     [Fact(DisplayName = "GET /api/auth/me should return the current user")]
@@ -288,6 +469,36 @@ public sealed class IdentityApiTest
             .Should().Be("admin");
     }
 
+    [Fact(DisplayName = "PUT /api/auth/me with a new password but no old password should return 400")]
+    public async Task UpdateMe_WithNewPasswordWithoutOld_ShouldReturn400Result()
+    {
+        using HttpClient client = CreateAuthenticatedClient(out _);
+
+        using HttpResponseMessage response = await client.PutAsJsonAsync(
+            "/api/auth/me",
+            new { newPassword = "Password@123" });
+
+        await AssertFailureCodeAsync(
+            response,
+            HttpStatusCode.BadRequest,
+            "Identity.Password.CurrentRequired");
+    }
+
+    [Fact(DisplayName = "PUT /api/auth/me with a malformed email should return 401")]
+    public async Task UpdateMe_WithMalformedEmail_ShouldReturn401Result()
+    {
+        using HttpClient client = CreateAuthenticatedClient(out _);
+
+        using HttpResponseMessage response = await client.PutAsJsonAsync(
+            "/api/auth/me",
+            new { email = "not-an-email" });
+
+        await AssertFailureCodeAsync(
+            response,
+            HttpStatusCode.Unauthorized,
+            "Identity.Credentials.Invalid");
+    }
+
     [Fact(DisplayName = "GET /api/auth/me/2fa should return the two-factor state")]
     public async Task GetTwoFactor_ShouldReturn200Info()
     {
@@ -315,6 +526,21 @@ public sealed class IdentityApiTest
         response.StatusCode.Should().Be(HttpStatusCode.OK);
         _factory.Identity.LastTwoFactor.Should().NotBeNull();
         _factory.Identity.LastTwoFactor!.Enable.Should().BeFalse();
+    }
+
+    [Fact(DisplayName = "PUT /api/auth/me/2fa enabling without a code should return 401")]
+    public async Task UpdateTwoFactor_EnablingWithoutCode_ShouldReturn401Result()
+    {
+        using HttpClient client = CreateAuthenticatedClient(out _);
+
+        using HttpResponseMessage response = await client.PutAsJsonAsync(
+            "/api/auth/me/2fa",
+            new { enable = true });
+
+        await AssertFailureCodeAsync(
+            response,
+            HttpStatusCode.Unauthorized,
+            "Identity.TwoFactor.Required");
     }
 
     private HttpClient CreateAuthenticatedClient(out AccessToken accessToken)
@@ -348,6 +574,19 @@ public sealed class IdentityApiTest
         document.RootElement.GetProperty("isSuccess").GetBoolean().Should().BeFalse();
         document.RootElement.GetProperty("errors").GetArrayLength().Should().BePositive();
         document.RootElement.TryGetProperty("value", out _).Should().BeFalse();
+    }
+
+    private static async Task AssertFailureCodeAsync(
+        HttpResponseMessage response,
+        HttpStatusCode expectedStatus,
+        string expectedCode)
+    {
+        await AssertFailureAsync(response, expectedStatus);
+
+        using JsonDocument document = await ReadJsonAsync(response);
+
+        document.RootElement.GetProperty("errors")[0]
+            .GetProperty("code").GetString().Should().Be(expectedCode);
     }
 
     private static async Task AssertNoContentAsync(HttpResponseMessage response)

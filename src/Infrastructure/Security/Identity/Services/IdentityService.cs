@@ -1,7 +1,7 @@
 using Application.Features.Identity.Auth;
-using Application.Common.Security.Authentication.Identity;
 using Application.Features.Identity.Auth.Abstractions;
 using Application.Features.Identity.Auth.Models;
+using Application.Features.Identity.Auth.Options;
 using Application.Features.Identity.Auth.Outcome;
 using Application.Features.Identity.Auth.Validators;
 using Application.Common.Security.Authentication.Tokens;

@@ -8,6 +8,7 @@ using Application.Features.Identity.Auth.Models;
 using Application.Features.Identity.Auth.Queries;
 using Application.Features.Identity.External.Abstractions;
 using Application.Features.Identity.External.Models;
+using Application.Features.Identity.External.Options;
 
 using Carter;
 
@@ -22,7 +23,6 @@ using Microsoft.AspNetCore.Authentication;
 
 using Web.Api.Endpoints.Identity.Models;
 
-using ExternalAuthOption = Application.Common.Security.Authentication.Identity.ExternalAuthOption;
 
 namespace Web.Api.Endpoints.Identity;
 

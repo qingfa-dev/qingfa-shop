@@ -4,6 +4,7 @@ using System.Text.Encodings.Web;
 using Application.Features.Identity.Auth;
 using Application.Features.Identity.Auth.Abstractions;
 using Application.Features.Identity.Auth.Models;
+using Application.Features.Identity.Auth.Validators;
 using Application.Features.Identity.External.Abstractions;
 using Application.Features.Identity.External.Models;
 
@@ -90,10 +91,10 @@ public sealed class StubIdentityService : IIdentityService
     /// <summary>The last two-factor update received.</summary>
     public TwoFactorRequest? LastTwoFactor { get; private set; }
 
-    /// <summary>Overrides the registration result; defaults to password-length validation.</summary>
+    /// <summary>Overrides the registration result after shared validation.</summary>
     public Func<RegisterRequest, Result<IdentityUserModel>> RegisterHandler { get; set; } = null!;
 
-    /// <summary>Overrides the login result; defaults to required-credential validation.</summary>
+    /// <summary>Overrides the login result after shared validation.</summary>
     public Func<LoginRequest, Result<AuthTokenResponse>> LoginHandler { get; set; } = null!;
 
     /// <summary>Overrides the refresh result.</summary>
@@ -122,18 +123,8 @@ public sealed class StubIdentityService : IIdentityService
         LastUpdateInfo = null;
         LastTwoFactor = null;
 
-        RegisterHandler = request =>
-            string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 8
-                ? Result<IdentityUserModel>.Fail(Error.UnprocessableEntity(
-                    "Identity.Password.Invalid",
-                    "The password is too short."))
-                : Result<IdentityUserModel>.Ok(User);
-        LoginHandler = request =>
-            string.IsNullOrWhiteSpace(request.Identifier) || string.IsNullOrWhiteSpace(request.Password)
-                ? Result<AuthTokenResponse>.Fail(Error.BadRequest(
-                    "Identity.Credentials.Invalid",
-                    "The supplied credentials are invalid."))
-                : Result<AuthTokenResponse>.Ok(_authResponse);
+        RegisterHandler = _ => Result<IdentityUserModel>.Ok(User);
+        LoginHandler = _ => Result<AuthTokenResponse>.Ok(_authResponse);
         RefreshHandler = _ => Result<AuthTokenResponse>.Ok(_authResponse);
         LogoutHandler = request =>
         {
@@ -150,19 +141,34 @@ public sealed class StubIdentityService : IIdentityService
     public Task<Result<IdentityUserModel>> RegisterAsync(
         RegisterRequest request,
         CancellationToken cancellationToken = default)
-        => Task.FromResult(RegisterHandler(request));
+    {
+        Result<RegisterRequest> validation = IdentityValidator.Validate(request);
+        return Task.FromResult(validation.IsFailure
+            ? Result<IdentityUserModel>.Fail(validation.Errors)
+            : RegisterHandler(request));
+    }
 
     /// <inheritdoc />
     public Task<Result<AuthTokenResponse>> LoginAsync(
         LoginRequest request,
         CancellationToken cancellationToken = default)
-        => Task.FromResult(LoginHandler(request));
+    {
+        Result<LoginRequest> validation = IdentityValidator.Validate(request);
+        return Task.FromResult(validation.IsFailure
+            ? Result<AuthTokenResponse>.Fail(validation.Errors)
+            : LoginHandler(request));
+    }
 
     /// <inheritdoc />
     public Task<Result<AuthTokenResponse>> RefreshAsync(
         RefreshRequest request,
         CancellationToken cancellationToken = default)
-        => Task.FromResult(RefreshHandler(request));
+    {
+        Result<RefreshRequest> validation = IdentityValidator.Validate(request);
+        return Task.FromResult(validation.IsFailure
+            ? Result<AuthTokenResponse>.Fail(validation.Errors)
+            : RefreshHandler(request));
+    }
 
     /// <inheritdoc />
     public Task<Result> LogoutAsync(
@@ -174,25 +180,45 @@ public sealed class StubIdentityService : IIdentityService
     public Task<Result> ConfirmEmailAsync(
         ConfirmEmailRequest request,
         CancellationToken cancellationToken = default)
-        => Task.FromResult(ConfirmEmailHandler(request));
+    {
+        Result<ConfirmEmailRequest> validation = IdentityValidator.Validate(request);
+        return Task.FromResult(validation.IsFailure
+            ? Result.Fail(validation.Errors)
+            : ConfirmEmailHandler(request));
+    }
 
     /// <inheritdoc />
     public Task<Result> ResendConfirmationEmailAsync(
         ResendConfirmationEmailRequest request,
         CancellationToken cancellationToken = default)
-        => Task.FromResult(ResendConfirmationHandler(request));
+    {
+        Result<ResendConfirmationEmailRequest> validation = IdentityValidator.Validate(request);
+        return Task.FromResult(validation.IsFailure
+            ? Result.Fail(validation.Errors)
+            : ResendConfirmationHandler(request));
+    }
 
     /// <inheritdoc />
     public Task<Result> ForgotPasswordAsync(
         ForgotPasswordRequest request,
         CancellationToken cancellationToken = default)
-        => Task.FromResult(ForgotPasswordHandler(request));
+    {
+        Result<ForgotPasswordRequest> validation = IdentityValidator.Validate(request);
+        return Task.FromResult(validation.IsFailure
+            ? Result.Fail(validation.Errors)
+            : ForgotPasswordHandler(request));
+    }
 
     /// <inheritdoc />
     public Task<Result> ResetPasswordAsync(
         ResetPasswordRequest request,
         CancellationToken cancellationToken = default)
-        => Task.FromResult(ResetPasswordHandler(request));
+    {
+        Result<ResetPasswordRequest> validation = IdentityValidator.Validate(request);
+        return Task.FromResult(validation.IsFailure
+            ? Result.Fail(validation.Errors)
+            : ResetPasswordHandler(request));
+    }
 
     /// <inheritdoc />
     public Task<Result<IdentityUserModel>> GetInfoAsync(
@@ -206,6 +232,10 @@ public sealed class StubIdentityService : IIdentityService
         UpdateInfoRequest request,
         CancellationToken cancellationToken = default)
     {
+        Result<UpdateInfoRequest> validation = IdentityValidator.Validate(request);
+        if (validation.IsFailure)
+            return Task.FromResult(Result<IdentityUserModel>.Fail(validation.Errors));
+
         LastUpdateInfo = request;
         return Task.FromResult(Result<IdentityUserModel>.Ok(User));
     }
@@ -222,6 +252,10 @@ public sealed class StubIdentityService : IIdentityService
         TwoFactorRequest request,
         CancellationToken cancellationToken = default)
     {
+        Result<TwoFactorRequest> validation = IdentityValidator.Validate(request);
+        if (validation.IsFailure)
+            return Task.FromResult(Result<TwoFactorInfo>.Fail(validation.Errors));
+
         LastTwoFactor = request;
         return Task.FromResult(Result<TwoFactorInfo>.Ok(TwoFactor));
     }

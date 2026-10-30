@@ -51,6 +51,26 @@ public sealed class IdentityServiceTest
         login.Value.User.UserName.Should().Be("alice");
     }
 
+    [Fact(DisplayName = "Shared validation should drive the auth status codes")]
+    public async Task Validation_ShouldDriveStatusCodes()
+    {
+        await using TestHost host = await TestHost.CreateAsync();
+
+        Result<IdentityUserModel> weak = await host.Identity.RegisterAsync(
+            new RegisterRequest("alice", "alice@example.com", "short"));
+
+        weak.StatusCode.Should().Be(400);
+        weak.Errors.Should().ContainSingle(
+            error => error.Code == "Identity.Password.Invalid");
+
+        Result<AuthTokenResponse> empty = await host.Identity.LoginAsync(
+            new LoginRequest("alice", string.Empty));
+
+        empty.StatusCode.Should().Be(401);
+        empty.Errors.Should().ContainSingle(
+            error => error.Code == "Identity.Credentials.Invalid");
+    }
+
     [Fact(DisplayName = "Refresh should rotate the refresh token")]
     public async Task Refresh_ShouldRotateToken()
     {

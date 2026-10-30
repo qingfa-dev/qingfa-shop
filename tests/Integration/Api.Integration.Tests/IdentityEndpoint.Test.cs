@@ -12,13 +12,13 @@ using Application.Features.Identity.Auth;
 using Application.Features.Identity.Auth.Commands;
 using Application.Features.Identity.Auth.Models;
 using Application.Features.Identity.External.Models;
+using Application.Features.Identity.External.Options;
 
 using Infrastructure.Integrations.Serialization;
 
 using Web.Api.Endpoints.Identity;
 using Web.Api.Endpoints.Identity.Models;
 
-using ExternalAuthOption = Application.Common.Security.Authentication.Identity.ExternalAuthOption;
 
 namespace Api.Integration.Tests;
 
