@@ -1,3 +1,5 @@
+using Application.Features.Identity.Abstractions;
+
 using Microsoft.AspNetCore.DataProtection;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.Extensions.DependencyInjection;
@@ -6,6 +8,7 @@ using Infrastructure.Persistence.EntityFramework.Contexts;
 using Infrastructure.Security.Identity.Domain.Roles;
 using Infrastructure.Security.Identity.Domain.Users;
 using Infrastructure.Security.Identity.Options;
+using Infrastructure.Security.Identity.Services;
 
 namespace Infrastructure.Security.Identity;
 
@@ -56,6 +59,8 @@ public static class IdentityExtensions
 
         services.Configure<SecurityStampValidatorOptions>(options =>
             options.ValidationInterval = IdentitySettingConstant.SecurityStamp.ValidationInterval);
+
+        services.AddScoped<IRoleManagementService, RoleManagementService>();
 
         return services;
     }

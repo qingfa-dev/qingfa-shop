@@ -1,19 +1,46 @@
 namespace Application.Features.Identity.Roles.Models;
 
-/// <summary>The administrative projection of a role and its permissions.</summary>
-/// <param name="Id">The role identifier.</param>
-/// <param name="Name">The unique role name.</param>
-/// <param name="Permissions">The permission identifiers assigned to the role.</param>
-public sealed record RoleModel(
-    Guid Id,
-    string Name,
-    IReadOnlyList<string> Permissions);
+#region Parameters
 
-/// <summary>The validated values for creating a role.</summary>
-/// <param name="Name">The unique role name.</param>
-/// <param name="Permissions">The permission identifiers to assign initially.</param>
-public sealed record CreateRoleSpec(string Name, IReadOnlyList<string> Permissions);
+/// <summary>Fields that describe a role profile.</summary>
+public abstract record RoleProfileParameter
+{
+    public string Name { get; init; } = string.Empty;
+    public string? Description { get; init; }
+}
 
-/// <summary>The validated values for updating a role.</summary>
-/// <param name="Name">The replacement role name.</param>
-public sealed record UpdateRoleSpec(string Name);
+/// <summary>A request linking one role to one permission.</summary>
+public abstract record RolePermissionModel
+{
+    public Guid RoleId { get; init; }
+    public string Permission { get; init; } = string.Empty;
+}
+
+#endregion
+
+#region Request
+
+public record CreateRoleRequestModel : RoleProfileParameter
+{
+    public IReadOnlyList<string> Permissions { get; init; } = [];
+}
+
+public record UpdateRoleRequestModel : RoleProfileParameter;
+
+#endregion
+
+#region Response
+
+public sealed record RoleModel : RoleProfileParameter
+{
+    public Guid Id { get; init; }
+    public IReadOnlyList<string> Permissions { get; init; } = [];
+}
+
+public sealed record RoleSummaryModel : RoleProfileParameter
+{
+    public Guid Id { get; init; }
+    public int PermissionCount { get; init; }
+}
+
+#endregion

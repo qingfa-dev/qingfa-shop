@@ -30,7 +30,11 @@ public sealed class IdentityPortsTest
         },
         {
             typeof(RoleModel),
-            ["Id", "Name", "Permissions"]
+            ["Id", "Name", "Description", "Permissions"]
+        },
+        {
+            typeof(RoleSummaryModel),
+            ["Id", "Name", "Description", "PermissionCount"]
         },
         {
             typeof(PermissionItemModel),
@@ -54,8 +58,8 @@ public sealed class IdentityPortsTest
     {
         typeof(CreateUserRequestModel),
         typeof(UpdateUserRequestModel),
-        typeof(CreateRoleSpec),
-        typeof(UpdateRoleSpec),
+        typeof(CreateRoleRequestModel),
+        typeof(UpdateRoleRequestModel),
     };
 
     [Theory(DisplayName = "Model Exposes Expected Fields")]

@@ -27,19 +27,21 @@ public interface IRoleManagementService
     Task<Result<RoleModel>> GetAsync(Guid id, CancellationToken ct = default);
 
     /// <summary>Creates a role with an initial permission set.</summary>
-    /// <param name="spec">The validated creation values.</param>
+    /// <param name="spec">The creation values.</param>
     /// <param name="ct">The cancellation token.</param>
     /// <returns>The created role, or a failure.</returns>
-    Task<Result<RoleModel>> CreateAsync(CreateRoleSpec spec, CancellationToken ct = default);
+    Task<Result<RoleModel>> CreateAsync(
+        CreateRoleRequestModel spec,
+        CancellationToken ct = default);
 
-    /// <summary>Updates a role's display name.</summary>
+    /// <summary>Updates a role's profile.</summary>
     /// <param name="id">The role identifier.</param>
     /// <param name="spec">The update values.</param>
     /// <param name="ct">The cancellation token.</param>
     /// <returns>The updated role, or a failure.</returns>
     Task<Result<RoleModel>> UpdateAsync(
         Guid id,
-        UpdateRoleSpec spec,
+        UpdateRoleRequestModel spec,
         CancellationToken ct = default);
 
     /// <summary>Deletes a role.</summary>
