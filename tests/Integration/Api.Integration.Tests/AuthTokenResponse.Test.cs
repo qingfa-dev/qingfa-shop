@@ -8,8 +8,9 @@ using Core.Common.Monad.Results;
 
 using Infrastructure.Integrations.Serialization;
 
+using Application.Features.Identity.Models;
 using Web.Api.Endpoints.Identity;
-using Web.Api.Endpoints.Identity.Mappings;
+using Application.Features.Identity.Mappings;
 
 namespace Api.Integration.Tests;
 

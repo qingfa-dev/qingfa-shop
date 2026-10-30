@@ -1,6 +1,8 @@
+using Application.Features.Identity.Models;
+
 using ApplicationIdentity = Application.Common.Security.Authentication.Identity;
 
-namespace Web.Api.Endpoints.Identity.Mappings;
+namespace Application.Features.Identity.Mappings;
 
 /// <summary>Projects application identity responses onto the public wire model.</summary>
 public static class IdentityMapper

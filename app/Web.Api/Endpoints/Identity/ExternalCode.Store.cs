@@ -12,6 +12,8 @@ using Infrastructure.Integrations.Serialization;
 using Microsoft.Extensions.Caching.Distributed;
 
 
+using Application.Features.Identity.Models;
+
 namespace Web.Api.Endpoints.Identity;
 
 /// <summary>Stores single-use codes that carry an issued external sign-in token pair.</summary>

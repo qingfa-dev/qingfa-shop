@@ -2,8 +2,17 @@ using System.Globalization;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
-using Application.Common.Security.Authentication.Contexts;
-using Application.Common.Security.Authentication.Identity;
+
+using Application.Features.Identity;
+using Application.Features.Identity.Mappings;
+using Application.Features.Identity.Models;
+
+using IExternalAuthenticationService = Application.Common.Security.Authentication.Identity.IExternalAuthenticationService;
+using ExternalProviderModel = Application.Common.Security.Authentication.Identity.ExternalProviderModel;
+using ExternalUserInfo = Application.Common.Security.Authentication.Identity.ExternalUserInfo;
+using ExternalAuthOption = Application.Common.Security.Authentication.Identity.ExternalAuthOption;
+using IdentityConstant = Application.Common.Security.Authentication.Identity.IdentityConstant;
+
 
 using Carter;
 
@@ -14,10 +23,9 @@ using Microsoft.AspNetCore.Authentication;
 
 using Infrastructure.Integrations.Serialization;
 
-using ApplicationLogoutRequest = Application.Common.Security.Authentication.Identity.LogoutRequest;
 
 
-using Web.Api.Endpoints.Identity.Mappings;
+
 
 namespace Web.Api.Endpoints.Identity;
 
@@ -49,77 +57,6 @@ public sealed class IdentityEndpoint : ICarterModule
         group.MapGet("/external/{provider}/challenge", ChallengeAsync).AllowAnonymous();
         group.MapGet("/external/{provider}/callback", CallbackAsync).AllowAnonymous();
         group.MapPost("/external/exchange", ExchangeAsync).AllowAnonymous();
-    }
-
-    /// <summary>Resolves the authenticated user identifier or a Result-shaped 401.</summary>
-    /// <param name="userContext">The current request's user context.</param>
-    /// <returns>The parsed user identifier, or an unauthorized failure.</returns>
-    internal static Result<Guid> RequireUserId(IUserContext userContext)
-    {
-        ArgumentNullException.ThrowIfNull(userContext);
-
-        return Guid.TryParse(userContext.UserId, out Guid userId)
-            ? Result<Guid>.Ok(userId)
-            : Result<Guid>.Fail(Error.Unauthorized(
-                "Authentication.UserIdMissing",
-                "The authenticated user identifier is missing or invalid."));
-    }
-
-    /// <summary>Runs an authenticated action with the resolved user identifier.</summary>
-    /// <param name="userContext">The current request's user context.</param>
-    /// <param name="action">The action to run when the identifier is valid.</param>
-    /// <param name="cancellationToken">The request cancellation token.</param>
-    /// <returns>The action result, or a Result-shaped 401 when the identifier is missing.</returns>
-    internal static Task<IResult> WithUserIdAsync(
-        IUserContext userContext,
-        Func<Guid, CancellationToken, Task<IResult>> action,
-        CancellationToken cancellationToken)
-    {
-        ArgumentNullException.ThrowIfNull(action);
-
-        Result<Guid> userId = RequireUserId(userContext);
-
-        return userId.IsFailure
-            ? Task.FromResult(userId.ToApiResult())
-            : action(userId.Value, cancellationToken);
-    }
-
-    /// <summary>Builds the logout command from the body and the authenticated principal.</summary>
-    /// <param name="request">The optional body carrying a refresh token.</param>
-    /// <param name="principal">The authenticated principal.</param>
-    /// <returns>The application logout request.</returns>
-    internal static ApplicationLogoutRequest ToLogoutRequest(
-        LogoutRequest? request,
-        ClaimsPrincipal principal)
-    {
-        ArgumentNullException.ThrowIfNull(principal);
-
-        return (request ?? new LogoutRequest()).ToApplication(
-            principal.FindFirstValue(JwtRegisteredClaimNames.Jti),
-            ReadAccessTokenExpiry(principal));
-    }
-
-    /// <summary>Reads the access-token expiry from the principal's <c>exp</c> claim.</summary>
-    /// <param name="principal">The authenticated principal.</param>
-    /// <returns>The expiry, or <c>null</c> when the claim is absent or out of range.</returns>
-    internal static DateTimeOffset? ReadAccessTokenExpiry(ClaimsPrincipal principal)
-    {
-        ArgumentNullException.ThrowIfNull(principal);
-
-        string? expiresAt = principal.FindFirstValue(JwtRegisteredClaimNames.Exp);
-
-        if (!long.TryParse(
-            expiresAt,
-            NumberStyles.Integer,
-            CultureInfo.InvariantCulture,
-            out long seconds))
-        {
-            return null;
-        }
-
-        return seconds >= 0 && seconds <= MaxUnixSeconds
-            ? DateTimeOffset.FromUnixTimeSeconds(seconds)
-            : null;
     }
 
     /// <summary>Finds the configured provider matching a route segment.</summary>
@@ -323,112 +260,72 @@ public sealed class IdentityEndpoint : ICarterModule
 
     private static async Task<IResult> RegisterAsync(
         RegisterRequest request,
-        IIdentityService identity,
+        IdentityFeature feature,
         CancellationToken cancellationToken)
-        => (await identity.RegisterAsync(request.ToApplication(), cancellationToken))
-            .ToApiResult();
+        => (await feature.RegisterAsync(request, cancellationToken)).ToApiResult();
 
     private static async Task<IResult> LoginAsync(
         LoginRequest request,
-        IIdentityService identity,
+        IdentityFeature feature,
         CancellationToken cancellationToken)
-        => (await identity.LoginAsync(request.ToApplication(), cancellationToken))
-            .Map(IdentityMapper.ToTokenResponse)
-            .ToApiResult();
+        => (await feature.LoginAsync(request, cancellationToken)).ToApiResult();
 
     private static async Task<IResult> RefreshAsync(
         RefreshRequest request,
-        IIdentityService identity,
+        IdentityFeature feature,
         CancellationToken cancellationToken)
-        => (await identity.RefreshAsync(request.ToApplication(), cancellationToken))
-            .Map(IdentityMapper.ToTokenResponse)
-            .ToApiResult();
+        => (await feature.RefreshAsync(request, cancellationToken)).ToApiResult();
 
     private static async Task<IResult> LogoutAsync(
         LogoutRequest? request,
         ClaimsPrincipal principal,
-        IIdentityService identity,
+        IdentityFeature feature,
         CancellationToken cancellationToken)
-        => ToNoContent(await identity.LogoutAsync(
-            ToLogoutRequest(request, principal),
-            cancellationToken));
+        => (await feature.LogoutAsync(request, principal, cancellationToken)).ToApiResult();
 
     private static async Task<IResult> ConfirmEmailAsync(
         ConfirmEmailRequest request,
-        IIdentityService identity,
+        IdentityFeature feature,
         CancellationToken cancellationToken)
-        => ToNoContent(await identity.ConfirmEmailAsync(
-            request.ToApplication(),
-            cancellationToken));
+        => (await feature.ConfirmEmailAsync(request, cancellationToken)).ToApiResult();
 
     private static async Task<IResult> ResendConfirmationAsync(
         ResendConfirmationEmailRequest request,
-        IIdentityService identity,
+        IdentityFeature feature,
         CancellationToken cancellationToken)
-        => ToNoContent(await identity.ResendConfirmationEmailAsync(
-            request.ToApplication(),
-            cancellationToken));
+        => (await feature.ResendConfirmationAsync(request, cancellationToken)).ToApiResult();
 
     private static async Task<IResult> ForgotPasswordAsync(
         ForgotPasswordRequest request,
-        IIdentityService identity,
+        IdentityFeature feature,
         CancellationToken cancellationToken)
-        => ToNoContent(await identity.ForgotPasswordAsync(
-            request.ToApplication(),
-            cancellationToken));
+        => (await feature.ForgotPasswordAsync(request, cancellationToken)).ToApiResult();
 
     private static async Task<IResult> ResetPasswordAsync(
         ResetPasswordRequest request,
-        IIdentityService identity,
+        IdentityFeature feature,
         CancellationToken cancellationToken)
-        => ToNoContent(await identity.ResetPasswordAsync(
-            request.ToApplication(),
-            cancellationToken));
+        => (await feature.ResetPasswordAsync(request, cancellationToken)).ToApiResult();
 
-    private static Task<IResult> GetMeAsync(
-        IUserContext userContext,
-        IIdentityService identity,
+    private static async Task<IResult> GetMeAsync(
+        IdentityFeature feature,
         CancellationToken cancellationToken)
-        => WithUserIdAsync(
-            userContext,
-            async (userId, token) => (await identity.GetInfoAsync(userId, token)).ToApiResult(),
-            cancellationToken);
+        => (await feature.GetMeAsync(cancellationToken)).ToApiResult();
 
-    private static Task<IResult> UpdateMeAsync(
+    private static async Task<IResult> UpdateMeAsync(
         UpdateInfoRequest request,
-        IUserContext userContext,
-        IIdentityService identity,
+        IdentityFeature feature,
         CancellationToken cancellationToken)
-        => WithUserIdAsync(
-            userContext,
-            async (userId, token) => (await identity.UpdateInfoAsync(
-                userId,
-                request.ToApplication(),
-                token)).ToApiResult(),
-            cancellationToken);
+        => (await feature.UpdateMeAsync(request, cancellationToken)).ToApiResult();
 
-    private static Task<IResult> GetTwoFactorAsync(
-        IUserContext userContext,
-        IIdentityService identity,
+    private static async Task<IResult> GetTwoFactorAsync(
+        IdentityFeature feature,
         CancellationToken cancellationToken)
-        => WithUserIdAsync(
-            userContext,
-            async (userId, token) => (await identity.GetTwoFactorInfoAsync(userId, token)).ToApiResult(),
-            cancellationToken);
+        => (await feature.GetTwoFactorAsync(cancellationToken)).ToApiResult();
 
-    private static Task<IResult> UpdateTwoFactorAsync(
+    private static async Task<IResult> UpdateTwoFactorAsync(
         TwoFactorRequest request,
-        IUserContext userContext,
-        IIdentityService identity,
+        IdentityFeature feature,
         CancellationToken cancellationToken)
-        => WithUserIdAsync(
-            userContext,
-            async (userId, token) => (await identity.UpdateTwoFactorAsync(
-                userId,
-                request.ToApplication(),
-                token)).ToApiResult(),
-            cancellationToken);
-
-    private static IResult ToNoContent(Result result) =>
-        result.IsSuccess ? Result.NoContent().ToApiResult() : result.ToApiResult();
+        => (await feature.UpdateTwoFactorAsync(request, cancellationToken)).ToApiResult();
 }

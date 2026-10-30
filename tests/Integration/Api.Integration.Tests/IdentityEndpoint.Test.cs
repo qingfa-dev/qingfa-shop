@@ -8,6 +8,8 @@ using Core.Common.Monad.Results;
 
 using Microsoft.AspNetCore.Http;
 
+using Application.Features.Identity;
+using Application.Features.Identity.Models;
 using Web.Api.Endpoints.Identity;
 using Infrastructure.Integrations.Serialization;
 
@@ -27,7 +29,7 @@ public sealed class IdentityEndpointTest
     {
         Guid userId = Guid.NewGuid();
 
-        Result<Guid> result = IdentityEndpoint.RequireUserId(
+        Result<Guid> result = IdentityFeature.RequireUserId(
             new StubUserContext(userId.ToString()));
 
         result.IsSuccess.Should().BeTrue();
@@ -40,50 +42,12 @@ public sealed class IdentityEndpointTest
     [InlineData("not-a-guid")]
     public void RequireUserId_WithoutValidIdentifier_ShouldReturnUnauthorized(string? userId)
     {
-        Result<Guid> result = IdentityEndpoint.RequireUserId(new StubUserContext(userId));
+        Result<Guid> result = IdentityFeature.RequireUserId(new StubUserContext(userId));
 
         result.IsFailure.Should().BeTrue();
         result.StatusCode.Should().Be(401);
         result.Errors.Should().ContainSingle(
             error => error.Code == "Authentication.UserIdMissing");
-    }
-
-    [Fact(DisplayName = "The guarded action should not run when the user identifier is missing")]
-    public async Task WithUserIdAsync_WithMissingUserId_ShouldReturn401Result()
-    {
-        IResult result = await IdentityEndpoint.WithUserIdAsync(
-            new StubUserContext(null),
-            (_, _) => throw new InvalidOperationException("The action must not run."),
-            TestContext.Current.CancellationToken);
-
-        (int statusCode, string body) = await ExecuteAsync(result);
-
-        statusCode.Should().Be(401);
-
-        using JsonDocument document = JsonDocument.Parse(body);
-
-        document.RootElement.GetProperty("isSuccess").GetBoolean().Should().BeFalse();
-        document.RootElement.GetProperty("errors").GetArrayLength().Should().BePositive();
-    }
-
-    [Fact(DisplayName = "The guarded action should run with the parsed user identifier")]
-    public async Task WithUserIdAsync_WithValidIdentifier_ShouldInvokeAction()
-    {
-        Guid userId = Guid.NewGuid();
-        Guid captured = Guid.Empty;
-
-        IResult result = await IdentityEndpoint.WithUserIdAsync(
-            new StubUserContext(userId.ToString()),
-            (id, _) =>
-            {
-                captured = id;
-                return Task.FromResult(Result.Ok().ToApiResult());
-            },
-            TestContext.Current.CancellationToken);
-
-        captured.Should().Be(userId);
-        (int statusCode, _) = await ExecuteAsync(result);
-        statusCode.Should().Be(200);
     }
 
     [Fact(DisplayName = "Logout should read the jti and exp claims into the application request")]
@@ -93,7 +57,7 @@ public sealed class IdentityEndpointTest
             new Claim(JwtRegisteredClaimNames.Jti, "access-jti"),
             new Claim(JwtRegisteredClaimNames.Exp, "1893456000"));
 
-        var mapped = IdentityEndpoint.ToLogoutRequest(
+        var mapped = IdentityFeature.ToLogoutRequest(
             new LogoutRequest("refresh-token"),
             principal);
 
@@ -110,7 +74,7 @@ public sealed class IdentityEndpointTest
             new Claim(JwtRegisteredClaimNames.Jti, "access-jti"),
             new Claim(JwtRegisteredClaimNames.Exp, "1893456000"));
 
-        var mapped = IdentityEndpoint.ToLogoutRequest(null, principal);
+        var mapped = IdentityFeature.ToLogoutRequest(null, principal);
 
         mapped.RefreshToken.Should().BeNull();
         mapped.AccessTokenJti.Should().Be("access-jti");
@@ -125,7 +89,7 @@ public sealed class IdentityEndpointTest
     {
         var principal = Principal(new Claim(JwtRegisteredClaimNames.Exp, value));
 
-        DateTimeOffset? expiresAt = IdentityEndpoint.ReadAccessTokenExpiry(principal);
+        DateTimeOffset? expiresAt = IdentityFeature.ReadAccessTokenExpiry(principal);
 
         expiresAt.Should().Be(DateTimeOffset.FromUnixTimeSeconds(long.Parse(
             value,
@@ -144,7 +108,7 @@ public sealed class IdentityEndpointTest
         var principal = Principal(
             value is null ? [] : [new Claim(JwtRegisteredClaimNames.Exp, value)]);
 
-        DateTimeOffset? expiresAt = IdentityEndpoint.ReadAccessTokenExpiry(principal);
+        DateTimeOffset? expiresAt = IdentityFeature.ReadAccessTokenExpiry(principal);
 
         expiresAt.Should().BeNull();
     }

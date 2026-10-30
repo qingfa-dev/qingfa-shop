@@ -8,6 +8,7 @@ using Core.Common.Monad.Results;
 using Microsoft.Extensions.Caching.Distributed;
 using Microsoft.Extensions.Time.Testing;
 
+using Application.Features.Identity.Models;
 using Web.Api.Endpoints.Identity;
 
 namespace Api.Integration.Tests;

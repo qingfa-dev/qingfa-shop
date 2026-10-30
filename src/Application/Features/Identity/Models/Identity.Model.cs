@@ -1,6 +1,6 @@
 using ApplicationIdentity = Application.Common.Security.Authentication.Identity;
 
-namespace Web.Api.Endpoints.Identity;
+namespace Application.Features.Identity.Models;
 
 /// <summary>The public token pair returned by every successful credential exchange.</summary>
 /// <param name="AccessToken">The signed JWT access token.</param>
