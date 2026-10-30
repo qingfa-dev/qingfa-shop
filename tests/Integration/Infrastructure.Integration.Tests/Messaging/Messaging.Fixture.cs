@@ -1,4 +1,7 @@
 using Application.Common.Messaging.Serialization;
+using Application.Common.Mediators.Behaviors.Transactions;
+using Application.Common.Messaging.Inbox;
+using Application.Common.Messaging.Outbox;
 using Application.Common.Persistence.UnitOfWorks;
 
 using Core.Todos.Items;
@@ -11,6 +14,8 @@ using Infrastructure.Persistence.EntityFramework.Outbox;
 using Infrastructure.Persistence.EntityFramework.UnitOfWorks;
 
 using Microsoft.EntityFrameworkCore;
+using MediatR;
+
 using Microsoft.Extensions.DependencyInjection;
 
 using Respawn;
@@ -99,6 +104,13 @@ public sealed class MessagingFixture : IAsyncLifetime
 
         services.AddScoped<IUnitOfWork>(sp =>
             new EfCoreUnitOfWork(sp.GetRequiredService<ApplicationDbContext>()));
+
+        services.AddMediatR(configuration =>
+        {
+            configuration.Lifetime = ServiceLifetime.Scoped;
+            configuration.RegisterServicesFromAssembly(typeof(MessagingFixture).Assembly);
+            configuration.AddBehavior(typeof(IPipelineBehavior<,>), typeof(TransactionBehavior<,>));
+        });
         services.AddSingleton(TimeProvider.System);
         services.AddScoped<EfCoreOutboxStore>(sp =>
             new EfCoreOutboxStore(
@@ -109,6 +121,8 @@ public sealed class MessagingFixture : IAsyncLifetime
                 sp.GetRequiredService<ApplicationDbContext>(),
                 sp.GetRequiredService<IUnitOfWork>(),
                 sp.GetRequiredService<TimeProvider>()));
+        services.AddScoped<IOutboxStore>(sp => sp.GetRequiredService<EfCoreOutboxStore>());
+        services.AddScoped<IInboxStore>(sp => sp.GetRequiredService<EfCoreInboxStore>());
 
         services.AddSingleton<IEventTypeRegistry>(eventTypes);
         services.AddSingleton(serializer);
