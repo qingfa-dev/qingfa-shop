@@ -64,6 +64,14 @@ public sealed class OutboxDispatcher : IOutboxDispatcher
 
         foreach (OutboxMessage message in claim.Value)
         {
+            // Guard: a row without a lease is not ours to publish; another worker owns it.
+            if (message.LeaseId is null)
+            {
+                OutboxDispatcherLoggers.MarkFailed(_logger, message.Id, OutboxOutcome.Codes.LeaseLost);
+                handled++;
+                continue;
+            }
+
             Result publish = await PublishAsync(message, cancellationToken).ConfigureAwait(false);
             Result mark = publish.IsSuccess
                 ? await MarkProcessedAsync(message, cancellationToken).ConfigureAwait(false)
@@ -108,7 +116,7 @@ public sealed class OutboxDispatcher : IOutboxDispatcher
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            OutboxDispatcherLoggers.PublishFailed(_logger, message.Id, exception.Message);
+            OutboxDispatcherLoggers.PublishFailed(_logger, message.Id, message.Kind, message.Type, message.Attempts, exception.Message);
             return Result.Fail(OutboxOutcome.Failure.PublishFailed(message, exception.Message));
         }
     }
@@ -138,7 +146,7 @@ public sealed class OutboxDispatcher : IOutboxDispatcher
 
         if (attempts >= _setting.MaxAttempts)
         {
-            OutboxDispatcherLoggers.DeadLettered(_logger, message.Id, attempts);
+            OutboxDispatcherLoggers.DeadLettered(_logger, message.Id, message.Kind, message.Type, attempts);
             return _store.DeadLetterAsync(message.Id, leaseId, error, cancellationToken);
         }
 
@@ -147,7 +155,7 @@ public sealed class OutboxDispatcher : IOutboxDispatcher
                 _setting.MaxBackoffSeconds,
                 _setting.BackoffSeconds * Math.Pow(2, attempts - 1)));
 
-        OutboxDispatcherLoggers.Retrying(_logger, message.Id, attempts, delay.TotalSeconds);
+        OutboxDispatcherLoggers.Retrying(_logger, message.Id, message.Kind, message.Type, attempts, delay.TotalSeconds);
         return _store.MarkFailedAsync(
             message.Id,
             leaseId,

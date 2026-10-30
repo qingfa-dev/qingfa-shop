@@ -169,6 +169,71 @@ public sealed class OutboxDispatcherTest
         result.Value.Should().Be(0);
     }
 
+    [Fact(DisplayName = "Dispatcher should claim nothing and fail when the claim fails")]
+    public async Task DispatchBatch_WhenClaimFails_ShouldReturnFailure()
+    {
+        // Arrange
+        var serializer = new JsonMessageSerializer(new EventTypeRegistry(typeof(DomainEvent).Assembly));
+        var store = new FakeOutboxStore
+        {
+            ClaimResult = Result<IReadOnlyList<OutboxMessage>>.Fail(
+                OutboxOutcome.Failure.ClaimFailed(new InvalidOperationException("claim failed"))),
+        };
+        OutboxDispatcher dispatcher = CreateDispatcher(store, serializer);
+
+        // Act
+        Result<int> result = await dispatcher.DispatchBatchAsync();
+
+        // Assert
+        result.IsFailure.Should().BeTrue();
+        store.Processed.Should().BeEmpty();
+    }
+
+    [Fact(DisplayName = "Dispatcher should not publish a row without a lease")]
+    public async Task DispatchBatch_WhenLeaseIsMissing_ShouldNotPublish()
+    {
+        // Arrange
+        var serializer = new JsonMessageSerializer(new EventTypeRegistry(typeof(DomainEvent).Assembly));
+        var store = new FakeOutboxStore();
+        OutboxMessage message = CreateMessage(
+            new TestOutboxEvent("no-lease"),
+            serializer,
+            OutboxMessageKind.Domain);
+        message.LeaseId = null;
+        store.Claimed.Add(message);
+        var publisher = new FakeDomainPublisher();
+        OutboxDispatcher dispatcher = CreateDispatcher(store, serializer, publisher: publisher);
+
+        // Act
+        Result<int> result = await dispatcher.DispatchBatchAsync();
+
+        // Assert
+        result.Value.Should().Be(1);
+        publisher.Published.Should().BeEmpty();
+    }
+
+    [Fact(DisplayName = "Dispatcher should continue after a stale mark loses the lease")]
+    public async Task DispatchBatch_WhenMarkLosesLease_ShouldContinue()
+    {
+        // Arrange
+        var serializer = new JsonMessageSerializer(new EventTypeRegistry(typeof(DomainEvent).Assembly));
+        var store = new FakeOutboxStore
+        {
+            ProcessedResult = Result.Fail(OutboxOutcome.Failure.LeaseLost(Guid.NewGuid())),
+        };
+        store.Claimed.Add(CreateMessage(new TestOutboxEvent("first"), serializer, OutboxMessageKind.Domain));
+        store.Claimed.Add(CreateMessage(new TestOutboxEvent("second"), serializer, OutboxMessageKind.Domain));
+        var publisher = new FakeDomainPublisher();
+        OutboxDispatcher dispatcher = CreateDispatcher(store, serializer, publisher: publisher);
+
+        // Act
+        Result<int> result = await dispatcher.DispatchBatchAsync();
+
+        // Assert
+        result.Value.Should().Be(2);
+        publisher.Published.Should().HaveCount(2);
+    }
+
     private static OutboxDispatcher CreateDispatcher(
         FakeOutboxStore store,
         JsonMessageSerializer serializer,
@@ -265,6 +330,8 @@ public sealed class OutboxDispatcherTest
     private sealed class FakeOutboxStore : IOutboxStore
     {
         public List<OutboxMessage> Claimed { get; } = [];
+        public Result<IReadOnlyList<OutboxMessage>>? ClaimResult { get; set; }
+        public Result? ProcessedResult { get; set; }
         public List<Guid> Processed { get; } = [];
         public List<(Guid Id, string Error, DateTimeOffset NextAttemptUtc)> Failed { get; } = [];
         public List<Guid> DeadLettered { get; } = [];
@@ -279,7 +346,7 @@ public sealed class OutboxDispatcherTest
             DateTimeOffset nowUtc,
             TimeSpan leaseDuration,
             CancellationToken cancellationToken = default)
-            => Task.FromResult(Result<IReadOnlyList<OutboxMessage>>.Success(Claimed));
+            => Task.FromResult(ClaimResult ?? Result<IReadOnlyList<OutboxMessage>>.Success(Claimed));
 
         public Task<Result> MarkProcessedAsync(
             Guid id,
@@ -288,7 +355,7 @@ public sealed class OutboxDispatcherTest
             CancellationToken cancellationToken = default)
         {
             Processed.Add(id);
-            return Task.FromResult(Result.Ok());
+            return Task.FromResult(ProcessedResult ?? Result.Ok());
         }
 
         public Task<Result> MarkFailedAsync(
