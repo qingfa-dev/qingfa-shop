@@ -1,4 +1,4 @@
-# API Result Envelope, Identity Surface, and Full API Test Host
+# API Result Contract, Identity Surface, and Full API Test Host
 
 - **Status:** Proposed
 - **Date:** 2026-10-30
@@ -9,19 +9,20 @@
 
 The API currently returns raw response models on success and `ProblemDetails` on failure. Each endpoint decides its own success shape (`Results.Ok`, `Results.Created`, `Results.NoContent`) and its own failure shape. There is no shared response serializer, no authenticated HTTP test suite, and no identity endpoints even though `IIdentityService` and the external authentication schemes are already composed.
 
-The Event Sourcing slice delivered a monadic `Result`/`Error` core. The next slice exposes that contract consistently over HTTP.
+The Event Sourcing slice delivered a monadic `Result`/`Error` core. The next slice exposes that contract consistently over HTTP **without adding a new response model**.
 
 ## 2. Goals
 
-1. Return one stable envelope for every `/api/*` success and failure.
+1. Return the existing `Result<T>` / `Result` model directly for every `/api/*` response.
 2. Let `Result.StatusCode` drive the HTTP status.
-3. Keep the core `Result` type out of the wire contract.
+3. Inject one serializer configuration shared by the API and the API tests.
 4. Expose the full local identity surface and the configured external OAuth/OIDC providers.
 5. Test the real API pipeline through `WebApplicationFactory` with PostgreSQL, Redis, and RabbitMQ containers.
 6. Make RabbitMQ a first-class local/deploy/AppHost resource with explicit make targets.
 
 ## 3. Non-goals
 
+- No `ApiEnvelope`, `ApiError`, or other new response DTO.
 - No changes to `/time`, health, OpenAPI, or static file responses.
 - No refresh-token or access-token redesign; this slice only exposes the existing services.
 - No frontend consumer changes.
@@ -32,9 +33,10 @@ The Event Sourcing slice delivered a monadic `Result`/`Error` core. The next sli
 | Decision | Choice |
 |---|---|
 | HTTP status | Derived from `Result.StatusCode` |
-| Body | Stable `ApiEnvelope` / `ApiEnvelope<T>` |
-| Envelope fields | `success`, `statusCode`, `data`, `errors`, `metadata` |
-| Error fields | `code`, `message`, `field`, `metadata` |
+| Success body | `Result<T>` (contains `value`) |
+| Failure body | non-generic `Result` (no `value`) |
+| Error body | existing `Error` model |
+| Serializer | shared `ApiJson.Options` injected into the host and tests |
 | Enums | camelCase JSON, enums as strings |
 | Value-less success | Honors `Result.StatusCode`; `204` has no body |
 | `201 Created` | Endpoint supplies the `Location` |
@@ -45,33 +47,41 @@ The Event Sourcing slice delivered a monadic `Result`/`Error` core. The next sli
 | API test broker | Real RabbitMQ Testcontainer |
 | RabbitMQ infra | Integrated stack + broker-only `compose.rabbitmq.yaml` + make targets |
 
-## 5. Envelope contract
+## 5. Response contract
 
 ### Success
 
+HTTP status from `Result.StatusCode`, body is the full `Result<T>`:
+
 ```json
 {
-  "success": true,
+  "isSuccess": true,
   "statusCode": 200,
-  "data": { "id": "..." },
   "errors": [],
-  "metadata": {}
+  "metadata": {},
+  "value": { "id": "...", "title": "..." }
 }
 ```
 
 ### Failure
 
+HTTP status from `Result.StatusCode`, body is the non-generic `Result` so the failing `Value` is never touched:
+
 ```json
 {
-  "success": false,
+  "isSuccess": false,
   "statusCode": 404,
-  "data": null,
   "errors": [
     {
       "code": "Repository.Entity.NotFound",
       "message": "The 'Todo' with id '...' does not exist.",
-      "field": null,
-      "metadata": {}
+      "type": null,
+      "instance": null,
+      "status": 404,
+      "severity": "error",
+      "metadata": {
+        "Field": "id"
+      }
     }
   ],
   "metadata": {}
@@ -80,14 +90,16 @@ The Event Sourcing slice delivered a monadic `Result`/`Error` core. The next sli
 
 ### Rules
 
-- `data` is the command/query value on typed success and `null` on failure.
-- `errors` is empty on success and ordered exactly as `Result.Errors`.
-- `field` comes from `Error.Metadata["Field"]` and is `null` when absent.
-- `metadata` is the full `Result.Metadata` on the envelope and the full `Error.Metadata` on each error.
+- `Result<T>` success is serialized as-is; `Value` is included.
+- Failure is converted with `Result<T>.ToResult()` before writing, so `Value` is never evaluated.
+- `errors` is ordered exactly as `Result.Errors`.
+- `Error.Metadata["Field"]` remains the validation property path.
+- `metadata` is the full `Result.Metadata` and `Error.Metadata`.
 - `201 Created` carries the value and a `Location` header.
 - `202 Accepted` carries the value and may carry a `Location` header.
 - `204 No Content` has no body.
 - Failures preserve `Result.StatusCode`; `0` is treated as `400`.
+- Computed members (`isFailure`, `hasValue`) are `[JsonIgnore]` so the wire shape is stable.
 
 ## 6. Serialization
 
@@ -106,10 +118,12 @@ new JsonSerializerOptions(JsonSerializerDefaults.Web)
 Add `JsonStringEnumConverter(JsonNamingPolicy.CamelCase)`. The same options are used by:
 
 - `builder.Services.ConfigureHttpJsonOptions(...)`
-- `ApiResult` when writing the envelope
-- `tests/Testing` when reading responses
+- `ApiResult` when writing the result body
+- `tests/Testing` when reading `Result<T>` / `Result`
 
-`ApiResult` writes with its own options reference so a host-level JSON override cannot silently change the envelope.
+`ApiResult` writes with its own options reference so a host-level JSON override cannot silently change the result contract.
+
+`Result.IsFailure` and `Result.HasValue` get `[JsonIgnore]`; `Result<T>.Value` is only reachable on success, and failure bodies use the non-generic `Result`.
 
 ## 7. HTTP result type
 
@@ -119,7 +133,7 @@ Add `JsonStringEnumConverter(JsonNamingPolicy.CamelCase)`. The same options are 
 - `ApiResult` for value-less results.
 - `ToApiResult<T>(...)` and `ToApiResult(...)` extension methods.
 
-The extension supplies an optional `Func<T, string>` location selector for creates. The result writes `ApiEnvelope<T>` or `ApiEnvelope` with the encoded status. `204` writes no body. `IEndpointMetadataProvider` advertises the envelope content type and status codes so OpenAPI stays accurate.
+The extension supplies an optional `Func<T, string>` location selector for creates. The result writes `Result<T>` or `Result` with the encoded status. `204` writes no body. `IEndpointMetadataProvider` advertises the result content type and status codes so OpenAPI stays accurate.
 
 All endpoint modules switch from `ToHttpResult` to `ToApiResult`. Command handlers own statuses:
 
@@ -169,7 +183,7 @@ public sealed record AuthTokenResponse(
 3. Callback authenticates the external principal with the configured scheme, maps it to `ExternalUserInfo`, and calls `IExternalAuthenticationService.LoginAsync`. The provider schemes must set `CallbackPath` to `/api/auth/external/{provider}/callback` so the route receives the provider response; the existing OpenID Connect `CallbackPath` setting remains configurable.
 4. The resulting `AuthTokenResponse` is stored in Redis for 60 seconds under a random one-time code.
 5. Callback redirects to `ExternalAuth:SuccessRedirectUrl?code=<code>`.
-6. Client posts the code to `/api/auth/external/exchange`; the code is read and deleted atomically, and the normal envelope is returned.
+6. Client posts the code to `/api/auth/external/exchange`; the code is read and deleted atomically, and the normal `Result<AuthTokenResponse>` is returned.
 
 Codes are random 32-byte base64url values, stored hashed, single-use, and never logged.
 
@@ -193,7 +207,7 @@ Codes are random 32-byte base64url values, stored hashed, single-use, and never 
   - `X-Test-Role` (default `Admin`)
   - `X-Test-Permissions` (comma-separated)
   - emits `nameidentifier`, `tenant_id`, `role`, and permission claims.
-- `ApiResponseExtension.ReadApiAsync<T>()` uses `ApiJson.Options` and asserts status + envelope.
+- `ApiResponseExtension.ReadResultAsync<T>()` uses `ApiJson.Options`; success reads `Result<T>`, failure reads `Result`.
 
 ### Suites
 
@@ -201,7 +215,7 @@ Codes are random 32-byte base64url values, stored hashed, single-use, and never 
 - `Todo.Api.Test.cs`: create → get → update → start → complete → delete; category/list operations; tenant isolation; 400/404/409/422.
 - `TodoReminder.Api.Test.cs`: schedule → snooze → dismiss → list.
 - `Authorization.Api.Test.cs`: admin bypass, permission denied 403, unauthenticated 401.
-- `Envelope.Api.Test.cs`: 200/201/204/400/404/409/422 bodies and serializer conventions.
+- `ResultContract.Api.Test.cs`: 200/201/204/400/404/409/422 bodies, serializer conventions, and `value` absence on failure.
 
 Tests that need RabbitMQ use the real container with a unique queue prefix per run. Outbox dispatch is flushed deterministically through `IOutboxDispatcher.DispatchBatchAsync` before integration-event assertions. Suites skip cleanly when Docker is unavailable.
 
@@ -241,22 +255,24 @@ infra.rabbit.reset    delete the broker volume; requires RABBITMQ_RESET=1
 ## 11. Rollout
 
 1. Finish the event-sourcing release docs/gates.
-2. Implement envelope + serializers + endpoint switch.
-3. Implement identity endpoints and external code exchange.
-4. Add test fixtures and suites.
-5. Add RabbitMQ infra and make targets.
-6. Run `make ci` then `make ci.full`.
+2. Implement the shared `ApiJson.Options` and `ApiResult`.
+3. Switch every endpoint to `ToApiResult` and move statuses into commands.
+4. Implement identity endpoints and external code exchange.
+5. Add test fixtures and suites.
+6. Add RabbitMQ infra and make targets.
+7. Run `make ci` then `make ci.full`.
 
-The envelope is a public contract break. There are no frontend API consumers today, so no compatibility shim is added; OpenAPI and tests move with the change.
+The result body is a public contract break. There are no frontend API consumers today, so no compatibility shim is added; OpenAPI and tests move with the change.
 
 ## 12. Acceptance criteria
 
-- Every `/api/*` success and failure uses `ApiEnvelope` / `ApiEnvelope<T>`.
+- Every `/api/*` success returns `Result<T>` and every failure returns non-generic `Result`.
 - HTTP status equals `Result.StatusCode`; `204` has no body; `201` has `Location`.
 - `ApiJson.Options` is the single serializer used by API and tests; enums serialize as camelCase strings.
+- `Result.IsFailure` / `Result.HasValue` do not appear on the wire.
 - All identity routes in §8 are reachable and the raw domain `AuthResponse` never appears on the wire.
 - External callback never puts tokens in a URL; the one-time code is single-use.
-- Full API tests cover every identity route, every Todo route, every reminder route, and the envelope failure codes.
+- Full API tests cover every identity route, every Todo route, every reminder route, and the result failure codes.
 - Real PostgreSQL, Redis, and RabbitMQ containers back the API test host.
 - `infra.rabbit.*` targets work; `make ci.full` passes.
 - Docker-unavailable runs skip messaging/API container suites cleanly.
@@ -265,4 +281,4 @@ The envelope is a public contract break. There are no frontend API consumers tod
 
 - Full identity + external OAuth is large; the external test uses a fake provider and a controllable `IExternalAuthenticationService` seam.
 - Real RabbitMQ makes API tests slower and container-dependent; collection-level reuse and per-run queue prefixes limit cost.
-- Envelope metadata can expose internal keys; the spec accepts full metadata because the core metadata is request-scoped and no secrets are stored there. A follow-up can add an allow-list if needed.
+- Disabling JSON for `IsFailure` / `HasValue` is a small core-visible change; no code reads them through serialization.
