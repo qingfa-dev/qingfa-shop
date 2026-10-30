@@ -1,7 +1,7 @@
 using Application.Common.Querying;
 using Application.Features.Todos.Categories.Commands;
 using Application.Features.Todos.Categories.Queries;
-using Application.Features.Todos.Items.Commands;
+using Application.Features.Todos.Items.Models;
 using Application.Features.Todos.Items.Queries;
 using Application.Features.Todos.Lists.Commands;
 using Application.Features.Todos.Lists.Queries;
@@ -42,8 +42,9 @@ public sealed class TodoTabularIntegrationTest : IAsyncLifetime
     public async Task SearchTodosTabular_WithSelect_ShouldReturnRows()
     {
         // Arrange
-        await CreateTodoAsync("First");
-        await CreateTodoAsync("Second");
+        await SeedAsync(
+            CreateTodo("First", TodoStatus.Pending),
+            CreateTodo("Second", TodoStatus.Pending));
         var handler = new SearchTodosTabular.UseCaseHandler(
             _fixture.TodoProjectionRepository,
             _fixture.QueryMapProvider,
@@ -66,21 +67,10 @@ public sealed class TodoTabularIntegrationTest : IAsyncLifetime
     public async Task SearchTodosTabular_WithGroupAndAggregate_ShouldReturnRows()
     {
         // Arrange
-        Result<CreateTodo.Response> pending = await CreateTodoAsync("Pending");
-        await CreateTodoAsync("Another pending");
-        pending.IsSuccess.Should().BeTrue();
-
-        var start = new StartTodo.UseCaseHandler(
-            _fixture.TodoRepository,
-            _fixture.UnitOfWork,
-            _fixture.Ambient,
-            _fixture.Ambient,
-            _fixture.Clock);
-
-        (await start.Handle(
-                new StartTodo.UseCase(new StartTodo.Request(pending.Value.Id)),
-                CancellationToken.None))
-            .IsSuccess.Should().BeTrue();
+        await SeedAsync(
+            CreateTodo("Pending", TodoStatus.Pending),
+            CreateTodo("Another pending", TodoStatus.Pending),
+            CreateTodo("Started", TodoStatus.InProgress));
 
         var handler = new SearchTodosTabular.UseCaseHandler(
             _fixture.TodoProjectionRepository,
@@ -108,30 +98,10 @@ public sealed class TodoTabularIntegrationTest : IAsyncLifetime
     public async Task SearchTodosTabular_ShouldScopeTenantAndIncludeDeleted()
     {
         // Arrange
-        await CreateTodoAsync("Own");
-        Result<CreateTodo.Response> deleted = await CreateTodoAsync("Deleted");
-        deleted.IsSuccess.Should().BeTrue();
-
-        var delete = new DeleteTodo.UseCaseHandler(
-            _fixture.TodoRepository,
-            _fixture.UnitOfWork,
-            _fixture.Ambient,
-            _fixture.Ambient,
-            _fixture.Clock);
-
-        (await delete.Handle(
-                new DeleteTodo.UseCase(new DeleteTodo.Request(deleted.Value.Id)),
-                CancellationToken.None))
-            .IsSuccess.Should().BeTrue();
-
-        Todo foreign = Todo.Create(
-            Guid.NewGuid(),
-            Guid.NewGuid(),
-            "Foreign",
-            _fixture.Clock.UtcNow,
-            Actor).Value;
-        await _fixture.TodoRepository.AddAsync(foreign);
-        await _fixture.UnitOfWork.SaveChangesAsync();
+        await SeedAsync(
+            CreateTodo("Own", TodoStatus.Pending),
+            CreateTodo("Deleted", TodoStatus.Pending, isDeleted: true),
+            CreateTodo("Foreign", TodoStatus.Pending, tenantId: Guid.NewGuid()));
 
         var handler = new SearchTodosTabular.UseCaseHandler(
             _fixture.TodoProjectionRepository,
@@ -226,17 +196,27 @@ public sealed class TodoTabularIntegrationTest : IAsyncLifetime
         result.Value.Rows.Select(row => row.Values[0]).Should().BeEquivalentTo(["Errands"]);
     }
 
-    private async Task<Result<CreateTodo.Response>> CreateTodoAsync(string title)
+    private async Task SeedAsync(params TodoReadModel[] todos)
     {
-        var handler = new CreateTodo.UseCaseHandler(
-            _fixture.TodoRepository,
-            _fixture.UnitOfWork,
-            _fixture.Ambient,
-            _fixture.Ambient,
-            _fixture.Clock);
-
-        return await handler.Handle(
-            new CreateTodo.UseCase(new CreateTodo.Request { Title = title }),
-            CancellationToken.None);
+        _fixture.DbContext.Set<TodoReadModel>().AddRange(todos);
+        await _fixture.DbContext.SaveChangesAsync();
+        _fixture.DbContext.ChangeTracker.Clear();
     }
+
+    private static TodoReadModel CreateTodo(
+        string title,
+        TodoStatus status,
+        Guid? tenantId = null,
+        bool isDeleted = false) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId ?? TenantId,
+            Title = title,
+            Status = status,
+            Priority = TodoPriority.Medium,
+            CreatedAtUtc = DateTimeOffset.UtcNow,
+            CreatedBy = Actor,
+            IsDeleted = isDeleted,
+        };
 }

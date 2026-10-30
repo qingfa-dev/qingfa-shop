@@ -1,3 +1,5 @@
+using Application.Features.Todos.Items.Models;
+
 using Core.Todos.Items;
 
 using Infrastructure.Persistence.EntityFramework.Contexts;
@@ -89,15 +91,15 @@ public sealed class ConventionTest
         using var context = new ConventionDbContext(SqliteOptions<ConventionDbContext>());
 
         // Act
-        var todo = context.Model.FindEntityType(typeof(Todo))!;
-        var dueAt = todo.FindProperty(nameof(Todo.DueAtUtc))!;
-        var status = todo.FindProperty(nameof(Todo.Status))!;
+        var todo = context.Model.FindEntityType(typeof(TodoReadModel))!;
+        var dueAt = todo.FindProperty(nameof(TodoReadModel.DueAtUtc))!;
+        var status = todo.FindProperty(nameof(TodoReadModel.Status))!;
 
         // Assert
         dueAt.GetColumnType().Should().Be("TEXT");
         status.GetValueConverter().Should().BeOfType<EnumValueConverter<TodoStatus>>();
-        todo.FindProperty(nameof(Todo.Metadata))!
-            .GetValueConverter().Should().BeOfType<MetadataValueConverter>();
+        todo.FindProperty(nameof(TodoReadModel.Metadata))!
+            .GetValueConverter().Should().BeOfType<DictionaryJsonValueConverter>();
     }
 
     // ─── Assembly resolution ──────────────────────────────────────────────
@@ -109,7 +111,7 @@ public sealed class ConventionTest
         using var context = new InheritedDbContext(SqliteOptions<InheritedDbContext>());
 
         // Act
-        var entity = context.Model.FindEntityType(typeof(Todo));
+        var entity = context.Model.FindEntityType(typeof(TodoReadModel));
 
         // Assert
         entity.Should().NotBeNull();
@@ -126,8 +128,8 @@ public sealed class ConventionTest
         using var context = new ApplicationDbContext(SqliteOptions<ApplicationDbContext>());
 
         // Act
-        var dueAt = context.Model.FindEntityType(typeof(Todo))!
-            .FindProperty(nameof(Todo.DueAtUtc))!;
+        var dueAt = context.Model.FindEntityType(typeof(TodoReadModel))!
+            .FindProperty(nameof(TodoReadModel.DueAtUtc))!;
 
         // Assert
         dueAt.GetColumnType().Should().Be("TEXT");
@@ -143,8 +145,8 @@ public sealed class ConventionTest
         using var context = new ApplicationDbContext(options);
 
         // Act
-        var dueAt = context.Model.FindEntityType(typeof(Todo))!
-            .FindProperty(nameof(Todo.DueAtUtc))!;
+        var dueAt = context.Model.FindEntityType(typeof(TodoReadModel))!
+            .FindProperty(nameof(TodoReadModel.DueAtUtc))!;
 
         // Assert
         dueAt.GetColumnType().Should().Be("timestamptz");

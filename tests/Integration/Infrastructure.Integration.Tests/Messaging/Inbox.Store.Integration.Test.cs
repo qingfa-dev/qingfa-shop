@@ -2,6 +2,8 @@ using Application.Common.Messaging.Inbox;
 
 using Core.Common.Monad.Errors;
 using Core.Common.Monad.Results;
+using Application.Features.Todos.Items.Models;
+
 using Core.Todos.Items;
 
 using Infrastructure.Persistence.EntityFramework.Contexts;
@@ -228,7 +230,7 @@ public sealed class InboxStoreIntegrationTest(MessagingFixture fixture) : IAsync
     {
         // Arrange
         Guid messageId = Guid.NewGuid();
-        Todo todo = NewTodo();
+        TodoReadModel todo = NewTodo();
 
         // Act
         Result result = await _fixture.InboxStore.ExecuteOnceAsync(
@@ -237,7 +239,7 @@ public sealed class InboxStoreIntegrationTest(MessagingFixture fixture) : IAsync
             _ =>
             {
                 // Handle: the write is staged on the same context, inside the store's transaction.
-                _fixture.DbContext.Set<Todo>().Add(todo);
+                _fixture.DbContext.Set<TodoReadModel>().Add(todo);
                 return Task.FromResult(Result.Ok());
             });
 
@@ -252,7 +254,7 @@ public sealed class InboxStoreIntegrationTest(MessagingFixture fixture) : IAsync
     {
         // Arrange
         Guid messageId = Guid.NewGuid();
-        Todo todo = NewTodo();
+        TodoReadModel todo = NewTodo();
         Result failedResult = Result.Fail(
             Error.UnprocessableEntity("Test.Inbox.HandlerFailed", "write rejected"));
 
@@ -262,7 +264,7 @@ public sealed class InboxStoreIntegrationTest(MessagingFixture fixture) : IAsync
             Consumer,
             _ =>
             {
-                _fixture.DbContext.Set<Todo>().Add(todo);
+                _fixture.DbContext.Set<TodoReadModel>().Add(todo);
                 return Task.FromResult(failedResult);
             });
 
@@ -304,11 +306,15 @@ public sealed class InboxStoreIntegrationTest(MessagingFixture fixture) : IAsync
         (await CountAsync()).Should().Be(2);
     }
 
-    private static Todo NewTodo() => Todo.Create(
-        Guid.NewGuid(),
-        Guid.NewGuid(),
-        "inbox integration",
-        DateTimeOffset.UtcNow).Value;
+    private static TodoReadModel NewTodo() => new()
+    {
+        Id = Guid.NewGuid(),
+        TenantId = Guid.NewGuid(),
+        Title = "inbox integration",
+        Status = TodoStatus.Pending,
+        Priority = TodoPriority.Medium,
+        CreatedAtUtc = DateTimeOffset.UtcNow,
+    };
 
     private Task<InboxMessage> ReadAsync(Guid messageId, string consumer) => QueryAsync(context =>
         context.Set<InboxMessage>()
@@ -319,7 +325,7 @@ public sealed class InboxStoreIntegrationTest(MessagingFixture fixture) : IAsync
         context.Set<InboxMessage>().CountAsync());
 
     private Task<bool> TodoExistsAsync(Guid todoId) => QueryAsync(context =>
-        context.Set<Todo>().AsNoTracking().AnyAsync(todo => todo.Id == todoId));
+        context.Set<TodoReadModel>().AsNoTracking().AnyAsync(todo => todo.Id == todoId));
 
     private async Task InsertAsync(Guid messageId, string consumer)
     {

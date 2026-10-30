@@ -1,3 +1,5 @@
+using Application.Features.Todos.Items.Models;
+
 using Core.Todos.Categories;
 using Core.Todos.Items;
 using Core.Todos.Lists;
@@ -46,14 +48,14 @@ public sealed class ApplicationDbContextTest : IAsyncLifetime
         typeof(ApplicationDbContext).IsSealed.Should().BeTrue();
     }
 
-    [Fact(DisplayName = "ApplicationDbContext should expose Todo entity sets without DbSet properties")]
+    [Fact(DisplayName = "ApplicationDbContext should expose read-model entity sets without DbSet properties")]
     public void EntitySets_ShouldBeAvailable()
     {
         // Arrange
         var context = new ApplicationDbContext(_options!);
 
         // Assert
-        context.Set<Todo>().Should().BeAssignableTo<DbSet<Todo>>();
+        context.Set<TodoReadModel>().Should().BeAssignableTo<DbSet<TodoReadModel>>();
         context.Set<TodoList>().Should().BeAssignableTo<DbSet<TodoList>>();
         context.Set<TodoCategory>().Should().BeAssignableTo<DbSet<TodoCategory>>();
         typeof(ApplicationDbContext)
@@ -63,6 +65,17 @@ public sealed class ApplicationDbContextTest : IAsyncLifetime
             .Should().NotContain(property =>
                 property.PropertyType.IsGenericType &&
                 property.PropertyType.GetGenericTypeDefinition() == typeof(DbSet<>));
+    }
+
+    [Fact(DisplayName = "ApplicationDbContext should not map Todo as an EF entity")]
+    public void Model_ShouldNotMapTodoAggregate()
+    {
+        // Arrange
+        var context = new ApplicationDbContext(_options!);
+
+        // Assert
+        context.Model.FindEntityType(typeof(Todo)).Should().BeNull();
+        context.Model.FindEntityType(typeof(TodoReadModel)).Should().NotBeNull();
     }
 
     [Fact(DisplayName = "ApplicationDbContext should discover all entity configurations from the assembly")]
@@ -146,8 +159,8 @@ public sealed class ApplicationDbContextTest : IAsyncLifetime
         var context = new ApplicationDbContext(_options!);
 
         // Act
-        var property = context.Model.FindEntityType(typeof(Todo))!
-            .FindProperty(nameof(Todo.CategoryIds))!;
+        var property = context.Model.FindEntityType(typeof(TodoReadModel))!
+            .FindProperty(nameof(TodoReadModel.CategoryIds))!;
 
         // Assert
         property.GetColumnType().Should().Be("jsonb");
@@ -161,7 +174,7 @@ public sealed class ApplicationDbContextTest : IAsyncLifetime
         var context = new ApplicationDbContext(_options!);
 
         // Act
-        var indexes = context.Model.FindEntityType(typeof(Todo))!
+        var indexes = context.Model.FindEntityType(typeof(TodoReadModel))!
             .GetIndexes()
             .Select(index => string.Join(",", index.Properties.Select(property => property.Name)))
             .ToList();
@@ -181,7 +194,7 @@ public sealed class ApplicationDbContextTest : IAsyncLifetime
         context.Database.HasPendingModelChanges().Should().BeFalse();
     }
 
-    [Fact(DisplayName = "ApplicationDbContext should discover migrations from its assembly")]
+    [Fact(DisplayName = "ApplicationDbContext should discover the squashed InitialCreate migration")]
     public void Database_ShouldDiscoverMigrations()
     {
         // Arrange
@@ -191,14 +204,8 @@ public sealed class ApplicationDbContextTest : IAsyncLifetime
         var migrations = context.Database.GetMigrations().ToList();
 
         // Assert
-        migrations.Should().HaveCount(7);
-        migrations.Should().Contain(migration => migration.EndsWith("_InitialCreate", StringComparison.Ordinal));
-        migrations.Should().Contain(migration => migration.EndsWith("_AddIdentity", StringComparison.Ordinal));
-        migrations.Should().Contain(migration => migration.EndsWith("_AlignIdentityDbContext", StringComparison.Ordinal));
-        migrations.Should().Contain(migration => migration.EndsWith("_AddAggregateVersion", StringComparison.Ordinal));
-        migrations.Should().Contain(migration => migration.EndsWith("_AddOutboxInbox", StringComparison.Ordinal));
-        migrations.Should().Contain(migration => migration.EndsWith("_AddEventStore", StringComparison.Ordinal));
-        migrations.Should().Contain(migration => migration.EndsWith("_AddTodoReminderProjection", StringComparison.Ordinal));
+        migrations.Should().ContainSingle();
+        migrations[0].EndsWith("_InitialCreate", StringComparison.Ordinal).Should().BeTrue();
     }
 
     [Fact(DisplayName = "The Persistence assembly should contain one DbContext and one design-time factory")]
@@ -238,25 +245,20 @@ public sealed class ApplicationDbContextTest : IAsyncLifetime
         (await context.Database.CanConnectAsync()).Should().BeTrue();
     }
 
-    [Fact(DisplayName = "ApplicationDbContext should persist and read a Todo")]
+    [Fact(DisplayName = "ApplicationDbContext should persist and read a Todo read model")]
     public async Task CanAddAndSaveTodo()
     {
         // Arrange
         await using var context = new ApplicationDbContext(_options!);
         await context.Database.EnsureCreatedAsync();
-        var todo = Todo.Create(
-            id: Guid.NewGuid(),
-            tenantId: TenantId,
-            title: "Test Todo",
-            nowUtc: DateTimeOffset.UtcNow,
-            description: "Test Description").Value!;
+        var todo = CreateReadModel("Test Todo", "Test Description");
 
         // Act
-        context.Set<Todo>().Add(todo);
+        context.Set<TodoReadModel>().Add(todo);
         await context.SaveChangesAsync();
 
         // Assert
-        var saved = await context.Set<Todo>().FindAsync(todo.Id);
+        var saved = await context.Set<TodoReadModel>().FindAsync(todo.Id);
         saved.Should().NotBeNull();
         saved!.Title.Should().Be("Test Todo");
     }
@@ -312,19 +314,14 @@ public sealed class ApplicationDbContextTest : IAsyncLifetime
         await using var context = new ApplicationDbContext(_options!);
         await context.Database.EnsureCreatedAsync();
         var categoryId = Guid.NewGuid();
-        var todo = Todo.Create(
-            id: Guid.NewGuid(),
-            tenantId: TenantId,
-            title: "Categorized",
-            nowUtc: DateTimeOffset.UtcNow)
-            .AddCategory(categoryId)
-            .Value!;
+        var todo = CreateReadModel("Categorized");
+        todo.CategoryIds = [categoryId];
 
         // Act
-        context.Set<Todo>().Add(todo);
+        context.Set<TodoReadModel>().Add(todo);
         await context.SaveChangesAsync();
         context.ChangeTracker.Clear();
-        var saved = await context.Set<Todo>().FindAsync(todo.Id);
+        var saved = await context.Set<TodoReadModel>().FindAsync(todo.Id);
 
         // Assert
         saved!.CategoryIds.Should().Contain(categoryId);
@@ -336,18 +333,14 @@ public sealed class ApplicationDbContextTest : IAsyncLifetime
         // Arrange
         await using var context = new ApplicationDbContext(_options!);
         await context.Database.EnsureCreatedAsync();
-        var todo = Todo.Create(
-            id: Guid.NewGuid(),
-            tenantId: TenantId,
-            title: "Metadata",
-            nowUtc: DateTimeOffset.UtcNow).Value!;
+        var todo = CreateReadModel("Metadata");
         todo.Metadata["source"] = "unit-test";
 
         // Act
-        context.Set<Todo>().Add(todo);
+        context.Set<TodoReadModel>().Add(todo);
         await context.SaveChangesAsync();
         context.ChangeTracker.Clear();
-        var saved = await context.Set<Todo>().FindAsync(todo.Id);
+        var saved = await context.Set<TodoReadModel>().FindAsync(todo.Id);
 
         // Assert
         saved!.Metadata.Should().NotBeNull();
@@ -359,15 +352,28 @@ public sealed class ApplicationDbContextTest : IAsyncLifetime
         // Arrange
         await using var context = new ApplicationDbContext(_options!);
         await context.Database.EnsureCreatedAsync();
-        context.Set<Todo>().AddRange(
-            Todo.Create(Guid.NewGuid(), TenantId, "First", DateTimeOffset.UtcNow).Value!,
-            Todo.Create(Guid.NewGuid(), TenantId, "Second", DateTimeOffset.UtcNow).Value!);
+        context.Set<TodoReadModel>().AddRange(
+            CreateReadModel("First"),
+            CreateReadModel("Second"));
         await context.SaveChangesAsync();
 
         // Act
-        var all = await context.Set<Todo>().ToListAsync();
+        var all = await context.Set<TodoReadModel>().ToListAsync();
 
         // Assert
         all.Should().HaveCount(2);
     }
+
+    private static TodoReadModel CreateReadModel(string title, string? description = null) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            TenantId = TenantId,
+            Title = title,
+            Description = description,
+            Status = TodoStatus.Pending,
+            Priority = TodoPriority.Medium,
+            CreatedAtUtc = DateTimeOffset.UtcNow,
+            CreatedBy = "test",
+        };
 }

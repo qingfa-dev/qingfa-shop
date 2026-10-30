@@ -35,15 +35,15 @@ public sealed class TodoSeedersSqliteTest : IAsyncLifetime
         Execute("""
             CREATE TABLE todo.todo_categories (
                 id TEXT PRIMARY KEY, name TEXT, description TEXT, created_at_utc TEXT,
-                created_by TEXT, tenant_id TEXT, metadata TEXT);
+                created_by TEXT, tenant_id TEXT, metadata TEXT, version INTEGER);
             CREATE TABLE todo.todo_lists (
                 id TEXT PRIMARY KEY, name TEXT, description TEXT, created_at_utc TEXT,
-                created_by TEXT, tenant_id TEXT, metadata TEXT);
+                created_by TEXT, tenant_id TEXT, metadata TEXT, version INTEGER);
             CREATE TABLE todo.todos (
                 id TEXT PRIMARY KEY, title TEXT, description TEXT, status INTEGER,
                 priority INTEGER, due_at_utc TEXT, completed_at_utc TEXT, list_id TEXT,
                 category_ids TEXT, created_at_utc TEXT, created_by TEXT, tenant_id TEXT,
-                metadata TEXT);
+                metadata TEXT, version INTEGER);
             """);
         _connection.Close();
         return default;

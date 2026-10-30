@@ -1,25 +1,38 @@
+using Application.Common.EventSourcing;
+using Application.Common.Messaging.Outbox;
+using Application.Common.Messaging.Serialization;
 using Application.Common.Persistence.Capabilities;
 using Application.Common.Persistence.Repositories;
 using Application.Common.Persistence.UnitOfWorks;
 using Application.Common.Querying.Mapping;
 using Application.Common.Security.Authentication.Contexts;
 using Application.Features.Todos.Abstractions;
+using Application.Features.Todos.Items.Models;
 
+using Core.Common.Domain.EventSourcing;
+using Core.Common.Monad.Results;
 using Core.Todos.Categories;
 using Core.Todos.Items;
 using Core.Todos.Lists;
 
+using Infrastructure.Integrations.Messaging.Serialization;
 using Infrastructure.Persistence.EntityFramework.Capabilities;
 using Infrastructure.Persistence.EntityFramework.Contexts;
+using Infrastructure.Persistence.EntityFramework.EventSourcing;
+using Infrastructure.Persistence.EntityFramework.EventSourcing.Options;
 using Infrastructure.Persistence.EntityFramework.Interceptors;
 using Infrastructure.Persistence.EntityFramework.Options;
+using Infrastructure.Persistence.EntityFramework.Outbox;
+using Infrastructure.Persistence.EntityFramework.Projections;
 using Infrastructure.Persistence.EntityFramework.QueryTranslation;
 using Infrastructure.Persistence.EntityFramework.Repositories;
 using Infrastructure.Persistence.EntityFramework.UnitOfWorks;
+using Infrastructure.Persistence.Schemas.Todos.Queries;
 using Infrastructure.Services.Todos;
 
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.Logging.Abstractions;
 
 using Respawn;
 
@@ -28,7 +41,7 @@ using Testcontainers.PostgreSql;
 namespace Infrastructure.Integration.Tests.Persistence.Todos;
 
 /// <summary>
-/// Boots a real PostgreSQL container with ApplicationDbContext, repositories, and UnitOfWork
+/// Boots a real PostgreSQL container with the event store, projections, and repositories
 /// so integration tests exercise the full Todos persistence pipeline.
 /// </summary>
 public sealed class TodoEfCoreFixture : IAsyncLifetime
@@ -41,7 +54,7 @@ public sealed class TodoEfCoreFixture : IAsyncLifetime
         .Build();
 #pragma warning restore TC001
 
-    /// <summary>The root service provider with the full EF Core stack registered.</summary>
+    /// <summary>The root service provider with the full event-sourced stack registered.</summary>
     public IServiceProvider Services { get; private set; } = null!;
 
     /// <summary>Current scope for test services.</summary>
@@ -50,14 +63,17 @@ public sealed class TodoEfCoreFixture : IAsyncLifetime
     /// <summary>The Todo DbContext resolved from the current scope.</summary>
     public ApplicationDbContext DbContext => CurrentScope?.ServiceProvider.GetRequiredService<ApplicationDbContext>() ?? throw new InvalidOperationException("Scope not initialized");
 
-    /// <summary>The repository for Todo.</summary>
-    public IPersistentRepository<Todo, Guid> TodoRepository => CurrentScope?.ServiceProvider.GetRequiredService<IPersistentRepository<Todo, Guid>>() ?? throw new InvalidOperationException("Scope not initialized");
+    /// <summary>The event-sourced repository for the Todo stream.</summary>
+    public IEventSourcedRepository<Todo, Guid> TodoEvents => CurrentScope?.ServiceProvider.GetRequiredService<IEventSourcedRepository<Todo, Guid>>() ?? throw new InvalidOperationException("Scope not initialized");
 
-    /// <summary>The mapping repository for Todo.</summary>
-    public IMappableRepository<Todo, Guid> TodoMapperRepository => CurrentScope?.ServiceProvider.GetRequiredService<IMappableRepository<Todo, Guid>>() ?? throw new InvalidOperationException("Scope not initialized");
+    /// <summary>The persistent repository for the Todo read model.</summary>
+    public IPersistentRepository<TodoReadModel, Guid> TodoReadRepository => CurrentScope?.ServiceProvider.GetRequiredService<IPersistentRepository<TodoReadModel, Guid>>() ?? throw new InvalidOperationException("Scope not initialized");
 
-    /// <summary>The projection repository for Todo.</summary>
-    public IProjectionRepository<Todo, Guid> TodoProjectionRepository => CurrentScope?.ServiceProvider.GetRequiredService<IProjectionRepository<Todo, Guid>>() ?? throw new InvalidOperationException("Scope not initialized");
+    /// <summary>The mapping repository for the Todo read model.</summary>
+    public IMappableRepository<TodoReadModel, Guid> TodoMapperRepository => CurrentScope?.ServiceProvider.GetRequiredService<IMappableRepository<TodoReadModel, Guid>>() ?? throw new InvalidOperationException("Scope not initialized");
+
+    /// <summary>The projection repository for the Todo read model.</summary>
+    public IProjectionRepository<TodoReadModel, Guid> TodoProjectionRepository => CurrentScope?.ServiceProvider.GetRequiredService<IProjectionRepository<TodoReadModel, Guid>>() ?? throw new InvalidOperationException("Scope not initialized");
 
     /// <summary>The repository for TodoList.</summary>
     public IPersistentRepository<TodoList, Guid> TodoListRepository => CurrentScope?.ServiceProvider.GetRequiredService<IPersistentRepository<TodoList, Guid>>() ?? throw new InvalidOperationException("Scope not initialized");
@@ -77,6 +93,15 @@ public sealed class TodoEfCoreFixture : IAsyncLifetime
     /// <summary>The projection repository for TodoCategory.</summary>
     public IProjectionRepository<TodoCategory, Guid> TodoCategoryProjectionRepository => CurrentScope?.ServiceProvider.GetRequiredService<IProjectionRepository<TodoCategory, Guid>>() ?? throw new InvalidOperationException("Scope not initialized");
 
+    /// <summary>The event store.</summary>
+    public IEventStore EventStore => CurrentScope?.ServiceProvider.GetRequiredService<IEventStore>() ?? throw new InvalidOperationException("Scope not initialized");
+
+    /// <summary>The snapshot store.</summary>
+    public ISnapshotStore Snapshots => CurrentScope?.ServiceProvider.GetRequiredService<ISnapshotStore>() ?? throw new InvalidOperationException("Scope not initialized");
+
+    /// <summary>The projection runner.</summary>
+    public ProjectionRunner Runner => CurrentScope?.ServiceProvider.GetRequiredService<ProjectionRunner>() ?? throw new InvalidOperationException("Scope not initialized");
+
     /// <summary>The UnitOfWork.</summary>
     public IUnitOfWork UnitOfWork => CurrentScope?.ServiceProvider.GetRequiredService<IUnitOfWork>() ?? throw new InvalidOperationException("Scope not initialized");
 
@@ -92,8 +117,8 @@ public sealed class TodoEfCoreFixture : IAsyncLifetime
     /// <summary>The frozen clock the handlers read.</summary>
     public IntegrationClock Clock { get; } = new(DateTimeOffset.UtcNow.Date);
 
-    /// <summary>The query map for Todo.</summary>
-    public QueryMap<Todo> TodoQueryMap { get; private set; } = null!;
+    /// <summary>The query map for the Todo read model.</summary>
+    public QueryMap<TodoReadModel> TodoQueryMap { get; private set; } = null!;
 
     /// <summary>The query map for TodoList.</summary>
     public QueryMap<TodoList> TodoListQueryMap { get; private set; } = null!;
@@ -118,6 +143,12 @@ public sealed class TodoEfCoreFixture : IAsyncLifetime
         var services = new ServiceCollection();
         services.AddLogging();
 
+        // Initialize: the same serializer and event types the production stores resolve.
+        var eventTypes = new EventTypeRegistry(
+            typeof(TodoCreated).Assembly,
+            typeof(Infrastructure.AssemblyMarker).Assembly);
+        var serializer = new JsonMessageSerializer(eventTypes);
+
         // Register ApplicationDbContext
         services.AddDbContext<ApplicationDbContext>(options =>
         {
@@ -132,9 +163,10 @@ public sealed class TodoEfCoreFixture : IAsyncLifetime
             // behavior stays out of this shared fixture (see the delete-semantics tests).
             options.AddInterceptors(new VersionableInterceptor());
         });
+        services.AddScoped<DbContext>(sp => sp.GetRequiredService<ApplicationDbContext>());
 
         // Register QueryMaps
-        TodoQueryMap = Infrastructure.Persistence.Schemas.Todos.Queries.TodoQueryMap.Create();
+        TodoQueryMap = TodoReadModelQueryMap.Create();
         TodoListQueryMap = Infrastructure.Persistence.Schemas.Todos.Queries.TodoListQueryMap.Create();
         TodoCategoryQueryMap = Infrastructure.Persistence.Schemas.Todos.Queries.TodoCategoryQueryMap.Create();
 
@@ -146,7 +178,7 @@ public sealed class TodoEfCoreFixture : IAsyncLifetime
         services.AddSingleton<IQueryMapProvider>(registry);
 
         // Register QueryTranslators
-        services.AddSingleton<IQueryTranslator<Todo>, QueryTranslationEfCore<Todo>>();
+        services.AddSingleton<IQueryTranslator<TodoReadModel>, QueryTranslationEfCore<TodoReadModel>>();
         services.AddSingleton<IQueryTranslator<TodoList>, QueryTranslationEfCore<TodoList>>();
         services.AddSingleton<IQueryTranslator<TodoCategory>, QueryTranslationEfCore<TodoCategory>>();
 
@@ -154,10 +186,10 @@ public sealed class TodoEfCoreFixture : IAsyncLifetime
         services.AddSingleton<IQueryCapabilities, EfCoreQueryCapabilities>();
 
         // Register Repositories
-        services.AddScoped<IPersistentRepository<Todo, Guid>>(sp =>
-            new EfCoreRepository<Todo, Guid>(
+        services.AddScoped<IPersistentRepository<TodoReadModel, Guid>>(sp =>
+            new EfCoreRepository<TodoReadModel, Guid>(
                 sp.GetRequiredService<ApplicationDbContext>(),
-                sp.GetRequiredService<IQueryTranslator<Todo>>(),
+                sp.GetRequiredService<IQueryTranslator<TodoReadModel>>(),
                 sp.GetRequiredService<IQueryMapProvider>(),
                 sp.GetRequiredService<IQueryCapabilities>()));
 
@@ -176,10 +208,10 @@ public sealed class TodoEfCoreFixture : IAsyncLifetime
                 sp.GetRequiredService<IQueryCapabilities>()));
 
         // Register: the same EF Core repository satisfies the mapping and projection contracts.
-        services.AddScoped<IMappableRepository<Todo, Guid>>(sp =>
-            (IMappableRepository<Todo, Guid>)sp.GetRequiredService<IPersistentRepository<Todo, Guid>>());
-        services.AddScoped<IProjectionRepository<Todo, Guid>>(sp =>
-            (IProjectionRepository<Todo, Guid>)sp.GetRequiredService<IPersistentRepository<Todo, Guid>>());
+        services.AddScoped<IMappableRepository<TodoReadModel, Guid>>(sp =>
+            (IMappableRepository<TodoReadModel, Guid>)sp.GetRequiredService<IPersistentRepository<TodoReadModel, Guid>>());
+        services.AddScoped<IProjectionRepository<TodoReadModel, Guid>>(sp =>
+            (IProjectionRepository<TodoReadModel, Guid>)sp.GetRequiredService<IPersistentRepository<TodoReadModel, Guid>>());
 
         services.AddScoped<IMappableRepository<TodoList, Guid>>(sp =>
             (IMappableRepository<TodoList, Guid>)sp.GetRequiredService<IPersistentRepository<TodoList, Guid>>());
@@ -194,6 +226,42 @@ public sealed class TodoEfCoreFixture : IAsyncLifetime
         // Register UnitOfWork
         services.AddScoped<IUnitOfWork>(sp =>
             new EfCoreUnitOfWork(sp.GetRequiredService<ApplicationDbContext>()));
+
+        // Register the event-sourcing collaborators the todo stream and projection resolve.
+        services.AddScoped<IOutboxStore>(sp =>
+            new EfCoreOutboxStore(
+                sp.GetRequiredService<ApplicationDbContext>(),
+                sp.GetRequiredService<TimeProvider>()));
+        services.AddScoped<IEventStore>(sp =>
+            new PostgresEventStore(
+                sp.GetRequiredService<ApplicationDbContext>(),
+                sp.GetRequiredService<IDomainEventSerializer>(),
+                sp.GetRequiredService<TimeProvider>()));
+        services.AddScoped<ISnapshotStore>(sp =>
+            new EfCoreSnapshotStore(sp.GetRequiredService<ApplicationDbContext>()));
+        services.AddScoped<IProjectionCheckpointStore>(sp =>
+            new EfCoreProjectionCheckpointStore(sp.GetRequiredService<ApplicationDbContext>()));
+        services.AddSingleton(new EventStoreSetting());
+        services.AddSingleton<ISnapshotPolicy>(new IntervalSnapshotPolicy(10));
+        services.AddScoped<IAggregateFactory<Todo>, TodoFactory>();
+        services.AddScoped<IEventSourcedRepository<Todo, Guid>>(sp =>
+            new EventSourcedRepository<Todo, Guid>(
+                sp.GetRequiredService<IEventStore>(),
+                sp.GetRequiredService<ISnapshotStore>(),
+                sp.GetRequiredService<ISnapshotPolicy>(),
+                sp.GetRequiredService<IAggregateFactory<Todo>>(),
+                sp.GetRequiredService<IDomainEventSerializer>(),
+                sp.GetRequiredService<IOutboxStore>(),
+                sp.GetRequiredService<IUnitOfWork>(),
+                sp.GetRequiredService<TimeProvider>(),
+                NullLogger<EventSourcedRepository<Todo, Guid>>.Instance));
+        services.AddScoped<IProjection, TodoProjection>();
+        services.AddScoped<ProjectionRunner>();
+
+        services.AddSingleton<IEventTypeRegistry>(eventTypes);
+        services.AddSingleton(serializer);
+        services.AddSingleton<IDomainEventSerializer>(serializer);
+        services.AddSingleton<IIntegrationEventSerializer>(serializer);
 
         // Register the cross-aggregate reference cleaner and its ambient context.
         services.AddScoped<ITodoReferenceCleaner, TodoReferenceCleaner>();
@@ -214,7 +282,7 @@ public sealed class TodoEfCoreFixture : IAsyncLifetime
         Respawner = await Respawner.CreateAsync(connection, new RespawnerOptions
         {
             TablesToIgnore = [new Respawn.Graph.Table("__EFMigrationsHistory", "todo")],
-            SchemasToInclude = ["todo"]
+            SchemasToInclude = ["todo", "messaging"]
         });
     }
 
@@ -224,6 +292,24 @@ public sealed class TodoEfCoreFixture : IAsyncLifetime
         CurrentScope?.Dispose();
         CurrentScope = Services.CreateScope();
     }
+
+    /// <summary>Persists a todo stream and runs the projection so read-side queries see it.</summary>
+    /// <param name="todo">The todo aggregate to save.</param>
+    /// <returns>The save or projection failure.</returns>
+    public async Task<Result> SaveTodoAsync(Todo todo)
+    {
+        Result saved = await TodoEvents.SaveAsync(todo);
+        if (saved.IsFailure)
+            return saved;
+
+        return await Runner.RunOnceAsync();
+    }
+
+    /// <summary>Runs one projection pass so handler writes are visible to read-side queries.</summary>
+    /// <param name="cancellationToken">The cancellation token.</param>
+    /// <returns>The projection outcome.</returns>
+    public Task<Result> ProjectAsync(CancellationToken cancellationToken = default)
+        => Runner.RunOnceAsync(cancellationToken);
 
     /// <summary>Cleans all test data between tests using Respawn checkpoint.</summary>
     public async Task CleanAsync()

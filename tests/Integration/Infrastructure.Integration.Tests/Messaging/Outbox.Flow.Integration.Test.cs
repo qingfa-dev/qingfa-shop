@@ -58,13 +58,13 @@ public sealed class OutboxFlowIntegrationTest(MessagingFixture fixture) : IAsync
 
         Todo todo = Todo.Create(
             Guid.NewGuid(),
-            Guid.NewGuid(),
+            MessagingFixture.TenantId,
             "flow",
             DateTimeOffset.UtcNow).Value;
-        fixture.DbContext.Add(todo);
 
-        // Act: state and outbox commit together.
-        await fixture.DbContext.SaveChangesAsync();
+        // Act: the event stream and its outbox row commit together.
+        Result saved = await fixture.TodoEvents.SaveAsync(todo);
+        saved.IsSuccess.Should().BeTrue();
 
         // Assert
         (await fixture.DbContext.Set<OutboxMessage>().CountAsync()).Should().Be(1);

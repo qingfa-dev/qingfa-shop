@@ -8,6 +8,8 @@ using Application.Common.Security.Authentication.Contexts;
 using Application.Features.Todos.Reminders.Models;
 
 using Core.Todos.Categories;
+using Application.Features.Todos.Items.Models;
+
 using Core.Todos.Items;
 using Core.Todos.Lists;
 
@@ -100,7 +102,7 @@ public class InfrastructureCompositionTest
         // Assert
         var registry = serviceProvider.GetRequiredService<QueryMapRegistry>();
         registry.Count.Should().Be(4);
-        registry.IsRegistered<Todo>().Should().BeTrue();
+        registry.IsRegistered<TodoReadModel>().Should().BeTrue();
         registry.IsRegistered<TodoList>().Should().BeTrue();
         registry.IsRegistered<TodoCategory>().Should().BeTrue();
         registry.IsRegistered<TodoReminderModel>().Should().BeTrue();

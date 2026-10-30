@@ -95,7 +95,15 @@ public sealed class TodoReminderProjectionTest : IAsyncLifetime
         string name = _projection.Name;
 
         Result result = await _projection.ApplyAsync(
-            Stored(new TodoCompleted(Guid.NewGuid(), Guid.NewGuid(), _now), 1));
+            Stored(
+                new TodoStatusChanged(
+                    Guid.NewGuid(),
+                    Guid.NewGuid(),
+                    TodoStatus.Pending,
+                    TodoStatus.Completed,
+                    _now,
+                    "test"),
+                1));
 
         name.Should().Be("todo-reminders");
         result.IsSuccess.Should().BeTrue();

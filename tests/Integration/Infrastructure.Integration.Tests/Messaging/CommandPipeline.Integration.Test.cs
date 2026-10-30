@@ -1,9 +1,10 @@
 using Application.Common.Events;
-using Application.Common.Mediators.Commands;
+using Application.Common.EventSourcing;
 using Application.Common.Messaging.Bus;
 using Application.Common.Messaging.Outbox;
 using Application.Common.Messaging.Serialization;
-using Application.Common.Persistence.UnitOfWorks;
+using Application.Features.Todos.Events;
+using Application.Features.Todos.Items.Commands;
 
 using Core.Common.Domain.Events;
 using Core.Common.Monad.Results;
@@ -48,7 +49,8 @@ public sealed class CommandPipelineIntegrationTest(MessagingFixture fixture) : I
         var store = scope.ServiceProvider.GetRequiredService<IOutboxStore>();
         var serializer = scope.ServiceProvider.GetRequiredService<IDomainEventSerializer>();
         var integrationSerializer = scope.ServiceProvider.GetRequiredService<IIntegrationEventSerializer>();
-        var publisher = new RecordingPublisher();
+        var events = scope.ServiceProvider.GetRequiredService<IEventSourcedRepository<Todo, Guid>>();
+        var publisher = new MediatRDomainPublisher(mediator);
         var dispatcher = new OutboxDispatcher(
             store,
             serializer,
@@ -59,15 +61,26 @@ public sealed class CommandPipelineIntegrationTest(MessagingFixture fixture) : I
             TimeProvider.System,
             NullLogger<OutboxDispatcher>.Instance);
 
+        DateTimeOffset now = DateTimeOffset.UtcNow;
+        Guid tenantId = MessagingFixture.TenantId;
+        Todo todo = Todo.Create(Guid.NewGuid(), tenantId, "pipeline", now).Value;
+        todo.Start(now, "arrange").IsSuccess.Should().BeTrue();
+        (await events.SaveAsync(todo)).IsSuccess.Should().BeTrue();
+
+        // Reset: the arrange step also staged TodoCreated and its start status change.
+        await context.Set<OutboxMessage>().ExecuteDeleteAsync();
+
         // Act
-        Result<Guid> result = await mediator.Send(
-            new CreateProbeTodo("pipeline"),
+        Result<CompleteTodo.Response> result = await mediator.Send(
+            new CompleteTodo.UseCase(new CompleteTodo.Request(todo.Id)),
             TestContext.Current.CancellationToken);
 
         // Assert
-        result.IsSuccess.Should().BeTrue();
-        (await context.Set<Todo>().CountAsync()).Should().Be(1);
-        (await context.Set<OutboxMessage>().CountAsync()).Should().Be(1);
+        result.IsSuccess.Should().BeTrue(
+            string.Join("; ", result.Errors.Select(error => $"{error.Code}: {error.Message}")));
+        OutboxMessage staged = await context.Set<OutboxMessage>().SingleAsync();
+        staged.Kind.Should().Be(OutboxMessageKind.Domain);
+        staged.Type.Should().Contain(nameof(TodoStatusChanged));
 
         // Act
         Result<int> dispatch = await dispatcher.DispatchBatchAsync();
@@ -75,49 +88,33 @@ public sealed class CommandPipelineIntegrationTest(MessagingFixture fixture) : I
         // Assert
         dispatch.Value.Should().Be(1);
         publisher.Published.Should().ContainSingle()
-            .Which.Should().BeOfType<TodoCreated>();
+            .Which.Should().BeOfType<TodoStatusChanged>();
+
+        OutboxMessage integration = await context.Set<OutboxMessage>()
+            .SingleAsync(message => message.Kind == OutboxMessageKind.Integration);
+        integration.Type.Should().Be("todo.completed");
+
+        TodoCompletedIntegration completed = (TodoCompletedIntegration)integrationSerializer
+            .Deserialize(integration.Type, integration.Version, integration.Payload);
+        completed.TodoId.Should().Be(todo.Id);
+        completed.TenantId.Should().Be(tenantId);
     }
 
-    /// <summary>A command that writes a Todo through the unit of work.</summary>
-    /// <param name="Title">The todo title.</param>
-    public sealed record CreateProbeTodo(string Title) : ICommand<Guid>;
-
-    /// <summary>Handles <see cref="CreateProbeTodo"/>.</summary>
-    public sealed class CreateProbeTodoHandler(
-        ApplicationDbContext context,
-        IUnitOfWork unitOfWork)
-        : ICommandHandler<CreateProbeTodo, Guid>
-    {
-        /// <inheritdoc />
-        public async Task<Result<Guid>> Handle(
-            CreateProbeTodo command,
-            CancellationToken cancellationToken)
-        {
-            Todo todo = Todo.Create(
-                Guid.NewGuid(),
-                Guid.NewGuid(),
-                command.Title,
-                DateTimeOffset.UtcNow).Value;
-
-            context.Add(todo);
-            Result saved = await unitOfWork.SaveChangesAsync(cancellationToken);
-
-            return saved.IsFailure
-                ? Result<Guid>.Fail(saved.Errors)
-                : Result<Guid>.Success(todo.Id);
-        }
-    }
-
-    private sealed class RecordingPublisher : IDomainEventPublisher
+    private sealed class MediatRDomainPublisher(IMediator mediator) : IDomainEventPublisher
     {
         public List<IDomainEvent> Published { get; } = [];
 
-        public Task<Result> PublishAsync(
+        public async Task<Result> PublishAsync(
             IEnumerable<IDomainEvent> domainEvents,
             CancellationToken cancellationToken = default)
         {
-            Published.AddRange(domainEvents);
-            return Task.FromResult(Result.Ok());
+            foreach (IDomainEvent domainEvent in domainEvents)
+            {
+                Published.Add(domainEvent);
+                await mediator.Publish(domainEvent, cancellationToken);
+            }
+
+            return Result.Ok();
         }
     }
 

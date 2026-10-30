@@ -1,9 +1,12 @@
 using Application.Common.Messaging.Serialization;
 using Application.Common.Mediators.Behaviors.Transactions;
 using Application.Common.EventSourcing;
+using Application.Common.Messaging.Bus;
 using Application.Common.Messaging.Inbox;
 using Application.Common.Messaging.Outbox;
 using Application.Common.Persistence.UnitOfWorks;
+using Application.Common.Security.Authentication.Contexts;
+using Application.Features.Todos.Events;
 
 using Core.Common.Domain.EventSourcing;
 using Core.Todos.Items;
@@ -36,6 +39,9 @@ namespace Infrastructure.Integration.Tests.Messaging;
 /// </summary>
 public sealed class MessagingFixture : IAsyncLifetime
 {
+    /// <summary>The tenant the pipeline commands and todo streams use.</summary>
+    public static readonly Guid TenantId = new("eeeeeeee-eeee-eeee-eeee-eeeeeeeeeeee");
+
 #pragma warning disable TC001 // PostgreSqlBuilder obsolete constructor
     private readonly PostgreSqlContainer _container = new PostgreSqlBuilder("postgres:16-alpine")
         .WithDatabase("testdb_messaging")
@@ -70,6 +76,16 @@ public sealed class MessagingFixture : IAsyncLifetime
         .GetRequiredService<IUnitOfWork>()
         ?? throw new InvalidOperationException("Scope not initialized");
 
+    /// <summary>The event-sourced todo repository resolved from the current scope.</summary>
+    public IEventSourcedRepository<Todo, Guid> TodoEvents => CurrentScope?.ServiceProvider
+        .GetRequiredService<IEventSourcedRepository<Todo, Guid>>()
+        ?? throw new InvalidOperationException("Scope not initialized");
+
+    /// <summary>The projection runner resolved from the current scope.</summary>
+    public ProjectionRunner Runner => CurrentScope?.ServiceProvider
+        .GetRequiredService<ProjectionRunner>()
+        ?? throw new InvalidOperationException("Scope not initialized");
+
     /// <summary>The domain event serializer resolved from the current scope.</summary>
     public IDomainEventSerializer DomainSerializer => CurrentScope?.ServiceProvider
         .GetRequiredService<IDomainEventSerializer>()
@@ -94,6 +110,8 @@ public sealed class MessagingFixture : IAsyncLifetime
         var eventTypes = new EventTypeRegistry(
             typeof(TodoCreated).Assembly,
             typeof(Infrastructure.AssemblyMarker).Assembly);
+        eventTypes.Register<TodoCompletedIntegration>("todo.completed", 1);
+        eventTypes.Register<TodoReminderChangedIntegration>("todo.reminder.changed", 1);
         var serializer = new JsonMessageSerializer(eventTypes);
 
         services.AddDbContext<ApplicationDbContext>(options =>
@@ -116,9 +134,18 @@ public sealed class MessagingFixture : IAsyncLifetime
         {
             configuration.Lifetime = ServiceLifetime.Scoped;
             configuration.RegisterServicesFromAssembly(typeof(MessagingFixture).Assembly);
+            configuration.RegisterServicesFromAssembly(
+                typeof(Application.Features.Todos.Events.TodoStatusChangedIntegrationHandler).Assembly);
             configuration.AddBehavior(typeof(IPipelineBehavior<,>), typeof(TransactionBehavior<,>));
         });
         services.AddSingleton(TimeProvider.System);
+        var execution = new MessagingExecutionContext
+        {
+            TenantId = TenantId,
+            UserName = "integration",
+        };
+        services.AddSingleton<ITenantContext>(execution);
+        services.AddSingleton<IUserContext>(execution);
         services.AddScoped<EfCoreOutboxStore>(sp =>
             new EfCoreOutboxStore(
                 sp.GetRequiredService<ApplicationDbContext>(),
@@ -130,6 +157,12 @@ public sealed class MessagingFixture : IAsyncLifetime
                 sp.GetRequiredService<TimeProvider>()));
         services.AddScoped<IOutboxStore>(sp => sp.GetRequiredService<EfCoreOutboxStore>());
         services.AddScoped<IInboxStore>(sp => sp.GetRequiredService<EfCoreInboxStore>());
+        services.AddScoped<IIntegrationEventPublisher>(sp =>
+            new OutboxIntegrationEventPublisher(
+                sp.GetRequiredService<IOutboxStore>(),
+                sp.GetRequiredService<IIntegrationEventSerializer>(),
+                sp.GetRequiredService<IUnitOfWork>(),
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<OutboxIntegrationEventPublisher>.Instance));
         services.AddScoped<IEventStore>(sp =>
             new PostgresEventStore(
                 sp.GetRequiredService<ApplicationDbContext>(),
@@ -142,6 +175,18 @@ public sealed class MessagingFixture : IAsyncLifetime
         services.AddSingleton(new EventStoreSetting());
         services.AddSingleton<ISnapshotPolicy>(new IntervalSnapshotPolicy(10));
         services.AddScoped<IAggregateFactory<TodoReminder>, TodoReminderFactory>();
+        services.AddScoped<IAggregateFactory<Todo>, TodoFactory>();
+        services.AddScoped<IEventSourcedRepository<Todo, Guid>>(sp =>
+            new EventSourcedRepository<Todo, Guid>(
+                sp.GetRequiredService<IEventStore>(),
+                sp.GetRequiredService<ISnapshotStore>(),
+                sp.GetRequiredService<ISnapshotPolicy>(),
+                sp.GetRequiredService<IAggregateFactory<Todo>>(),
+                sp.GetRequiredService<IDomainEventSerializer>(),
+                sp.GetRequiredService<IOutboxStore>(),
+                sp.GetRequiredService<IUnitOfWork>(),
+                sp.GetRequiredService<TimeProvider>(),
+                Microsoft.Extensions.Logging.Abstractions.NullLogger<EventSourcedRepository<Todo, Guid>>.Instance));
         services.AddScoped<IEventSourcedRepository<TodoReminder, Guid>>(sp =>
             new EventSourcedRepository<TodoReminder, Guid>(
                 sp.GetRequiredService<IEventStore>(),
@@ -154,6 +199,7 @@ public sealed class MessagingFixture : IAsyncLifetime
                 sp.GetRequiredService<TimeProvider>(),
                 Microsoft.Extensions.Logging.Abstractions.NullLogger<EventSourcedRepository<TodoReminder, Guid>>.Instance));
         services.AddScoped<IProjection, TodoReminderProjection>();
+        services.AddScoped<IProjection, TodoProjection>();
         services.AddScoped<ProjectionRunner>();
 
         services.AddSingleton<IEventTypeRegistry>(eventTypes);
@@ -214,5 +260,30 @@ public sealed class MessagingFixture : IAsyncLifetime
         }
 
         await _container.StopAsync();
+    }
+
+    /// <summary>A tenant and user context fixed for the messaging pipeline tests.</summary>
+    private sealed class MessagingExecutionContext : ITenantContext, IUserContext
+    {
+        /// <inheritdoc />
+        public Guid TenantId { get; set; }
+
+        /// <inheritdoc />
+        public string? UserId { get; set; }
+
+        /// <inheritdoc />
+        public string? UserName { get; set; }
+
+        /// <inheritdoc />
+        public string? Email { get; set; }
+
+        /// <inheritdoc />
+        public bool IsAuthenticated { get; set; } = true;
+
+        /// <inheritdoc />
+        public string? IpAddress { get; set; }
+
+        /// <inheritdoc />
+        public string? Device { get; set; }
     }
 }

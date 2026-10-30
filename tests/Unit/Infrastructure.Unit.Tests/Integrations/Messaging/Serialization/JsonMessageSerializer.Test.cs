@@ -72,7 +72,16 @@ public sealed class JsonMessageSerializerTest
         // Arrange
         Guid todoId = Guid.NewGuid();
         Guid tenantId = Guid.NewGuid();
-        var created = new TodoCreated(todoId, tenantId, "Buy milk");
+        var created = new TodoCreated(
+            todoId,
+            tenantId,
+            "Buy milk",
+            null,
+            TodoPriority.Medium,
+            null,
+            null,
+            DateTimeOffset.UtcNow,
+            "test");
         created.SetTenantId(tenantId);
         Guid eventId = created.GetEventId()!.Value;
         DateTimeOffset timestamp = created.GetTimestamp()!.Value;

@@ -2,6 +2,7 @@ using System.Text.Json;
 
 using Application.Common.Persistence.Initialization;
 using Application.Common.Persistence.UnitOfWorks;
+using Application.Features.Todos.Items.Models;
 
 using Core.Common.Monad.Results;
 
@@ -77,11 +78,11 @@ public sealed class TodoSeederIntegrationTest(PersistenceInitializationFixture f
         // Act
         var categoryIds = await _fixture.WithDbContextAsync(async context =>
         {
-            var todos = await context.Set<Todo>().AsNoTracking()
+            var todos = await context.Set<TodoReadModel>().AsNoTracking()
                 .Where(t => t.ListId != null)
                 .ToListAsync();
 
-            return todos.SelectMany(t => t.CategoryIds ?? []).ToList();
+            return todos.SelectMany(t => t.CategoryIds).ToList();
         });
 
         // Assert
@@ -117,9 +118,9 @@ public sealed class TodoSeederIntegrationTest(PersistenceInitializationFixture f
         {
             var list = await context.Set<TodoList>().AsNoTracking().FirstAsync();
             var category = await context.Set<TodoCategory>().AsNoTracking().FirstAsync();
-            var todo = await context.Set<Todo>().AsNoTracking().FirstAsync(t => t.ListId != null);
+            var todo = await context.Set<TodoReadModel>().AsNoTracking().FirstAsync(t => t.ListId != null);
 
-            return (listId: list.Id, categoryId: category.Id, todoCategoryId: todo.CategoryIds!.First());
+            return (listId: list.Id, categoryId: category.Id, todoCategoryId: todo.CategoryIds.First());
         });
 
         // Assert
@@ -153,7 +154,7 @@ public sealed class TodoSeederIntegrationTest(PersistenceInitializationFixture f
         {
             var categories = await context.Set<TodoCategory>().AsNoTracking().Select(c => c.TenantId).ToListAsync();
             var lists = await context.Set<TodoList>().AsNoTracking().Select(l => l.TenantId).ToListAsync();
-            var todos = await context.Set<Todo>().AsNoTracking().Select(t => t.TenantId).ToListAsync();
+            var todos = await context.Set<TodoReadModel>().AsNoTracking().Select(t => t.TenantId).ToListAsync();
             return categories.Concat(lists).Concat(todos).ToList();
         });
 
@@ -169,7 +170,7 @@ public sealed class TodoSeederIntegrationTest(PersistenceInitializationFixture f
 
         // Act
         var statuses = await _fixture.WithDbContextAsync(async context =>
-            await context.Set<Todo>().AsNoTracking().Select(t => t.Status).ToListAsync());
+            await context.Set<TodoReadModel>().AsNoTracking().Select(t => t.Status).ToListAsync());
 
         // Assert
         statuses.Should().Contain(TodoStatus.Pending);
@@ -275,8 +276,8 @@ public sealed class TodoSeederIntegrationTest(PersistenceInitializationFixture f
     {
         // Arrange
         await _fixture.ExecuteAsync(
-            "INSERT INTO todo.todo_categories (id, name, description, created_at_utc, created_by, tenant_id, metadata) " +
-            "VALUES (gen_random_uuid(), 'Existing', NULL, now(), 'test', gen_random_uuid(), '{}');");
+            "INSERT INTO todo.todo_categories (id, name, description, created_at_utc, created_by, tenant_id, metadata, version) " +
+            "VALUES (gen_random_uuid(), 'Existing', NULL, now(), 'test', gen_random_uuid(), '{}', 0);");
         using var scope = _fixture.CreateScope();
         var seeder = new TodoCategorySeeder();
         var initContext = CreateInitializationContext(scope);

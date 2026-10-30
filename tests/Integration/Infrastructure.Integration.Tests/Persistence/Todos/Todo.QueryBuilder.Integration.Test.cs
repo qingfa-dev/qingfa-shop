@@ -1,12 +1,11 @@
 using System.Globalization;
 
 using Application.Common.Persistence.Repositories;
-using Application.Common.Persistence.UnitOfWorks;
 using Application.Common.Querying;
 using Application.Common.Querying.Pagination;
 using Application.Common.Querying.Projection;
 using Application.Features.Todos.Common;
-using Application.Features.Todos.Items.Commands;
+using Application.Features.Todos.Items.Models;
 
 using Core.Common.Monad.Results;
 using Core.Todos.Items;
@@ -14,7 +13,7 @@ using Core.Todos.Items;
 namespace Infrastructure.Integration.Tests.Persistence.Todos;
 
 /// <summary>
-/// Proves that builder-composed Todo queries execute through EF Core with the same
+/// Proves that builder-composed Todo read-model queries execute through EF Core with the same
 /// semantics the handlers rely on: scoping, filters, ordering, paging, projection,
 /// grouping, and aggregation.
 /// </summary>
@@ -30,10 +29,9 @@ public sealed class TodoQueryBuilderIntegrationTest : IAsyncLifetime
     /// <param name="fixture">The shared fixture.</param>
     public TodoQueryBuilderIntegrationTest(TodoEfCoreFixture fixture) => _fixture = fixture;
 
-    private IPersistentRepository<Todo, Guid> Repository => _fixture.TodoRepository;
-    private IMappableRepository<Todo, Guid> MapperRepository => _fixture.TodoMapperRepository;
-    private IProjectionRepository<Todo, Guid> ProjectionRepository => _fixture.TodoProjectionRepository;
-    private IUnitOfWork UnitOfWork => _fixture.UnitOfWork;
+    private IPersistentRepository<TodoReadModel, Guid> Repository => _fixture.TodoReadRepository;
+    private IMappableRepository<TodoReadModel, Guid> MapperRepository => _fixture.TodoMapperRepository;
+    private IProjectionRepository<TodoReadModel, Guid> ProjectionRepository => _fixture.TodoProjectionRepository;
 
     /// <inheritdoc />
     public async ValueTask InitializeAsync()
@@ -53,7 +51,7 @@ public sealed class TodoQueryBuilderIntegrationTest : IAsyncLifetime
         // Arrange
         await SeedAsync();
 
-        Query<Todo> query = QueryBuilder<Todo>.FromParameters(
+        Query<TodoReadModel> query = QueryBuilder<TodoReadModel>.FromParameters(
                 _fixture.QueryMapProvider,
                 new QueryParameters())
             .ApplyTodoScope(TenantId, includeDeleted: false)
@@ -63,7 +61,7 @@ public sealed class TodoQueryBuilderIntegrationTest : IAsyncLifetime
             .Build().Value;
 
         // Act
-        Result<QueryPage<Todo>> result = await Repository.QueryAsync(query);
+        Result<QueryPage<TodoReadModel>> result = await Repository.QueryAsync(query);
 
         // Assert
         result.IsSuccess.Should().BeTrue();
@@ -78,7 +76,7 @@ public sealed class TodoQueryBuilderIntegrationTest : IAsyncLifetime
         // Arrange
         await SeedAsync();
 
-        Query<Todo> query = QueryBuilder<Todo>.FromParameters(
+        Query<TodoReadModel> query = QueryBuilder<TodoReadModel>.FromParameters(
                 _fixture.QueryMapProvider,
                 new QueryParameters { OrderBy = "title" })
             .ApplyTodoScope(TenantId, includeDeleted: false)
@@ -103,7 +101,7 @@ public sealed class TodoQueryBuilderIntegrationTest : IAsyncLifetime
         // Arrange
         await SeedAsync();
 
-        Result<Query<Todo, TabularResult>> built = QueryBuilder<Todo>.FromParameters(
+        Result<Query<TodoReadModel, TabularResult>> built = QueryBuilder<TodoReadModel>.FromParameters(
                 _fixture.QueryMapProvider,
                 new QueryParameters { GroupBy = "status", Aggregate = "count(id)" })
             .ApplyTodoScope(TenantId, includeDeleted: false)
@@ -129,7 +127,7 @@ public sealed class TodoQueryBuilderIntegrationTest : IAsyncLifetime
         // Arrange
         await SeedAsync();
 
-        Result<Query<Todo, TabularResult>> built = QueryBuilder<Todo>.FromParameters(
+        Result<Query<TodoReadModel, TabularResult>> built = QueryBuilder<TodoReadModel>.FromParameters(
                 _fixture.QueryMapProvider,
                 new QueryParameters { Select = "title" })
             .ApplyTodoScope(TenantId, includeDeleted: false)
@@ -151,38 +149,24 @@ public sealed class TodoQueryBuilderIntegrationTest : IAsyncLifetime
     public async Task QueryAsync_WithIncludeDeleted_ShouldHideThenIncludeSoftDeletedRow()
     {
         // Arrange
-        await SeedAsync();
-        Todo deleted = CreateTodo("Deleted", TodoStatus.Pending);
-        await Repository.AddAsync(deleted);
-        await UnitOfWork.SaveChangesAsync();
+        TodoReadModel deleted = CreateTodo("Deleted", TodoStatus.Pending, isDeleted: true);
+        await SeedAsync(deleted);
 
-        var delete = new DeleteTodo.UseCaseHandler(
-            Repository,
-            UnitOfWork,
-            _fixture.Ambient,
-            _fixture.Ambient,
-            _fixture.Clock);
-
-        Result deleteResult = await delete.Handle(
-            new DeleteTodo.UseCase(new DeleteTodo.Request(deleted.Id)),
-            CancellationToken.None);
-        deleteResult.IsSuccess.Should().BeTrue();
-
-        Query<Todo> hidden = QueryBuilder<Todo>.FromParameters(
+        Query<TodoReadModel> hidden = QueryBuilder<TodoReadModel>.FromParameters(
                 _fixture.QueryMapProvider,
                 new QueryParameters { OrderBy = "title" })
             .ApplyTodoScope(TenantId, includeDeleted: false)
             .Build().Value;
 
-        Query<Todo> included = QueryBuilder<Todo>.FromParameters(
+        Query<TodoReadModel> included = QueryBuilder<TodoReadModel>.FromParameters(
                 _fixture.QueryMapProvider,
                 new QueryParameters { OrderBy = "title" })
             .ApplyTodoScope(TenantId, includeDeleted: true)
             .Build().Value;
 
         // Act
-        Result<QueryPage<Todo>> hiddenResult = await Repository.QueryAsync(hidden);
-        Result<QueryPage<Todo>> includedResult = await Repository.QueryAsync(included);
+        Result<QueryPage<TodoReadModel>> hiddenResult = await Repository.QueryAsync(hidden);
+        Result<QueryPage<TodoReadModel>> includedResult = await Repository.QueryAsync(included);
 
         // Assert
         hiddenResult.IsSuccess.Should().BeTrue();
@@ -201,21 +185,21 @@ public sealed class TodoQueryBuilderIntegrationTest : IAsyncLifetime
         // Arrange
         await SeedAsync();
 
-        Query<Todo> fromParameters = QueryBuilder<Todo>.FromParameters(
+        Query<TodoReadModel> fromParameters = QueryBuilder<TodoReadModel>.FromParameters(
                 _fixture.QueryMapProvider,
                 new QueryParameters { OrderBy = "title", Page = 1, PageSize = 10 })
             .ApplyTodoScope(TenantId, includeDeleted: false)
             .Build().Value;
 
-        Query<Todo> fluent = QueryBuilder<Todo>.Create(_fixture.TodoQueryMap)
+        Query<TodoReadModel> fluent = QueryBuilder<TodoReadModel>.Create(_fixture.TodoQueryMap)
             .ApplyTodoScope(TenantId, includeDeleted: false)
             .OrderBy(todo => todo.Title)
             .Page(1, 10)
             .Build().Value;
 
         // Act
-        Result<QueryPage<Todo>> parameterResult = await Repository.QueryAsync(fromParameters);
-        Result<QueryPage<Todo>> fluentResult = await Repository.QueryAsync(fluent);
+        Result<QueryPage<TodoReadModel>> parameterResult = await Repository.QueryAsync(fromParameters);
+        Result<QueryPage<TodoReadModel>> fluentResult = await Repository.QueryAsync(fluent);
 
         // Assert
         parameterResult.IsSuccess.Should().BeTrue();
@@ -224,34 +208,36 @@ public sealed class TodoQueryBuilderIntegrationTest : IAsyncLifetime
             .Should().Equal(parameterResult.Value.Items.Select(todo => todo.Id));
     }
 
-    private async Task SeedAsync()
+    private async Task SeedAsync(params TodoReadModel[] extra)
     {
-        await Repository.AddRangeAsync(
+        _fixture.DbContext.Set<TodoReadModel>().AddRange(
         [
             CreateTodo("Alpha", TodoStatus.Pending),
             CreateTodo("Bravo", TodoStatus.Pending),
             CreateTodo("Charlie", TodoStatus.InProgress),
+            CreateTodo("Foreign", TodoStatus.Pending, tenantId: Guid.NewGuid()),
+            .. extra,
         ]);
-        await Repository.AddAsync(Todo.Create(
-            Guid.NewGuid(),
-            Guid.NewGuid(),
-            "Foreign",
-            _fixture.Clock.UtcNow,
-            Actor).Value);
-        await UnitOfWork.SaveChangesAsync();
+        await _fixture.DbContext.SaveChangesAsync();
+        _fixture.DbContext.ChangeTracker.Clear();
     }
 
-    private Todo CreateTodo(string title, TodoStatus status)
-    {
-        Todo todo = Todo.Create(
-            Guid.NewGuid(),
-            TenantId,
-            title,
-            _fixture.Clock.UtcNow,
-            Actor).Value;
-        todo.Status = status;
-        return todo;
-    }
+    private static TodoReadModel CreateTodo(
+        string title,
+        TodoStatus status,
+        Guid? tenantId = null,
+        bool isDeleted = false) =>
+        new()
+        {
+            Id = Guid.NewGuid(),
+            TenantId = tenantId ?? TenantId,
+            Title = title,
+            Status = status,
+            Priority = TodoPriority.Medium,
+            CreatedAtUtc = DateTimeOffset.UtcNow,
+            CreatedBy = Actor,
+            IsDeleted = isDeleted,
+        };
 }
 
 /// <summary>The response shape used to prove builder projection through EF Core.</summary>
