@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Core.Common.Monad.Results;
 
 /// <summary>
@@ -25,11 +27,13 @@ public partial record Result : IResult<Error>
     /// <summary>
     /// Gets a value indicating whether the operation failed.
     /// </summary>
+    [JsonIgnore]
     public bool IsFailure => !IsSuccess;
 
     /// <summary>
     /// Gets a value indicating whether the result has a value (always <c>true</c> for success).
     /// </summary>
+    [JsonIgnore]
     public bool HasValue => IsSuccess;
 
     /// <summary>

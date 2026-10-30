@@ -10,6 +10,8 @@ using Core.Common.Monad.Results;
 
 using MediatR;
 
+using HttpResults = Microsoft.AspNetCore.Http.Results;
+
 namespace Web.Api.Endpoints.Todos;
 
 /// <summary>Carter module for todo reminders.</summary>
@@ -85,7 +87,7 @@ public sealed class TodoReminderEndpoint : ICarterModule
         return (await mediator.Send(
                 new ScheduleTodoReminder.UseCase(command),
                 cancellationToken))
-            .ToHttpResult(value => Results.Created(
+            .ToHttpResult(value => HttpResults.Created(
                 $"/api/todos/{todoId}/reminders/{value.Id}",
                 value));
     }

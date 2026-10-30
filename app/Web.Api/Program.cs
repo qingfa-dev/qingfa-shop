@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using ServiceDefaults;
 
 using Web.Api.Endpoints.Authorization;
+using Web.Api.Endpoints.Results;
 using Web.Api.Endpoints.Todos;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
@@ -39,6 +40,19 @@ builder.Services.TryAddSingleton(TimeProvider.System);
 // Initialize: validation failures are client errors. The default handler covers
 // everything else as a 500 problem response.
 builder.Services.AddProblemDetails();
+
+// Initialize: one serializer governs request binding and response writing, so results
+// and endpoint payloads share naming, enum, and null-handling rules.
+builder.Services.ConfigureHttpJsonOptions(options =>
+{
+    options.SerializerOptions.PropertyNamingPolicy = ApiJson.Options.PropertyNamingPolicy;
+    options.SerializerOptions.PropertyNameCaseInsensitive = ApiJson.Options.PropertyNameCaseInsensitive;
+    options.SerializerOptions.DefaultIgnoreCondition = ApiJson.Options.DefaultIgnoreCondition;
+    options.SerializerOptions.WriteIndented = ApiJson.Options.WriteIndented;
+    options.SerializerOptions.Converters.Clear();
+    foreach (var converter in ApiJson.Options.Converters)
+        options.SerializerOptions.Converters.Add(converter);
+});
 
 WebApplication app = builder.Build();
 

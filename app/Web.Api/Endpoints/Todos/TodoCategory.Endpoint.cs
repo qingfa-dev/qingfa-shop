@@ -9,6 +9,8 @@ using Carter;
 
 using MediatR;
 
+using HttpResults = Microsoft.AspNetCore.Http.Results;
+
 namespace Web.Api.Endpoints.Todos;
 
 /// <summary>Carter module for todo categories.</summary>
@@ -80,7 +82,7 @@ public sealed class TodoCategoryEndpoint : ICarterModule
         IMediator mediator,
         CancellationToken cancellationToken)
         => (await mediator.Send(new CreateTodoCategory.UseCase(request), cancellationToken))
-            .ToHttpResult(value => Results.Created($"/api/todo-categories/{value.Id}", value));
+            .ToHttpResult(value => HttpResults.Created($"/api/todo-categories/{value.Id}", value));
 
     private static async Task<IResult> UpdateAsync(
         Guid id,

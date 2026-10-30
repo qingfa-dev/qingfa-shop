@@ -11,6 +11,8 @@ using Core.Common.Monad.Results;
 
 using MediatR;
 
+using HttpResults = Microsoft.AspNetCore.Http.Results;
+
 namespace Web.Api.Endpoints.Todos;
 
 /// <summary>Carter module for todo lists.</summary>
@@ -81,7 +83,7 @@ public sealed class TodoListEndpoint : ICarterModule
         IMediator mediator,
         CancellationToken cancellationToken)
         => (await mediator.Send(new CreateTodoList.UseCase(request), cancellationToken))
-            .ToHttpResult(value => Results.Created($"/api/todo-lists/{value.Id}", value));
+            .ToHttpResult(value => HttpResults.Created($"/api/todo-lists/{value.Id}", value));
 
     private static async Task<IResult> UpdateAsync(
         Guid id,

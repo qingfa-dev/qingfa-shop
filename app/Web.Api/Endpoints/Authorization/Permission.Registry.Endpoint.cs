@@ -13,6 +13,8 @@ using Application.Common.Security.Authorization.Registry;
 
 using Infrastructure.Security.Identity.Domain.Roles;
 
+using HttpResults = Microsoft.AspNetCore.Http.Results;
+
 namespace Web.Api.Endpoints.Authorization;
 
 /// <summary>Carter module that exposes the permission catalog and permission checks.</summary>
@@ -94,7 +96,7 @@ public sealed class PermissionRegistryEndpoint : ICarterModule
                 permission.Description.Contains(search, StringComparison.OrdinalIgnoreCase));
 
         PermissionMetadata[] result = [.. permissions];
-        return Results.Ok(new PermissionListResponse(
+        return HttpResults.Ok(new PermissionListResponse(
             result,
             result.Length,
             refreshed.Value.RefreshedAtUtc));
@@ -111,8 +113,8 @@ public sealed class PermissionRegistryEndpoint : ICarterModule
 
         PermissionMetadata? permission = refreshed.Value.Find(identifier);
         return permission is null
-            ? Results.NotFound(new { identifier, message = "Permission metadata was not found." })
-            : Results.Ok(permission);
+            ? HttpResults.NotFound(new { identifier, message = "Permission metadata was not found." })
+            : HttpResults.Ok(permission);
     }
 
     internal static async Task<IResult> ListDomainsAsync(
@@ -128,7 +130,7 @@ public sealed class PermissionRegistryEndpoint : ICarterModule
             .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
             .Select(group => new DomainCount(group.Key, group.Count()))];
 
-        return Results.Ok(domains);
+        return HttpResults.Ok(domains);
     }
 
     internal static async Task<IResult> ListCategoriesAsync(
@@ -144,11 +146,11 @@ public sealed class PermissionRegistryEndpoint : ICarterModule
             .OrderBy(group => group.Key, StringComparer.OrdinalIgnoreCase)
             .Select(group => new CategoryCount(group.Key, group.Count()))];
 
-        return Results.Ok(categories);
+        return HttpResults.Ok(categories);
     }
 
     internal static IResult ListRolePermissionsAsync() =>
-        Results.Ok(new[]
+        HttpResults.Ok(new[]
         {
             new RolePermissionSet(
                 RoleConstant.Defaults.Admin,
@@ -169,7 +171,7 @@ public sealed class PermissionRegistryEndpoint : ICarterModule
         if (refreshed.IsFailure)
             return Problem(refreshed.Errors);
 
-        return Results.Ok(new PermissionRefreshResponse(
+        return HttpResults.Ok(new PermissionRefreshResponse(
             refreshed.Value.Count,
             refreshed.Value.RefreshedAtUtc));
     }
@@ -184,7 +186,7 @@ public sealed class PermissionRegistryEndpoint : ICarterModule
 
         return permissions.IsFailure
             ? Problem(permissions.Errors)
-            : Results.Ok(new UserPermissionResponse(
+            : HttpResults.Ok(new UserPermissionResponse(
                 userId,
                 [.. permissions.Value.Order(StringComparer.OrdinalIgnoreCase)]));
     }
@@ -197,7 +199,7 @@ public sealed class PermissionRegistryEndpoint : ICarterModule
         CancellationToken cancellationToken)
     {
         if (permissions.Length == 0)
-            return Results.Problem(
+            return HttpResults.Problem(
                 title: "A permission check was requested without permissions.",
                 statusCode: StatusCodes.Status400BadRequest);
 
@@ -205,7 +207,7 @@ public sealed class PermissionRegistryEndpoint : ICarterModule
         if (!string.IsNullOrWhiteSpace(mode) &&
             !Enum.TryParse(mode, ignoreCase: true, out matchMode))
         {
-            return Results.Problem(
+            return HttpResults.Problem(
                 title: $"Unknown permission match mode '{mode}'.",
                 statusCode: StatusCodes.Status400BadRequest);
         }
@@ -216,7 +218,7 @@ public sealed class PermissionRegistryEndpoint : ICarterModule
 
         return granted.IsFailure
             ? Problem(granted.Errors)
-            : Results.Ok(new PermissionCheckResponse(
+            : HttpResults.Ok(new PermissionCheckResponse(
                 userId,
                 matchMode,
                 permissions,
@@ -233,7 +235,7 @@ public sealed class PermissionRegistryEndpoint : ICarterModule
 
         return permissions.IsFailure
             ? Problem(permissions.Errors)
-            : Results.Ok(new RolePermissionResponse(
+            : HttpResults.Ok(new RolePermissionResponse(
                 roleId,
                 [.. permissions.Value.Order(StringComparer.OrdinalIgnoreCase)]));
     }

@@ -1,5 +1,7 @@
 using Core.Common.Monad.Results;
 
+using HttpResults = Microsoft.AspNetCore.Http.Results;
+
 namespace Web.Api.Endpoints;
 
 /// <summary>Maps a monadic <see cref="Result"/> to an HTTP response.</summary>
@@ -15,7 +17,7 @@ public static class ApiResult
         ArgumentNullException.ThrowIfNull(result);
 
         return result.IsSuccess
-            ? success is null ? Results.Ok(result.Value) : success(result.Value)
+            ? success is null ? HttpResults.Ok(result.Value) : success(result.Value)
             : Problem(result);
     }
 
@@ -26,11 +28,11 @@ public static class ApiResult
     {
         ArgumentNullException.ThrowIfNull(result);
 
-        return result.IsSuccess ? Results.NoContent() : Problem(result);
+        return result.IsSuccess ? HttpResults.NoContent() : Problem(result);
     }
 
     private static IResult Problem(Result result)
-        => Results.Problem(
+        => HttpResults.Problem(
             title: result.Errors[0].Code,
             detail: result.Errors[0].Message,
             statusCode: result.StatusCode);
