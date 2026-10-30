@@ -90,12 +90,17 @@ public static class MessagingComposition
 
         if (setting.Transport == MessagingTransport.RabbitMq && connectionString is not null)
         {
+            // Reuse: the health-check package does not dispose the connection it is given,
+            // so DI owns a single long-lived connection instead of opening one per probe.
+            builder.Services.TryAddSingleton<IConnection>(_ =>
+                new ConnectionFactory
+                {
+                    Uri = new Uri(connectionString),
+                }.CreateConnectionAsync().GetAwaiter().GetResult());
+
             builder.Services.AddHealthChecks()
                 .AddRabbitMQ(
-                    _ => new ConnectionFactory
-                    {
-                        Uri = new Uri(connectionString),
-                    }.CreateConnectionAsync(),
+                    provider => Task.FromResult(provider.GetRequiredService<IConnection>()),
                     tags: ["ready", "messaging"]);
         }
 
