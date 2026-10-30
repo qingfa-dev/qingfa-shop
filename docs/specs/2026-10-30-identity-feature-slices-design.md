@@ -1,6 +1,6 @@
 # Identity Feature Slices with MediatR
 
-- **Status:** Proposed
+- **Status:** Implemented
 - **Date:** 2026-10-30
 - **Branch:** `feature/service-foundation`
 - **Depends on:** API Result contract slice
@@ -496,3 +496,81 @@ real service.
 - Moving all identity logic is a large mechanical change; the Todos pattern keeps each slice small and testable.
 - Removing `/api/authorization/*` is a breaking route change; no known consumers exist.
 - Full user/role admin CRUD needs careful lockout/session-revocation semantics; those operations are isolated per command.
+
+## 15. Implementation note
+
+The slices shipped as described. The final layout differs from §5 only where
+naming was tightened during implementation:
+
+```text
+src/Application/Features/Identity/
+  Abstractions/              IUserAccountService, IRoleManagementService,
+                             IPermissionCatalogService
+  Auth/
+    Abstractions/            IIdentityService, IIdentityEmailSender
+    Commands/                RegisterUser, Login, RefreshToken, Logout, ConfirmEmail,
+                             ResendConfirmation, ForgotPassword, ResetPassword,
+                             UpdateCurrentUser, UpdateTwoFactor
+    Queries/                 GetCurrentUser, GetTwoFactor
+    Models/                  Auth.Model.cs
+    Validators/              Identity.Validator.cs
+    Auth.Guard.cs            shared user-id guard
+    Identity.Constant.cs     endpoint and claim constants
+    Options/                 Identity.Option.cs
+    Outcome/                 Identity.Outcome.cs
+  Users/
+    Commands/                CreateUser, UpdateUser, DeleteUser, ActivateUser,
+                             DeactivateUser, AssignRoleToUser, RemoveRoleFromUser,
+                             ResetUserPassword, ConfirmUserEmail, LockUser, UnlockUser,
+                             RevokeUserSessions
+    Queries/                 SearchUsers, GetUser, GetUserRoles
+    Models/                  User.Model.cs, UserRole.Model.cs, UserPermission.Model.cs
+    Mappings/                User.Mapper.cs
+    Outcome/                 UserAccount.Outcome.cs
+  Roles/
+    Commands/                CreateRole, UpdateRole, DeleteRole,
+                             AssignPermissionToRole, RemovePermissionFromRole
+    Queries/                 SearchRoles, GetRole, GetRolePermissions
+    Models/                  Role.Model.cs
+  Permissions/
+    Commands/                RefreshPermissionCatalog
+    Queries/                 SearchPermissions, GetPermission, ListPermissionDomains,
+                             ListPermissionCategories, GetUserPermissions,
+                             CheckUserPermissions, GetRolePermissions
+    Models/                  Permission.Model.cs
+    Mappings/                Permission.Mapper.cs
+    Outcome/                 PermissionCatalog.Outcome.cs
+  External/
+    Abstractions/            IExternalAuthenticationService, IExternalCodeStore
+    Commands/                ExternalChallenge, ExternalCallback, ExchangeExternalCode
+    Queries/                 GetExternalProviders
+    Models/                  External.Model.cs
+    Mappings/                External.Mapper.cs
+    Options/                 External.Option.cs
+```
+
+`IdentityFeature.Service.cs` and the old `Models`/`Mappings` folders are gone.
+Request models use the `*RequestModel` naming from §6's spec models
+(`CreateUserRequestModel`, `UpdateUserRequestModel`, `CreateRoleRequestModel`,
+`UpdateRoleRequestModel`, `ResetUserPasswordModel`). `IIdentityService` moved under
+`Auth/Abstractions` so the port and its slice stay together; the implementation
+remains `Infrastructure/Security/Identity/Services/IdentityService.cs`.
+
+Carter is still a thin adapter. `Identity.Endpoint.cs` owns `/api/auth/*` and the
+external routes; `Identity.User.Endpoint.cs`, `Identity.Role.Endpoint.cs`, and
+`Identity.Permission.Endpoint.cs` own the admin groups. `/api/authorization/*`
+no longer exists: its permission routes are now `/api/identity/permissions/*`
+and unknown `/api/authorization/*` paths return `404`.
+
+The one-time-code store is `Infrastructure/Integrations/Security/ExternalCode.Store.cs`,
+registered as scoped `IExternalCodeStore` by `IdentityComposition`. It stores only a
+SHA-256 hash of a 32-byte random code under the Redis `IDistributedCache`, consumes the
+entry before deserializing, and expires at `ExternalAuthOption.CodeLifetimeSeconds`.
+
+Two-factor failures now count toward ASP.NET Identity lockout: an invalid TOTP or
+recovery code calls `AccessFailedAsync`, returns `Identity.User.LockedOut` once the
+account is locked, and a successful verification resets the failed-access counter.
+
+The Api integration suites boot a `postgres:17-alpine` Testcontainer; without Docker
+or Podman they report `Assert.Skip` and do not exercise the identity stack. See
+`docs/releases/2026-10-30-identity-feature-slices.md` for the release summary.
