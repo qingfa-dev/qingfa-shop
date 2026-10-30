@@ -188,6 +188,39 @@ public sealed class TodoReferenceCleanerTest : IAsyncLifetime
             .Which.Should().BeOfType<TodoListChanged>();
     }
 
+    [Fact(DisplayName = "ClearListAsync should not abort on a hard-deleted stream with no projection row")]
+    public async Task ClearListAsync_WhenHardDeletedRowIsGone_ShouldIgnoreTheStream()
+    {
+        // Arrange
+        Guid listId = Guid.NewGuid();
+        Todo live = CreateTodo(TenantId, listId);
+        Todo hardDeleted = CreateTodo(TenantId, listId);
+        hardDeleted.Delete(isHard: true, Now.AddDays(-2), "creator").IsSuccess.Should().BeTrue();
+        hardDeleted.ClearUncommittedEvents();
+
+        // Handle: the projection physically removes hard-deleted rows, so only the live row is seeded.
+        await using ApplicationDbContext context = await CreateSeededContextAsync(live);
+        Mock<IEventSourcedRepository<Todo, Guid>> repository = CreateRepository(live, hardDeleted);
+        var cleaner = new TodoReferenceCleaner(context, repository.Object);
+
+        // Act
+        Result<int> result = await cleaner.ClearListAsync(
+            TenantId, listId, Now, "editor", TestContext.Current.CancellationToken);
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Should().Be(1);
+        live.ListId.Should().BeNull();
+        hardDeleted.ListId.Should().Be(listId);
+        hardDeleted.UncommittedEvents.Should().BeEmpty();
+        repository.Verify(
+            store => store.SaveAsync(live, It.IsAny<CancellationToken>()),
+            Times.Once);
+        repository.Verify(
+            store => store.SaveAsync(hardDeleted, It.IsAny<CancellationToken>()),
+            Times.Never);
+    }
+
     [Fact(DisplayName = "ClearListAsync should succeed when no todo references the list")]
     public async Task ClearListAsync_WhenNoMatch_ShouldReturnZero()
     {

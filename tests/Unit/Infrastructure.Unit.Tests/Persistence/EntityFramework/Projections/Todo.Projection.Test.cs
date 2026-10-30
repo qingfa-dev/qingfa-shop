@@ -9,6 +9,7 @@ using Core.Todos.Lists;
 using Core.Todos.Reminders;
 
 using Infrastructure.Integrations.Messaging.Serialization;
+using Infrastructure.Persistence.EntityFramework.Interceptors;
 using Infrastructure.Persistence.EntityFramework.Projections;
 using Infrastructure.Persistence.Schemas.Todos.EntityConfiguration;
 
@@ -189,6 +190,43 @@ public sealed class TodoProjectionTest : IAsyncLifetime
 
         _context.ChangeTracker.Clear();
         (await _context.Todos.CountAsync()).Should().Be(0);
+    }
+
+    [Fact]
+    public async Task Apply_WithHardDelete_ShouldBypassTheSoftDeleteInterceptor()
+    {
+        // Arrange: the lifecycle interceptor rewrites tracked deletes into soft deletes.
+        await using var connection = new SqliteConnection("Filename=:memory:");
+        await connection.OpenAsync();
+        var options = new DbContextOptionsBuilder<ProjectionTestContext>()
+            .UseSqlite(connection)
+            .AddInterceptors(new LifecycleInterceptor())
+            .Options;
+        await using var context = new ProjectionTestContext(options);
+        await context.Database.EnsureCreatedAsync();
+
+        Guid id = Guid.NewGuid();
+        context.Todos.Add(new TodoReadModel
+        {
+            Id = id,
+            TenantId = Guid.NewGuid(),
+            Title = "Write report",
+            Status = TodoStatus.Pending,
+            Priority = TodoPriority.High,
+            CreatedAtUtc = _now,
+        });
+        await context.SaveChangesAsync();
+
+        var projection = new TodoProjection(context, _serializer);
+
+        // Act
+        Result result = await projection.ApplyAsync(
+            Stored(new TodoDeleted(id, true, _now.AddMinutes(1), "deleter"), 2));
+
+        // Assert
+        result.IsSuccess.Should().BeTrue();
+        context.ChangeTracker.Clear();
+        (await context.Todos.CountAsync()).Should().Be(0);
     }
 
     [Fact]

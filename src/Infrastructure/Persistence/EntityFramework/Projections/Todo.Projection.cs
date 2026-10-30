@@ -206,7 +206,14 @@ public sealed class TodoProjection(
 
         if (deleted.IsHard)
         {
-            context.Set<TodoReadModel>().Remove(model);
+            // Handle: ExecuteDelete bypasses LifecycleInterceptor, which would rewrite Remove
+            // into a soft delete and keep the projection row alive.
+            await context.Set<TodoReadModel>()
+                .Where(todo => todo.Id == deleted.TodoId)
+                .ExecuteDeleteAsync(cancellationToken);
+
+            // Update: the set-based delete bypasses the tracker, so drop the stale tracked row.
+            context.Entry(model).State = EntityState.Detached;
             return;
         }
 
