@@ -23,6 +23,88 @@ namespace Infrastructure.Persistence.Migrations
 
             NpgsqlModelBuilderExtensions.UseIdentityByDefaultColumns(modelBuilder);
 
+            modelBuilder.Entity("Application.Common.EventSourcing.ProjectionCheckpoint", b =>
+                {
+                    b.Property<string>("Projection")
+                        .HasColumnType("text");
+
+                    b.Property<long>("Position")
+                        .HasColumnType("bigint");
+
+                    b.Property<DateTimeOffset>("UpdatedOnUtc")
+                        .HasColumnType("timestamptz");
+
+                    b.HasKey("Projection");
+
+                    b.ToTable("projection_checkpoints", "messaging");
+                });
+
+            modelBuilder.Entity("Application.Common.EventSourcing.Snapshot", b =>
+                {
+                    b.Property<string>("StreamId")
+                        .HasColumnType("text");
+
+                    b.Property<string>("State")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTimeOffset>("TakenOnUtc")
+                        .HasColumnType("timestamptz");
+
+                    b.Property<long>("Version")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("StreamId");
+
+                    b.ToTable("event_store_snapshots", "messaging");
+                });
+
+            modelBuilder.Entity("Application.Common.EventSourcing.StoredEvent", b =>
+                {
+                    b.Property<string>("StreamId")
+                        .HasColumnType("text");
+
+                    b.Property<long>("Version")
+                        .HasColumnType("bigint");
+
+                    b.Property<Guid>("EventId")
+                        .HasColumnType("uuid");
+
+                    b.Property<string>("EventName")
+                        .IsRequired()
+                        .HasColumnType("text");
+
+                    b.Property<int>("EventVersion")
+                        .HasColumnType("integer");
+
+                    b.Property<string>("Metadata")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<DateTimeOffset>("OccurredOnUtc")
+                        .HasColumnType("timestamptz");
+
+                    b.Property<string>("Payload")
+                        .IsRequired()
+                        .HasColumnType("jsonb");
+
+                    b.Property<long>("Position")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("bigint");
+
+                    NpgsqlPropertyBuilderExtensions.UseIdentityByDefaultColumn(b.Property<long>("Position"));
+
+                    b.HasKey("StreamId", "Version");
+
+                    b.HasIndex("EventId")
+                        .IsUnique();
+
+                    b.HasIndex("Position")
+                        .IsUnique();
+
+                    b.ToTable("event_store_events", "messaging");
+                });
+
             modelBuilder.Entity("Application.Common.Messaging.Inbox.InboxMessage", b =>
                 {
                     b.Property<Guid>("MessageId")

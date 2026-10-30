@@ -1,5 +1,6 @@
 using Application.Common.Messaging.Serialization;
 using Application.Common.Mediators.Behaviors.Transactions;
+using Application.Common.EventSourcing;
 using Application.Common.Messaging.Inbox;
 using Application.Common.Messaging.Outbox;
 using Application.Common.Persistence.UnitOfWorks;
@@ -8,6 +9,7 @@ using Core.Todos.Items;
 
 using Infrastructure.Integrations.Messaging.Serialization;
 using Infrastructure.Persistence.EntityFramework.Contexts;
+using Infrastructure.Persistence.EntityFramework.EventSourcing;
 using Infrastructure.Persistence.EntityFramework.Inbox;
 using Infrastructure.Persistence.EntityFramework.Options;
 using Infrastructure.Persistence.EntityFramework.Outbox;
@@ -123,6 +125,15 @@ public sealed class MessagingFixture : IAsyncLifetime
                 sp.GetRequiredService<TimeProvider>()));
         services.AddScoped<IOutboxStore>(sp => sp.GetRequiredService<EfCoreOutboxStore>());
         services.AddScoped<IInboxStore>(sp => sp.GetRequiredService<EfCoreInboxStore>());
+        services.AddScoped<IEventStore>(sp =>
+            new PostgresEventStore(
+                sp.GetRequiredService<ApplicationDbContext>(),
+                sp.GetRequiredService<IDomainEventSerializer>(),
+                sp.GetRequiredService<TimeProvider>()));
+        services.AddScoped<ISnapshotStore>(sp =>
+            new EfCoreSnapshotStore(sp.GetRequiredService<ApplicationDbContext>()));
+        services.AddScoped<IProjectionCheckpointStore>(sp =>
+            new EfCoreProjectionCheckpointStore(sp.GetRequiredService<ApplicationDbContext>()));
 
         services.AddSingleton<IEventTypeRegistry>(eventTypes);
         services.AddSingleton(serializer);
