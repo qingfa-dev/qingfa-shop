@@ -1,5 +1,7 @@
 using Application.Common.EventSourcing;
 
+using Core.Common.Monad.Maybes;
+
 using Microsoft.EntityFrameworkCore;
 
 namespace Infrastructure.Persistence.EntityFramework.EventSourcing;
@@ -7,7 +9,7 @@ namespace Infrastructure.Persistence.EntityFramework.EventSourcing;
 /// <summary>EF Core snapshot store.</summary>
 public sealed class EfCoreSnapshotStore(DbContext context) : ISnapshotStore
 {
-    public async Task<Result<Snapshot?>> LoadAsync(
+    public async Task<Result<Maybe<Snapshot>>> LoadAsync(
         string streamId,
         CancellationToken cancellationToken = default)
     {
@@ -16,11 +18,11 @@ public sealed class EfCoreSnapshotStore(DbContext context) : ISnapshotStore
             Snapshot? snapshot = await context.Set<Snapshot>()
                 .AsNoTracking()
                 .FirstOrDefaultAsync(item => item.StreamId == streamId, cancellationToken);
-            return Result<Snapshot?>.Success(snapshot);
+            return Result<Maybe<Snapshot>>.Success(snapshot is null ? Maybe<Snapshot>.Empty() : Maybe<Snapshot>.From(snapshot));
         }
         catch (Exception exception) when (exception is not OperationCanceledException)
         {
-            return Result<Snapshot?>.Fail(
+            return Result<Maybe<Snapshot>>.Fail(
                 EventSourcingOutcome.Failure.SnapshotReadFailed(streamId, exception.Message));
         }
     }

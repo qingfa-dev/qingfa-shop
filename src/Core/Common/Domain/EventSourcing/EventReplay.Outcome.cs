@@ -1,7 +1,7 @@
 namespace Core.Common.Domain.EventSourcing;
 
 /// <summary>Stable failures produced while replaying an event-sourced aggregate.</summary>
-public static class EventSourcingOutcome
+public static class EventReplayOutcome
 {
     /// <summary>Failure factories.</summary>
     public static class Failure

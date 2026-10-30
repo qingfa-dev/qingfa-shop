@@ -121,7 +121,7 @@ public sealed class EventSourcedAggregateTest
         // Assert
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().ContainSingle()
-            .Which.Code.Should().Be(EventSourcingOutcome.Codes.AlreadyLoaded);
+            .Which.Code.Should().Be(EventReplayOutcome.Codes.AlreadyLoaded);
     }
 
     [Fact]
@@ -138,7 +138,7 @@ public sealed class EventSourcedAggregateTest
         // Assert
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().ContainSingle()
-            .Which.Code.Should().Be(EventSourcingOutcome.Codes.VersionInvalid);
+            .Which.Code.Should().Be(EventReplayOutcome.Codes.VersionInvalid);
     }
 
     [Fact]
@@ -153,7 +153,7 @@ public sealed class EventSourcedAggregateTest
         // Assert
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().ContainSingle()
-            .Which.Code.Should().Be(EventSourcingOutcome.Codes.ApplyFailed);
+            .Which.Code.Should().Be(EventReplayOutcome.Codes.ApplyFailed);
     }
 
     [Fact]

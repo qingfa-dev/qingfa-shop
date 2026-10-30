@@ -9,8 +9,16 @@ public static class EventStreamName
     /// <typeparam name="TAggregate">The aggregate type.</typeparam>
     /// <param name="id">The aggregate id.</param>
     /// <returns>The stable stream identifier.</returns>
-    public static string For<TAggregate>(Guid id)
+    public static string For<TAggregate>(Guid id) => For<TAggregate>(id.ToString("D"));
+
+    /// <summary>Builds <c>{kebab-aggregate}:{id}</c> from a string id.</summary>
+    /// <typeparam name="TAggregate">The aggregate type.</typeparam>
+    /// <param name="id">The aggregate id.</param>
+    /// <returns>The stable stream identifier.</returns>
+    public static string For<TAggregate>(string id)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(id);
+
         string name = typeof(TAggregate).Name;
         if (name.EndsWith("Aggregate", StringComparison.Ordinal))
             name = name[..^"Aggregate".Length];
@@ -25,6 +33,6 @@ public static class EventStreamName
             builder.Append(char.ToLowerInvariant(current));
         }
 
-        return $"{builder}:{id:D}";
+        return $"{builder}:{id}";
     }
 }

@@ -40,6 +40,7 @@ public static class EventStoreComposition
         builder.Services.TryAddScoped<IEventStore, PostgresEventStore>();
         builder.Services.TryAddScoped<ISnapshotStore, EfCoreSnapshotStore>();
         builder.Services.TryAddScoped<IProjectionCheckpointStore, EfCoreProjectionCheckpointStore>();
+        builder.Services.TryAddScoped(typeof(IEventSourcedRepository<,>), typeof(EventSourcedRepository<,>));
 
         return builder;
     }

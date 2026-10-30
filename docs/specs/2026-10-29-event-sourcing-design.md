@@ -81,7 +81,7 @@ public sealed record StoredEvent(
 ```csharp
 public interface ISnapshotStore
 {
-    Task<Result<Snapshot?>> LoadAsync(
+    Task<Result<Maybe<Snapshot>>> LoadAsync(
         string streamId,
         CancellationToken cancellationToken = default);
 

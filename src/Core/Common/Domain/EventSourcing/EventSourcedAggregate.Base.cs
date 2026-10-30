@@ -47,10 +47,10 @@ public abstract class EventSourcedAggregate<TKey> : IEventSourcedAggregate<TKey>
 
             // Boundary: keep the legacy throwing API for existing callers. New flow code
             // must use TryLoadFromHistory and handle the Result.
-            if (error.Code == EventSourcingOutcome.Codes.AlreadyLoaded)
+            if (error.Code == EventReplayOutcome.Codes.AlreadyLoaded)
                 throw new InvalidOperationException(error.Message);
 
-            if (error.Code == EventSourcingOutcome.Codes.VersionInvalid)
+            if (error.Code == EventReplayOutcome.Codes.VersionInvalid)
                 throw new ArgumentOutOfRangeException(nameof(version), error.Message);
 
             throw new InvalidOperationException(error.Message);
@@ -66,13 +66,13 @@ public abstract class EventSourcedAggregate<TKey> : IEventSourcedAggregate<TKey>
         ArgumentNullException.ThrowIfNull(history);
 
         if (_historyLoaded || _uncommittedEvents.Count > 0)
-            return Result.Fail(EventSourcingOutcome.Failure.AlreadyLoaded);
+            return Result.Fail(EventReplayOutcome.Failure.AlreadyLoaded);
 
         IReadOnlyCollection<IDomainEvent> events = history as IReadOnlyCollection<IDomainEvent>
             ?? history.ToList();
 
         if (version < 0 || version < events.Count)
-            return Result.Fail(EventSourcingOutcome.Failure.VersionInvalid(version, events.Count));
+            return Result.Fail(EventReplayOutcome.Failure.VersionInvalid(version, events.Count));
 
         foreach (IDomainEvent domainEvent in events)
         {
@@ -83,7 +83,7 @@ public abstract class EventSourcedAggregate<TKey> : IEventSourcedAggregate<TKey>
             catch (Exception exception) when (exception is not OperationCanceledException)
             {
                 // Boundary: a When failure leaves partial state; the caller must discard the aggregate.
-                return Result.Fail(EventSourcingOutcome.Failure.ApplyFailed(
+                return Result.Fail(EventReplayOutcome.Failure.ApplyFailed(
                     domainEvent.GetType().Name,
                     exception.Message));
             }

@@ -1,6 +1,7 @@
 using Application.Common.EventSourcing;
 
 using Core.Common.Domain.Events;
+using Core.Common.Monad.Maybes;
 using Core.Common.Monad.Results;
 
 using Infrastructure.Integration.Tests.Messaging;
@@ -82,14 +83,14 @@ public sealed class EventStoreIntegrationTest(MessagingFixture fixture) : IAsync
 
         // Act
         Result savedSnapshot = await snapshots.SaveAsync(snapshot);
-        Result<Snapshot?> loadedSnapshot = await snapshots.LoadAsync(streamId);
+        Result<Maybe<Snapshot>> loadedSnapshot = await snapshots.LoadAsync(streamId);
         Result savedCheckpoint = await checkpoints.SavePositionAsync(projection, 42);
         Result<long> loadedCheckpoint = await checkpoints.GetPositionAsync(projection);
 
         // Assert
         savedSnapshot.IsSuccess.Should().BeTrue();
         loadedSnapshot.IsSuccess.Should().BeTrue();
-        loadedSnapshot.Value!.Version.Should().Be(7);
+        loadedSnapshot.Value.Value.Version.Should().Be(7);
         savedCheckpoint.IsSuccess.Should().BeTrue();
         loadedCheckpoint.Value.Should().Be(42);
     }

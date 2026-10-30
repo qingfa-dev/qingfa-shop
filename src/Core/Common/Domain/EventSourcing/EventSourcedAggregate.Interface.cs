@@ -18,6 +18,9 @@ public interface IEventSourcedAggregate<out TKey>
     /// <summary>Replays history without marking events as uncommitted.</summary>
     void LoadFromHistory(long version, IEnumerable<IDomainEvent> history);
 
+    /// <summary>Replays history without throwing on a corrupt or repeated stream.</summary>
+    Result TryLoadFromHistory(long version, IEnumerable<IDomainEvent> history);
+
     /// <summary>Clears the events after a successful append.</summary>
     void ClearUncommittedEvents();
 }

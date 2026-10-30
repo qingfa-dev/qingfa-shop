@@ -7,7 +7,7 @@ public interface ISnapshotStore
     /// <param name="streamId">The stream identifier.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>The snapshot, or null when none exists.</returns>
-    Task<Result<Snapshot?>> LoadAsync(
+    Task<Result<Maybe<Snapshot>>> LoadAsync(
         string streamId,
         CancellationToken cancellationToken = default);
 
