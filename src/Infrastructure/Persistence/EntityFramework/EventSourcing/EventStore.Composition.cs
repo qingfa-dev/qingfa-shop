@@ -1,4 +1,7 @@
 using Application.Common.EventSourcing;
+
+using Core.Common.Domain.EventSourcing;
+using Core.Todos.Reminders;
 using Application.Common.Validation.FluentValidation;
 
 using FluentValidation;
@@ -34,7 +37,7 @@ public static class EventStoreComposition
         builder.Services.TryAddSingleton(TimeProvider.System);
         builder.Services.TryAddSingleton(sp =>
             sp.GetRequiredService<IOptions<EventStoreSetting>>().Value);
-        builder.Services.TryAddSingleton(sp =>
+        builder.Services.TryAddSingleton<ISnapshotPolicy>(sp =>
         {
             EventStoreSetting setting = sp.GetRequiredService<IOptions<EventStoreSetting>>().Value;
             return new IntervalSnapshotPolicy(setting.SnapshotInterval);
@@ -44,6 +47,8 @@ public static class EventStoreComposition
         builder.Services.TryAddScoped<ISnapshotStore, EfCoreSnapshotStore>();
         builder.Services.TryAddScoped<IProjectionCheckpointStore, EfCoreProjectionCheckpointStore>();
         builder.Services.TryAddScoped(typeof(IEventSourcedRepository<,>), typeof(EventSourcedRepository<,>));
+        builder.Services.TryAddScoped<IAggregateFactory<TodoReminder>, TodoReminderFactory>();
+        builder.Services.TryAddScoped<IProjection, TodoReminderProjection>();
         builder.Services.TryAddScoped<ProjectionRunner>();
         builder.Services.AddHostedService<ProjectionWorker>();
 

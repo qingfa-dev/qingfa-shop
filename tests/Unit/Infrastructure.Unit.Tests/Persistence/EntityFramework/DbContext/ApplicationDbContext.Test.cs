@@ -95,7 +95,8 @@ public sealed class ApplicationDbContextTest : IAsyncLifetime
             "inbox_messages",
             "event_store_events",
             "event_store_snapshots",
-            "projection_checkpoints");
+            "projection_checkpoints",
+            "todo_reminders");
     }
 
     [Fact(DisplayName = "ApplicationDbContext should place Todo, identity, and messaging tables in their schemas")]
@@ -190,13 +191,14 @@ public sealed class ApplicationDbContextTest : IAsyncLifetime
         var migrations = context.Database.GetMigrations().ToList();
 
         // Assert
-        migrations.Should().HaveCount(6);
+        migrations.Should().HaveCount(7);
         migrations.Should().Contain(migration => migration.EndsWith("_InitialCreate", StringComparison.Ordinal));
         migrations.Should().Contain(migration => migration.EndsWith("_AddIdentity", StringComparison.Ordinal));
         migrations.Should().Contain(migration => migration.EndsWith("_AlignIdentityDbContext", StringComparison.Ordinal));
         migrations.Should().Contain(migration => migration.EndsWith("_AddAggregateVersion", StringComparison.Ordinal));
         migrations.Should().Contain(migration => migration.EndsWith("_AddOutboxInbox", StringComparison.Ordinal));
         migrations.Should().Contain(migration => migration.EndsWith("_AddEventStore", StringComparison.Ordinal));
+        migrations.Should().Contain(migration => migration.EndsWith("_AddTodoReminderProjection", StringComparison.Ordinal));
     }
 
     [Fact(DisplayName = "The Persistence assembly should contain one DbContext and one design-time factory")]

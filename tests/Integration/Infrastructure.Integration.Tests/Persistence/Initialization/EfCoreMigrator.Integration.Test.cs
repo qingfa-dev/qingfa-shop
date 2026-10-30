@@ -45,7 +45,7 @@ public sealed class EfCoreMigratorIntegrationTest(PersistenceInitializationFixtu
         (await _fixture.TableExistsAsync("__EFMigrationsHistory")).Should().BeTrue();
         (await _fixture.TableExistsAsync("messaging.outbox_messages")).Should().BeTrue();
         (await _fixture.TableExistsAsync("messaging.inbox_messages")).Should().BeTrue();
-        (await _fixture.CountRowsAsync("__EFMigrationsHistory")).Should().Be(6);
+        (await _fixture.CountRowsAsync("__EFMigrationsHistory")).Should().Be(7);
     }
 
     [Fact(DisplayName = "MigrateAsync should record the InitialCreate migration")]
@@ -127,7 +127,7 @@ public sealed class EfCoreMigratorIntegrationTest(PersistenceInitializationFixtu
         await _fixture.MigrateAsync();
 
         // Assert
-        (await _fixture.CountRowsAsync("__EFMigrationsHistory")).Should().Be(6);
+        (await _fixture.CountRowsAsync("__EFMigrationsHistory")).Should().Be(7);
     }
 
     [Fact(DisplayName = "GetPendingMigrationsAsync should report InitialCreate before migrating")]
@@ -141,12 +141,12 @@ public sealed class EfCoreMigratorIntegrationTest(PersistenceInitializationFixtu
         var pending = await context.Database.GetPendingMigrationsAsync();
 
         // Assert
-        pending.Should().HaveCount(6);
+        pending.Should().HaveCount(7);
         pending.Should().Contain(migration => migration.EndsWith("_InitialCreate", StringComparison.Ordinal));
         pending.Should().Contain(migration => migration.EndsWith("_AddIdentity", StringComparison.Ordinal));
         pending.Should().Contain(migration => migration.EndsWith("_AlignIdentityDbContext", StringComparison.Ordinal));
         pending.Should().Contain(migration => migration.EndsWith("_AddAggregateVersion", StringComparison.Ordinal));
-        pending.Should().Contain(migration => migration.EndsWith("_AddEventStore", StringComparison.Ordinal));
+        pending.Should().Contain(migration => migration.EndsWith("_AddTodoReminderProjection", StringComparison.Ordinal));
     }
 
     [Fact(DisplayName = "GetPendingMigrationsAsync should be empty after migrating")]
@@ -215,12 +215,12 @@ public sealed class EfCoreMigratorIntegrationTest(PersistenceInitializationFixtu
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().HaveCount(6);
+        result.Value.Should().HaveCount(7);
         result.Value.Should().OnlyContain(operation =>
             operation.Type == InitializationOperationType.SchemaChange);
         result.Value[0].Description.Should().Contain("InitialCreate");
         result.Value[0].CommandText.Should().EndWith("_InitialCreate");
-        result.Value[^1].CommandText.Should().EndWith("_AddEventStore");
+        result.Value[^1].CommandText.Should().EndWith("_AddTodoReminderProjection");
     }
 
     [Fact(DisplayName = "EfCoreMigrator PreviewAsync should report an up-to-date schema")]
@@ -255,7 +255,7 @@ public sealed class EfCoreMigratorIntegrationTest(PersistenceInitializationFixtu
         var migrator = new EfCoreMigrator<ApplicationDbContext>(context, logger);
 
         // Assert
-        migrator.Version.Should().EndWith("_AddEventStore");
+        migrator.Version.Should().EndWith("_AddTodoReminderProjection");
     }
 
     private static EfCoreInitializationContext CreateInitializationContext(

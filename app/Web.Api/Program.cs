@@ -9,6 +9,7 @@ using Microsoft.Extensions.DependencyInjection.Extensions;
 using ServiceDefaults;
 
 using Web.Api.Endpoints.Authorization;
+using Web.Api.Endpoints.Todos;
 
 WebApplicationBuilder builder = WebApplication.CreateBuilder(args);
 
@@ -23,7 +24,10 @@ builder.AddInfrastructure();
 
 // Register: Carter endpoint modules (the permission catalog and checks).
 builder.Services.AddCarter(configurator: configurator =>
-    configurator.WithModule<PermissionRegistryEndpoint>());
+{
+    configurator.WithModule<PermissionRegistryEndpoint>();
+    configurator.WithModule<TodoReminderEndpoint>();
+});
 
 // Initialize: production uses the system clock; TryAdd lets a test host replace it
 // with FakeTimeProvider without touching this composition.

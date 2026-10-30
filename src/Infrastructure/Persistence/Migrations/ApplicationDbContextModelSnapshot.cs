@@ -257,6 +257,38 @@ namespace Infrastructure.Persistence.Migrations
                     b.ToTable("refresh_tokens", "identity");
                 });
 
+            modelBuilder.Entity("Application.Features.Todos.Reminders.Models.TodoReminderModel", b =>
+                {
+                    b.Property<Guid>("Id")
+                        .ValueGeneratedOnAdd()
+                        .HasColumnType("uuid");
+
+                    b.Property<DateTimeOffset?>("DismissedAtUtc")
+                        .HasColumnType("timestamptz");
+
+                    b.Property<DateTimeOffset>("RemindAtUtc")
+                        .HasColumnType("timestamptz");
+
+                    b.Property<int>("SnoozeCount")
+                        .HasColumnType("integer");
+
+                    b.Property<int>("Status")
+                        .HasColumnType("integer");
+
+                    b.Property<Guid>("TenantId")
+                        .HasColumnType("uuid");
+
+                    b.Property<Guid>("TodoId")
+                        .HasColumnType("uuid");
+
+                    b.Property<long>("Version")
+                        .HasColumnType("bigint");
+
+                    b.HasKey("Id");
+
+                    b.ToTable("todo_reminders", "todo");
+                });
+
             modelBuilder.Entity("Core.Todos.Categories.TodoCategory", b =>
                 {
                     b.Property<Guid>("Id")

@@ -107,6 +107,7 @@ public static class PersistenceComposition
     {
         // Create: Open-generic repository so any IEntity is resolvable.
         services.AddScoped(typeof(IPersistentRepository<,>), typeof(EfCoreRepository<,>));
+        services.AddScoped(typeof(IReadableRepository<,>), typeof(EfCoreRepository<,>));
         services.AddScoped(typeof(IProjectionRepository<,>), typeof(EfCoreRepository<,>));
         services.AddScoped(typeof(IStreamableRepository<,>), typeof(EfCoreRepository<,>));
         services.AddScoped(typeof(IMappableRepository<,>), typeof(EfCoreRepository<,>));
