@@ -157,3 +157,7 @@ public sealed record TwoFactorRequest(
     public ApplicationIdentity.TwoFactorRequest ToApplication() =>
         new(Enable, TwoFactorCode, ResetSharedKey, ResetRecoveryCodes);
 }
+
+/// <summary>Exchanges a one-time external sign-in code for the issued token pair.</summary>
+/// <param name="Code">The code delivered to the client redirect URL.</param>
+public sealed record ExternalExchangeRequest(string Code);

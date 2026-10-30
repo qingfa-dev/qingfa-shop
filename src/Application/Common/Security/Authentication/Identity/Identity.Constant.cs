@@ -47,6 +47,18 @@ public static class IdentityConstant
 
         /// <summary>External callback endpoint.</summary>
         public const string ExternalCallback = "/external/callback";
+
+        /// <summary>Base path for external authentication endpoints.</summary>
+        public const string External = "/api/auth/external";
+
+        /// <summary>Google OAuth callback path registered with the authentication handler.</summary>
+        public const string ExternalGoogleCallback = External + "/google/callback";
+
+        /// <summary>Microsoft account callback path registered with the authentication handler.</summary>
+        public const string ExternalMicrosoftCallback = External + "/microsoft/callback";
+
+        /// <summary>Default OpenID Connect callback path registered with the authentication handler.</summary>
+        public const string ExternalOpenIdConnectCallback = External + "/openid/callback";
     }
 
     /// <summary>External authentication scheme names.</summary>

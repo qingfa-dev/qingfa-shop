@@ -28,6 +28,12 @@ public sealed class IdentityApiOption
 /// <summary>Configuration for external OAuth and OpenID Connect providers.</summary>
 public sealed class ExternalAuthOption
 {
+    /// <summary>Gets or sets the client URL that receives the one-time sign-in code.</summary>
+    public string SuccessRedirectUrl { get; set; } = "/";
+
+    /// <summary>Gets or sets how long a one-time sign-in code remains valid, in seconds.</summary>
+    public int CodeLifetimeSeconds { get; set; } = 60;
+
     /// <summary>Gets or sets Google OAuth settings.</summary>
     public GoogleAuthOption Google { get; set; } = new();
 
@@ -83,7 +89,7 @@ public sealed class OidcAuthOption
     public string ClientSecret { get; set; } = string.Empty;
 
     /// <summary>Gets or sets the callback path.</summary>
-    public string CallbackPath { get; set; } = "/signin-oidc";
+    public string CallbackPath { get; set; } = IdentityConstant.Routes.ExternalOpenIdConnectCallback;
 
     /// <summary>Gets or sets the requested scopes.</summary>
     public string[] Scopes { get; set; } = IdentityConstant.Defaults.OidcScopes;

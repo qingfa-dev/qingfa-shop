@@ -42,6 +42,9 @@ builder.Services.AddCarter(configurator: configurator =>
     configurator.WithModule<TodoReminderEndpoint>();
 });
 
+// Register: one-time external sign-in codes live in the distributed cache.
+builder.Services.AddScoped<ExternalCodeStore>();
+
 // Initialize: production uses the system clock; TryAdd lets a test host replace it
 // with FakeTimeProvider without touching this composition.
 builder.Services.TryAddSingleton(TimeProvider.System);

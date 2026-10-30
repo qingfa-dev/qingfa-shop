@@ -130,6 +130,7 @@ public static class AuthenticationComposition
             {
                 options.ClientId = external.Google.ClientId;
                 options.ClientSecret = external.Google.ClientSecret;
+                options.CallbackPath = IdentityConstant.Routes.ExternalGoogleCallback;
             });
         }
 
@@ -139,6 +140,7 @@ public static class AuthenticationComposition
             {
                 options.ClientId = external.Microsoft.ClientId;
                 options.ClientSecret = external.Microsoft.ClientSecret;
+                options.CallbackPath = IdentityConstant.Routes.ExternalMicrosoftCallback;
             });
         }
 
@@ -149,7 +151,12 @@ public static class AuthenticationComposition
                 options.Authority = external.OpenIdConnect.Authority;
                 options.ClientId = external.OpenIdConnect.ClientId;
                 options.ClientSecret = external.OpenIdConnect.ClientSecret;
-                options.CallbackPath = external.OpenIdConnect.CallbackPath;
+
+                // Fallback: keep a configured callback path, otherwise use the route the API exposes.
+                options.CallbackPath = string.IsNullOrWhiteSpace(external.OpenIdConnect.CallbackPath)
+                    ? IdentityConstant.Routes.ExternalOpenIdConnectCallback
+                    : external.OpenIdConnect.CallbackPath;
+
                 options.ResponseType = "code";
                 options.SaveTokens = true;
                 options.Scope.Clear();

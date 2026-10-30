@@ -1,3 +1,6 @@
+using System.Security.Claims;
+using System.Text.Encodings.Web;
+
 using Application.Common.Security.Authentication.Identity;
 using Application.Common.Security.Authentication.Tokens;
 using Application.Common.Security.Authentication.Tokens.Domain;
@@ -5,20 +8,26 @@ using Application.Common.Security.Authentication.Tokens.Domain;
 using Core.Common.Monad.Errors;
 using Core.Common.Monad.Results;
 
+using Microsoft.AspNetCore.Authentication;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 
 using Testing.Fixtures;
 
 namespace Api.Integration.Tests;
 
-/// <summary>Boots the Api with a stub identity service so route behavior is deterministic.</summary>
+/// <summary>Boots the Api with stub identity and external services so route behavior is deterministic.</summary>
 public sealed class IdentityApiFactory : ShopApiFactory
 {
     /// <summary>The stub identity service installed into the host.</summary>
     public StubIdentityService Identity { get; } = new();
+
+    /// <summary>The stub external authentication service installed into the host.</summary>
+    public StubExternalAuthenticationService External { get; } = new();
 
     /// <inheritdoc />
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -29,6 +38,18 @@ public sealed class IdentityApiFactory : ShopApiFactory
         {
             services.RemoveAll<IIdentityService>();
             services.AddSingleton<IIdentityService>(Identity);
+
+            services.RemoveAll<IExternalAuthenticationService>();
+            services.AddSingleton<IExternalAuthenticationService>(External);
+
+            // Initialize: the fake Google scheme stands in for the OAuth handler, so the
+            // challenge and callback routes can be exercised without provider secrets.
+            services.AddAuthentication()
+                .AddScheme<AuthenticationSchemeOptions, StubExternalAuthenticationHandler>(
+                    IdentityConstant.Providers.Google,
+                    _ => { });
+
+            External.LoginHandler = _ => Result<AuthResponse>.Ok(Identity.CreateAuthResponse());
         });
     }
 }
@@ -203,7 +224,9 @@ public sealed class StubIdentityService : IIdentityService
         return Task.FromResult(Result<TwoFactorInfo>.Ok(TwoFactor));
     }
 
-    private AuthResponse CreateAuthResponse()
+    /// <summary>Creates the token pair returned by stub login handlers.</summary>
+    /// <returns>A token pair bound to <see cref="User"/>.</returns>
+    public AuthResponse CreateAuthResponse()
     {
         DateTimeOffset now = DateTimeOffset.UtcNow;
         Result<RefreshToken> created = RefreshToken.Create(
@@ -226,5 +249,82 @@ public sealed class StubIdentityService : IIdentityService
                 Guid.NewGuid().ToString("N")),
             new RefreshTokenIssue("refresh-token", created.Value),
             User);
+    }
+}
+
+/// <summary>Records external login calls and returns a configurable token pair.</summary>
+public sealed class StubExternalAuthenticationService : IExternalAuthenticationService
+{
+    /// <summary>The providers reported to the API; defaults to a single Google provider.</summary>
+    public IReadOnlyCollection<ExternalProviderModel> Providers { get; set; } =
+        [new ExternalProviderModel(IdentityConstant.Providers.Google, "Google")];
+
+    /// <summary>The normalized user passed to the last login call.</summary>
+    public ExternalUserInfo? LastUser { get; private set; }
+
+    /// <summary>Overrides the external login result.</summary>
+    public Func<ExternalUserInfo, Result<AuthResponse>> LoginHandler { get; set; } =
+        _ => Result<AuthResponse>.Fail(Error.Unexpected(
+            "Test.NotConfigured",
+            "The external login handler was not configured."));
+
+    /// <inheritdoc />
+    public IReadOnlyCollection<ExternalProviderModel> GetProviders() => Providers;
+
+    /// <inheritdoc />
+    public Task<Result<AuthResponse>> LoginAsync(
+        ExternalUserInfo user,
+        CancellationToken cancellationToken = default)
+    {
+        LastUser = user;
+        return Task.FromResult(LoginHandler(user));
+    }
+
+    /// <summary>Restores the provider list and the successful login handler.</summary>
+    /// <param name="response">The token pair returned by the default handler.</param>
+    public void Reset(AuthResponse response)
+    {
+        Providers = [new ExternalProviderModel(IdentityConstant.Providers.Google, "Google")];
+        LastUser = null;
+        LoginHandler = _ => Result<AuthResponse>.Ok(response);
+    }
+}
+
+/// <summary>Stands in for an OAuth handler so the challenge and callback routes run without secrets.</summary>
+public sealed class StubExternalAuthenticationHandler(
+    IOptionsMonitor<AuthenticationSchemeOptions> options,
+    ILoggerFactory logger,
+    UrlEncoder encoder)
+    : AuthenticationHandler<AuthenticationSchemeOptions>(options, logger, encoder)
+{
+    /// <inheritdoc />
+    protected override Task<AuthenticateResult> HandleAuthenticateAsync()
+    {
+        // Handle: the callback test toggles failure through the query string so the API
+        // can be proven to map rejected provider callbacks onto a 401 Result.
+        if (Context.Request.Query.ContainsKey("fail"))
+            return Task.FromResult(AuthenticateResult.Fail("The stub provider rejected the callback."));
+
+        Claim[] claims = Context.Request.Query.ContainsKey("nosub")
+            ? [new Claim(ClaimTypes.Email, "external@example.com")]
+            :
+            [
+                new Claim(ClaimTypes.NameIdentifier, "google-user-1"),
+                new Claim(ClaimTypes.Name, "External User"),
+                new Claim(ClaimTypes.Email, "external@example.com")
+            ];
+
+        ClaimsIdentity identity = new(claims, Scheme.Name);
+
+        var ticket = new AuthenticationTicket(new ClaimsPrincipal(identity), Scheme.Name);
+
+        return Task.FromResult(AuthenticateResult.Success(ticket));
+    }
+
+    /// <inheritdoc />
+    protected override Task HandleChallengeAsync(AuthenticationProperties properties)
+    {
+        Response.Redirect("https://provider.example/authorize");
+        return Task.CompletedTask;
     }
 }
