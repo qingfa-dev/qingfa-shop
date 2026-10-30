@@ -1,6 +1,6 @@
 # Slice ④ — Event Sourcing (PostgreSQL, Pilot, Todo Migration)
 
-- **Status:** Approved
+- **Status:** Implemented
 - **Date:** 2026-10-29
 - **Depends on:** slices ①–③
 - **Final slice**
@@ -557,7 +557,15 @@ The backfill is idempotent and can be re-run.
 - after the Todo migration, every existing Todo API test still passes and a freshly
   replayed projection returns the same data.
 
-## 11. Acceptance criteria
+## 11. Implementation note
+
+Wave 1 shipped the event store, snapshots, projections, checkpoints, the `TodoReminder` pilot,
+and the `Todo` migration. The migration chain was squashed to a single `InitialCreate`; the
+`todos` table is now a projection owned by `TodoReadModel`, and `Todo` is an event-sourced
+aggregate with monadic mutators and event-payload validation. `EventStore:BackfillTodos` seeds
+streams for pre-migration rows. The release note is `docs/releases/2026-10-30-todo-event-sourcing.md`.
+
+## 12. Acceptance criteria
 
 - `make ci.full` passes.
 - Event store append is atomic with outbox staging.
