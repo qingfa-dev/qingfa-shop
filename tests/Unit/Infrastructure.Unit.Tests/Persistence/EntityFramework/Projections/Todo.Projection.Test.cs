@@ -70,7 +70,7 @@ public sealed class TodoProjectionTest : IAsyncLifetime
                 1));
 
         result.IsSuccess.Should().BeTrue();
-        TodoReadModel model = await _context.Todos.SingleAsync();
+        TodoReadModel model = await ReadPersistedAsync();
         model.Id.Should().Be(id);
         model.TenantId.Should().Be(tenantId);
         model.Title.Should().Be("Write report");
@@ -134,7 +134,7 @@ public sealed class TodoProjectionTest : IAsyncLifetime
         await _projection.ApplyAsync(
             Stored(new TodoListChanged(id, null, _now.AddMinutes(6), "editor"), 7));
 
-        TodoReadModel model = await _context.Todos.SingleAsync();
+        TodoReadModel model = await ReadPersistedAsync();
         model.Title.Should().Be("Write final report");
         model.Description.Should().Be("Final draft");
         model.Priority.Should().Be(TodoPriority.Low);
@@ -159,7 +159,7 @@ public sealed class TodoProjectionTest : IAsyncLifetime
         await _projection.ApplyAsync(
             Stored(new TodoDeleted(id, false, _now.AddMinutes(1), "deleter"), 2));
 
-        TodoReadModel model = await _context.Todos.SingleAsync();
+        TodoReadModel model = await ReadPersistedAsync();
         model.IsDeleted.Should().BeTrue();
         model.DeletedAtUtc.Should().Be(_now.AddMinutes(1));
         model.DeletedBy.Should().Be("deleter");
@@ -168,7 +168,7 @@ public sealed class TodoProjectionTest : IAsyncLifetime
         await _projection.ApplyAsync(
             Stored(new TodoRestored(id, _now.AddMinutes(2), "restorer"), 3));
 
-        await _context.Entry(model).ReloadAsync();
+        model = await ReadPersistedAsync();
         model.IsDeleted.Should().BeFalse();
         model.DeletedAtUtc.Should().BeNull();
         model.DeletedBy.Should().BeNull();
@@ -187,6 +187,7 @@ public sealed class TodoProjectionTest : IAsyncLifetime
         await _projection.ApplyAsync(
             Stored(new TodoDeleted(id, true, _now.AddMinutes(1), "deleter"), 2));
 
+        _context.ChangeTracker.Clear();
         (await _context.Todos.CountAsync()).Should().Be(0);
     }
 
@@ -225,10 +226,94 @@ public sealed class TodoProjectionTest : IAsyncLifetime
                     "editor"),
                 2));
 
-        TodoReadModel model = await _context.Todos.SingleAsync();
+        TodoReadModel model = await ReadPersistedAsync();
         model.Title.Should().Be("Write final report");
         model.Priority.Should().Be(TodoPriority.Low);
         model.Version.Should().Be(2);
+    }
+
+    [Fact]
+    public async Task Apply_WithNewerTodoCreated_ShouldResetStaleAuditAndState()
+    {
+        Guid id = Guid.NewGuid();
+        Guid tenantId = Guid.NewGuid();
+        Guid categoryId = Guid.NewGuid();
+        Guid originalListId = Guid.NewGuid();
+        Guid newListId = Guid.NewGuid();
+        await CreateAsync(id, tenantId);
+
+        await _projection.ApplyAsync(
+            Stored(new TodoCategoryAdded(id, categoryId, _now.AddMinutes(1), "editor"), 2));
+        await _projection.ApplyAsync(
+            Stored(new TodoListChanged(id, originalListId, _now.AddMinutes(2), "editor"), 3));
+        await _projection.ApplyAsync(
+            Stored(
+                new TodoStatusChanged(
+                    id,
+                    tenantId,
+                    TodoStatus.Pending,
+                    TodoStatus.Completed,
+                    _now.AddMinutes(3),
+                    "editor"),
+                4));
+        await _projection.ApplyAsync(
+            Stored(new TodoDeleted(id, false, _now.AddMinutes(4), "deleter"), 5));
+
+        await _projection.ApplyAsync(
+            Stored(
+                new TodoCreated(
+                    id,
+                    tenantId,
+                    "Recreated report",
+                    "Fresh start",
+                    TodoPriority.Low,
+                    _now.AddDays(3),
+                    newListId,
+                    _now.AddDays(1),
+                    "recreator"),
+                6));
+
+        TodoReadModel model = await ReadPersistedAsync();
+        model.Title.Should().Be("Recreated report");
+        model.Description.Should().Be("Fresh start");
+        model.Priority.Should().Be(TodoPriority.Low);
+        model.DueAtUtc.Should().Be(_now.AddDays(3));
+        model.ListId.Should().Be(newListId);
+        model.Status.Should().Be(TodoStatus.Pending);
+        model.CompletedAtUtc.Should().BeNull();
+        model.CategoryIds.Should().BeEmpty();
+        model.CreatedAtUtc.Should().Be(_now.AddDays(1));
+        model.CreatedBy.Should().Be("recreator");
+        model.ModifiedAtUtc.Should().BeNull();
+        model.ModifiedBy.Should().BeNull();
+        model.IsDeleted.Should().BeFalse();
+        model.DeletedAtUtc.Should().BeNull();
+        model.DeletedBy.Should().BeNull();
+        model.Version.Should().Be(6);
+    }
+
+    [Fact]
+    public async Task Apply_WithUnknownEvent_ShouldFailWithProjectionApplyCode()
+    {
+        StoredEvent stored = new(
+            "todo:unknown",
+            1,
+            Guid.NewGuid(),
+            "todo.unknown",
+            1,
+            "{}",
+            new DefaultMetadata(),
+            _now,
+            1);
+
+        Result result = await _projection.ApplyAsync(stored);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors.Should()
+            .ContainSingle()
+            .Which.Code.Should().Be(EventSourcingOutcome.Codes.ProjectionApplyFailed);
+        _context.ChangeTracker.Clear();
+        (await _context.Todos.CountAsync()).Should().Be(0);
     }
 
     [Fact]
@@ -241,6 +326,7 @@ public sealed class TodoProjectionTest : IAsyncLifetime
 
         name.Should().Be("todos");
         result.IsSuccess.Should().BeTrue();
+        _context.ChangeTracker.Clear();
         (await _context.Todos.CountAsync()).Should().Be(0);
     }
 
@@ -258,6 +344,13 @@ public sealed class TodoProjectionTest : IAsyncLifetime
                     _now,
                     "creator"),
                 1));
+
+    private async Task<TodoReadModel> ReadPersistedAsync()
+    {
+        // Verify: clear the tracker so assertions read the database instead of in-memory mutations.
+        _context.ChangeTracker.Clear();
+        return await _context.Todos.SingleAsync();
+    }
 
     private StoredEvent Stored(IDomainEvent domainEvent, long version)
         => new(

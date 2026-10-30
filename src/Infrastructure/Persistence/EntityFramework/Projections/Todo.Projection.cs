@@ -111,6 +111,8 @@ public sealed class TodoProjection(
         model.CompletedAtUtc = null;
         model.CreatedAtUtc = created.CreatedAtUtc;
         model.CreatedBy = created.CreatedBy;
+        model.ModifiedAtUtc = null;
+        model.ModifiedBy = null;
         model.IsDeleted = false;
         model.DeletedAtUtc = null;
         model.DeletedBy = null;

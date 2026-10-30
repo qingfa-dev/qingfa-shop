@@ -49,8 +49,8 @@ public static class EventStoreComposition
         builder.Services.TryAddScoped(typeof(IEventSourcedRepository<,>), typeof(EventSourcedRepository<,>));
         builder.Services.TryAddScoped<IAggregateFactory<TodoReminder>, TodoReminderFactory>();
         builder.Services.TryAddScoped<IProjection, TodoReminderProjection>();
-        // Register: TryAddScoped is keyed by the service type, so the second projection needs AddScoped.
-        builder.Services.AddScoped<IProjection, TodoProjection>();
+        // Register: TryAddEnumerable deduplicates by implementation type, so repeated composition keeps one todo projection.
+        builder.Services.TryAddEnumerable(ServiceDescriptor.Scoped<IProjection, TodoProjection>());
         builder.Services.TryAddScoped<ProjectionRunner>();
         builder.Services.AddHostedService<ProjectionWorker>();
 
