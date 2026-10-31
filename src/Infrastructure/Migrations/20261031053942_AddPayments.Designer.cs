@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20261031040821_AddPayments")]
+    [Migration("20261031053942_AddPayments")]
     partial class AddPayments
     {
         /// <inheritdoc />
@@ -1116,8 +1116,8 @@ namespace Infrastructure.Migrations
                         .HasColumnType("character varying(32)")
                         .HasColumnName("outcome");
 
-                    b.Property<DateTimeOffset?>("ProcessedAt")
-                        .HasColumnType("timestamptz")
+                    b.Property<DateTime?>("ProcessedAt")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("processed_at");
 
                     b.Property<string>("Provider")
@@ -1137,8 +1137,8 @@ namespace Infrastructure.Migrations
                         .HasColumnType("text")
                         .HasColumnName("raw_body");
 
-                    b.Property<DateTimeOffset>("ReceivedAt")
-                        .HasColumnType("timestamptz")
+                    b.Property<DateTime>("ReceivedAt")
+                        .HasColumnType("timestamp with time zone")
                         .HasColumnName("received_at");
 
                     b.HasKey("Id");

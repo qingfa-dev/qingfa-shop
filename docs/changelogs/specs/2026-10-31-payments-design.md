@@ -715,6 +715,7 @@ Validation conditions (fail fast at startup):
 - **C-7** `DefaultProvider` must be enabled.
 - **C-8** `PayPal.Environment ∈ {Sandbox, Live}`.
 - **C-9** No secret value ever appears in `appsettings*.json`, Compose files, or logged output.
+- **C-11** `Payments:Retention:WebhookEventRetentionDays ∈ [1, 365]`; `SweepIntervalHours ∈ [1, 24]`.
 - **C-10** AppHost forwards `Payments__Providers__*` when present; no new backing service is added and
   `infra.backing.*` stays unchanged.
 
@@ -877,7 +878,8 @@ Each step is independently committable and green.
 
 - Background reconciliation against provider state.
 - Dispute/chargeback transitions.
-- Webhook retention/cleanup job.
+- (Implemented) Webhook retention: processed deliveries older than `Payments:Retention:WebhookEventRetentionDays`
+  are pruned by a hosted worker; unprocessed deliveries are never pruned.
 - FX and multi-currency settlement.
 - Saved payment methods, setup sessions, subscriptions.
 - Frontend payment screens.

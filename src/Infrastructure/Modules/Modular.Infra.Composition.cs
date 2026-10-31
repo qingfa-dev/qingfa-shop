@@ -10,6 +10,7 @@ using Infrastructure.Modules.Todos.Integrations.Messaging;
 using Infrastructure.Modules.Todos.Persistence.EventSourcing;
 using Infrastructure.Modules.Todos.Services;
 
+using Infrastructure.Modules.Payments.Retention;
 using Infrastructure.Payments.Configuration;
 
 using Microsoft.AspNetCore.Builder;
@@ -59,6 +60,13 @@ public static class ModularInfraComposition
             .ValidateOnStart();
 
         builder.Services.AddSingleton<IValidateOptions<PaymentPolicyOptions>, PaymentPolicyOptionsValidator>();
+
+        builder.Services.AddOptions<PaymentRetentionOptions>()
+            .BindConfiguration(PaymentRetentionOptions.SectionName)
+            .ValidateOnStart();
+
+        builder.Services.AddSingleton<IValidateOptions<PaymentRetentionOptions>, PaymentRetentionOptionsValidator>();
+        builder.Services.AddHostedService<PaymentWebhookRetentionWorker>();
 
         builder.Services.AddOptions<StripeOptions>().BindConfiguration(StripeOptions.SectionName);
         builder.Services.AddOptions<PayPalOptions>().BindConfiguration(PayPalOptions.SectionName);

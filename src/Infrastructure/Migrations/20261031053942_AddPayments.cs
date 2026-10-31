@@ -82,8 +82,8 @@ namespace Infrastructure.Migrations
                     event_type = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
                     raw_body = table.Column<string>(type: "text", nullable: false),
                     outcome = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
-                    received_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false),
-                    processed_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true)
+                    received_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    processed_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
                 },
                 constraints: table =>
                 {

@@ -103,6 +103,75 @@ public sealed class PaymentStoreTest
             .Should().BeNull();
     }
 
+    [Fact]
+    public async Task WebhookStore_DeleteProcessedBefore_ShouldPruneOnlySettledOldRows()
+    {
+        await using ApplicationDbContext context = await NewContextAsync();
+        var store = new WebhookEventStore(context, TimeProvider.System);
+
+        DateTime now = DateTime.UtcNow;
+        DateTime old = now.AddDays(-40);
+
+        context.Set<PaymentWebhookEvent>().AddRange(
+            new PaymentWebhookEvent
+            {
+                Id = Guid.NewGuid(),
+                Provider = "fake",
+                ProviderEventId = "old-settled",
+                EventType = "Captured",
+                RawBody = "{}",
+                Outcome = PaymentConstant.Outcomes.Settled,
+                ReceivedAt = old,
+                ProcessedAt = old
+            },
+            new PaymentWebhookEvent
+            {
+                Id = Guid.NewGuid(),
+                Provider = "fake",
+                ProviderEventId = "old-unprocessed",
+                EventType = "Captured",
+                RawBody = "{}",
+                Outcome = PaymentConstant.Outcomes.Received,
+                ReceivedAt = old
+            },
+            new PaymentWebhookEvent
+            {
+                Id = Guid.NewGuid(),
+                Provider = "fake",
+                ProviderEventId = "recent-settled",
+                EventType = "Captured",
+                RawBody = "{}",
+                Outcome = PaymentConstant.Outcomes.Settled,
+                ReceivedAt = now,
+                ProcessedAt = now
+            });
+
+        await context.SaveChangesAsync();
+
+        Result<int> deleted = await store.DeleteProcessedBeforeAsync(
+            now.AddDays(-30), CancellationToken.None);
+
+        deleted.Value.Should().Be(1);
+
+        List<string> remaining = await context.Set<PaymentWebhookEvent>()
+            .Select(row => row.ProviderEventId)
+            .ToListAsync();
+
+        remaining.Should().BeEquivalentTo(["old-unprocessed", "recent-settled"]);
+    }
+
+    [Fact]
+    public async Task WebhookStore_DeleteProcessedBefore_WhenNothingMatches_ShouldReturnZero()
+    {
+        await using ApplicationDbContext context = await NewContextAsync();
+        var store = new WebhookEventStore(context, TimeProvider.System);
+
+        Result<int> deleted = await store.DeleteProcessedBeforeAsync(
+            DateTimeOffset.UtcNow, CancellationToken.None);
+
+        deleted.Value.Should().Be(0);
+    }
+
     /// <summary>Creates an in-memory database with the module's mappings applied.</summary>
     private static async Task<ApplicationDbContext> NewContextAsync()
     {

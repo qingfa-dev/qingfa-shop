@@ -43,6 +43,9 @@ public static class PaymentMetrics
     /// <summary>Webhook deliveries rejected for amount mismatch.</summary>
     public static readonly Counter<long> WebhooksMismatch = Meter.CreateCounter<long>("webhooks.mismatch");
 
+    /// <summary>Webhook deliveries pruned by the retention sweep.</summary>
+    public static readonly Counter<long> WebhooksPruned = Meter.CreateCounter<long>("webhooks.pruned");
+
     /// <summary>Provider call latency in milliseconds.</summary>
     public static readonly Histogram<double> ProviderDuration =
         Meter.CreateHistogram<double>("payments.provider.duration", MillisecondsUnit);

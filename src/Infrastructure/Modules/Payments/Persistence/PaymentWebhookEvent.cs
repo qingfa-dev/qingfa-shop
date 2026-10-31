@@ -23,9 +23,9 @@ public sealed class PaymentWebhookEvent
     /// <summary>The processing outcome.</summary>
     public string Outcome { get; set; } = PaymentConstant.Outcomes.Received;
 
-    /// <summary>When the delivery arrived.</summary>
-    public DateTimeOffset ReceivedAt { get; set; }
+    /// <summary>When the delivery arrived, in UTC.</summary>
+    public DateTime ReceivedAt { get; set; }
 
-    /// <summary>When processing finished.</summary>
-    public DateTimeOffset? ProcessedAt { get; set; }
+    /// <summary>When processing finished, in UTC.</summary>
+    public DateTime? ProcessedAt { get; set; }
 }

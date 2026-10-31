@@ -167,6 +167,11 @@ public static class PaymentsOutcome
             code: Codes.WebhookPayloadInvalid,
             message: "The webhook payload is invalid.");
 
+        /// <summary>The retention sweep failed.</summary>
+        public static Error RetentionFailed(string reason) => Error.InternalServerError(
+            code: Codes.RetentionFailed,
+            message: $"The webhook retention sweep failed: {reason}");
+
         /// <summary>The webhook body exceeds the configured limit.</summary>
         public static Error WebhookPayloadTooLarge() => Error.Custom(
             code: Codes.WebhookPayloadTooLarge,
@@ -287,6 +292,9 @@ public static class PaymentsOutcome
 
         /// <summary>Unknown webhook provider.</summary>
         public const string WebhookProviderUnsupported = "Payments.Webhook.ProviderUnsupported";
+
+        /// <summary>Retention sweep failure.</summary>
+        public const string RetentionFailed = "Payments.Webhook.RetentionFailed";
 
         /// <summary>Amount mismatch outcome recorded on the webhook row.</summary>
         public const string WebhookAmountMismatch = "Payments.Webhook.AmountMismatch";

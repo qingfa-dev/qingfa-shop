@@ -28,4 +28,12 @@ public interface IWebhookEventStore
         string providerEventId,
         string outcome,
         CancellationToken cancellationToken);
+
+    /// <summary>Deletes processed deliveries received before the cutoff.</summary>
+    /// <param name="cutoff">Deliveries received strictly before this instant are removed.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The number of rows deleted, or a stable failure.</returns>
+    Task<Result<int>> DeleteProcessedBeforeAsync(
+        DateTimeOffset cutoff,
+        CancellationToken cancellationToken);
 }

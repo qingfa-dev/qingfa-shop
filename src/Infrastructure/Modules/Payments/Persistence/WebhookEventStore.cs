@@ -1,5 +1,6 @@
 using Application.Modules.Payments.Persistence;
 
+using Core.Modules.Payments;
 using Core.Modules.Payments.Intents;
 
 using Microsoft.EntityFrameworkCore;
@@ -33,7 +34,7 @@ public sealed class WebhookEventStore(DbContext context, TimeProvider clock) : I
             EventType = eventType,
             RawBody = rawBody,
             Outcome = PaymentConstant.Outcomes.Received,
-            ReceivedAt = clock.GetUtcNow()
+            ReceivedAt = clock.GetUtcNow().UtcDateTime
         });
 
         try
@@ -65,9 +66,31 @@ public sealed class WebhookEventStore(DbContext context, TimeProvider clock) : I
             return Result.Ok();
 
         row.Outcome = outcome;
-        row.ProcessedAt = clock.GetUtcNow();
+        row.ProcessedAt = clock.GetUtcNow().UtcDateTime;
         await context.SaveChangesAsync(cancellationToken);
 
         return Result.Ok();
+    }
+
+    /// <inheritdoc />
+    public async Task<Result<int>> DeleteProcessedBeforeAsync(
+        DateTimeOffset cutoff,
+        CancellationToken cancellationToken)
+    {
+        DateTime cutoffUtc = cutoff.UtcDateTime;
+
+        try
+        {
+            // Enforce: only settled rows are pruned; an unprocessed delivery may still be retried.
+            int deleted = await context.Set<PaymentWebhookEvent>()
+                .Where(row => row.ProcessedAt != null && row.ReceivedAt < cutoffUtc)
+                .ExecuteDeleteAsync(cancellationToken);
+
+            return Result<int>.Success(deleted);
+        }
+        catch (DbUpdateException exception)
+        {
+            return Result<int>.Fail(PaymentsOutcome.Failure.RetentionFailed(exception.Message));
+        }
     }
 }
