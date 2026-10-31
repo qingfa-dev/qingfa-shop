@@ -125,15 +125,22 @@ public sealed class PayPalPaymentGateway(
 
         using HttpResponseMessage response = await client.SendAsync(message, cancellationToken);
 
-        return response.IsSuccessStatusCode
-            ? Result<PaymentCaptureResult>.Success(
-                new PaymentCaptureResult(request.ProviderReference, request.Amount, true, null))
-            : Result<PaymentCaptureResult>.Success(
-                new PaymentCaptureResult(
-                    request.ProviderReference,
-                    request.Amount,
-                    false,
-                    PaymentConstant.Reasons.CaptureFailed));
+        if (!response.IsSuccessStatusCode)
+            return Result<PaymentCaptureResult>.Success(new PaymentCaptureResult(
+                request.ProviderReference,
+                request.Amount,
+                false,
+                PaymentConstant.Reasons.CaptureFailed));
+
+        using JsonDocument body = JsonDocument.Parse(
+            await response.Content.ReadAsStringAsync(cancellationToken));
+
+        return Result<PaymentCaptureResult>.Success(new PaymentCaptureResult(
+            request.ProviderReference,
+            request.Amount,
+            true,
+            null,
+            ReadCaptureId(body.RootElement, request.ProviderReference)));
     }
 
     /// <inheritdoc />
@@ -156,11 +163,55 @@ public sealed class PayPalPaymentGateway(
     }
 
     /// <inheritdoc />
-    public Task<Result<PaymentRefundResult>> RefundAsync(
+    public async Task<Result<PaymentRefundResult>> RefundAsync(
         PaymentRefundRequest request,
         CancellationToken cancellationToken)
-        => Task.FromResult(Result<PaymentRefundResult>.Fail(
-            PaymentsOutcome.Failure.PartialRefundUnsupported()));
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        // Validate: PayPal refunds a capture, so a missing capture id cannot be refunded.
+        if (string.IsNullOrWhiteSpace(request.CaptureReference))
+            return Result<PaymentRefundResult>.Fail(
+                PaymentsOutcome.Failure.ProviderReferenceMissing());
+
+        using var message = new HttpRequestMessage(
+            HttpMethod.Post,
+            $"v2/payments/captures/{request.CaptureReference}/refund")
+        {
+            Content = JsonContent.Create(new
+            {
+                amount = new
+                {
+                    value = MoneyConverter.ToDecimalString(request.Amount),
+                    currency_code = request.Amount.Currency.Code
+                }
+            })
+        };
+
+        message.Headers.Authorization = new AuthenticationHeaderValue(
+            PayPalConstant.Headers.AuthorizationScheme,
+            await tokens.GetAsync(cancellationToken));
+        message.Headers.Add(PayPalConstant.Headers.RequestId, request.IdempotencyKey);
+
+        using HttpResponseMessage response = await client.SendAsync(message, cancellationToken);
+
+        if (!response.IsSuccessStatusCode)
+            return Result<PaymentRefundResult>.Success(
+                new PaymentRefundResult(
+                    request.CaptureReference,
+                    request.Amount,
+                    false,
+                    PaymentConstant.Reasons.RefundFailed));
+
+        using JsonDocument body = JsonDocument.Parse(
+            await response.Content.ReadAsStringAsync(cancellationToken));
+
+        return Result<PaymentRefundResult>.Success(new PaymentRefundResult(
+            ReadString(body.RootElement, "id"),
+            request.Amount,
+            true,
+            null));
+    }
 
     /// <inheritdoc />
     public async Task<Result<Maybe<PaymentProviderEvent>>> ParseWebhookAsync(
@@ -238,12 +289,41 @@ public sealed class PayPalPaymentGateway(
             mapped.Value.Reference,
             null,
             null,
-            DateTimeOffset.UtcNow));
+            DateTimeOffset.UtcNow,
+            CaptureReference: mapped.Value.Type is PaymentProviderEventType.Captured
+                ? ReadString(resource, "id")
+                : null));
     }
 
     /// <summary>Reads a string property, tolerating absence.</summary>
     private static string ReadString(JsonElement element, string name)
         => element.TryGetProperty(name, out JsonElement value) ? value.GetString() ?? string.Empty : string.Empty;
+
+    /// <summary>Reads the first capture id from a captured order response.</summary>
+    private static string? ReadCaptureId(JsonElement root, string orderId)
+    {
+        if (!root.TryGetProperty("purchase_units", out JsonElement units) || units.ValueKind is not JsonValueKind.Array)
+            return null;
+
+        foreach (JsonElement unit in units.EnumerateArray())
+        {
+            if (!unit.TryGetProperty("payments", out JsonElement payments)
+                || !payments.TryGetProperty("captures", out JsonElement captures)
+                || captures.ValueKind is not JsonValueKind.Array)
+                continue;
+
+            foreach (JsonElement capture in captures.EnumerateArray())
+            {
+                string id = ReadString(capture, "id");
+
+                if (!string.IsNullOrEmpty(id))
+                    return id;
+            }
+        }
+
+        _ = orderId;
+        return null;
+    }
 
     /// <summary>Reads the related order id from a capture resource.</summary>
     private static string ReadOrderId(JsonElement resource)

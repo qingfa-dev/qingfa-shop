@@ -41,6 +41,7 @@ public sealed record PaymentAuthorized(
 public sealed record PaymentCaptured(
     Guid PaymentId,
     string ProviderReference,
+    string? ProviderCaptureReference,
     Money CapturedAmount,
     Money TotalCapturedAmount,
     string Reason,

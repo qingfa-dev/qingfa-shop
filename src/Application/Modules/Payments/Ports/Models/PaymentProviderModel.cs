@@ -52,7 +52,12 @@ public sealed record PaymentIntentResult(
 public sealed record PaymentCaptureRequest(string ProviderReference, Money Amount, string IdempotencyKey);
 
 /// <summary>A capture result.</summary>
-public sealed record PaymentCaptureResult(string ProviderReference, Money CapturedAmount, bool Succeeded, string? FailureCode);
+public sealed record PaymentCaptureResult(
+    string ProviderReference,
+    Money CapturedAmount,
+    bool Succeeded,
+    string? FailureCode,
+    string? CaptureReference = null);
 
 /// <summary>A void/cancel request.</summary>
 public sealed record PaymentCancelRequest(string ProviderReference, string IdempotencyKey);
@@ -61,7 +66,13 @@ public sealed record PaymentCancelRequest(string ProviderReference, string Idemp
 public sealed record PaymentCancelResult(bool Succeeded, string? FailureCode);
 
 /// <summary>A refund request.</summary>
-public sealed record PaymentRefundRequest(string ProviderReference, Guid RefundId, Money Amount, string IdempotencyKey, string? Reason);
+public sealed record PaymentRefundRequest(
+    string ProviderReference,
+    Guid RefundId,
+    Money Amount,
+    string IdempotencyKey,
+    string? Reason,
+    string? CaptureReference = null);
 
 /// <summary>A refund result.</summary>
 public sealed record PaymentRefundResult(string ProviderReference, Money Amount, bool Succeeded, string? FailureCode);
@@ -73,4 +84,5 @@ public sealed record PaymentProviderEvent(
     string ProviderReference,
     string? RefundReference,
     Money? Amount,
-    DateTimeOffset OccurredAt);
+    DateTimeOffset OccurredAt,
+    string? CaptureReference = null);

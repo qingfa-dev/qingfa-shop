@@ -98,6 +98,7 @@ namespace Infrastructure.Migrations
                     id = table.Column<Guid>(type: "uuid", nullable: false),
                     provider = table.Column<string>(type: "character varying(16)", maxLength: 16, nullable: false),
                     provider_reference = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: true),
+                    provider_capture_reference = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: true),
                     status = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
                     amount = table.Column<decimal>(type: "numeric(19,4)", precision: 19, scale: 4, nullable: false),
                     currency = table.Column<string>(type: "character varying(3)", maxLength: 3, nullable: false),

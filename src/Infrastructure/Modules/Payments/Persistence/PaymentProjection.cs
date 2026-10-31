@@ -60,6 +60,7 @@ public sealed class PaymentProjection(DbContext context, IDomainEventSerializer 
                 await UpdateAsync(captured.PaymentId, row =>
                 {
                     row.ProviderReference = captured.ProviderReference;
+                    row.ProviderCaptureReference = captured.ProviderCaptureReference;
                     row.CapturedAmount = captured.TotalCapturedAmount.Amount;
                     row.Status = row.RefundedAmount > 0
                         ? (row.CapturedAmount > row.RefundedAmount

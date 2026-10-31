@@ -74,6 +74,7 @@ public static class GetPayment
             Id = payment.Id,
             Provider = payment.Provider.ToWire(),
             ProviderReference = payment.ProviderReference,
+            ProviderCaptureReference = payment.ProviderCaptureReference,
             Status = payment.Status.ToWire(),
             Amount = payment.Amount.Amount,
             Currency = payment.Amount.Currency.Code ?? PaymentConstant.Defaults.Currency,

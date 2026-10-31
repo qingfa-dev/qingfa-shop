@@ -66,7 +66,7 @@ public sealed class PayPalPaymentGatewayTest
     }
 
     [Fact]
-    public async Task RefundAsync_ShouldReportPartialUnsupported()
+    public async Task RefundAsync_WithoutCaptureReference_ShouldFail()
     {
         PayPalPaymentGateway gateway = Build(Stub(HttpStatusCode.OK, "{}"));
 
@@ -82,7 +82,7 @@ public sealed class PayPalPaymentGatewayTest
             CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.PartialRefundUnsupported);
+        result.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.ProviderReferenceMissing);
     }
 
     [Fact]

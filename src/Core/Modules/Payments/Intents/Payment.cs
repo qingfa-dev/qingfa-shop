@@ -18,6 +18,9 @@ public sealed class Payment : EventSourcedAggregate<Guid>
     /// <summary>The provider-side intent or order identifier.</summary>
     public string? ProviderReference { get; private set; }
 
+    /// <summary>The provider-side capture identifier, used by providers that refund a capture.</summary>
+    public string? ProviderCaptureReference { get; private set; }
+
     /// <summary>The immutable requested amount.</summary>
     public Money Amount { get; private set; }
 
@@ -138,10 +141,15 @@ public sealed class Payment : EventSourcedAggregate<Guid>
         string providerReference,
         Money? amount,
         string? failureCode,
-        DateTimeOffset nowUtc) => observation switch
+        DateTimeOffset nowUtc,
+        string? providerCaptureReference = null) => observation switch
         {
             PaymentObservation.Authorized => Authorize(providerReference, amount ?? Amount, nowUtc),
-            PaymentObservation.Captured => Capture(amount ?? Amount, providerReference, nowUtc),
+            PaymentObservation.Captured => Capture(
+                amount ?? Amount,
+                providerReference,
+                nowUtc,
+                providerCaptureReference),
             PaymentObservation.Failed => Fail(failureCode ?? PaymentConstant.Reasons.ProviderFailed, null, nowUtc),
             PaymentObservation.Cancelled => Cancel(PaymentConstant.Reasons.ProviderCancelled, nowUtc),
             PaymentObservation.Expired => ApplyProviderExpiry(nowUtc),
@@ -177,7 +185,11 @@ public sealed class Payment : EventSourcedAggregate<Guid>
     }
 
     /// <summary>Captures part or all of the payment.</summary>
-    public Result<Payment> Capture(Money captured, string providerReference, DateTimeOffset nowUtc)
+    public Result<Payment> Capture(
+        Money captured,
+        string providerReference,
+        DateTimeOffset nowUtc,
+        string? providerCaptureReference = null)
     {
         // Validate: A capture is only legal while the payment is in a capturable state.
         if (!CanCapture)
@@ -210,6 +222,7 @@ public sealed class Payment : EventSourcedAggregate<Guid>
         return RaiseEvent(new PaymentCaptured(
             Id,
             providerReference,
+            providerCaptureReference,
             captured,
             new Money(CapturedAmount.Amount + captured.Amount, Amount.Currency),
             reason,
@@ -309,6 +322,7 @@ public sealed class Payment : EventSourcedAggregate<Guid>
 
             case PaymentCaptured captured:
                 ProviderReference = captured.ProviderReference;
+                ProviderCaptureReference = captured.ProviderCaptureReference ?? ProviderCaptureReference;
                 CapturedAmount = captured.TotalCapturedAmount;
                 // Enforce: A partial capture preserves the outstanding authorization amount.
                 if (CapturedAmount.Amount >= Amount.Amount)

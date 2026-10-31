@@ -131,7 +131,8 @@ public static class RefundPayment
                         refundId,
                         command.Request.Amount,
                         $"{PaymentConstant.IdempotencyPrefixes.Refund}{refundId:N}",
-                        command.Request.Reason),
+                        command.Request.Reason,
+                        payment.ProviderCaptureReference),
                     cancellationToken));
 
             return refunded.IsSuccess && refunded.Value.Succeeded

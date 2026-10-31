@@ -101,6 +101,7 @@ public sealed class PaymentProjectionTest
             .Returns(new PaymentCaptured(
                 id,
                 "cap_1",
+                "capture_1",
                 new Money(10m, new Currency("USD")),
                 new Money(10m, new Currency("USD")),
                 PaymentConstant.Reasons.InitialCapture,

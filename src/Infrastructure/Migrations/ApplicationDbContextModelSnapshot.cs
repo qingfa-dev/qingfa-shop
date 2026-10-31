@@ -330,6 +330,11 @@ namespace Infrastructure.Migrations
                         .HasColumnType("character varying(16)")
                         .HasColumnName("provider");
 
+                    b.Property<string>("ProviderCaptureReference")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("provider_capture_reference");
+
                     b.Property<string>("ProviderReference")
                         .HasMaxLength(128)
                         .HasColumnType("character varying(128)")

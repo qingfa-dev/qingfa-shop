@@ -12,7 +12,7 @@ using Npgsql.EntityFrameworkCore.PostgreSQL.Metadata;
 namespace Infrastructure.Migrations
 {
     [DbContext(typeof(ApplicationDbContext))]
-    [Migration("20261031053942_AddPayments")]
+    [Migration("20261031070215_AddPayments")]
     partial class AddPayments
     {
         /// <inheritdoc />
@@ -332,6 +332,11 @@ namespace Infrastructure.Migrations
                         .HasMaxLength(16)
                         .HasColumnType("character varying(16)")
                         .HasColumnName("provider");
+
+                    b.Property<string>("ProviderCaptureReference")
+                        .HasMaxLength(128)
+                        .HasColumnType("character varying(128)")
+                        .HasColumnName("provider_capture_reference");
 
                     b.Property<string>("ProviderReference")
                         .HasMaxLength(128)

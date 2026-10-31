@@ -14,6 +14,9 @@ public sealed class PaymentReadModel
     /// <summary>The provider reference.</summary>
     public string? ProviderReference { get; set; }
 
+    /// <summary>The provider capture reference, used by providers that refund a capture.</summary>
+    public string? ProviderCaptureReference { get; set; }
+
     /// <summary>The lifecycle status.</summary>
     public string Status { get; set; } = string.Empty;
 

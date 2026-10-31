@@ -22,13 +22,15 @@ public static class SettlePayment
     /// <param name="Amount">The observed amount, when the provider reports one.</param>
     /// <param name="FailureCode">The provider failure code, when failed.</param>
     /// <param name="ProviderEventId">The provider event id, used for correlation.</param>
+    /// <param name="CaptureReference">The provider capture id, when the provider reports one.</param>
     public sealed record UseCase(
         PaymentProvider Provider,
         string ProviderReference,
         PaymentProviderEventType Observed,
         Money? Amount,
         string? FailureCode,
-        string ProviderEventId) : ICommand<PaymentResponseModel>;
+        string ProviderEventId,
+        string? CaptureReference = null) : ICommand<PaymentResponseModel>;
 
     #endregion
 
@@ -90,7 +92,8 @@ public static class SettlePayment
                     command.ProviderReference,
                     command.Amount,
                     command.FailureCode,
-                    clock.GetUtcNow()),
+                    clock.GetUtcNow(),
+                    command.CaptureReference),
                 payment);
 
             return await evaluated

@@ -65,15 +65,46 @@ public sealed class PayPalGatewayOperationTest
     }
 
     [Fact]
-    public async Task Capture_Success_ShouldReportSuccess()
+    public async Task Capture_Success_ShouldReportTheCaptureReference()
     {
-        PayPalPaymentGateway gateway = Build("""{"id":"CAP-1","status":"COMPLETED"}""");
+        PayPalPaymentGateway gateway = Build("""
+            {"id":"ORDER-1","status":"COMPLETED",
+             "purchase_units":[{"payments":{"captures":[{"id":"CAP-1","status":"COMPLETED"}]}}]}
+            """);
 
         var result = await gateway.CaptureAsync(
             new PaymentCaptureRequest("ORDER-1", Usd(10m), "capture:1"), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Succeeded.Should().BeTrue();
+        result.Value.CaptureReference.Should().Be("CAP-1");
+    }
+
+    [Fact]
+    public async Task Refund_ShouldTargetTheCapture()
+    {
+        PayPalPaymentGateway gateway = Build("""{"id":"REFUND-1","status":"COMPLETED"}""", capture: "/v2/payments/captures/CAP-1/refund");
+
+        var result = await gateway.RefundAsync(
+            new PaymentRefundRequest("ORDER-1", Guid.NewGuid(), Usd(10m), "refund:1", "returned", "CAP-1"),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Succeeded.Should().BeTrue();
+        result.Value.ProviderReference.Should().Be("REFUND-1");
+    }
+
+    [Fact]
+    public async Task Refund_WithoutCaptureReference_ShouldFail()
+    {
+        PayPalPaymentGateway gateway = Build("{}");
+
+        var result = await gateway.RefundAsync(
+            new PaymentRefundRequest("ORDER-1", Guid.NewGuid(), Usd(10m), "refund:1", "returned"),
+            CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.ProviderReferenceMissing);
     }
 
     [Fact]
@@ -112,9 +143,16 @@ public sealed class PayPalGatewayOperationTest
     }
 
     /// <summary>Builds an adapter whose token and order calls are stubbed.</summary>
-    private static PayPalPaymentGateway Build(string json, HttpStatusCode status = HttpStatusCode.OK)
+    private static PayPalPaymentGateway Build(
+        string json,
+        HttpStatusCode status = HttpStatusCode.OK,
+        string? capture = null)
     {
-        var client = new HttpClient(new StubHandler(json, status)) { BaseAddress = new Uri(Options.BaseAddress) };
+        var client = new HttpClient(new StubHandler(json, status, capture))
+        {
+            BaseAddress = new Uri(Options.BaseAddress)
+        };
+
         return new PayPalPaymentGateway(client, new PayPalTokenProvider(client, Options), Options);
     }
 
@@ -132,7 +170,7 @@ public sealed class PayPalGatewayOperationTest
         new Dictionary<string, string>());
 
     /// <summary>Answers the token request with a fixed token and everything else with the stub.</summary>
-    private sealed class StubHandler(string json, HttpStatusCode status) : HttpMessageHandler
+    private sealed class StubHandler(string json, HttpStatusCode status, string? capture = null) : HttpMessageHandler
     {
         /// <inheritdoc />
         protected override Task<HttpResponseMessage> SendAsync(
@@ -140,6 +178,10 @@ public sealed class PayPalGatewayOperationTest
             CancellationToken cancellationToken)
         {
             bool isToken = request.RequestUri!.AbsolutePath.EndsWith("v1/oauth2/token", StringComparison.Ordinal);
+
+            if (!isToken && capture is not null
+                && !request.RequestUri!.AbsolutePath.EndsWith(capture, StringComparison.Ordinal))
+                return Task.FromResult(new HttpResponseMessage(HttpStatusCode.NotFound));
 
             return Task.FromResult(isToken
                 ? new HttpResponseMessage(HttpStatusCode.OK)

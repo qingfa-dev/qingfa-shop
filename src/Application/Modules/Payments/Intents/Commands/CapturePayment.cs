@@ -99,7 +99,11 @@ public static class CapturePayment
             CancellationToken cancellationToken)
         {
             if (result.Succeeded)
-                return payment.Capture(amount, result.ProviderReference, clock.GetUtcNow());
+                return payment.Capture(
+                    amount,
+                    result.ProviderReference,
+                    clock.GetUtcNow(),
+                    result.CaptureReference);
 
             Result<Payment> failed = payment.CaptureFailed(
                 amount,

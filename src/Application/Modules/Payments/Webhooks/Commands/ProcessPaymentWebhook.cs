@@ -123,7 +123,8 @@ public static class ProcessPaymentWebhook
                     providerEvent.Type,
                     providerEvent.Amount,
                     null,
-                    providerEvent.EventId),
+                    providerEvent.EventId,
+                    providerEvent.CaptureReference),
                 cancellationToken);
 
             await webhookStore.MarkProcessedAsync(
