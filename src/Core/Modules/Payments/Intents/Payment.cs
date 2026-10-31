@@ -103,8 +103,11 @@ public sealed class Payment : EventSourcedAggregate<Guid>
             RefundedAmount = new Money(0, amount.Currency)
         };
 
-    /// <summary>The remaining amount that can still be refunded.</summary>
-    public decimal CreditAllowed => CapturedAmount.Amount - RefundedAmount.Amount;
+    /// <summary>The remaining amount that can still be refunded; pending refunds reserve credit until they settle.</summary>
+    public decimal CreditAllowed => CapturedAmount.Amount
+        - RefundedAmount.Amount
+        - _refunds.Where(refund => refund.Status is RefundStatus.Pending)
+            .Sum(refund => refund.Amount.Amount);
 
     /// <summary>The remaining amount that can still be captured.</summary>
     public decimal RemainingCapturable => Math.Max(0m, Amount.Amount - CapturedAmount.Amount);

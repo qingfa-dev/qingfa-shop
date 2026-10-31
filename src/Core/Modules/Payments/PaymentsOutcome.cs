@@ -22,7 +22,7 @@ public static class PaymentsOutcome
         /// <summary>The requested transition is not allowed from the current state.</summary>
         public static Error InvalidState(PaymentStatus status, string operation) => Error.Conflict(
             code: Codes.InvalidState,
-            message: $"A payment cannot {operation} while it is '{status}'.");
+            message: $"A payment cannot {operation} while it is '{status.ToWire()}'.");
 
         /// <summary>The amount or currency is invalid.</summary>
         public static Error AmountInvalid(string reason) => Error.BadRequest(

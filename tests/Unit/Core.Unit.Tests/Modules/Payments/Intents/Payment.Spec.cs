@@ -39,8 +39,9 @@ public sealed class PaymentSpec
         payment.Capture(Usd(49.90m), "cap_1", Now);
 
         Guid refundId = Guid.NewGuid();
-        payment.RequestRefund(refundId, Usd(49.90m), "damaged", "rk-1", Now);
-        payment.CompleteRefund(refundId, "re_1", Now);
+        payment.RequestRefund(refundId, Usd(49.90m), "damaged", "rk-1", Now)
+            .IsSuccess.Should().BeTrue();
+        payment.CompleteRefund(refundId, "re_1", Now).IsSuccess.Should().BeTrue();
         return payment;
     }
 

@@ -36,6 +36,21 @@ public sealed class RefundSpec
     }
 
     [Fact]
+    public void RequestRefund_SecondPendingOverRemainingCredit_ShouldFail()
+    {
+        Payment payment = Captured();
+        payment.RequestRefund(Guid.NewGuid(), Usd(30m), "damaged", "rk-1", Now)
+            .IsSuccess.Should().BeTrue();
+
+        var result = payment.RequestRefund(Guid.NewGuid(), Usd(21m), "damaged", "rk-2", Now);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.RefundExceedsCredit);
+        payment.Refunds.Should().ContainSingle();
+        payment.CreditAllowed.Should().Be(20m);
+    }
+
+    [Fact]
     public void CompleteRefund_FullAmount_ShouldMarkRefunded()
     {
         Payment payment = Captured();
@@ -134,5 +149,93 @@ public sealed class RefundSpec
 
         result.IsFailure.Should().BeTrue();
         result.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.RefundNotCaptured);
+    }
+
+    [Fact]
+    public void CompleteRefund_Twice_ShouldNotDoubleCount()
+    {
+        Payment payment = Captured();
+        Guid refundId = Guid.NewGuid();
+        payment.RequestRefund(refundId, Usd(20m), "damaged", "rk-1", Now);
+        payment.CompleteRefund(refundId, "re_1", Now);
+
+        var second = payment.CompleteRefund(refundId, "re_2", Now);
+
+        second.IsFailure.Should().BeTrue();
+        second.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.RefundAlreadySettled);
+        payment.RefundedAmount.Amount.Should().Be(20m);
+        payment.Refunds.Single().ProviderReference.Should().Be("re_1");
+        payment.UncommittedEvents.OfType<RefundSucceeded>().Should().ContainSingle();
+    }
+
+    [Fact]
+    public void CompleteRefund_OnFailedRefund_ShouldFail()
+    {
+        Payment payment = Captured();
+        Guid refundId = Guid.NewGuid();
+        payment.RequestRefund(refundId, Usd(10m), "damaged", "rk-1", Now);
+        payment.FailRefund(refundId, "refund_declined", "declined", Now);
+
+        var result = payment.CompleteRefund(refundId, "re_1", Now);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.RefundAlreadySettled);
+        payment.RefundedAmount.Amount.Should().Be(0m);
+        payment.Refunds.Single().Status.Should().Be(RefundStatus.Failed);
+    }
+
+    [Fact]
+    public void FailRefund_UnknownId_ShouldFail()
+    {
+        Payment payment = Captured();
+
+        var result = payment.FailRefund(Guid.NewGuid(), "refund_declined", "declined", Now);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.RefundNotFound);
+        payment.UncommittedEvents.OfType<RefundFailed>().Should().BeEmpty();
+    }
+
+    [Fact]
+    public void FailRefund_OnSucceededRefund_ShouldFail()
+    {
+        Payment payment = Captured();
+        Guid refundId = Guid.NewGuid();
+        payment.RequestRefund(refundId, Usd(10m), "damaged", "rk-1", Now);
+        payment.CompleteRefund(refundId, "re_1", Now);
+
+        var result = payment.FailRefund(refundId, "refund_declined", "declined", Now);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.RefundAlreadySettled);
+        payment.Refunds.Single().Status.Should().Be(RefundStatus.Succeeded);
+    }
+
+    [Fact]
+    public void RequestRefund_SameIdAfterSettlement_ShouldReturnExistingRefund()
+    {
+        Payment payment = Captured();
+        Guid refundId = Guid.NewGuid();
+        payment.RequestRefund(refundId, Usd(50m), "damaged", "rk-1", Now);
+        payment.CompleteRefund(refundId, "re_1", Now);
+
+        var replay = payment.RequestRefund(refundId, Usd(50m), "damaged", "rk-1", Now);
+
+        replay.IsSuccess.Should().BeTrue();
+        replay.Value.Refunds.Should().ContainSingle();
+        replay.Value.Refunds.Single().Status.Should().Be(RefundStatus.Succeeded);
+        replay.Value.Status.Should().Be(PaymentStatus.Refunded);
+    }
+
+    [Fact]
+    public void RequestRefund_CurrencyMismatch_ShouldFail()
+    {
+        Payment payment = Captured();
+
+        var result = payment.RequestRefund(
+            Guid.NewGuid(), new Money(10m, new Currency("EUR")), "damaged", "rk-eur", Now);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.CurrencyMismatch);
     }
 }

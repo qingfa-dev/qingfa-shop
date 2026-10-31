@@ -17,14 +17,20 @@ public static class PaymentRefundExtension
     {
         ArgumentNullException.ThrowIfNull(payment);
 
+        // Handle: A replayed refund id returns the existing refund, even after settlement.
+        Refund? existing = payment.Refunds.FirstOrDefault(refund => refund.Id == refundId);
+        if (existing is not null)
+            return Result<Payment>.Success(payment);
+
         if (payment.Status is not (PaymentStatus.Captured or PaymentStatus.PartiallyRefunded))
             return Result<Payment>.Fail(PaymentsOutcome.Failure.RefundNotCaptured(payment.Status));
 
-        if (payment.Refunds.Any(refund => refund.Id == refundId))
-            return Result<Payment>.Success(payment);
-
-        if (amount.Amount <= 0 || amount.Currency != payment.Amount.Currency)
+        if (amount.Amount <= 0)
             return Result<Payment>.Fail(PaymentsOutcome.Failure.AmountInvalid("refund amount is out of range"));
+
+        if (amount.Currency != payment.Amount.Currency)
+            return Result<Payment>.Fail(PaymentsOutcome.Failure.CurrencyMismatch(
+                payment.Amount.Currency.Code ?? string.Empty, amount.Currency.Code ?? string.Empty));
 
         if (amount.Amount > payment.CreditAllowed)
             return Result<Payment>.Fail(
@@ -47,8 +53,9 @@ public static class PaymentRefundExtension
         if (refund is null)
             return Result<Payment>.Fail(PaymentsOutcome.Failure.RefundNotFound(refundId));
 
-        if (refund.Status is RefundStatus.Succeeded)
-            return Result<Payment>.Success(payment);
+        // Enforce: Only a pending refund can be confirmed; a terminal refund never re-applies.
+        if (refund.Status is not RefundStatus.Pending)
+            return Result<Payment>.Fail(PaymentsOutcome.Failure.RefundAlreadySettled(refundId));
 
         return payment.RaiseEvent(new RefundSucceeded(
             refundId, payment.Id, refund.Amount, providerReference, nowUtc));
@@ -63,6 +70,14 @@ public static class PaymentRefundExtension
         DateTimeOffset nowUtc)
     {
         ArgumentNullException.ThrowIfNull(payment);
+
+        Refund? refund = payment.Refunds.FirstOrDefault(item => item.Id == refundId);
+        if (refund is null)
+            return Result<Payment>.Fail(PaymentsOutcome.Failure.RefundNotFound(refundId));
+
+        // Enforce: A settled refund cannot be failed.
+        if (refund.Status is not RefundStatus.Pending)
+            return Result<Payment>.Fail(PaymentsOutcome.Failure.RefundAlreadySettled(refundId));
 
         return payment.RaiseEvent(new RefundFailed(
             refundId, payment.Id, failureCode, failureMessage, nowUtc));
