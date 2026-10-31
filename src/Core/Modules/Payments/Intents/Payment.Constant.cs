@@ -14,6 +14,9 @@ public static class PaymentConstant
 
         /// <summary>Failure code length.</summary>
         public const int FailureCodeMaxLength = 64;
+
+        /// <summary>Refund reason length.</summary>
+        public const int ReasonMaxLength = 256;
     }
 
     /// <summary>HTTP header names used by the module.</summary>
@@ -71,6 +74,9 @@ public static class PaymentConstant
 
         /// <summary>The provider rejected a capture without a code.</summary>
         public const string CaptureFailed = "capture_failed";
+
+        /// <summary>The provider rejected a refund without a code.</summary>
+        public const string RefundFailed = "refund_failed";
     }
 
     /// <summary>Canonical webhook processing outcomes.</summary>

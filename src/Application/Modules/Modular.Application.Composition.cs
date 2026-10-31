@@ -1,6 +1,7 @@
 using Application.BuildingBlocks.Persistence;
 using Application.BuildingBlocks.Security.Authorization.Registry;
 using Application.Modules.PermissionCatalog;
+using Application.Modules.Payments.Permissions;
 using Application.Modules.Persistence;
 using Application.Modules.Todos.Persistence;
 using Application.Modules.Todos.Permissions;
@@ -31,6 +32,11 @@ public static class ModularApplicationComposition
         builder.Services.AddSingleton<IPersistenceSchemaCatalogContributor>(
             provider => provider.GetRequiredService<TodoPersistenceSchemaCatalog>());
         builder.Services.AddSingleton<IPersistenceSchemaCatalog, ApplicationPersistenceSchemaCatalog>();
+
+        // Register: Payments contributes its permissions to the composite catalog.
+        builder.Services.AddSingleton<PaymentPermissionCatalog>();
+        builder.Services.AddSingleton<IPermissionCatalogContributor>(
+            provider => provider.GetRequiredService<PaymentPermissionCatalog>());
 
         return builder;
     }
