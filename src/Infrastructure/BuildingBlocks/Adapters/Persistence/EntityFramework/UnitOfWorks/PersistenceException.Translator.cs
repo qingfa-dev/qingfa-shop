@@ -31,7 +31,7 @@ internal enum PersistenceFailureKind
 /// <summary>
 /// A classified persistence failure. <paramref name="Detail"/> carries the constraint,
 /// column, or provider message when the category has one. The exception type and message
-/// travel with the failure so <see cref="PersistenceOutcome"/> can attach them as metadata.
+/// travel with the failure so <see cref="PersistenceFailureMapper"/> can attach them as metadata.
 /// </summary>
 internal readonly record struct PersistenceFailure(
     PersistenceFailureKind Kind,
@@ -41,7 +41,7 @@ internal readonly record struct PersistenceFailure(
 
 /// <summary>
 /// Single place that maps EF Core / Npgsql exceptions to a provider-neutral failure category.
-/// Callers materialize the category through <see cref="PersistenceOutcome"/>, which resolves
+/// Callers materialize the category through <see cref="PersistenceFailureMapper"/>, which resolves
 /// each category to its owning outcome type.
 /// </summary>
 internal static class PersistenceExceptionTranslator
