@@ -1,5 +1,8 @@
 # Roadmap → Repository Implementation Audit
 
+> **Superseded by [`roadmap-implementation-audit.pro.md`](roadmap-implementation-audit.pro.md) (v2.0).**
+> This v1.0 remains for history. v2.0 was produced by four independent clean-context subagent audits plus a parent verification pass, and corrects five material findings (notably notification runtime wiring and Payments outbox scope).
+
 **Audit date:** 2026-10-31
 **Repository:** `QingFa.Shop`
 **Scope:** the 14-week roadmap, its 11-branch taxonomy, and milestones A–H, mapped onto the code that actually exists in `src/`, `app/`, `tests/`, `scripts/`, `make/`, and `guide/`.
