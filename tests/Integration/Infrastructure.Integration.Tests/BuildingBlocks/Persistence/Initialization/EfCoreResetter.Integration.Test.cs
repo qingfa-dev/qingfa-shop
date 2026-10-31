@@ -68,7 +68,7 @@ public sealed class EfCoreResetterIntegrationTest(PersistenceInitializationFixtu
         result.IsSuccess.Should().BeTrue();
         (await _fixture.TableExistsAsync("todos")).Should().BeTrue();
         (await _fixture.TableExistsAsync("public.__EFMigrationsHistory")).Should().BeTrue();
-        (await _fixture.CountRowsAsync("public.__EFMigrationsHistory")).Should().Be(1);
+        (await _fixture.CountRowsAsync("public.__EFMigrationsHistory")).Should().Be(2);
     }
 
     [Fact(DisplayName = "DataOnly reset should honor explicit targets")]
@@ -194,7 +194,7 @@ public sealed class EfCoreResetterIntegrationTest(PersistenceInitializationFixtu
         // Assert
         (await _fixture.TableExistsAsync("todos")).Should().BeTrue();
         (await _fixture.CountRowsAsync("todos")).Should().Be(0);
-        (await _fixture.CountRowsAsync("public.__EFMigrationsHistory")).Should().Be(1);
+        (await _fixture.CountRowsAsync("public.__EFMigrationsHistory")).Should().Be(2);
     }
 
     [Fact(DisplayName = "SchemaOnly reset should be idempotent")]
@@ -243,7 +243,7 @@ public sealed class EfCoreResetterIntegrationTest(PersistenceInitializationFixtu
         // Assert
         (await _fixture.CanConnectAsync()).Should().BeTrue();
         (await _fixture.TableExistsAsync("todos")).Should().BeTrue();
-        (await _fixture.CountRowsAsync("public.__EFMigrationsHistory")).Should().Be(1);
+        (await _fixture.CountRowsAsync("public.__EFMigrationsHistory")).Should().Be(2);
     }
 
     [Fact(DisplayName = "Resetter should expose explicit targets")]

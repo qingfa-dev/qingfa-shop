@@ -4,6 +4,8 @@ using Application.BuildingBlocks.Persistence;
 using Application.BuildingBlocks.Persistence.Initialization;
 using Application.BuildingBlocks.Persistence.UnitOfWorks;
 using Application.BuildingBlocks.Security.Authorization.Registry;
+using Application.Modules.Payments.Persistence;
+using Application.Modules.Payments.Permissions;
 using Application.Modules.Persistence;
 using Application.Modules.PermissionCatalog;
 using Application.Modules.Todos.Persistence;
@@ -88,6 +90,15 @@ public sealed class PersistenceInitializationFixture : IAsyncLifetime
             provider => provider.GetRequiredService<TodoPersistenceSchemaCatalog>());
         services.AddSingleton<IPersistenceSchemaCatalog>(
             provider => provider.GetRequiredService<TodoPersistenceSchemaCatalog>());
+        services.AddSingleton<PaymentPermissionCatalog>();
+        services.AddSingleton<IPermissionCatalogContributor>(
+            provider => provider.GetRequiredService<PaymentPermissionCatalog>());
+        services.AddSingleton<PaymentPersistenceSchemaCatalog>();
+        services.AddSingleton<IPersistenceSchemaCatalogContributor>(
+            provider => provider.GetRequiredService<PaymentPersistenceSchemaCatalog>());
+        services.AddSingleton<IPersistenceSchemaCatalog>(
+            provider => provider.GetRequiredService<PaymentPersistenceSchemaCatalog>());
+
         services.AddSingleton<IPersistenceSchemaCatalog, ApplicationPersistenceSchemaCatalog>();
 
         // Register: the persistence initializer and module seeders through the same

@@ -23,6 +23,9 @@ public sealed class EfCoreMigratorIntegrationTest(PersistenceInitializationFixtu
 {
     private readonly PersistenceInitializationFixture _fixture = fixture;
 
+    /// <summary>The number of migrations the persistence assembly ships.</summary>
+    private const int MigrationCount = 2;
+
     /// <inheritdoc />
     public async ValueTask InitializeAsync()
     {
@@ -45,7 +48,7 @@ public sealed class EfCoreMigratorIntegrationTest(PersistenceInitializationFixtu
         (await _fixture.TableExistsAsync("public.__EFMigrationsHistory")).Should().BeTrue();
         (await _fixture.TableExistsAsync("messaging.outbox_messages")).Should().BeTrue();
         (await _fixture.TableExistsAsync("messaging.inbox_messages")).Should().BeTrue();
-        (await _fixture.CountRowsAsync("public.__EFMigrationsHistory")).Should().Be(1);
+        (await _fixture.CountRowsAsync("public.__EFMigrationsHistory")).Should().Be(MigrationCount);
     }
 
     [Fact(DisplayName = "MigrateAsync should record the InitialCreate migration")]
@@ -127,7 +130,7 @@ public sealed class EfCoreMigratorIntegrationTest(PersistenceInitializationFixtu
         await _fixture.MigrateAsync();
 
         // Assert
-        (await _fixture.CountRowsAsync("public.__EFMigrationsHistory")).Should().Be(1);
+        (await _fixture.CountRowsAsync("public.__EFMigrationsHistory")).Should().Be(MigrationCount);
     }
 
     [Fact(DisplayName = "ExecuteAsync should move a legacy migration history into the default schema")]
@@ -150,7 +153,7 @@ public sealed class EfCoreMigratorIntegrationTest(PersistenceInitializationFixtu
         result.IsSuccess.Should().BeTrue();
         (await _fixture.TableExistsAsync("legacy_history.__EFMigrationsHistory")).Should().BeFalse();
         (await _fixture.TableExistsAsync("public.__EFMigrationsHistory")).Should().BeTrue();
-        (await _fixture.CountRowsAsync("public.__EFMigrationsHistory")).Should().Be(1);
+        (await _fixture.CountRowsAsync("public.__EFMigrationsHistory")).Should().Be(MigrationCount);
     }
 
     [Fact(DisplayName = "ExecuteAsync should keep a legacy history when the target table exists")]
@@ -172,7 +175,7 @@ public sealed class EfCoreMigratorIntegrationTest(PersistenceInitializationFixtu
         // Assert
         result.IsSuccess.Should().BeTrue();
         (await _fixture.TableExistsAsync("legacy_history.__EFMigrationsHistory")).Should().BeTrue();
-        (await _fixture.CountRowsAsync("public.__EFMigrationsHistory")).Should().Be(1);
+        (await _fixture.CountRowsAsync("public.__EFMigrationsHistory")).Should().Be(MigrationCount);
     }
 
     private static string MoveHistoryToLegacySchemaSql() => """
@@ -202,8 +205,8 @@ public sealed class EfCoreMigratorIntegrationTest(PersistenceInitializationFixtu
         var pending = await context.Database.GetPendingMigrationsAsync();
 
         // Assert
-        pending.Should().ContainSingle();
-        pending.Single().EndsWith("_InitialCreate", StringComparison.Ordinal).Should().BeTrue();
+        pending.Should().HaveCount(MigrationCount);
+        pending.Should().Contain(id => id.EndsWith("_InitialCreate", StringComparison.Ordinal));
     }
 
     [Fact(DisplayName = "GetPendingMigrationsAsync should be empty after migrating")]
@@ -272,12 +275,12 @@ public sealed class EfCoreMigratorIntegrationTest(PersistenceInitializationFixtu
 
         // Assert
         result.IsSuccess.Should().BeTrue();
-        result.Value.Should().ContainSingle();
+        result.Value.Should().HaveCount(MigrationCount);
         result.Value.Should().OnlyContain(operation =>
             operation.Type == InitializationOperationType.SchemaChange);
         result.Value[0].Description.Should().Contain("InitialCreate");
         result.Value[0].CommandText.Should().EndWith("_InitialCreate");
-        result.Value[^1].CommandText.Should().EndWith("_InitialCreate");
+        result.Value[^1].CommandText.Should().EndWith("_AddPayments");
     }
 
     [Fact(DisplayName = "EfCoreMigrator PreviewAsync should report an up-to-date schema")]
@@ -312,7 +315,8 @@ public sealed class EfCoreMigratorIntegrationTest(PersistenceInitializationFixtu
         var migrator = new EfCoreMigrator<ApplicationDbContext>(context, logger);
 
         // Assert
-        migrator.Version.Should().EndWith("_InitialCreate");
+        string latest = context.Database.GetMigrations().Last();
+        migrator.Version.Should().Be(latest);
     }
 
     private static EfCoreInitializationContext CreateInitializationContext(
