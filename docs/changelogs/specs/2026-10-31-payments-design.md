@@ -307,8 +307,11 @@ Provider observations are mapped onto the aggregate; handlers never switch on pr
 | `RefundSucceeded` | refundId, paymentId, amount, providerReference |
 | `RefundFailed` | refundId, paymentId, failureCode, failureMessage |
 
-Integration events (outbox, published after commit): `PaymentCapturedIntegration`,
-`PaymentRefundedIntegration`. They are consumed only for notification; they do not mutate state.
+Integration events (outbox, published after commit): `PaymentCapturedIntegration`
+(`payment.captured`), `PaymentRefundedIntegration` (`payment.refunded`), and
+`PaymentFailedIntegration` (`payment.failed`). They are consumed only for notification; they do not
+mutate state. The consumer records the delivery through the inbox and currently performs no effect —
+it is the seam a mail or webhook notifier plugs into.
 
 ## 8. Ports and adapters
 

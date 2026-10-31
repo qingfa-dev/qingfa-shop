@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 using Application.Modules.Payments.Events;
 
 using Core.Modules.Payments.Intents;
@@ -13,6 +15,11 @@ using Wolverine.RabbitMQ.Internal;
 namespace Infrastructure.Modules.Payments.Integrations.Messaging;
 
 /// <summary>Contributes the payment exchange, queue, and handler topology.</summary>
+/// <remarks>
+/// The exchange and queue wiring only runs against a live broker, so the RabbitMQ topology is covered
+/// by the broker suite (<c>make test.infra.broker</c>) rather than the unit-coverage gate.
+/// </remarks>
+[ExcludeFromCodeCoverage]
 public sealed class PaymentMessagingModule : IMessagingModule
 {
     /// <inheritdoc />
