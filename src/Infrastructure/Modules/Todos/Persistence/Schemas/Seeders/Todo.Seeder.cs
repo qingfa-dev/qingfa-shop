@@ -1,5 +1,6 @@
 using System.Data;
 
+using Application.BuildingBlocks.Persistence;
 using Application.BuildingBlocks.Persistence.Initialization;
 using Application.BuildingBlocks.Persistence.Initialization.Seeders;
 
@@ -13,16 +14,16 @@ namespace Infrastructure.Modules.Todos.Persistence.Schemas.Seeders;
 public sealed class TodoSeeder : IPersistenceSeeder<Todo, Guid>
 {
     /// <inheritdoc />
-    public string Name => "seeder:todos";
+    public string Name => TodoSeederConstant.Names.Todos;
 
     /// <inheritdoc />
     public string DisplayName => "Seed Todo Items";
 
     /// <inheritdoc />
-    public int Order => 30;
+    public int Order => TodoSeederConstant.Order.Todos;
 
     /// <inheritdoc />
-    public string[] DependsOn => ["seeder:todo-categories", "seeder:todo-lists"];
+    public string[] DependsOn => [TodoSeederConstant.Names.Categories, TodoSeederConstant.Names.Lists];
 
     /// <inheritdoc />
     public bool IsRequired => false;
@@ -84,7 +85,7 @@ public sealed class TodoSeeder : IPersistenceSeeder<Todo, Guid>
             command.Parameters.Add(CreateParam(command, "@tenant_id", DefaultTenantId));
             command.Parameters.Add(CreateParam(command, "@metadata", "{}"));
             command.Parameters.Add(CreateParam(command, "@version", 0L));
-            command.CommandTimeout = 30;
+            command.CommandTimeout = PersistenceConstant.Commands.TimeoutSeconds;
 
             command.ExecuteNonQuery();
             inserted++;
@@ -145,7 +146,7 @@ public sealed class TodoSeeder : IPersistenceSeeder<Todo, Guid>
         // Query: Count existing todos using raw SQL.
         using var command = context.Connection.CreateCommand();
         command.CommandText = $"SELECT COUNT(*) FROM {TodoTable.Todos}";
-        command.CommandTimeout = 30;
+        command.CommandTimeout = PersistenceConstant.Commands.TimeoutSeconds;
 
         var result = command.ExecuteScalar();
         return Convert.ToInt32(result);
@@ -161,7 +162,7 @@ public sealed class TodoSeeder : IPersistenceSeeder<Todo, Guid>
         // Query: Get the first category ID.
         using var catCommand = context.Connection.CreateCommand();
         catCommand.CommandText = $"SELECT id FROM {TodoTable.Categories} LIMIT 1";
-        catCommand.CommandTimeout = 30;
+        catCommand.CommandTimeout = PersistenceConstant.Commands.TimeoutSeconds;
         var catResult = catCommand.ExecuteScalar();
         var categoryId = catResult != null && catResult != DBNull.Value
             ? new Guid(catResult.ToString()!)
@@ -170,7 +171,7 @@ public sealed class TodoSeeder : IPersistenceSeeder<Todo, Guid>
         // Query: Get the first list ID.
         using var listCommand = context.Connection.CreateCommand();
         listCommand.CommandText = $"SELECT id FROM {TodoTable.Lists} LIMIT 1";
-        listCommand.CommandTimeout = 30;
+        listCommand.CommandTimeout = PersistenceConstant.Commands.TimeoutSeconds;
         var listResult = listCommand.ExecuteScalar();
         var listId = listResult != null && listResult != DBNull.Value
             ? new Guid(listResult.ToString()!)

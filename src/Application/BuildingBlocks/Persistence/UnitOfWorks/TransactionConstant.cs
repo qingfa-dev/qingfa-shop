@@ -7,7 +7,7 @@ public static class TransactionConstant
     public static class Limits
     {
         /// <summary>Default command timeout in seconds when not explicitly configured.</summary>
-        public const int DefaultCommandTimeoutSeconds = 30;
+        public const int DefaultCommandTimeoutSeconds = PersistenceConstant.Commands.TimeoutSeconds;
 
         /// <summary>Maximum command timeout in seconds a caller may request.</summary>
         public const int MaxCommandTimeoutSeconds = 300;

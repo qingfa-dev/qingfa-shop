@@ -1,6 +1,6 @@
-
 using System.Data;
 
+using Application.BuildingBlocks.Persistence;
 using Application.BuildingBlocks.Persistence.Initialization;
 using Application.BuildingBlocks.Persistence.Initialization.Seeders;
 
@@ -16,13 +16,13 @@ namespace Infrastructure.Modules.Todos.Persistence.Schemas.Seeders;
 public sealed class TodoListSeeder : IPersistenceSeeder<TodoList, Guid>
 {
     /// <inheritdoc />
-    public string Name => "seeder:todo-lists";
+    public string Name => TodoSeederConstant.Names.Lists;
 
     /// <inheritdoc />
     public string DisplayName => "Seed Todo Lists";
 
     /// <inheritdoc />
-    public int Order => 20;
+    public int Order => TodoSeederConstant.Order.Lists;
 
     /// <inheritdoc />
     public string[] DependsOn => [];
@@ -85,7 +85,7 @@ public sealed class TodoListSeeder : IPersistenceSeeder<TodoList, Guid>
             command.Parameters.Add(CreateParam(command, "@tenant_id", DefaultTenantId));
             command.Parameters.Add(CreateParam(command, "@metadata", "{}"));
             command.Parameters.Add(CreateParam(command, "@version", 0L));
-            command.CommandTimeout = 30;
+            command.CommandTimeout = PersistenceConstant.Commands.TimeoutSeconds;
 
             command.ExecuteNonQuery();
             inserted++;
@@ -142,7 +142,7 @@ public sealed class TodoListSeeder : IPersistenceSeeder<TodoList, Guid>
         // Query: Count existing lists using raw SQL.
         using var command = context.Connection.CreateCommand();
         command.CommandText = $"SELECT COUNT(*) FROM {TodoTable.Lists}";
-        command.CommandTimeout = 30;
+        command.CommandTimeout = PersistenceConstant.Commands.TimeoutSeconds;
 
         var result = command.ExecuteScalar();
         return Convert.ToInt32(result);

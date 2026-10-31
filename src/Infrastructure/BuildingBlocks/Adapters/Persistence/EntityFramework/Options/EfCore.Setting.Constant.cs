@@ -1,3 +1,5 @@
+using Application.BuildingBlocks.Persistence;
+
 namespace Infrastructure.BuildingBlocks.Adapters.Persistence.EntityFramework.Options;
 
 /// <summary>Constants for EF Core persistence configuration: defaults, limits, and constraints.</summary>
@@ -13,7 +15,7 @@ public static class PersistenceConstants
         public const string Provider = "PostgreSQL";
 
         /// <summary>Default command timeout in seconds.</summary>
-        public const int CommandTimeoutSeconds = 30;
+        public const int CommandTimeoutSeconds = PersistenceConstant.Commands.TimeoutSeconds;
 
         /// <summary>Default maximum retry attempts for transient failures.</summary>
         public const int MaxRetryAttempts = 3;

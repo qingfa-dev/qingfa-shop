@@ -18,6 +18,11 @@ public static class HttpConstant
         public const int TimeoutSecondsMin = 0;
     }
 
+    public static class Headers
+    {
+        public const string CorrelationId = "X-Correlation-Id";
+    }
+
     public static class Patterns
     {
     }

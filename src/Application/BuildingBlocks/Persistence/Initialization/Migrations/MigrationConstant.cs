@@ -3,6 +3,13 @@ namespace Application.BuildingBlocks.Persistence.Initialization.Migrations;
 /// <summary>Constants for migration operations.</summary>
 public static class MigrationConstant
 {
+    /// <summary>Default registration names.</summary>
+    public static class Names
+    {
+        /// <summary>Default EF Core migrator name.</summary>
+        public const string Default = "migrator:efcore";
+    }
+
     /// <summary>Hard limits for migrations.</summary>
     public static class Limits
     {
@@ -14,6 +21,12 @@ public static class MigrationConstant
 
         /// <summary>Maximum length of a migration name.</summary>
         public const int MaxNameLength = 256;
+
+        /// <summary>Base delay, in milliseconds, for the retry backoff.</summary>
+        public const int RetryBaseDelayMs = 1000;
+
+        /// <summary>Upper bound, in milliseconds, for the retry backoff.</summary>
+        public const int RetryMaxDelayMs = 10_000;
     }
 
     /// <summary>Migration history table constants.</summary>

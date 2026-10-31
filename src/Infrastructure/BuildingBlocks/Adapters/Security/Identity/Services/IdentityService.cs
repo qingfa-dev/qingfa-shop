@@ -555,7 +555,7 @@ public sealed class IdentityService(
         if (string.IsNullOrWhiteSpace(key) || string.IsNullOrWhiteSpace(user.Email))
             return null;
 
-        string issuer = "QingFa.Shop";
+        string issuer = IdentityConstant.Defaults.Issuer;
         return $"otpauth://totp/{Uri.EscapeDataString(issuer)}:{Uri.EscapeDataString(user.Email)}" +
             $"?secret={Uri.EscapeDataString(key)}&issuer={Uri.EscapeDataString(issuer)}&digits=6";
     }

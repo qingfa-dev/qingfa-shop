@@ -81,7 +81,7 @@ public sealed partial class StorageService(
             {
                 string hash = await HashHelper.ComputeHashAsync(content, ct);
                 pipelineMetadata ??= [];
-                pipelineMetadata["content-hash"] = hash;
+                pipelineMetadata[StoragePipelineConstant.MetadataKeys.ContentHash] = hash;
                 Loggers.LogHashComputed(logger, request.Key, hash);
             }
             catch (Exception ex)
@@ -121,8 +121,8 @@ public sealed partial class StorageService(
                 {
                     Loggers.LogMalwareQuarantined(logger, request.Key, threat);
                     pipelineMetadata ??= [];
-                    pipelineMetadata["quarantine-threat"] = threat;
-                    pipelineMetadata["quarantine-timestamp"] = DateTimeOffset.UtcNow.ToString("O");
+                    pipelineMetadata[StoragePipelineConstant.MetadataKeys.QuarantineThreat] = threat;
+                    pipelineMetadata[StoragePipelineConstant.MetadataKeys.QuarantineTimestamp] = DateTimeOffset.UtcNow.ToString("O");
                 }
 
                 // Validate: warning policy — log threat, allow upload with metadata flag
@@ -130,7 +130,7 @@ public sealed partial class StorageService(
                 {
                     Loggers.LogMalwareWarning(logger, request.Key, threat);
                     pipelineMetadata ??= [];
-                    pipelineMetadata["malware-threat"] = threat;
+                    pipelineMetadata[StoragePipelineConstant.MetadataKeys.MalwareThreat] = threat;
                 }
             }
         }
@@ -187,7 +187,7 @@ public sealed partial class StorageService(
         if (effectiveOptions.Overwrite)
         {
             pipelineMetadata ??= [];
-            pipelineMetadata["overwrite-existing"] = "true";
+            pipelineMetadata[StoragePipelineConstant.MetadataKeys.OverwriteExisting] = "true";
         }
 
         // Merge: combine pipeline metadata with request metadata for final upload

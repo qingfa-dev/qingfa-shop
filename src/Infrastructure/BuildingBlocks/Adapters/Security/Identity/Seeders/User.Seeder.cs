@@ -15,16 +15,16 @@ namespace Infrastructure.BuildingBlocks.Adapters.Security.Identity.Seeders;
 public sealed class UserSeeder(ApplicationDbContext dbContext) : IPersistenceSeeder<User, Guid>
 {
     /// <inheritdoc />
-    public string Name => "seeder:identity-users";
+    public string Name => IdentitySeederConstant.Names.Users;
 
     /// <inheritdoc />
     public string DisplayName => "Seed Identity Users";
 
     /// <inheritdoc />
-    public int Order => 40;
+    public int Order => IdentitySeederConstant.Order.Users;
 
     /// <inheritdoc />
-    public string[] DependsOn => ["seeder:identity-roles"];
+    public string[] DependsOn => [IdentitySeederConstant.Names.Roles];
 
     /// <inheritdoc />
     public bool IsRequired => false;

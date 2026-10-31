@@ -3,6 +3,13 @@ namespace Application.BuildingBlocks.Persistence.Capabilities;
 /// <summary>Constants for query capabilities and limits.</summary>
 public static class QueryCapabilityConstant
 {
+    /// <summary>Cross-cutting query limits.</summary>
+    public static class Limits
+    {
+        /// <summary>Largest page size the provider accepts.</summary>
+        public const int MaxPageSize = 10_000;
+    }
+
     /// <summary>Limits on the filter text.</summary>
     public static class Filter
     {

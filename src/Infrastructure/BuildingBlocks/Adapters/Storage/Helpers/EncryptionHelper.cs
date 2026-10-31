@@ -4,8 +4,8 @@ namespace Infrastructure.BuildingBlocks.Adapters.Storage.Helpers;
 
 public static class EncryptionHelper
 {
-    private const int KeySizeBytes = 32;
-    private const int IvSizeBytes = 16;
+    private const int KeySizeBytes = EncryptionConstant.KeySizeBytes;
+    private const int IvSizeBytes = EncryptionConstant.IvSizeBytes;
 
     public static async Task<Stream> EncryptAsync(Stream plaintext, byte[] key, CancellationToken ct = default)
     {

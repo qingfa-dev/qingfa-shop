@@ -13,8 +13,8 @@ namespace Infrastructure.Modules.Todos.Integrations.Messaging;
 /// <summary>Contributes the Todo exchange, queues, handlers, and event types.</summary>
 public sealed class TodoMessagingModule : IMessagingModule
 {
-    private const string TodoCompletedEventName = "todo.completed";
-    private const string TodoReminderChangedEventName = "todo.reminder.changed";
+    private const string TodoCompletedEventName = TodoIntegrationConstant.Events.Completed;
+    private const string TodoReminderChangedEventName = TodoIntegrationConstant.Events.ReminderChanged;
     private const int EventVersion = 1;
 
     /// <inheritdoc />

@@ -15,7 +15,7 @@ public sealed class TodoReminderProjection(
     IDomainEventSerializer serializer) : IProjection
 {
     /// <inheritdoc />
-    public string Name => "todo-reminders";
+    public string Name => TodoProjectionConstant.Names.Reminders;
 
     /// <inheritdoc />
     public async Task<Result> ApplyAsync(

@@ -27,13 +27,13 @@ public sealed class RoleSeeder(ApplicationDbContext dbContext, IPermissionCatalo
     ];
 
     /// <inheritdoc />
-    public string Name => "seeder:identity-roles";
+    public string Name => IdentitySeederConstant.Names.Roles;
 
     /// <inheritdoc />
     public string DisplayName => "Seed Identity Roles";
 
     /// <inheritdoc />
-    public int Order => 30;
+    public int Order => IdentitySeederConstant.Order.Roles;
 
     /// <inheritdoc />
     public string[] DependsOn => [];

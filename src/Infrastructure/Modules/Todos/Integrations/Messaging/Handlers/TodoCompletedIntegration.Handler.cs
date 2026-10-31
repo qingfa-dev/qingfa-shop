@@ -1,6 +1,7 @@
 using Application.BuildingBlocks.Caching;
 using Application.BuildingBlocks.Messaging.Handlers;
 using Application.BuildingBlocks.Messaging.Inbox;
+using Application.Modules.Todos.Common;
 using Application.Modules.Todos.Events;
 
 namespace Infrastructure.Modules.Todos.Integrations.Messaging.Handlers;
@@ -27,7 +28,7 @@ public sealed class TodoCompletedIntegrationHandler(
     {
         // Cache: the read model may serve the stale completion until this entry is evicted.
         return await cache
-            .RemoveAsync($"todo:{message.TodoId}", cancellationToken)
+            .RemoveAsync($"{TodoCacheConstant.Keys.TodoPrefix}{message.TodoId}", cancellationToken)
             .ConfigureAwait(false);
     }
 }

@@ -1,5 +1,6 @@
 using Application.Modules.Todos.Persistence;
 
+using Core.BuildingBlocks.Modeling.Concerns.Lifecycle;
 using Core.Modules.Todos.Categories;
 
 using Infrastructure.BuildingBlocks.Adapters.Persistence.EntityFramework.Conventions;
@@ -47,14 +48,14 @@ public sealed class TodoCategoryEntityTypeConfiguration : IEntityTypeConfigurati
 
         builder.Property(t => t.CreatedBy)
             .HasColumnName("created_by")
-            .HasMaxLength(256);
+            .HasMaxLength(LifecycleConstant.Constraints.Actor.MaxLength);
 
         builder.Property(t => t.ModifiedAtUtc)
             .HasColumnName("modified_at_utc");
 
         builder.Property(t => t.ModifiedBy)
             .HasColumnName("modified_by")
-            .HasMaxLength(256);
+            .HasMaxLength(LifecycleConstant.Constraints.Actor.MaxLength);
 
         // Soft delete: Deletion audit fields.
         builder.Property(t => t.IsDeleted)
@@ -66,7 +67,7 @@ public sealed class TodoCategoryEntityTypeConfiguration : IEntityTypeConfigurati
 
         builder.Property(t => t.DeletedBy)
             .HasColumnName("deleted_by")
-            .HasMaxLength(256);
+            .HasMaxLength(LifecycleConstant.Constraints.Actor.MaxLength);
 
         // Tenancy: Tenant isolation.
         builder.Property(t => t.TenantId)

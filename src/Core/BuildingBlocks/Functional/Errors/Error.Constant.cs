@@ -10,6 +10,20 @@ namespace Core.BuildingBlocks.Functional.Errors;
 /// </remarks>
 public static class ErrorConstant
 {
+    #region Defaults
+
+    /// <summary>Default codes and metadata keys used by the error factory.</summary>
+    public static class Defaults
+    {
+        /// <summary>Code assigned when a caller does not supply one.</summary>
+        public const string Code = "general.error";
+
+        /// <summary>Metadata key carrying the exception type name.</summary>
+        public const string ExceptionTypeKey = "exception.type";
+    }
+
+    #endregion
+
     #region Constraints
 
     /// <summary>

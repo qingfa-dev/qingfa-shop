@@ -7,6 +7,13 @@ namespace Application.BuildingBlocks.Persistence;
 /// </remarks>
 public static class PersistenceConstant
 {
+    /// <summary>Command execution settings shared by persistence adapters.</summary>
+    public static class Commands
+    {
+        /// <summary>Default ADO.NET and EF Core command timeout, in seconds.</summary>
+        public const int TimeoutSeconds = 30;
+    }
+
     /// <summary>Database schema settings.</summary>
     public static class Schema
     {

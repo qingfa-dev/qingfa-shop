@@ -3,6 +3,13 @@ namespace Application.BuildingBlocks.Persistence.Initialization.Resetters;
 /// <summary>Constants for resetter operations.</summary>
 public static class ResetterConstant
 {
+    /// <summary>Default registration names.</summary>
+    public static class Names
+    {
+        /// <summary>Default EF Core resetter name.</summary>
+        public const string Default = "resetter:efcore";
+    }
+
     /// <summary>Hard limits for resetters.</summary>
     public static class Limits
     {

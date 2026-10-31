@@ -1,6 +1,7 @@
 using Application.Modules.Todos.Items.Models;
 using Application.Modules.Todos.Persistence;
 
+using Core.BuildingBlocks.Modeling.Concerns.Lifecycle;
 using Core.Modules.Todos.Items;
 
 using Infrastructure.BuildingBlocks.Adapters.Persistence.EntityFramework.Conventions;
@@ -74,14 +75,14 @@ public sealed class TodoReadModelConfiguration : IEntityTypeConfiguration<TodoRe
 
         builder.Property(model => model.CreatedBy)
             .HasColumnName("created_by")
-            .HasMaxLength(256);
+            .HasMaxLength(LifecycleConstant.Constraints.Actor.MaxLength);
 
         builder.Property(model => model.ModifiedAtUtc)
             .HasColumnName("modified_at_utc");
 
         builder.Property(model => model.ModifiedBy)
             .HasColumnName("modified_by")
-            .HasMaxLength(256);
+            .HasMaxLength(LifecycleConstant.Constraints.Actor.MaxLength);
 
         // Soft delete: Deletion audit fields.
         builder.Property(model => model.IsDeleted)
@@ -93,7 +94,7 @@ public sealed class TodoReadModelConfiguration : IEntityTypeConfiguration<TodoRe
 
         builder.Property(model => model.DeletedBy)
             .HasColumnName("deleted_by")
-            .HasMaxLength(256);
+            .HasMaxLength(LifecycleConstant.Constraints.Actor.MaxLength);
 
         // Tenancy: Tenant isolation.
         builder.Property(model => model.TenantId)

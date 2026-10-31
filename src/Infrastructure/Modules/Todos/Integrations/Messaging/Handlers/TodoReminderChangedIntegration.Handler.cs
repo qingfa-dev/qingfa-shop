@@ -1,6 +1,7 @@
 using Application.BuildingBlocks.Caching;
 using Application.BuildingBlocks.Messaging.Handlers;
 using Application.BuildingBlocks.Messaging.Inbox;
+using Application.Modules.Todos.Common;
 using Application.Modules.Todos.Events;
 
 namespace Infrastructure.Modules.Todos.Integrations.Messaging.Handlers;
@@ -27,14 +28,14 @@ public sealed class TodoReminderChangedIntegrationHandler(
     {
         // Cache: both the reminder projection and its todo may serve stale state until evicted.
         Result reminder = await cache
-            .RemoveAsync($"reminder:{message.ReminderId}", cancellationToken)
+            .RemoveAsync($"{TodoCacheConstant.Keys.ReminderPrefix}{message.ReminderId}", cancellationToken)
             .ConfigureAwait(false);
 
         if (reminder.IsFailure)
             return reminder;
 
         return await cache
-            .RemoveAsync($"todo:{message.TodoId}", cancellationToken)
+            .RemoveAsync($"{TodoCacheConstant.Keys.TodoPrefix}{message.TodoId}", cancellationToken)
             .ConfigureAwait(false);
     }
 }

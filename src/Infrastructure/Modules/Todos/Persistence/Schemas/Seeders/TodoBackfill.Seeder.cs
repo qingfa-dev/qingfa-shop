@@ -41,26 +41,21 @@ public sealed class TodoBackfillSeeder(
     IOptions<TodoEventStoreSetting> todoSetting,
     TimeProvider clock) : IPersistenceSeeder<TodoReadModel, Guid>
 {
-    /// <summary>Rows fetched per page; the batch setting caps how many rows are backfilled.</summary>
-    private const int PageSize = 100;
 
     /// <summary>Smallest batch that can still make progress.</summary>
     private const int MinimumBatchSize = 1;
 
-    /// <summary>Upper bound that keeps one initialization pass bounded.</summary>
-    private const int MaximumBatchSize = 10_000;
-
     /// <inheritdoc />
-    public string Name => "seeder:todo-backfill";
+    public string Name => TodoSeederConstant.Names.Backfill;
 
     /// <inheritdoc />
     public string DisplayName => "Backfill Todo event streams";
 
     /// <inheritdoc />
-    public int Order => 35;
+    public int Order => TodoSeederConstant.Order.Backfill;
 
     /// <inheritdoc />
-    public string[] DependsOn => ["seeder:todos"];
+    public string[] DependsOn => [TodoSeederConstant.Names.Todos];
 
     /// <inheritdoc />
     public bool IsRequired => false;
@@ -207,7 +202,7 @@ public sealed class TodoBackfillSeeder(
 
     /// <summary>Resolves a batch size that cannot silently report no work.</summary>
     private int ResolveBatchSize()
-        => Math.Clamp(setting.Value.BatchSize, MinimumBatchSize, MaximumBatchSize);
+        => Math.Clamp(setting.Value.BatchSize, MinimumBatchSize, TodoSeederConstant.Limits.MaxBatchSize);
 
     /// <summary>Loads one stable page of todo rows in creation order.</summary>
     private async Task<List<TodoReadModel>> LoadPageAsync(
@@ -218,7 +213,7 @@ public sealed class TodoBackfillSeeder(
             .OrderBy(todo => todo.CreatedAtUtc)
             .ThenBy(todo => todo.Id)
             .Skip(offset)
-            .Take(PageSize)
+            .Take(TodoSeederConstant.Limits.PageSize)
             .ToListAsync(cancellationToken);
 
     /// <summary>Backfills one row, returning false when no new events were appended.</summary>

@@ -1,6 +1,6 @@
-
 using System.Data;
 
+using Application.BuildingBlocks.Persistence;
 using Application.BuildingBlocks.Persistence.Initialization;
 using Application.BuildingBlocks.Persistence.Initialization.Seeders;
 
@@ -16,13 +16,13 @@ namespace Infrastructure.Modules.Todos.Persistence.Schemas.Seeders;
 public sealed class TodoCategorySeeder : IPersistenceSeeder<TodoCategory, Guid>
 {
     /// <inheritdoc />
-    public string Name => "seeder:todo-categories";
+    public string Name => TodoSeederConstant.Names.Categories;
 
     /// <inheritdoc />
     public string DisplayName => "Seed Todo Categories";
 
     /// <inheritdoc />
-    public int Order => 10;
+    public int Order => TodoSeederConstant.Order.Categories;
 
     /// <inheritdoc />
     public string[] DependsOn => [];
@@ -86,7 +86,7 @@ public sealed class TodoCategorySeeder : IPersistenceSeeder<TodoCategory, Guid>
             command.Parameters.Add(CreateParam(command, "@tenant_id", DefaultTenantId));
             command.Parameters.Add(CreateParam(command, "@metadata", "{}"));
             command.Parameters.Add(CreateParam(command, "@version", 0L));
-            command.CommandTimeout = 30;
+            command.CommandTimeout = PersistenceConstant.Commands.TimeoutSeconds;
 
             command.ExecuteNonQuery();
             inserted++;
@@ -143,7 +143,7 @@ public sealed class TodoCategorySeeder : IPersistenceSeeder<TodoCategory, Guid>
         // Query: Count existing categories using raw SQL.
         using var command = context.Connection.CreateCommand();
         command.CommandText = $"SELECT COUNT(*) FROM {TodoTable.Categories}";
-        command.CommandTimeout = 30;
+        command.CommandTimeout = PersistenceConstant.Commands.TimeoutSeconds;
 
         var result = command.ExecuteScalar();
         return Convert.ToInt32(result);

@@ -1,3 +1,4 @@
+using Application.BuildingBlocks.Persistence.Repositories;
 using Application.BuildingBlocks.Querying;
 using Application.BuildingBlocks.Querying.Pagination;
 using Application.BuildingBlocks.Security.Authorization.Domain;
@@ -27,8 +28,8 @@ public sealed class RoleManagementService(
     ApplicationDbContext dbContext,
     IPermissionService permissions) : IRoleManagementService
 {
-    private const int DefaultPageSize = 20;
-    private const int MaxPageSize = 200;
+    private const int DefaultPageSize = RepositoryConstant.Limits.DefaultPageSize;
+    private const int MaxPageSize = RepositoryConstant.Limits.MaxPageSize;
     private const string SystemActor = "System";
 
     /// <inheritdoc />

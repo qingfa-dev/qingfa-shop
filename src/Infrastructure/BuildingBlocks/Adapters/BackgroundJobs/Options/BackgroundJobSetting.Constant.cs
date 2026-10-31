@@ -32,6 +32,11 @@ public static class BackgroundJobDefaults
         public const string DashboardPath = "/jobs";
 
         /// <summary>
+        /// Default Hangfire server name.
+        /// </summary>
+        public const string ServerName = "General-Worker-Server";
+
+        /// <summary>
         /// Default value for CachingEnabled property.
         /// </summary>
         /// <value>False to use in-memory storage by default.</value>

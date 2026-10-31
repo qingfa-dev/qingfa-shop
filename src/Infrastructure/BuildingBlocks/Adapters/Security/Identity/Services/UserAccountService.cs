@@ -1,3 +1,4 @@
+using Application.BuildingBlocks.Persistence.Repositories;
 using Application.BuildingBlocks.Querying;
 using Application.BuildingBlocks.Querying.Pagination;
 using Application.BuildingBlocks.Security.Authentication.Tokens.Abstractions.Refresh;
@@ -30,8 +31,8 @@ public sealed class UserAccountService(
     IRefreshTokenService refreshTokens,
     TimeProvider clock) : IUserAccountService
 {
-    private const int DefaultPageSize = 20;
-    private const int MaxPageSize = 200;
+    private const int DefaultPageSize = RepositoryConstant.Limits.DefaultPageSize;
+    private const int MaxPageSize = RepositoryConstant.Limits.MaxPageSize;
     private const string SystemActor = "System";
 
     /// <inheritdoc />

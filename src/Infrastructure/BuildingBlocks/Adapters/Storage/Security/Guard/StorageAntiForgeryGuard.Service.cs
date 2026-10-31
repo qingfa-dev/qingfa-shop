@@ -19,7 +19,7 @@ public sealed partial class StorageAntiForgeryGuard(
     : IStorageAntiForgeryGuard
 {
     private static string GetCacheKey(string identityKey)
-        => $"antiforgery:failures:{identityKey}";
+        => $"{StorageSecuritySettingConstant.Keys.FailureCounter}{identityKey}";
 
     private static CachingEntryOption CreateEntryOptions(TimeSpan blockDuration)
         => new()
