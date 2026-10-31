@@ -1,3 +1,3 @@
-global using Core.Common.Monad.Errors;
-global using Core.Common.Monad.Results;
-global using Core.Common.Monad.Maybes;
+global using Core.BuildingBlocks.Functional.Errors;
+global using Core.BuildingBlocks.Functional.Results;
+global using Core.BuildingBlocks.Functional.Maybes;

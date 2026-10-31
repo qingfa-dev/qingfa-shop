@@ -11,12 +11,15 @@ Application contains **use case orchestration**. It implements handlers for appl
 | Path | Role | Notes |
 |---|---|---|
 | `Assembly.Marker.cs` | marker | Anchors assembly for scanning |
-| `Common/Mediators/` | behavior | MediatR command/query interfaces and pipeline behaviors |
-| `Common/Mapping/` | mapper | `EntityMapperExtensions` create/update/projection helpers |
-| `Common/Persistence/` | service | Repository, initialization, and capability abstractions |
-| `Common/Caching/`, `Common/Events/`, `Common/Security/`, `Common/Validation/` | service | Cross-cutting application contracts |
-| `Features/Todos/` | use-case | Vertical slices for todo lists, items, and categories |
+| `BuildingBlocks/UseCases/` | use-case | Mediation, mapping, and validation building blocks |
+| `BuildingBlocks/Persistence/` | service | Repository, unit-of-work, initialization, and capability abstractions |
+| `BuildingBlocks/{Caching,EventSourcing,Messaging,Ports,Querying,Security}/` | service | Cross-cutting application ports and contracts |
+| `BuildingBlocks/Security/Identity/` | service | Identity platform slices: `Auth`, `External`, `Permissions`, `Roles`, `Users` |
+| `Modules/Todos/` | use-case | Vertical slices for todo lists, items, categories, and reminders |
+| `Modules/{PermissionCatalog,Persistence}/` | composition | Composite permission and schema catalogs, not business module folders |
 | `Application.Composition.cs` | composition | DI registration: `AddApplication()` |
+| `BuildingBlocks/BuildingBlock.Application.Composition.cs` | composition | `AddBuildingBlocksApplication()` |
+| `Modules/Modular.Application.Composition.cs` | composition | `AddModularApplication()` |
 
 ## Boundaries
 
@@ -36,16 +39,19 @@ Out of scope:
 
 ## Assumptions
 
-- Handlers own their commands/queries under `Common/Mediators`; return `Result<T>` from Core.
+- Handlers own their commands/queries under `BuildingBlocks/UseCases/Mediation`; return `Result<T>` from Core.
 - Domain logic lives in Core aggregates; Application only orchestrates.
 - Transactions managed by `TransactionBehavior` (MediatR pipeline).
 - Validation runs via `ValidationBehavior` (FluentValidation).
 - Mapper configs are explicit; no implicit mapping.
+- `Modules/Todos` may use `BuildingBlocks`; `BuildingBlocks` never names a module type.
+- `Modules/{PermissionCatalog,Persistence}` only compose the module-contributed catalogs; they are not business modules.
 
 ## Invariants
 
 - **No direct Infrastructure references** — only via abstractions (`IRepository`, `IEmailSender`, etc.).
-- **No MediatR runtime** — uses `Mediator.Abstractions` + source generator (or MediatR if configured).
+- **MediatR** provides the command/query runtime; BuildingBlocks define the markers and behaviors.
+- `BuildingBlocks` never reference `Modules`; the Todos module may reference BuildingBlocks.
 - All handlers are `internal` except those explicitly exposed for testing.
 - One handler per command/query; no `Handle` overloads.
 
@@ -53,9 +59,9 @@ Out of scope:
 
 - `ICommandHandler<TCommand, TResult>` — handles `ICommand<TResult>`.
 - `IQueryHandler<TQuery, TResult>` — handles `IQuery<TResult>`.
-- `IApplicationService` — coarse-grained orchestration.
 - `IMapper` — Mapster mapping contracts.
 - `AddApplication(IServiceCollection)` — DI registration entry point.
+- `IPermissionCatalog`, `IPersistenceSchemaCatalog` — cross-module composition contracts.
 
 ## Flows
 
@@ -78,12 +84,11 @@ Out of scope:
 
 ## Reading Order
 
-1. `Composition.cs` — DI registration.
-2. `Behaviors/` — pipeline behaviors.
-3. `Commands/` / `Queries/` — handlers.
-4. `Services/` — orchestrations.
-5. `Mappers/` — mapping configs.
-6. `Policies/` — business strategies.
+1. `Application.Composition.cs` — DI registration.
+2. `BuildingBlocks/UseCases/Mediation/Behaviors/` — pipeline behaviors.
+3. `Modules/Todos/` — command/query slices and their models.
+4. `BuildingBlocks/Persistence/` — repository and unit-of-work ports.
+5. `BuildingBlocks/{Caching,Messaging,Ports,Querying,Security}/` — other ports and contracts.
 
 ## Related
 

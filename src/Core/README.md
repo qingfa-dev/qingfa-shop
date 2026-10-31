@@ -4,27 +4,26 @@ Domain kernel — primitives, value objects, events, and shared abstractions. _l
 
 ## Summary
 
-Core is the innermost layer with **zero external dependencies**. It contains domain primitives (value objects, entity base, aggregate root), domain events, shared interfaces (`IRepository<T>`, `IUnitOfWork`), and cross-cutting utilities (result types, guards, specifications). All other layers depend on Core; Core depends on nothing but approved NuGet packages.
+Core is the innermost layer with **no project references**. It contains the domain kernel (`BuildingBlocks/Domain`), reusable modeling concerns (`BuildingBlocks/Modeling`), functional result and error types (`BuildingBlocks/Functional`), and the Todos business module (`Modules/Todos`). All other layers depend on Core; Core depends only on approved NuGet packages.
 
 ## Contains
 
 | Path | Role | Notes |
 |---|---|---|
 | `Assembly.Marker.cs` | marker | Anchors assembly for scanning |
-| `Primitives/` | namespace | Value objects, IDs, result types |
-| `Events/` | namespace | Domain events, integration events |
-| `Abstractions/` | namespace | `IRepository`, `IUnitOfWork`, `IDomainEventDispatcher` |
-| `Specifications/` | namespace | Specification pattern base classes |
-| `Guards/` | namespace | Argument/state validation helpers |
-| `Common/` | namespace | Shared constants, enums, extensions |
+| `BuildingBlocks/Domain/` | kernel | Aggregates, entities, events, event sourcing, policies, specifications, value objects |
+| `BuildingBlocks/Modeling/` | kernel | Reusable model concerns, metadata, and their base types |
+| `BuildingBlocks/Functional/` | kernel | `Result`, `Maybe`, `Error`, and their extension/factory surfaces |
+| `Modules/Todos/` | module | Todo, list, category, and reminder aggregates |
 
 ## Boundaries
 
 In scope:
 - Domain primitives (ULID, Money, Email, Address, etc.).
-- Base classes: `Entity<TId>`, `AggregateRoot<TId>`, `ValueObject`.
-- Domain events and `IDomainEventDispatcher`.
-- Result/Option types, specifications, guards.
+- Base classes: `Entity<TKey>`, `AggregateRoot<TKey>`, `EventSourcedAggregate`.
+- Domain events, event replay, and event-sourced aggregate contracts.
+- Result/Maybe/Error types, specifications, policies, and modeling concerns.
+- The Todos business module.
 
 Out of scope:
 - Persistence (EF Core) → [`../Infrastructure/`](../Infrastructure/).
@@ -35,44 +34,44 @@ Out of scope:
 
 - All domain IDs are ULIDs (see `Ulid.NewUlid()`).
 - Money values are immutable value objects with currency.
-- Domain events are raised *after* state changes, dispatched via `IDomainEventDispatcher`.
+- Domain events are raised *after* state changes.
 - `Result<T>` is used for fallible operations; exceptions reserved for truly exceptional cases.
 
 ## Invariants
 
-- **No NuGet dependencies** beyond: `FluentValidation`, `Mapster`, `Mediator.Abstractions`, `Slugify.Core`.
+- **No NuGet dependencies** beyond: `FluentValidation`, `Mapster`, `MediatR`, `Slugify.Core`.
 - **No project references** to any other layer.
+- `BuildingBlocks` never reference `Modules`; the Todos module may reference BuildingBlocks.
 - All types are `public` only if intentionally part of the shared kernel; otherwise `internal`.
 
 ## Contracts
 
-- `Entity<TId>` — base for all entities.
-- `AggregateRoot<TId>` — base for aggregates, tracks domain events.
-- `ValueObject` — structural equality base.
-- `IDomainEvent` — marker for domain events.
-- `IRepository<T>` — read/write access for aggregates.
+- `Entity<TKey>` — base for all entities.
+- `AggregateRoot<TKey>` — base for aggregates, tracks domain events.
+- `EventSourcedAggregate` — base for replayable aggregates; `ISnapshotable` marks snapshot support.
+- `IDomainEvent` / `DomainEvent` — domain event contract and base record.
 - `Result<T>`, `Result` — success/failure with error codes.
+- `Maybe<T>`, `Error` — optional values and structured failures.
 - `Specification<T>` — composable query predicates.
 
 ## Conventions
 
-- One aggregate per file; `Order.cs`, `OrderItem.cs` — not `Order.Aggregate.cs`.
-- Domain events named `*Event.cs` (e.g., `OrderPlacedEvent.cs`).
-- Value objects in `Primitives/` (e.g., `Money.cs`, `Email.cs`).
-- Guard methods named `Guard.Against.Null(arg, name)`.
+- One aggregate per file; `Todo.cs`, `TodoCategory.cs` — not `Todo.Aggregate.cs`.
+- Domain events are records in `*.Event.cs` files (e.g., `Todo.Event.cs`).
+- Value objects live under `BuildingBlocks/Domain/ValueObjects/` (e.g., `Money/`, `Address/`).
+- Error codes follow `Subject.Field.Rule`; guards return structured errors.
 
 ## Reading Order
 
-1. `Primitives/` — value objects, IDs.
-2. `Events/` — domain event definitions.
-3. `Abstractions/` — repository, unit of work interfaces.
-4. `Specifications/` — specification base.
-5. `Guards/` — validation helpers.
+1. `BuildingBlocks/Domain/` — aggregates, entities, events, value objects.
+2. `BuildingBlocks/Modeling/` — concerns and metadata.
+3. `BuildingBlocks/Functional/` — result, maybe, and error types.
+4. `Modules/Todos/` — the Todo business module.
 
 ## Related
 
 - Parent: [`../README.md`](../README.md)
-- Children: `Primitives/`, `Events/`, `Abstractions/`, `Specifications/`, `Guards/`
+- Children: `BuildingBlocks/Domain/`, `BuildingBlocks/Modeling/`, `BuildingBlocks/Functional/`, `Modules/Todos/`
 - Downstream: [`../Application/`](../Application/), [`../Infrastructure/`](../Infrastructure/)
 - ADR: [`../../docs/adr/0001-domain-kernel.md`](../../docs/adr/0001-domain-kernel.md)
 

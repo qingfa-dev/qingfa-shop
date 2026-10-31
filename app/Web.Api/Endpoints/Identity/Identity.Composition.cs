@@ -1,6 +1,6 @@
-using Application.Features.Identity.External.Abstractions;
+using Application.BuildingBlocks.Security.Identity.External.Abstractions;
 
-using Infrastructure.Integrations.Security;
+using Infrastructure.BuildingBlocks.Adapters.Security;
 
 using Microsoft.Extensions.DependencyInjection;
 

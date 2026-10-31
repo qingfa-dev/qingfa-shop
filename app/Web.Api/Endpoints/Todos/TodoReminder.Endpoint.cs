@@ -1,14 +1,14 @@
-using Application.Common.Querying;
-using Application.Common.Security.Authorization.Attributes;
-using Application.Common.Security.Authorization.Registry;
-using Application.Features.Todos.Reminders.Commands;
-using Application.Features.Todos.Reminders.Queries;
+using Application.BuildingBlocks.Querying;
+using Application.BuildingBlocks.Security.Authorization.Attributes;
+using Application.Modules.Todos.Permissions;
+using Application.Modules.Todos.Reminders.Commands;
+using Application.Modules.Todos.Reminders.Queries;
 
 using Carter;
 
 using MediatR;
 
-using Infrastructure.Integrations.Serialization;
+using Infrastructure.BuildingBlocks.Adapters.Serialization;
 
 namespace Web.Api.Endpoints.Todos;
 
@@ -27,27 +27,27 @@ public sealed class TodoReminderEndpoint : ICarterModule
         group.MapGet("/", SearchAsync)
             .WithName("SearchTodoReminders")
             .WithSummary("List the reminders of one todo.")
-            .HasPermission(PermissionContext.Todo.Items.Read);
+            .HasPermission(TodoPermissionCatalog.Items.Read);
 
         group.MapGet("/{reminderId:guid}", GetAsync)
             .WithName("GetTodoReminder")
             .WithSummary("Get one reminder of a todo.")
-            .HasPermission(PermissionContext.Todo.Items.Read);
+            .HasPermission(TodoPermissionCatalog.Items.Read);
 
         group.MapPost("/", ScheduleAsync)
             .WithName("ScheduleTodoReminder")
             .WithSummary("Schedule a reminder for a todo.")
-            .HasPermission(PermissionContext.Todo.Items.Create);
+            .HasPermission(TodoPermissionCatalog.Items.Create);
 
         group.MapPatch("/{reminderId:guid}/snooze", SnoozeAsync)
             .WithName("SnoozeTodoReminder")
             .WithSummary("Move a reminder forward.")
-            .HasPermission(PermissionContext.Todo.Items.Update);
+            .HasPermission(TodoPermissionCatalog.Items.Update);
 
         group.MapDelete("/{reminderId:guid}", DismissAsync)
             .WithName("DismissTodoReminder")
             .WithSummary("Dismiss a reminder permanently.")
-            .HasPermission(PermissionContext.Todo.Items.Update);
+            .HasPermission(TodoPermissionCatalog.Items.Update);
     }
 
     private static async Task<IResult> SearchAsync(

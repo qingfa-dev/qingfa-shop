@@ -1,20 +1,20 @@
 using System.Globalization;
 using System.Security.Claims;
 
-using Application.Features.Identity.Auth.Commands;
-using Application.Features.Identity.Auth.Models;
-using Application.Features.Identity.Auth.Queries;
-using Application.Features.Identity.External.Commands;
-using Application.Features.Identity.External.Mappings;
-using Application.Features.Identity.External.Models;
-using Application.Features.Identity.External.Queries;
+using Application.BuildingBlocks.Security.Identity.Auth.Commands;
+using Application.BuildingBlocks.Security.Identity.Auth.Models;
+using Application.BuildingBlocks.Security.Identity.Auth.Outcome;
+using Application.BuildingBlocks.Security.Identity.Auth.Queries;
+using Application.BuildingBlocks.Security.Identity.External.Commands;
+using Application.BuildingBlocks.Security.Identity.External.Mappings;
+using Application.BuildingBlocks.Security.Identity.External.Models;
+using Application.BuildingBlocks.Security.Identity.External.Queries;
 
 using Carter;
 
-using Core.Common.Monad.Errors;
-using Core.Common.Monad.Results;
+using Core.BuildingBlocks.Functional.Results;
 
-using Infrastructure.Integrations.Serialization;
+using Infrastructure.BuildingBlocks.Adapters.Serialization;
 
 using MediatR;
 
@@ -176,9 +176,7 @@ public sealed class IdentityEndpoint : ICarterModule
             .ToApiResult();
 
     private static IResult FailedExternalLogin() =>
-        Result.Fail(Error.Unauthorized(
-            "Auth.External.LoginFailed",
-            "The external sign-in could not be completed."))
+        Result.Fail(IdentityOutcome.Failure.ExternalSignInFailed)
             .ToApiResult();
 
     private static async Task<IResult> RegisterAsync(

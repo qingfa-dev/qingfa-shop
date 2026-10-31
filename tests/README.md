@@ -44,7 +44,7 @@ Out of scope:
 - Integration tests: **Testcontainers** for Postgres/Redis; AppHost specs also need node/pnpm.
 - Tests skip with a reason when Docker/Podman or node/pnpm is unavailable.
 - `Testing/` is referenced by the integration projects, not by unit projects.
-- Architecture checks are reflection-based; NetArchTest rules are still being filled in.
+- Architecture checks are reflection-based; the BuildingBlocks → Modules boundary is enforced, while broader NetArchTest rules are still being filled in.
 
 ## Invariants
 
@@ -59,7 +59,8 @@ Out of scope:
 - `Testing.PostgresFixture` / `RedisFixture` — container lifecycle (xUnit collection fixtures).
 - `Testing.Respawn` — database reset between tests.
 - `Architecture.Tests.LayerArchitectureTests` — documented layer dependency rules.
-- `Architecture.Tests.VerticalSliceArchitectureTests` — feature isolation.
+- `Architecture.Tests.BuildingBlockBoundaryTests` — BuildingBlocks must not reference Modules.
+- `Architecture.Tests.VerticalSliceArchitectureTests` — module isolation.
 - `Architecture.Tests.NamingConventionTests` — dotted file naming rules.
 - `Architecture.Tests.CodeCommentLabelTests` — comment label vocabulary.
 

@@ -4,6 +4,11 @@
 
 - .NET 10 Aspire solution. `global.json` pins SDK `10.0.401`; trust `global.json` and `package.json`.
 - Layers: `src/Core` (no refs) ← `src/Application` (Core) ← `src/Infrastructure` (Application + ServiceDefaults). `app/Web.Api` is the composition root.
+- Each layer splits into `BuildingBlocks/` (reusable platform capabilities) and `Modules/` (business capabilities):
+  - Core: `BuildingBlocks/{Domain,Modeling,Functional}`, `Modules/Todos`
+  - Application: `BuildingBlocks/{Caching,EventSourcing,Messaging,Persistence,Ports,Querying,Security,UseCases}`, `Modules/Todos`, and the `Modules/{PermissionCatalog,Persistence}` composition artifacts
+  - Infrastructure: `BuildingBlocks/Adapters/{BackgroundJobs,Caching,Events,Http,Messaging,Notifications,Observability,OpenApi,Persistence,Security,Serialization,Storage}`, `Modules/Todos`, `Migrations`
+- BuildingBlocks must not reference Modules. Modules may reference BuildingBlocks, and cross-module communication goes through BuildingBlocks contracts or the composition root. `Modules/{PermissionCatalog,Persistence}` are composite-catalog composition artifacts, not business module folders. `Infrastructure/Migrations` is the exempt composition artifact.
 - `app/Gateway` is the YARP edge in front of the Api. `app/AppHost` wires Postgres, Redis, RabbitMQ, Api, Gateway, and both Vite apps. The storefront is served at `/`, admin under `/admin`.
 - `app/Web.Storefront` and `app/Web.Admin` are one pnpm workspace rooted at `app/`, not the repo root.
 - `make` is the public command surface; `make help` is authoritative. `make/*.mk` declares targets, `scripts/**` implements them.
@@ -51,9 +56,9 @@
 - Central Package Management: versions live only in `Directory.Packages.props`; `PackageReference` must not carry `Version`. Commit the updated `packages.lock.json` files — CI restores in locked mode.
 - `make structure.check` enforces namespace == folder path and dotted role suffixes on C# filenames (`*.Service.cs`, `*.Handler.cs`, `*.Test.cs`, `*.Spec.cs`, …). Unrecognized roles fail. See `guide/dotted-file-naming-guide.md`.
 - Comments use the labeled vocabulary (`Validate:`, `Initialize:`, `Enforce:`, `Handle:`, `Fallback:`, …), not freeform narration. See `guide/code-comment-style-guide.md`.
-- Layer boundaries are real project references in `.csproj`; `Architecture.Tests` partly documents rules while NetArchTest checks are pending, so don't rely on it to catch violations.
+- Layer boundaries are real project references in `.csproj`; `Architecture.Tests` enforces BuildingBlocks → Modules via reflection, while broader NetArchTest rules are still pending, so don't rely on it alone to catch violations.
 - Gateway route order is load-bearing: `/api/time` must precede `/api`, and the storefront catch-all must be last.
-- AppHost sets auto-migration. Add EF migrations with `dotnet ef migrations add <Name> -p src/Infrastructure -s app/Web.Api`; they live in `src/Infrastructure/Persistence/Migrations`.
+- AppHost sets auto-migration. Add EF migrations with `dotnet ef migrations add <Name> -p src/Infrastructure -s app/Web.Api`; they live in `src/Infrastructure/Migrations`.
 
 ## Web conventions
 

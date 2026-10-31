@@ -1,8 +1,8 @@
-using Application.Common.Security.Authentication.Contexts;
+using Application.BuildingBlocks.Security.Authentication.Contexts;
 
 using Carter;
 
-using Infrastructure.Integrations.Serialization;
+using Infrastructure.BuildingBlocks.Adapters.Serialization;
 
 using ServiceDefaults;
 

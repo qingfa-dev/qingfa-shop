@@ -1,10 +1,10 @@
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 
-using Application.Features.Identity.External.Models;
+using Application.BuildingBlocks.Security.Identity.Auth.Outcome;
+using Application.BuildingBlocks.Security.Identity.External.Models;
 
-using Core.Common.Monad.Errors;
-using Core.Common.Monad.Results;
+using Core.BuildingBlocks.Functional.Results;
 
 namespace Web.Api.Endpoints.Identity.Mappings;
 
@@ -27,9 +27,7 @@ public static class ExternalPrincipalMapper
             JwtRegisteredClaimNames.Sub);
 
         return string.IsNullOrWhiteSpace(providerKey)
-            ? Result<ExternalUserInfo>.Fail(Error.Unauthorized(
-                "Auth.External.SubjectMissing",
-                "The external provider did not return a subject identifier."))
+            ? Result<ExternalUserInfo>.Fail(IdentityOutcome.Failure.ExternalSubjectMissing)
             : Result<ExternalUserInfo>.Ok(new ExternalUserInfo(
                 provider,
                 providerKey,

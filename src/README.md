@@ -12,6 +12,30 @@ This folder contains all production code organized by architectural layer:
 
 Applications live in `../app/`.
 
+Each layer splits into `BuildingBlocks/` (reusable platform capabilities) and
+`Modules/` (business capabilities):
+
+```text
+Core:
+  BuildingBlocks/Domain, BuildingBlocks/Modeling, BuildingBlocks/Functional
+  Modules/Todos
+
+Application:
+  BuildingBlocks/{Caching,EventSourcing,Messaging,Persistence,Ports,Querying,Security,UseCases}
+  Modules/Todos
+  Modules/{PermissionCatalog,Persistence}   # composite-catalog composition artifacts
+
+Infrastructure:
+  BuildingBlocks/Adapters/{BackgroundJobs,Caching,Events,Http,Messaging,Notifications,Observability,OpenApi,Persistence,Security,Serialization,Storage}
+  Modules/Todos
+  Migrations
+```
+
+Dependencies point inward: `Modules → BuildingBlocks`. `Infrastructure/Migrations`
+is the exempt composition artifact allowed to reference both buckets.
+`Application/Modules/{PermissionCatalog,Persistence}` are composite-catalog
+composition artifacts, not business module folders.
+
 ## Contains
 
 | Path | Role | Notes |
@@ -42,7 +66,7 @@ Out of scope:
 
 ## Invariants
 
-- **Core** has zero external dependencies (only `FluentValidation`, `Mapster`, `Mediator.Abstractions`, `Slugify.Core`).
+- **Core** has zero external dependencies (only `FluentValidation`, `Mapster`, `MediatR`, `Slugify.Core`).
 - **Application** depends on Core; never on Infrastructure.
 - **Infrastructure** depends on Core + Application + ServiceDefaults.
 - **ServiceDefaults** has no project references (only NuGet packages).
@@ -50,7 +74,7 @@ Out of scope:
 ## Contracts
 
 - `Core` → [`AssemblyMarker`](../src/Core/Assembly.Marker.cs) anchors the assembly.
-- `Application` → `IApplicationService`, command/query handlers, `Mapster` mappers.
+- `Application` → `AddApplication()`, command/query handlers, `Mapster` mappers.
 - `Infrastructure` → EF Core `DbContext`, Wolverine handlers, external clients.
 - `ServiceDefaults` → `AddServiceDefaults()` extension.
 

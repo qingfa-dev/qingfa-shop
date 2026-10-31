@@ -1,15 +1,15 @@
-using Application.Common.Persistence.Repositories;
-using Application.Common.Querying;
-using Application.Common.Security.Authorization.Attributes;
-using Application.Common.Security.Authorization.Registry;
-using Application.Features.Todos.Lists.Commands;
-using Application.Features.Todos.Lists.Queries;
+using Application.BuildingBlocks.Persistence.Repositories;
+using Application.BuildingBlocks.Querying;
+using Application.BuildingBlocks.Security.Authorization.Attributes;
+using Application.Modules.Todos.Lists.Commands;
+using Application.Modules.Todos.Lists.Queries;
+using Application.Modules.Todos.Permissions;
 
 using Carter;
 
 using MediatR;
 
-using Infrastructure.Integrations.Serialization;
+using Infrastructure.BuildingBlocks.Adapters.Serialization;
 
 namespace Web.Api.Endpoints.Todos;
 
@@ -28,32 +28,32 @@ public sealed class TodoListEndpoint : ICarterModule
         group.MapGet("/", SearchAsync)
             .WithName("SearchTodoLists")
             .WithSummary("List todo lists for the current tenant.")
-            .HasPermission(PermissionContext.Todo.Lists.Read);
+            .HasPermission(TodoPermissionCatalog.Lists.Read);
 
         group.MapGet("/{id:guid}", GetAsync)
             .WithName("GetTodoList")
             .WithSummary("Get one todo list.")
-            .HasPermission(PermissionContext.Todo.Lists.Read);
+            .HasPermission(TodoPermissionCatalog.Lists.Read);
 
         group.MapPost("/", CreateAsync)
             .WithName("CreateTodoList")
             .WithSummary("Create a todo list.")
-            .HasPermission(PermissionContext.Todo.Lists.Create);
+            .HasPermission(TodoPermissionCatalog.Lists.Create);
 
         group.MapPut("/{id:guid}", UpdateAsync)
             .WithName("UpdateTodoList")
             .WithSummary("Update a todo list.")
-            .HasPermission(PermissionContext.Todo.Lists.Update);
+            .HasPermission(TodoPermissionCatalog.Lists.Update);
 
         group.MapDelete("/{id:guid}", DeleteAsync)
             .WithName("DeleteTodoList")
             .WithSummary("Delete a todo list, softly by default.")
-            .HasPermission(PermissionContext.Todo.Lists.Delete);
+            .HasPermission(TodoPermissionCatalog.Lists.Delete);
 
         group.MapPost("/{id:guid}/restore", RestoreAsync)
             .WithName("RestoreTodoList")
             .WithSummary("Restore a soft-deleted todo list.")
-            .HasPermission(PermissionContext.Todo.Lists.Update);
+            .HasPermission(TodoPermissionCatalog.Lists.Update);
     }
 
     private static async Task<IResult> SearchAsync(

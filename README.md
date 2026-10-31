@@ -45,6 +45,31 @@ QingFa.Shop/
 └── Makefile                   # Facade: `make help`
 ```
 
+Each layer splits into `BuildingBlocks/` (reusable platform capabilities) and
+`Modules/` (business capabilities):
+
+```text
+Core:
+  BuildingBlocks/Domain, BuildingBlocks/Modeling, BuildingBlocks/Functional
+  Modules/Todos
+
+Application:
+  BuildingBlocks/{Caching,EventSourcing,Messaging,Persistence,Ports,Querying,Security,UseCases}
+  Modules/Todos
+  Modules/{PermissionCatalog,Persistence}   # composite-catalog composition artifacts
+
+Infrastructure:
+  BuildingBlocks/Adapters/{BackgroundJobs,Caching,Events,Http,Messaging,Notifications,Observability,OpenApi,Persistence,Security,Serialization,Storage}
+  Modules/Todos
+  Migrations
+```
+
+BuildingBlocks never reference Modules. Modules may reference BuildingBlocks;
+cross-module communication goes through BuildingBlocks contracts or the
+composition root. `Application/Modules/{PermissionCatalog,Persistence}` are
+composite-catalog composition artifacts, not business module folders.
+`Infrastructure/Migrations` is the exempt composition artifact.
+
 ## Prerequisites
 
 - **.NET SDK 10.0.401** (`global.json` pins the exact version)
@@ -178,7 +203,7 @@ When the Compose stack is running, the RabbitMQ management UI is at
 
 Every `/api/*` response is the monad itself: `Result<T>` on success and the non-generic `Result`
 on failure. The HTTP status comes from `Result.StatusCode`; `201` carries a `Location`, `204` has no
-body. `ApiJson.Options` in `src/Infrastructure/Integrations/Serialization` is the single serializer.
+body. `ApiJson.Options` in `src/Infrastructure/BuildingBlocks/Adapters/Serialization` is the single serializer.
 Identity routes live under `/api/auth/*` and `/api/identity/*`; the old `/api/authorization/*`
 surface is gone. The full contract is in
 [`docs/specs/2026-10-30-api-result-envelope-design.md`](docs/specs/2026-10-30-api-result-envelope-design.md).

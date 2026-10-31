@@ -1,12 +1,12 @@
-using Application.Common.Querying;
-using Application.Common.Security.Authorization.Attributes;
-using Application.Common.Security.Authorization.Registry;
-using Application.Features.Identity.Users.Commands;
-using Application.Features.Identity.Users.Queries;
+using Application.BuildingBlocks.Querying;
+using Application.BuildingBlocks.Security.Authorization.Attributes;
+using Application.BuildingBlocks.Security.Authorization.Registry;
+using Application.BuildingBlocks.Security.Identity.Users.Commands;
+using Application.BuildingBlocks.Security.Identity.Users.Queries;
 
 using Carter;
 
-using Infrastructure.Integrations.Serialization;
+using Infrastructure.BuildingBlocks.Adapters.Serialization;
 
 using MediatR;
 

@@ -1,17 +1,17 @@
-using Application.Common.Persistence.Repositories;
-using Application.Common.Querying;
-using Application.Common.Security.Authorization.Attributes;
-using Application.Common.Security.Authorization.Registry;
-using Application.Features.Todos.Items.Commands;
-using Application.Features.Todos.Items.Queries;
+using Application.BuildingBlocks.Persistence.Repositories;
+using Application.BuildingBlocks.Querying;
+using Application.BuildingBlocks.Security.Authorization.Attributes;
+using Application.Modules.Todos.Items.Commands;
+using Application.Modules.Todos.Items.Queries;
+using Application.Modules.Todos.Permissions;
 
 using Carter;
 
-using Core.Common.Monad.Results;
+using Core.BuildingBlocks.Functional.Results;
 
 using MediatR;
 
-using Infrastructure.Integrations.Serialization;
+using Infrastructure.BuildingBlocks.Adapters.Serialization;
 
 namespace Web.Api.Endpoints.Todos;
 
@@ -30,72 +30,72 @@ public sealed class TodoEndpoint : ICarterModule
         group.MapGet("/", SearchAsync)
             .WithName("SearchTodos")
             .WithSummary("List todo items for the current tenant.")
-            .HasPermission(PermissionContext.Todo.Items.Read);
+            .HasPermission(TodoPermissionCatalog.Items.Read);
 
         group.MapGet("/{id:guid}", GetAsync)
             .WithName("GetTodo")
             .WithSummary("Get one todo item.")
-            .HasPermission(PermissionContext.Todo.Items.Read);
+            .HasPermission(TodoPermissionCatalog.Items.Read);
 
         group.MapPost("/", CreateAsync)
             .WithName("CreateTodo")
             .WithSummary("Create a todo item.")
-            .HasPermission(PermissionContext.Todo.Items.Create);
+            .HasPermission(TodoPermissionCatalog.Items.Create);
 
         group.MapPut("/{id:guid}", UpdateAsync)
             .WithName("UpdateTodo")
             .WithSummary("Update a todo item.")
-            .HasPermission(PermissionContext.Todo.Items.Update);
+            .HasPermission(TodoPermissionCatalog.Items.Update);
 
         group.MapDelete("/{id:guid}", DeleteAsync)
             .WithName("DeleteTodo")
             .WithSummary("Delete a todo item, softly by default.")
-            .HasPermission(PermissionContext.Todo.Items.Delete);
+            .HasPermission(TodoPermissionCatalog.Items.Delete);
 
         group.MapPost("/{id:guid}/start", StartAsync)
             .WithName("StartTodo")
             .WithSummary("Move a todo into progress.")
-            .HasPermission(PermissionContext.Todo.Items.Update);
+            .HasPermission(TodoPermissionCatalog.Items.Update);
 
         group.MapPost("/{id:guid}/complete", CompleteAsync)
             .WithName("CompleteTodo")
             .WithSummary("Complete a todo.")
-            .HasPermission(PermissionContext.Todo.Items.Update);
+            .HasPermission(TodoPermissionCatalog.Items.Update);
 
         group.MapPost("/{id:guid}/cancel", CancelAsync)
             .WithName("CancelTodo")
             .WithSummary("Cancel a todo.")
-            .HasPermission(PermissionContext.Todo.Items.Update);
+            .HasPermission(TodoPermissionCatalog.Items.Update);
 
         group.MapPost("/{id:guid}/reopen", ReopenAsync)
             .WithName("ReopenTodo")
             .WithSummary("Reopen a finished todo.")
-            .HasPermission(PermissionContext.Todo.Items.Update);
+            .HasPermission(TodoPermissionCatalog.Items.Update);
 
         group.MapPost("/{id:guid}/restore", RestoreAsync)
             .WithName("RestoreTodo")
             .WithSummary("Restore a soft-deleted todo.")
-            .HasPermission(PermissionContext.Todo.Items.Update);
+            .HasPermission(TodoPermissionCatalog.Items.Update);
 
         group.MapPost("/{id:guid}/categories/{categoryId:guid}", AddCategoryAsync)
             .WithName("AddTodoCategory")
             .WithSummary("Attach a category to a todo.")
-            .HasPermission(PermissionContext.Todo.Items.Update);
+            .HasPermission(TodoPermissionCatalog.Items.Update);
 
         group.MapDelete("/{id:guid}/categories/{categoryId:guid}", RemoveCategoryAsync)
             .WithName("RemoveTodoCategory")
             .WithSummary("Detach a category from a todo.")
-            .HasPermission(PermissionContext.Todo.Items.Update);
+            .HasPermission(TodoPermissionCatalog.Items.Update);
 
         group.MapPut("/{id:guid}/list", AssignListAsync)
             .WithName("AssignTodoToList")
             .WithSummary("Move a todo into a list.")
-            .HasPermission(PermissionContext.Todo.Items.Update);
+            .HasPermission(TodoPermissionCatalog.Items.Update);
 
         group.MapDelete("/{id:guid}/list", ClearListAsync)
             .WithName("ClearTodoList")
             .WithSummary("Remove a todo from its list.")
-            .HasPermission(PermissionContext.Todo.Items.Update);
+            .HasPermission(TodoPermissionCatalog.Items.Update);
     }
 
     private static async Task<IResult> SearchAsync(

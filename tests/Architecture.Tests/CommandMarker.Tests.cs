@@ -1,4 +1,4 @@
-using Application.Common.Mediators.Commands;
+using Application.BuildingBlocks.UseCases.Mediation.Commands;
 
 namespace QingFa.Shop.Architecture.Tests;
 
@@ -7,8 +7,8 @@ public sealed class CommandMarkerArchitectureTests
 {
     private static readonly string[] SelfManagedNamespaces =
     [
-        "Application.Features.Identity.Auth",
-        "Application.Features.Identity.External",
+        "Application.BuildingBlocks.Security.Identity.Auth",
+        "Application.BuildingBlocks.Security.Identity.External",
     ];
 
     [Fact(DisplayName = "Non-transactional commands should only live in self-managed identity slices")]
