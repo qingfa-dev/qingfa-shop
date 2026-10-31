@@ -123,7 +123,8 @@ prints `==> <target>` and then the exact CLI it executes (`$ dotnet ...`,
 # Workspace
 make install         # restore .NET + install the web workspace
 make build           # .NET solution + both SPA bundles
-make lint            # formatting, structure, and vue-tsc checks
+make lint            # formatting, structure, convention gate, and vue-tsc checks
+make convention.check # magic values, outcomes, and monadic Result gate
 make format          # write C# and Prettier fixes
 make test            # .NET unit, Api, then web tests
 make test.all        # every suite, including AppHost and infra

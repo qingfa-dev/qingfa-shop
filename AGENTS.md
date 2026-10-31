@@ -21,7 +21,8 @@
 
 - `make doctor` — verify dotnet/node/pnpm/Docker.
 - `make install` — one .NET restore + one `app/` pnpm install.
-- `make lint` — `dotnet format --verify-no-changes`, structure check, `vue-tsc`. `make format` writes fixes.
+- `make lint` — `dotnet format --verify-no-changes`, structure check, convention gate, `vue-tsc`. `make format` writes fixes.
+- `make convention.check` — magic values, outcome shape, and monadic `Result` gate; `SELF_TEST=1` runs the checker fixtures, `BASELINE=<path>` overrides the baseline.
 - `make build` — solution + both SPA bundles.
 - `make test` — fast gate: .NET unit → Api integration → web unit → web integration.
 - `make test.infra.broker` — RabbitMQ composition + transport suite; uses Testcontainers and skips without Docker.
@@ -63,6 +64,32 @@
   The payments routes also precede `/api`: `/api/payments/webhooks/{**remainder}` is anonymous and both it and
   `/api/payments/{**remainder}` / `/api/admin/payments/{**remainder}` preserve the `/api` prefix (the catch-all strips it).
 - AppHost sets auto-migration. Add EF migrations with `dotnet ef migrations add <Name> -p src/Infrastructure -s app/Web.Api`; they live in `src/Infrastructure/Migrations`.
+
+## Convention gate
+
+`make convention.check` runs in `make lint` and PR CI. It needs no build and
+enforces four rules over `src/` and `app/`:
+
+- `magic-number` — integer/decimal literals with abs ≥ 10 must live in a
+  `*Constant.cs`. Values 0–9, hex/binary, comments, and string contents are exempt.
+- `magic-string` — only wire-shaped literals (dotted `todo.completed`,
+  hyphenated `X-Correlation-Id`, colon keys `seeder:todos`) must be constants.
+  Prose, URIs, connection strings, MIME types, and whitespace are exempt.
+- `outcome-shape` — `Error.*` construction belongs in `*Outcome.cs`, which must
+  be a `static class` ending in `Outcome` with nested `Codes` and
+  `Failure`/`Success`. Dynamic code builders live inside `Codes`. The two
+  documented exceptions are `Result.Generic.cs` and `PermissionMetadata.cs`.
+- `monadic-result` — public/protected members of `*.Service.cs`,
+  `*.Interface.cs`, and `*.Abstract.cs` return `Result`/`Result<T>` instead of
+  `void`, `Task`, `ValueTask`, or `Task<T>`/`ValueTask<T>`. Private helpers,
+  non-async pure returns, and framework `override` members are exempt.
+
+Constants live beside the role that owns them; outcomes live beside the
+capability. `scripts/common/convention-baseline.tsv` records reviewed legacy
+findings as `rule ⇥ path ⇥ key ⇥ count ⇥ reason`. A row suppresses that many
+occurrences; excess occurrences, stale rows, and duplicate rows fail. Fix new
+code instead of adding rows. Full guidance:
+[`guide/convention-gate-guide.md`](guide/convention-gate-guide.md).
 
 ## Web conventions
 

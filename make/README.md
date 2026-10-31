@@ -16,7 +16,7 @@ the same command works locally and in CI.
 
 | Path | Role | Notes |
 |---|---|---|
-| `common.mk` | config | `run` macro plus `##@ Setup` (`help`, `doctor`) and `##@ Quality` aggregates (`install`, `format`, `lint`, `build`) |
+| `common.mk` | config | `run` macro plus `##@ Setup` (`help`, `doctor`) and `##@ Quality` (`install`, `format`, `structure.check`, `convention.check`, `lint`, `build`) |
 | `lib.mk` | config | `##@ Libraries`: shared `src/` and `.NET` test projects |
 | `api.mk` | config | `##@ Api`: install, format, lint, build, test, publish |
 | `gate.mk` | config | `##@ Gateway`: install, format, lint, build, test, publish |
@@ -63,6 +63,9 @@ Out of scope:
   `test.integration`, and optional `e2e`.
 - `make ci` never starts the Compose stack; `make ci.full` is the only target
   that does.
+- `make lint` includes `convention.check`, so magic-value, outcome, and monadic
+  `Result` rules fail locally before CI. `make convention.check SELF_TEST=1`
+  runs the checker's own fixtures; `BASELINE=<path>` overrides the baseline.
 - `make ci` runs `coverage.unit`, the Api integration suite, the RabbitMQ broker
   suite, then `coverage.web`; `make ci.full` adds the merged `coverage.report`
   gate after every integration collector.

@@ -1,6 +1,6 @@
 # guide
 
-Skill-style style guides for writing code comments and folder documentation. _docs · meta_
+Skill-style style guides for comments, file names, folder documentation, and the convention gate. _docs · meta_
 
 ## Summary
 
@@ -8,13 +8,16 @@ Skill-style style guides for writing code comments and folder documentation. _do
 documents written for both humans and agents, with frontmatter so they can
 be loaded as skills. They refine project-wide rules rather than restate
 them; when a guide and the code disagree, the code wins and the guide is
-updated.
+updated. The convention-gate guide is the exception that proves the rule:
+`make convention.check` enforces it mechanically.
 
 ## Contains
 
 | Path | Role | Notes |
 |---|---|---|
 | `code-comment-style-guide.md` | docs | Labelled comments (`Validate:`, `Compute:`, `Fallback:`) instead of free prose |
+| `convention-gate-guide.md` | docs | Constants, outcomes, and monadic `Result` rules enforced by `make convention.check` |
+| `dotted-file-naming-guide.md` | docs | Subject + role filenames, the closed role vocabulary, and `make structure.check` |
 | `folder-readme-guide.md` | docs | Fixed-section folder `README.md` convention (this tree) |
 
 ## Boundaries
@@ -28,8 +31,10 @@ Out of scope:
 
 ## Assumptions
 
-- Guides are read before writing comments or folder READMEs; they are not
-  enforced by a linter.
+- Guides are read before writing comments, file names, or folder READMEs.
+- Most guides rely on review; `convention-gate-guide.md` is also enforced by
+  [`../scripts/common/convention-check.common.sh`](../scripts/common/convention-check.common.sh)
+  through `make convention.check`.
 
 ## Conventions
 
@@ -41,3 +46,4 @@ Out of scope:
 
 - Parent: [`../README.md`](../README.md)
 - Applied across: [`../src/`](../src/README.md), [`../tests/`](../tests/README.md)
+- Enforcement: [`../scripts/common/`](../scripts/common/), `make structure.check`, `make convention.check`

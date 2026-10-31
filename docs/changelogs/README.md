@@ -8,6 +8,7 @@ This folder replaces the former `docs/plans`, `docs/releases`, `docs/specs`, and
 
 | Record | Purpose |
 |---|---|
+| `2026-10-31-convention-gate.md` | Design for the magic-value, outcome-shape, and monadic-Result lint gate |
 | `2026-10-31-building-blocks-modules-refactor.md` | Final summary of the BuildingBlocks/Modules restructure |
 | `2026-10-31-code-quality-sweep.md` | Scan and remediation record for errors, inline values, validation, and options |
 | `2026-10-31-outcome-pass.md` | Outcome renames, `Codes` constants, and inline-error extraction |

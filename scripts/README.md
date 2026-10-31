@@ -14,7 +14,7 @@ upward.
 
 | Path | Role | Notes |
 |---|---|---|
-| `common/` | util | `doctor`, `clean`, `structure.check`, `restore-tools`, `trace.common.sh` (shared command echo), `coverage.common.sh` + `coverage-check.*` (report paths, merge, thresholds) |
+| `common/` | util | `doctor`, `clean`, `structure.check`, `convention-check.*` (magic values, outcomes, monadic `Result`, baseline ratchet), `restore-tools`, `trace.common.sh` (shared command echo), `coverage.common.sh` + `coverage-check.*` (report paths, merge, thresholds) |
 | `backend/` | util | solution restore/build, scoped `dotnet format`, Api/Gateway/AppHost/lib test runners, the RabbitMQ broker runner, coverage collectors, Api/Gateway publish |
 | `web/` | util | workspace install, per-app Prettier, `vue-tsc`, Vitest unit/integration, optional Playwright e2e, coverage, build, publish |
 | `infra/` | util | `config`, `build` (seven images), `size`, `test`, `up`, `down`, `logs`, `ps`, `smoke`, plus `backing-up/down/health` for PostgreSQL, Redis, and RabbitMQ |
@@ -72,6 +72,7 @@ Environment variables read by scripts:
 | `COVERAGE_LINES`, `COVERAGE_BRANCHES` | `common/coverage-check`, `web/coverage` | Per-assembly/per-app floors, default `90` / `80` |
 | `COVERAGE_ROOT` | `common/coverage.common.sh` | Report directory, default `artifacts/coverage` |
 | `COVERAGE_GATED` | `common/coverage-check` | Assemblies that must meet the floor |
+| `CONVENTION_BASELINE` | `common/convention-check` | Baseline path, default `scripts/common/convention-baseline.tsv` |
 
 ## Conventions
 
@@ -109,6 +110,14 @@ Environment variables read by scripts:
 - `backend/test-broker` filters the Infrastructure suite to `*RabbitMq*` and
   skips when the broker specs are absent; the specs themselves skip when no
   container engine is available.
+- `common/convention-check` scans `src/` and `app/`, masks comments and string
+  contents, and enforces four rules: `magic-number` (abs ≥ 10), `magic-string`
+  (dotted/hyphenated/colon keys), `outcome-shape` (static `*Outcome` with
+  `Codes` and `Failure`/`Success`, no inline `Error.*`), and `monadic-result`
+  (`Result` returns on the service/interface/abstract surface). The TSV
+  baseline records `rule ⇥ path ⇥ key ⇥ count ⇥ reason`; excess occurrences,
+  stale rows, and duplicate rows fail, so the list only shrinks.
+  `--write-baseline` regenerates it; `--self-test` runs the parsing fixtures.
 - `backend/coverage-*` write raw Cobertura under
   `artifacts/coverage/dotnet/raw/`; `coverage.report` merges every raw file and
   enforces the gated assemblies. `common/coverage-check.common.py` deliberately
