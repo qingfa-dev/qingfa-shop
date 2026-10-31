@@ -21,8 +21,8 @@ public interface IPaymentReferenceStore
     /// <param name="provider">The provider.</param>
     /// <param name="providerReference">The provider reference.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The payment id, or <c>null</c> when absent.</returns>
-    Task<Guid?> FindAsync(
+    /// <returns>The payment id, or a not-found failure.</returns>
+    Task<Result<Guid>> FindAsync(
         PaymentProvider provider,
         string providerReference,
         CancellationToken cancellationToken);

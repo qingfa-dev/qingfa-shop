@@ -38,7 +38,7 @@ public static class ConfirmPayment
         {
             ArgumentNullException.ThrowIfNull(command);
 
-            PaymentReadModel? row = await store.FindAsync(command.PaymentId, cancellationToken);
+            Result<PaymentReadModel> row = await store.FindAsync(command.PaymentId, cancellationToken);
 
             PaymentProvider provider;
             string? providerReference;
@@ -58,9 +58,9 @@ public static class ConfirmPayment
             }
             else
             {
-                provider = PaymentProviderExtension.FromWire(row.Provider);
-                providerReference = row.ProviderReference;
-                status = PaymentStatusExtension.FromWire(row.Status);
+                provider = PaymentProviderExtension.FromWire(row.Value.Provider);
+                providerReference = row.Value.ProviderReference;
+                status = PaymentStatusExtension.FromWire(row.Value.Status);
             }
 
             if (providerReference is null)

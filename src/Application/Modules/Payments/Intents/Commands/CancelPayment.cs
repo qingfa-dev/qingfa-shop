@@ -34,59 +34,60 @@ public static class CancelPayment
         {
             ArgumentNullException.ThrowIfNull(command);
 
-            Result<Payment> loaded = await repository.LoadAsync(command.PaymentId, cancellationToken);
+            Result<Payment> cancelled = await repository
+                .LoadAsync(command.PaymentId, cancellationToken)
+                .BindAsync((payment, ct) => CancelAsync(payment, ct), cancellationToken);
 
-            if (loaded.IsFailure)
-                return Result<PaymentResponseModel>.Fail(loaded.Errors);
+            return cancelled.Map(payment => payment.ToResponse());
+        }
 
-            Payment payment = loaded.Value;
-
+        /// <summary>Expires an overdue intent, otherwise voids it at the provider and locally.</summary>
+        private async Task<Result<Payment>> CancelAsync(Payment payment, CancellationToken cancellationToken)
+        {
             // Handle: an overdue intent is expired rather than cancelled.
             if (payment.IsExpired(clock.GetUtcNow(), policy.ProviderExpiryGracePeriod))
-            {
-                Result<Payment> expiring = payment.Expire(clock.GetUtcNow());
+                return await payment
+                    .Expire(clock.GetUtcNow())
+                    .BindAsync((expired, ct) => SaveAsync(expired, ct), cancellationToken);
 
-                if (expiring.IsFailure)
-                    return Result<PaymentResponseModel>.Fail(expiring.Errors);
+            return await registry
+                .Resolve(payment.Provider)
+                .BindAsync((gateway, ct) => VoidAtProviderAsync(payment, gateway, ct), cancellationToken)
+                .BindAsync(
+                    (current, _) => Task.FromResult(current.Cancel(
+                        PaymentConstant.Reasons.CustomerCancelled,
+                        clock.GetUtcNow())),
+                    cancellationToken)
+                .BindAsync((cancelled, ct) => SaveAsync(cancelled, ct), cancellationToken);
+        }
 
-                Result expired = await repository.SaveAsync(expiring.Value, cancellationToken);
+        /// <summary>Voids the provider authorization when one exists.</summary>
+        private async Task<Result<Payment>> VoidAtProviderAsync(
+            Payment payment,
+            IPaymentGateway gateway,
+            CancellationToken cancellationToken)
+        {
+            if (payment.ProviderReference is null)
+                return Result<Payment>.Success(payment);
 
-                return expired.IsFailure
-                    ? Result<PaymentResponseModel>.Fail(expired.Errors)
-                    : Result<PaymentResponseModel>.Success(expiring.Value.ToResponse());
-            }
+            Result<PaymentCancelResult> cancelled = await PaymentMetrics.TrackAsync(
+                payment.Provider,
+                PaymentConstant.Operations.Cancel,
+                () => gateway.CancelAsync(
+                    new PaymentCancelRequest(
+                        payment.ProviderReference,
+                        $"{PaymentConstant.IdempotencyPrefixes.Cancel}{payment.Id:N}"),
+                    cancellationToken));
 
-            Result<IPaymentGateway> resolved = registry.Resolve(payment.Provider);
+            return cancelled.Map(_ => payment);
+        }
 
-            if (resolved.IsFailure)
-                return Result<PaymentResponseModel>.Fail(resolved.Errors);
+        /// <summary>Persists the aggregate and returns it.</summary>
+        private async Task<Result<Payment>> SaveAsync(Payment payment, CancellationToken cancellationToken)
+        {
+            Result saved = await repository.SaveAsync(payment, cancellationToken);
 
-            if (payment.ProviderReference is not null)
-            {
-                Result<PaymentCancelResult> cancelled = await PaymentMetrics.TrackAsync(
-                    payment.Provider,
-                    PaymentConstant.Operations.Cancel,
-                    () => resolved.Value.CancelAsync(
-                        new PaymentCancelRequest(
-                            payment.ProviderReference,
-                            $"{PaymentConstant.IdempotencyPrefixes.Cancel}{payment.Id:N}"),
-                        cancellationToken));
-
-                if (cancelled.IsFailure)
-                    return Result<PaymentResponseModel>.Fail(cancelled.Errors);
-            }
-
-            Result<Payment> transition = payment.Cancel(
-                PaymentConstant.Reasons.CustomerCancelled, clock.GetUtcNow());
-
-            if (transition.IsFailure)
-                return Result<PaymentResponseModel>.Fail(transition.Errors);
-
-            Result saved = await repository.SaveAsync(transition.Value, cancellationToken);
-
-            return saved.IsFailure
-                ? Result<PaymentResponseModel>.Fail(saved.Errors)
-                : Result<PaymentResponseModel>.Success(transition.Value.ToResponse());
+            return saved.Map(() => payment);
         }
     }
 

@@ -29,7 +29,8 @@ public sealed class GetPaymentTest
         };
 
         var store = new Mock<IPaymentReadStore>();
-        store.Setup(x => x.FindAsync(row.Id, It.IsAny<CancellationToken>())).ReturnsAsync(row);
+        store.Setup(x => x.FindAsync(row.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<PaymentReadModel>.Success(row));
 
         var repository = new Mock<IEventSourcedRepository<Payment, Guid>>();
         var handler = new GetPayment.UseCaseHandler(store.Object, repository.Object, new StubPaymentPolicy(), TimeProvider.System);
@@ -53,7 +54,8 @@ public sealed class GetPaymentTest
         };
 
         var store = new Mock<IPaymentReadStore>();
-        store.Setup(x => x.FindAsync(row.Id, It.IsAny<CancellationToken>())).ReturnsAsync(row);
+        store.Setup(x => x.FindAsync(row.Id, It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<PaymentReadModel>.Success(row));
 
         var repository = new Mock<IEventSourcedRepository<Payment, Guid>>();
         var handler = new GetPayment.UseCaseHandler(store.Object, repository.Object, new StubPaymentPolicy(), TimeProvider.System);
@@ -84,7 +86,7 @@ public sealed class GetPaymentTest
 
         var store = new Mock<IPaymentReadStore>();
         store.Setup(x => x.FindAsync(payment.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((PaymentReadModel?)null);
+            .ReturnsAsync(Result<PaymentReadModel>.Fail(PaymentsOutcome.Failure.NotFound(payment.Id)));
 
         var repository = new Mock<IEventSourcedRepository<Payment, Guid>>();
         repository.Setup(x => x.LoadAsync(payment.Id, It.IsAny<CancellationToken>()))
@@ -107,7 +109,7 @@ public sealed class GetPaymentTest
 
         var store = new Mock<IPaymentReadStore>();
         store.Setup(x => x.FindAsync(id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((PaymentReadModel?)null);
+            .ReturnsAsync(Result<PaymentReadModel>.Fail(PaymentsOutcome.Failure.NotFound(id)));
 
         var repository = new Mock<IEventSourcedRepository<Payment, Guid>>();
         repository.Setup(x => x.LoadAsync(id, It.IsAny<CancellationToken>()))

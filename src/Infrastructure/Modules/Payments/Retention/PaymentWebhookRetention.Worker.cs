@@ -1,11 +1,15 @@
 using Application.Modules.Payments;
 using Application.Modules.Payments.Persistence;
 
+using Core.BuildingBlocks.Functional.Results;
+
 using Infrastructure.Payments.Configuration;
 
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Hosting;
 using Microsoft.Extensions.Logging;
+
+using Infrastructure.Modules.Payments.Retention;
 using Microsoft.Extensions.Options;
 
 namespace Infrastructure.Modules.Payments.Retention;
@@ -71,55 +75,35 @@ public sealed class PaymentWebhookRetentionWorker : BackgroundService
 
     /// <summary>Runs one retention sweep.</summary>
     /// <param name="cancellationToken">A token that cancels the sweep.</param>
-    /// <returns>The number of rows deleted, or -1 when the sweep failed.</returns>
-    public async Task<int> RunOnceAsync(CancellationToken cancellationToken = default)
+    /// <returns>The number of rows deleted, or the retention failure.</returns>
+    public async Task<Result<int>> RunOnceAsync(CancellationToken cancellationToken = default)
     {
         if (!_options.Enabled)
-            return 0;
+            return Result<int>.Success(0);
 
         DateTimeOffset cutoff = _clock.GetUtcNow().AddDays(-_options.WebhookEventRetentionDays);
 
         using IServiceScope scope = _scopeFactory.CreateScope();
+
         IWebhookEventStore store = scope.ServiceProvider.GetRequiredService<IWebhookEventStore>();
 
-        Result<int> deleted = await store.DeleteProcessedBeforeAsync(cutoff, cancellationToken)
+        Result<int> sweep = await store
+            .DeleteProcessedBeforeAsync(cutoff, cancellationToken)
             .ConfigureAwait(false);
 
-        if (deleted.IsFailure)
-        {
-            PaymentRetentionLoggers.SweepFailed(_logger, deleted.Errors[0].Message);
-            return -1;
-        }
-
-        if (deleted.Value > 0)
-        {
-            PaymentMetrics.WebhooksPruned.Add(deleted.Value);
-            PaymentRetentionLoggers.Pruned(_logger, deleted.Value, cutoff);
-        }
-
-        return deleted.Value;
+        // Handle: report through the monadic switch so success and failure share one path.
+        return sweep.Switch(
+            count => OnPruned(count, cutoff),
+            errors => PaymentRetentionLoggers.SweepFailed(_logger, errors[0].Message));
     }
-}
 
-/// <summary>Source-generated log messages for the retention worker.</summary>
-internal static partial class PaymentRetentionLoggers
-{
-    /// <summary>Logs a completed sweep that removed rows.</summary>
-    /// <param name="logger">The logger.</param>
-    /// <param name="count">Rows removed.</param>
-    /// <param name="cutoff">The cutoff used.</param>
-    [LoggerMessage(
-        EventId = 5101,
-        Level = LogLevel.Information,
-        Message = "Pruned {Count} processed webhook deliveries received before {Cutoff}.")]
-    public static partial void Pruned(ILogger logger, int count, DateTimeOffset cutoff);
+    /// <summary>Records a successful sweep.</summary>
+    private void OnPruned(int count, DateTimeOffset cutoff)
+    {
+        if (count <= 0)
+            return;
 
-    /// <summary>Logs a failed sweep.</summary>
-    /// <param name="logger">The logger.</param>
-    /// <param name="reason">Why the sweep failed.</param>
-    [LoggerMessage(
-        EventId = 5102,
-        Level = LogLevel.Warning,
-        Message = "Webhook retention sweep failed: {Reason}")]
-    public static partial void SweepFailed(ILogger logger, string reason);
+        PaymentMetrics.WebhooksPruned.Add(count);
+        PaymentRetentionLoggers.Pruned(_logger, count, cutoff);
+    }
 }

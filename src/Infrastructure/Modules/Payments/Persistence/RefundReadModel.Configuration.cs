@@ -22,7 +22,7 @@ public sealed class RefundReadModelConfiguration : IEntityTypeConfiguration<Refu
         builder.Property(model => model.Id).HasColumnName("id").ValueGeneratedNever();
         builder.Property(model => model.PaymentId).HasColumnName("payment_id").IsRequired();
         builder.Property(model => model.Status).HasColumnName("status").HasMaxLength(PaymentConstant.Constraints.StatusMaxLength).IsRequired();
-        builder.Property(model => model.Amount).HasColumnName("amount").HasPrecision(19, 4);
+        builder.Property(model => model.Amount).HasColumnName("amount").HasPrecision(PaymentConstant.Constraints.AmountPrecision, PaymentConstant.Constraints.AmountScale);
         builder.Property(model => model.Currency).HasColumnName("currency").HasMaxLength(PaymentConstant.Constraints.CurrencyMaxLength).IsRequired();
         builder.Property(model => model.ProviderReference).HasColumnName("provider_reference").HasMaxLength(PaymentConstant.Constraints.ProviderReferenceMaxLength);
         builder.Property(model => model.Reason).HasColumnName("reason").HasMaxLength(PaymentConstant.Constraints.ReasonMaxLength).IsRequired();

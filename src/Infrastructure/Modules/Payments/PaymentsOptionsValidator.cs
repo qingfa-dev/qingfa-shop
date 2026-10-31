@@ -10,12 +10,6 @@ public sealed class PaymentsOptionsValidator(string environment) : IValidateOpti
     /// <summary>The environment name that forbids the fake provider.</summary>
     private const string Production = "Production";
 
-    /// <summary>The smallest accepted webhook body limit.</summary>
-    private const int MinWebhookBytes = 1024;
-
-    /// <summary>The largest accepted webhook body limit.</summary>
-    private const int MaxWebhookBytes = 1048576;
-
     /// <inheritdoc />
     public ValidateOptionsResult Validate(string? name, PaymentsOptions options)
     {
@@ -23,7 +17,7 @@ public sealed class PaymentsOptionsValidator(string environment) : IValidateOpti
 
         List<string> failures = [];
 
-        if (options.Limits.WebhookMaxBytes is < MinWebhookBytes or > MaxWebhookBytes)
+        if (options.Limits.WebhookMaxBytes is < PaymentsConfigurationConstant.MinWebhookBytes or > PaymentsConfigurationConstant.MaxWebhookBytes)
             failures.Add("Payments:Limits:WebhookMaxBytes must be between 1024 and 1048576.");
 
         if (options.Providers.Fake.Enabled && environment == Production)

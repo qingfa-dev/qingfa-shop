@@ -7,18 +7,6 @@ namespace Infrastructure.Modules.Payments;
 /// <summary>Validates the retention configuration at startup.</summary>
 public sealed class PaymentRetentionOptionsValidator : IValidateOptions<PaymentRetentionOptions>
 {
-    /// <summary>Shortest accepted webhook retention.</summary>
-    public const int MinRetentionDays = 1;
-
-    /// <summary>Longest accepted webhook retention.</summary>
-    public const int MaxRetentionDays = 365;
-
-    /// <summary>Shortest accepted sweep interval.</summary>
-    public const int MinSweepHours = 1;
-
-    /// <summary>Longest accepted sweep interval.</summary>
-    public const int MaxSweepHours = 24;
-
     /// <inheritdoc />
     public ValidateOptionsResult Validate(string? name, PaymentRetentionOptions options)
     {
@@ -26,13 +14,13 @@ public sealed class PaymentRetentionOptionsValidator : IValidateOptions<PaymentR
 
         List<string> failures = [];
 
-        if (options.WebhookEventRetentionDays is < MinRetentionDays or > MaxRetentionDays)
+        if (options.WebhookEventRetentionDays is < PaymentsConfigurationConstant.MinRetentionDays or > PaymentsConfigurationConstant.MaxRetentionDays)
             failures.Add(
-                $"{PaymentRetentionOptions.SectionName}:WebhookEventRetentionDays must be between {MinRetentionDays} and {MaxRetentionDays}.");
+                $"{PaymentRetentionOptions.SectionName}:WebhookEventRetentionDays must be between {PaymentsConfigurationConstant.MinRetentionDays} and {PaymentsConfigurationConstant.MaxRetentionDays}.");
 
-        if (options.SweepIntervalHours is < MinSweepHours or > MaxSweepHours)
+        if (options.SweepIntervalHours is < PaymentsConfigurationConstant.MinSweepHours or > PaymentsConfigurationConstant.MaxSweepHours)
             failures.Add(
-                $"{PaymentRetentionOptions.SectionName}:SweepIntervalHours must be between {MinSweepHours} and {MaxSweepHours}.");
+                $"{PaymentRetentionOptions.SectionName}:SweepIntervalHours must be between {PaymentsConfigurationConstant.MinSweepHours} and {PaymentsConfigurationConstant.MaxSweepHours}.");
 
         return failures.Count == 0
             ? ValidateOptionsResult.Success

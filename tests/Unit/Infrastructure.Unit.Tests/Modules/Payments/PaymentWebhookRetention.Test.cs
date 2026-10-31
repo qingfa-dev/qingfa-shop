@@ -1,9 +1,13 @@
 using Application.Modules.Payments.Persistence;
 
+using Core.BuildingBlocks.Functional.Results;
+
 using AwesomeAssertions;
 
 using Infrastructure.Modules.Payments;
 using Infrastructure.Modules.Payments.Retention;
+using Core.Modules.Payments;
+
 using Infrastructure.Payments.Configuration;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -31,9 +35,10 @@ public sealed class PaymentWebhookRetentionTest
 
         PaymentWebhookRetentionWorker worker = Build(store.Object, days: 30);
 
-        int deleted = await worker.RunOnceAsync();
+        Result<int> sweep = await worker.RunOnceAsync();
 
-        deleted.Should().Be(7);
+        sweep.IsSuccess.Should().BeTrue();
+        sweep.Value.Should().Be(7);
         cutoffSeen.Should().Be(Now.AddDays(-30));
     }
 
@@ -44,9 +49,10 @@ public sealed class PaymentWebhookRetentionTest
 
         PaymentWebhookRetentionWorker worker = Build(store.Object, enabled: false);
 
-        int deleted = await worker.RunOnceAsync();
+        Result<int> sweep = await worker.RunOnceAsync();
 
-        deleted.Should().Be(0);
+        sweep.IsSuccess.Should().BeTrue();
+        sweep.Value.Should().Be(0);
         store.Verify(
             x => x.DeleteProcessedBeforeAsync(It.IsAny<DateTimeOffset>(), It.IsAny<CancellationToken>()),
             Times.Never);
@@ -61,9 +67,10 @@ public sealed class PaymentWebhookRetentionTest
 
         PaymentWebhookRetentionWorker worker = Build(store.Object);
 
-        int deleted = await worker.RunOnceAsync();
+        Result<int> sweep = await worker.RunOnceAsync();
 
-        deleted.Should().Be(-1);
+        sweep.IsFailure.Should().BeTrue();
+        sweep.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.RetentionFailed);
     }
 
     [Theory]

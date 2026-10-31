@@ -52,75 +52,102 @@ public static class SettlePayment
                 return Result<PaymentResponseModel>.Fail(
                     PaymentsOutcome.Failure.ReferenceRequired("provider reference"));
 
-            Guid? paymentId = await references.FindAsync(
+            return await ResolvePaymentIdAsync(command, cancellationToken)
+                .BindAsync((id, ct) => repository.LoadAsync(id, ct), cancellationToken)
+                .BindAsync((payment, ct) => ApplyAsync(payment, command, ct), cancellationToken);
+        }
+
+        /// <summary>Finds the payment id for the observed provider reference.</summary>
+        private async Task<Result<Guid>> ResolvePaymentIdAsync(
+            UseCase command,
+            CancellationToken cancellationToken)
+        {
+            Result<Guid> reference = await references.FindAsync(
                 command.Provider, command.ProviderReference, cancellationToken);
 
-            if (paymentId is null)
-            {
-                PaymentReadModel? row = await store.FindByProviderReferenceAsync(
-                    command.Provider, command.ProviderReference, cancellationToken);
+            if (reference.IsSuccess)
+                return reference;
 
-                paymentId = row?.Id;
-            }
+            Result<PaymentReadModel> row = await store.FindByProviderReferenceAsync(
+                command.Provider, command.ProviderReference, cancellationToken);
 
-            if (paymentId is null)
-                return Result<PaymentResponseModel>.Fail(
-                    PaymentsOutcome.Failure.ReferenceNotFound(command.ProviderReference));
+            return row.Map(found => found.Id);
+        }
 
-            Result<Payment> loaded = await repository.LoadAsync(paymentId.Value, cancellationToken);
-
-            if (loaded.IsFailure)
-                return Result<PaymentResponseModel>.Fail(loaded.Errors);
-
-            Payment payment = loaded.Value;
-
+        /// <summary>Applies the observed state and persists the transition.</summary>
+        private async Task<Result<PaymentResponseModel>> ApplyAsync(
+            Payment payment,
+            UseCase command,
+            CancellationToken cancellationToken)
+        {
             // Handle: refund events are applied by the refund slices, never here.
             if (command.Observed is PaymentProviderEventType.Refunded or PaymentProviderEventType.RefundFailed)
                 return Result<PaymentResponseModel>.Success(payment.ToResponse());
 
-            PaymentObservation observation = command.Observed switch
-            {
-                PaymentProviderEventType.Authorized => PaymentObservation.Authorized,
-                PaymentProviderEventType.Captured => PaymentObservation.Captured,
-                PaymentProviderEventType.Failed => PaymentObservation.Failed,
-                PaymentProviderEventType.Cancelled => PaymentObservation.Cancelled,
-                PaymentProviderEventType.Expired => PaymentObservation.Expired,
-                _ => PaymentObservation.Captured
-            };
+            Result<(Payment Payment, bool ShouldSave)> evaluated = Evaluate(
+                payment.ApplyObservation(
+                    ToObservation(command.Observed),
+                    command.ProviderReference,
+                    command.Amount,
+                    command.FailureCode,
+                    clock.GetUtcNow()),
+                payment);
 
-            Result<Payment> transition = payment.ApplyObservation(
-                observation,
-                command.ProviderReference,
-                command.Amount,
-                command.FailureCode,
-                clock.GetUtcNow());
-
-            if (transition.IsFailure)
-            {
-                Error error = transition.Errors[0];
-
-                // Handle: a repeated terminal observation is idempotent, not an error.
-                bool alreadyApplied = error.Code == PaymentsOutcome.Codes.InvalidState
-                    && payment.Status is PaymentStatus.Captured
-                        or PaymentStatus.Refunded
-                        or PaymentStatus.PartiallyRefunded;
-
-                return alreadyApplied
-                    ? Result<PaymentResponseModel>.Success(payment.ToResponse())
-                    : Result<PaymentResponseModel>.Fail(error);
-            }
-
-            Result saved = await repository.SaveAsync(transition.Value, cancellationToken);
-
-            if (saved.IsFailure)
-            {
-                PaymentMetrics.Failed.Add(1);
-                return Result<PaymentResponseModel>.Fail(saved.Errors);
-            }
-
-            PaymentMetrics.Settled.Add(1);
-            return Result<PaymentResponseModel>.Success(transition.Value.ToResponse());
+            return await evaluated
+                .BindAsync(
+                    (state, ct) => state.ShouldSave
+                        ? SaveAsync(state.Payment, ct)
+                        : Task.FromResult(Result<PaymentResponseModel>.Success(state.Payment.ToResponse())),
+                    cancellationToken);
         }
+
+        /// <summary>Decides whether the observation persisted a transition or was already applied.</summary>
+        private static Result<(Payment Payment, bool ShouldSave)> Evaluate(
+            Result<Payment> observation,
+            Payment current)
+        {
+            if (!observation.IsFailure)
+                return Result<(Payment Payment, bool ShouldSave)>.Success((observation.Value, true));
+
+            // Handle: a repeated terminal observation is idempotent, not an error.
+            bool alreadyApplied = observation.Errors[0].Code == PaymentsOutcome.Codes.InvalidState
+                && current.Status is PaymentStatus.Captured
+                    or PaymentStatus.Refunded
+                    or PaymentStatus.PartiallyRefunded;
+
+            return alreadyApplied
+                ? Result<(Payment Payment, bool ShouldSave)>.Success((current, false))
+                : Result<(Payment Payment, bool ShouldSave)>.Fail(observation.Errors);
+        }
+
+        /// <summary>Persists the transition and records the settlement metric.</summary>
+        private async Task<Result<PaymentResponseModel>> SaveAsync(
+            Payment payment,
+            CancellationToken cancellationToken)
+        {
+            Result saved = await repository.SaveAsync(payment, cancellationToken);
+
+            // Handle: record the settlement outcome once, then project the response.
+            saved.Switch(RecordSettled, RecordFailed);
+
+            return saved.Map(() => payment.ToResponse());
+        }
+
+        /// <summary>Maps a provider event type onto the aggregate observation.</summary>
+        private static PaymentObservation ToObservation(PaymentProviderEventType observed) => observed switch
+        {
+            PaymentProviderEventType.Authorized => PaymentObservation.Authorized,
+            PaymentProviderEventType.Failed => PaymentObservation.Failed,
+            PaymentProviderEventType.Cancelled => PaymentObservation.Cancelled,
+            PaymentProviderEventType.Expired => PaymentObservation.Expired,
+            _ => PaymentObservation.Captured
+        };
+
+        /// <summary>Records one settled payment.</summary>
+        private static void RecordSettled() => PaymentMetrics.Settled.Add(1);
+
+        /// <summary>Records one failed persistence.</summary>
+        private static void RecordFailed(List<Error> _) => PaymentMetrics.Failed.Add(1);
     }
 
     #endregion

@@ -21,7 +21,7 @@ public sealed class PaymentIdempotencyKeyConfiguration : IEntityTypeConfiguratio
         builder.Property(model => model.Id).HasColumnName("id").ValueGeneratedNever();
         builder.Property(model => model.CustomerId).HasColumnName("customer_id").IsRequired();
         builder.Property(model => model.Key).HasColumnName("idempotency_key").HasMaxLength(PaymentConstant.Constraints.IdempotencyKeyMaxLength).IsRequired();
-        builder.Property(model => model.Fingerprint).HasColumnName("fingerprint").HasMaxLength(64).IsRequired();
+        builder.Property(model => model.Fingerprint).HasColumnName("fingerprint").HasMaxLength(PaymentConstant.Constraints.IdempotencyFingerprintMaxLength).IsRequired();
         builder.Property(model => model.PaymentId).HasColumnName("payment_id").IsRequired();
         builder.Property(model => model.CreatedAt).HasColumnName("created_at");
         builder.Property(model => model.Currency).HasColumnName("currency").HasMaxLength(PaymentConstant.Constraints.CurrencyMaxLength).IsRequired();

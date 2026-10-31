@@ -183,12 +183,12 @@ public sealed class StripePaymentGateway : IPaymentGateway
 
             PaymentProviderEventType? type = stripeEvent.Type switch
             {
-                "payment_intent.amount_capturable_updated" => PaymentProviderEventType.Authorized,
-                "payment_intent.succeeded" => PaymentProviderEventType.Captured,
-                "payment_intent.payment_failed" => PaymentProviderEventType.Failed,
-                "payment_intent.canceled" => PaymentProviderEventType.Cancelled,
-                "charge.refunded" => PaymentProviderEventType.Refunded,
-                "charge.refund.updated" => PaymentProviderEventType.RefundFailed,
+                StripeConstant.EventType.AmountCapturable => PaymentProviderEventType.Authorized,
+                StripeConstant.EventType.Succeeded => PaymentProviderEventType.Captured,
+                StripeConstant.EventType.PaymentFailed => PaymentProviderEventType.Failed,
+                StripeConstant.EventType.Canceled => PaymentProviderEventType.Cancelled,
+                StripeConstant.EventType.ChargeRefunded => PaymentProviderEventType.Refunded,
+                StripeConstant.EventType.ChargeRefundUpdated => PaymentProviderEventType.RefundFailed,
                 _ => null
             };
 
@@ -243,7 +243,7 @@ public sealed class StripePaymentGateway : IPaymentGateway
             status,
             null,
             intent.ClientSecret,
-            intent.Created.AddMinutes(30),
+            intent.Created.AddMinutes(StripeConstant.IntentLifetimeMinutes),
             failure);
     }
 }

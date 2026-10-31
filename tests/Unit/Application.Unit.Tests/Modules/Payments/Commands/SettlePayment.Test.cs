@@ -33,7 +33,7 @@ public sealed class SettlePaymentTest
 
         var references = new Mock<IPaymentReferenceStore>();
         references.Setup(x => x.FindAsync(PaymentProvider.Fake, "fake_1", It.IsAny<CancellationToken>()))
-            .ReturnsAsync(payment.Id);
+            .ReturnsAsync(Result<Guid>.Success(payment.Id));
 
         var store = new Mock<IPaymentReadStore>();
         var handler = new SettlePayment.UseCaseHandler(repository.Object, references.Object, store.Object, TimeProvider.System);

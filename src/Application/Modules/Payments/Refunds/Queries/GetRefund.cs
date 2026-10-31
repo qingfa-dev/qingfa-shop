@@ -30,12 +30,8 @@ public static class GetRefund
         {
             ArgumentNullException.ThrowIfNull(query);
 
-            RefundReadModel? row = await store.FindRefundAsync(
+            return await store.FindRefundAsync(
                 query.PaymentId, query.RefundId, cancellationToken);
-
-            return row is null
-                ? Result<RefundReadModel>.Fail(PaymentsOutcome.Failure.RefundNotFound(query.RefundId))
-                : Result<RefundReadModel>.Success(row);
         }
     }
 

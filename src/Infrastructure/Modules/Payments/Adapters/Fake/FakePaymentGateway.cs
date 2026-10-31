@@ -15,23 +15,23 @@ namespace Infrastructure.Modules.Payments.Adapters.Fake;
 /// <summary>Deterministic in-memory gateway for development and tests.</summary>
 public sealed class FakePaymentGateway : IPaymentGateway
 {
-    /// <summary>The shared secret mixed into the fake signature digest.</summary>
-    public const string WebhookSecret = "fake-webhook-secret";
+    /// <summary>The shared secret mixed into the signature digest.</summary>
+    public const string WebhookSecret = FakePaymentConstant.WebhookSecret;
 
     /// <summary>The failure code reported for scripted declines.</summary>
-    public const string DeclinedCode = "fake_declined";
+    public const string DeclinedCode = FakePaymentConstant.DeclinedCode;
 
-    /// <summary>The prefix of the fake SHA-256 digest signature.</summary>
-    public const string SignaturePrefix = "sha256=";
+    /// <summary>The prefix of the SHA-256 digest signature.</summary>
+    public const string SignaturePrefix = FakePaymentConstant.SignaturePrefix;
 
     /// <summary>Scripts the fake provider to decline.</summary>
-    public const string DeclinePrefix = "decline:";
+    public const string DeclinePrefix = FakePaymentConstant.DeclinePrefix;
 
     /// <summary>Scripts the fake provider to time out.</summary>
-    public const string TimeoutPrefix = "timeout:";
+    public const string TimeoutPrefix = FakePaymentConstant.TimeoutPrefix;
 
     /// <summary>Scripts the fake provider to report processing before a later decline.</summary>
-    public const string DeclinedAsyncPrefix = "declined-async:";
+    public const string DeclinedAsyncPrefix = FakePaymentConstant.DeclinedAsyncPrefix;
 
     /// <inheritdoc />
     public PaymentProvider Provider => PaymentProvider.Fake;
@@ -90,7 +90,7 @@ public sealed class FakePaymentGateway : IPaymentGateway
             status,
             $"https://fake.pay/{reference}",
             "fake_client_secret",
-            DateTimeOffset.UtcNow.AddMinutes(30),
+            DateTimeOffset.UtcNow.AddMinutes(FakePaymentConstant.IntentLifetimeMinutes),
             null)));
     }
 

@@ -46,16 +46,20 @@ public sealed class PaymentReferenceStore(DbContext context, TimeProvider clock)
     }
 
     /// <inheritdoc />
-    public async Task<Guid?> FindAsync(
+    public async Task<Result<Guid>> FindAsync(
         PaymentProvider provider,
         string providerReference,
         CancellationToken cancellationToken)
     {
         string name = provider.ToWire();
 
-        return await context.Set<PaymentReference>().AsNoTracking()
+        Guid? paymentId = await context.Set<PaymentReference>().AsNoTracking()
             .Where(row => row.Provider == name && row.ProviderReference == providerReference)
             .Select(row => (Guid?)row.PaymentId)
             .FirstOrDefaultAsync(cancellationToken);
+
+        return paymentId is { } resolved
+            ? Result<Guid>.Success(resolved)
+            : Result<Guid>.Fail(PaymentsOutcome.Failure.ReferenceNotFound(providerReference));
     }
 }

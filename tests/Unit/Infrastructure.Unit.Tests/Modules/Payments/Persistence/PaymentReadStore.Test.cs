@@ -23,7 +23,7 @@ public sealed class PaymentReadStoreTest
 
         var store = new PaymentReadStore(context);
 
-        (await store.FindAsync(row.Id, CancellationToken.None))!.Id.Should().Be(row.Id);
+        (await store.FindAsync(row.Id, CancellationToken.None)).Value.Id.Should().Be(row.Id);
     }
 
     [Fact]
@@ -34,10 +34,10 @@ public sealed class PaymentReadStoreTest
 
         var store = new PaymentReadStore(context);
 
-        PaymentReadModel? found = await store.FindByProviderReferenceAsync(
+        Result<PaymentReadModel> found = await store.FindByProviderReferenceAsync(
             PaymentProvider.Fake, row.ProviderReference!, CancellationToken.None);
 
-        found!.Id.Should().Be(row.Id);
+        found.Value.Id.Should().Be(row.Id);
     }
 
     [Fact]
@@ -48,11 +48,11 @@ public sealed class PaymentReadStoreTest
 
         var store = new PaymentReadStore(context);
 
-        (await store.FindByIdempotencyKeyAsync(row.CustomerId, row.IdempotencyKey, CancellationToken.None))!
-            .Id.Should().Be(row.Id);
+        (await store.FindByIdempotencyKeyAsync(row.CustomerId, row.IdempotencyKey, CancellationToken.None))
+            .Value.Id.Should().Be(row.Id);
 
         (await store.FindByIdempotencyKeyAsync(Guid.NewGuid(), row.IdempotencyKey, CancellationToken.None))
-            .Should().BeNull();
+            .IsFailure.Should().BeTrue();
     }
 
     [Fact]
@@ -64,11 +64,11 @@ public sealed class PaymentReadStoreTest
 
         var store = new PaymentReadStore(context);
 
-        IReadOnlyList<PaymentReadModel> rows = await store.ListAsync(
-            first.CustomerId, "cart-a", 0, 10, CancellationToken.None);
+        IReadOnlyList<PaymentReadModel> rows = (await store.ListAsync(
+            first.CustomerId, "cart-a", 0, 10, CancellationToken.None)).Value;
 
         rows.Should().ContainSingle();
-        (await store.CountAsync(first.CustomerId, null, CancellationToken.None)).Should().Be(2);
+        (await store.CountAsync(first.CustomerId, null, CancellationToken.None)).Value.Should().Be(2);
     }
 
     [Fact]
@@ -79,7 +79,7 @@ public sealed class PaymentReadStoreTest
 
         var store = new PaymentReadStore(context);
 
-        QueryPage<PaymentReadModel> page = await store.SearchAsync(
+        QueryPage<PaymentReadModel> page = (await store.SearchAsync(
             new PaymentSearchFilter(
                 "captured",
                 "fake",
@@ -87,7 +87,7 @@ public sealed class PaymentReadStoreTest
                 DateTimeOffset.UtcNow.AddDays(-1),
                 DateTimeOffset.UtcNow.AddDays(1)),
             new PageRequest(1, 10),
-            CancellationToken.None);
+            CancellationToken.None)).Value;
 
         page.TotalCount.Should().Be(1);
         page.Items.Single().Id.Should().Be(row.Id);
@@ -101,10 +101,10 @@ public sealed class PaymentReadStoreTest
 
         var store = new PaymentReadStore(context);
 
-        QueryPage<PaymentReadModel> page = await store.SearchAsync(
+        QueryPage<PaymentReadModel> page = (await store.SearchAsync(
             new PaymentSearchFilter("failed", "stripe", null, null, null),
             new PageRequest(1, 10),
-            CancellationToken.None);
+            CancellationToken.None)).Value;
 
         page.Items.Should().BeEmpty();
     }
@@ -134,16 +134,16 @@ public sealed class PaymentReadStoreTest
         var store = new PaymentReadStore(context);
 
         RefundFound(await store.FindRefundAsync(row.Id, refund.Id, CancellationToken.None), refund.Id);
-        (await store.FindRefundAsync(row.Id, Guid.NewGuid(), CancellationToken.None)).Should().BeNull();
+        (await store.FindRefundAsync(row.Id, Guid.NewGuid(), CancellationToken.None)).IsFailure.Should().BeTrue();
     }
 
     /// <summary>Asserts a refund lookup result.</summary>
     private static void RefundFound(
-        Application.Modules.Payments.Refunds.Models.RefundReadModel? found,
+        Result<Application.Modules.Payments.Refunds.Models.RefundReadModel> found,
         Guid expected)
     {
-        found.Should().NotBeNull();
-        found!.Id.Should().Be(expected);
+        found.IsSuccess.Should().BeTrue();
+        found.Value.Id.Should().Be(expected);
     }
 
     /// <summary>Seeds one projected payment.</summary>
@@ -204,10 +204,10 @@ public sealed class PaymentReadStoreTest
 
         var store = new PaymentReadStore(context);
 
-        QueryPage<PaymentReadModel> usdPage = await store.SearchAsync(
+        QueryPage<PaymentReadModel> usdPage = (await store.SearchAsync(
             new PaymentSearchFilter(null, null, "usd", null, null),
             new PageRequest(1, 10),
-            CancellationToken.None);
+            CancellationToken.None)).Value;
 
         usdPage.Items.Should().ContainSingle();
         usdPage.Items[0].Id.Should().Be(usd.Id);

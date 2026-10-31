@@ -136,13 +136,13 @@ public static class ProcessPaymentWebhook
             if (providerEvent.Amount is not { } observed)
                 return false;
 
-            Guid? paymentId = await references.FindAsync(
+            Result<Guid> reference = await references.FindAsync(
                 provider, providerEvent.ProviderReference, cancellationToken);
 
-            if (paymentId is null)
+            if (reference.IsFailure)
                 return false;
 
-            Result<Payment> loaded = await repository.LoadAsync(paymentId.Value, cancellationToken);
+            Result<Payment> loaded = await repository.LoadAsync(reference.Value, cancellationToken);
 
             if (loaded.IsFailure)
                 return false;

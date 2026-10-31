@@ -39,6 +39,18 @@ public static class PaymentConstant
         /// <summary>Refund reason length.</summary>
         public const int ReasonMaxLength = 256;
 
+        /// <summary>Idempotency fingerprint length.</summary>
+        public const int IdempotencyFingerprintMaxLength = 64;
+
+        /// <summary>Approval URL length.</summary>
+        public const int ApprovalUrlMaxLength = 2048;
+
+        /// <summary>Monetary column precision.</summary>
+        public const int AmountPrecision = 19;
+
+        /// <summary>Monetary column scale.</summary>
+        public const int AmountScale = 4;
+
         /// <summary>Largest page size a query may request.</summary>
         public const int MaxPageSize = 100;
     }

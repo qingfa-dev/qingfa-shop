@@ -1,0 +1,163 @@
+# Convention gate baseline: reviewed legacy exceptions.
+# Format: rule<TAB>path<TAB>key<TAB>count<TAB>reason
+# The list only shrinks: fix the finding and delete its row.
+magic-number	app/Gateway/Program.cs	10	1	legacy: unnamed numeric literal
+magic-number	app/Gateway/Program.cs	100	1	legacy: unnamed numeric literal
+magic-number	src/Application/BuildingBlocks/Ports/Notifications/Channels/Sms/Options/Sms.ChannelSetting.Validator.cs	100	1	legacy: unnamed numeric literal
+magic-number	src/Application/BuildingBlocks/Ports/Notifications/Options/Extensions/ChannelProvider.Validation.Extension.cs	100	1	legacy: unnamed numeric literal
+magic-number	src/Application/BuildingBlocks/Ports/Storage/Providers/Options/AzureStorageProviderSetting.Validator.cs	63	1	legacy: unnamed numeric literal
+magic-number	src/Core/BuildingBlocks/Domain/ValueObjects/Percentage/Percentage.Extension.cs	100	1	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/BuildingBlocks/Adapters/Caching/Caching.Composition.cs	100	1	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/BuildingBlocks/Adapters/Events/NoOpEventBus.cs	222	1	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/BuildingBlocks/Adapters/Persistence/EntityFramework/Capabilities/EfCoreQueryCapabilities.cs	10_000	1	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/BuildingBlocks/Adapters/Persistence/EntityFramework/Conventions/Decimal.Configuration.cs	18	1	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/BuildingBlocks/Adapters/Persistence/EntityFramework/Converters/Decimal.Converter.cs	18	1	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/BuildingBlocks/Adapters/Persistence/EntityFramework/Converters/NullableDecimal.Converter.cs	18	1	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/BuildingBlocks/Adapters/Persistence/EntityFramework/Outbox/Outbox.Worker.cs	234	1	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/BuildingBlocks/Adapters/Persistence/EntityFramework/Outbox/Outbox.Worker.cs	235	1	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/BuildingBlocks/Adapters/Persistence/EntityFramework/Outbox/Outbox.Worker.cs	236	1	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/BuildingBlocks/Adapters/Persistence/Initialization/EfCoreMigrator.cs	1000	1	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/BuildingBlocks/Adapters/Persistence/Initialization/EfCoreMigrator.cs	10000	1	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/BuildingBlocks/Adapters/Persistence/Initialization/EfCoreResetter.cs	30	1	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/BuildingBlocks/Adapters/Security/ExternalCode.Store.cs	32	1	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/BuildingBlocks/Adapters/Security/Identity/Domain/Roles/Role.Configuration.cs	450	1	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/BuildingBlocks/Adapters/Security/Identity/Domain/Users/User.Configuration.cs	450	1	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/BuildingBlocks/Adapters/Security/Identity/Seeders/Role.Seeder.cs	30	1	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/BuildingBlocks/Adapters/Security/Identity/Seeders/User.Seeder.cs	40	1	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/BuildingBlocks/Adapters/Security/Identity/Services/RoleManagementService.cs	20	1	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/BuildingBlocks/Adapters/Security/Identity/Services/RoleManagementService.cs	200	1	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/BuildingBlocks/Adapters/Security/Identity/Services/UserAccountService.cs	20	1	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/BuildingBlocks/Adapters/Security/Identity/Services/UserAccountService.cs	200	1	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/BuildingBlocks/Adapters/Storage/Helpers/EncryptionHelper.cs	16	1	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/BuildingBlocks/Adapters/Storage/Helpers/EncryptionHelper.cs	32	1	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/BuildingBlocks/Adapters/Storage/Security/Scanners/Storage.MalwareScanner.Service.cs	30	1	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/Modules/Payments/Adapters/Shared/MoneyConverter.cs	10	2	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/Modules/Todos/Persistence/Schemas/EntityConfiguration/TodoCategoryEntityTypeConfiguration.cs	256	3	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/Modules/Todos/Persistence/Schemas/EntityConfiguration/TodoListEntityTypeConfiguration.cs	256	3	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/Modules/Todos/Persistence/Schemas/EntityConfiguration/TodoReadModel.Configuration.cs	256	3	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/Modules/Todos/Persistence/Schemas/Seeders/Todo.Seeder.cs	30	5	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/Modules/Todos/Persistence/Schemas/Seeders/TodoBackfill.Seeder.cs	100	1	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/Modules/Todos/Persistence/Schemas/Seeders/TodoBackfill.Seeder.cs	10_000	1	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/Modules/Todos/Persistence/Schemas/Seeders/TodoBackfill.Seeder.cs	35	1	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/Modules/Todos/Persistence/Schemas/Seeders/TodoCategory.Seeder.cs	10	1	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/Modules/Todos/Persistence/Schemas/Seeders/TodoCategory.Seeder.cs	30	2	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/Modules/Todos/Persistence/Schemas/Seeders/TodoList.Seeder.cs	20	1	legacy: unnamed numeric literal
+magic-number	src/Infrastructure/Modules/Todos/Persistence/Schemas/Seeders/TodoList.Seeder.cs	30	2	legacy: unnamed numeric literal
+magic-string	app/AppHost/AppHost.cs	rabbitmq-data	1	legacy: unnamed wire literal
+magic-string	app/Gateway/CorrelationId.Middleware.cs	X-Correlation-ID	1	legacy: unnamed wire literal
+magic-string	app/Gateway/Gateway.Router.cs	api-payments	1	legacy: unnamed wire literal
+magic-string	app/Gateway/Gateway.Router.cs	api-payments-admin	1	legacy: unnamed wire literal
+magic-string	app/Gateway/Gateway.Router.cs	api-payments-webhook	1	legacy: unnamed wire literal
+magic-string	app/Gateway/Gateway.Router.cs	api-time	1	legacy: unnamed wire literal
+magic-string	src/Application/Modules/Todos/Events/TodoCompleted.Integration.cs	todo.completed	1	legacy: unnamed wire literal
+magic-string	src/Application/Modules/Todos/Events/TodoReminderChanged.Integration.cs	todo.reminder.changed	1	legacy: unnamed wire literal
+magic-string	src/Core/BuildingBlocks/Functional/Errors/Error.Extension.cs	exception.type	1	legacy: unnamed wire literal
+magic-string	src/Core/BuildingBlocks/Functional/Errors/Error.Extension.cs	general.error	1	legacy: unnamed wire literal
+magic-string	src/Infrastructure/BuildingBlocks/Adapters/BackgroundJobs/Background.Extension.cs	General-Worker-Server	1	legacy: unnamed wire literal
+magic-string	src/Infrastructure/BuildingBlocks/Adapters/Http/CorrelationIdPropagationHandler.cs	X-Correlation-Id	2	legacy: unnamed wire literal
+magic-string	src/Infrastructure/BuildingBlocks/Adapters/Persistence/EntityFramework/Providers/PersistenceProvider.Resolver.cs	Microsoft.EntityFrameworkCore.InMemory	1	legacy: unnamed wire literal
+magic-string	src/Infrastructure/BuildingBlocks/Adapters/Persistence/EntityFramework/Providers/PersistenceProvider.Resolver.cs	Microsoft.EntityFrameworkCore.SqlServer	1	legacy: unnamed wire literal
+magic-string	src/Infrastructure/BuildingBlocks/Adapters/Persistence/EntityFramework/Providers/PersistenceProvider.Resolver.cs	Microsoft.EntityFrameworkCore.Sqlite	1	legacy: unnamed wire literal
+magic-string	src/Infrastructure/BuildingBlocks/Adapters/Persistence/EntityFramework/Providers/PersistenceProvider.Resolver.cs	Npgsql.EntityFrameworkCore.PostgreSQL	1	legacy: unnamed wire literal
+magic-string	src/Infrastructure/BuildingBlocks/Adapters/Persistence/Initialization/EfCoreMigrator.cs	migrator:efcore	1	legacy: unnamed wire literal
+magic-string	src/Infrastructure/BuildingBlocks/Adapters/Persistence/Initialization/EfCoreResetter.cs	resetter:efcore	1	legacy: unnamed wire literal
+magic-string	src/Infrastructure/BuildingBlocks/Adapters/Persistence/PersistenceInitialization.Composition.cs	Infrastructure.BuildingBlocks.Adapters.Persistence.Initialization	1	legacy: unnamed wire literal
+magic-string	src/Infrastructure/BuildingBlocks/Adapters/Security/Identity/Seeders/Role.Seeder.cs	seeder:identity-roles	1	legacy: unnamed wire literal
+magic-string	src/Infrastructure/BuildingBlocks/Adapters/Security/Identity/Seeders/User.Seeder.cs	seeder:identity-roles	1	legacy: unnamed wire literal
+magic-string	src/Infrastructure/BuildingBlocks/Adapters/Security/Identity/Seeders/User.Seeder.cs	seeder:identity-users	1	legacy: unnamed wire literal
+magic-string	src/Infrastructure/BuildingBlocks/Adapters/Security/Identity/Services/IdentityService.cs	QingFa.Shop	1	legacy: unnamed wire literal
+magic-string	src/Infrastructure/BuildingBlocks/Adapters/Storage/Security/Guard/StorageAntiForgeryGuard.Service.cs	antiforgery:failures:{identityKey}	1	legacy: unnamed wire literal
+magic-string	src/Infrastructure/BuildingBlocks/Adapters/Storage/Services/Storage.Service.Service.cs	content-hash	1	legacy: unnamed wire literal
+magic-string	src/Infrastructure/BuildingBlocks/Adapters/Storage/Services/Storage.Service.Service.cs	malware-threat	1	legacy: unnamed wire literal
+magic-string	src/Infrastructure/BuildingBlocks/Adapters/Storage/Services/Storage.Service.Service.cs	overwrite-existing	1	legacy: unnamed wire literal
+magic-string	src/Infrastructure/BuildingBlocks/Adapters/Storage/Services/Storage.Service.Service.cs	quarantine-threat	1	legacy: unnamed wire literal
+magic-string	src/Infrastructure/BuildingBlocks/Adapters/Storage/Services/Storage.Service.Service.cs	quarantine-timestamp	1	legacy: unnamed wire literal
+magic-string	src/Infrastructure/Modules/Todos/Integrations/Messaging/Handlers/TodoCompletedIntegration.Handler.cs	todo:{message.TodoId}	1	legacy: unnamed wire literal
+magic-string	src/Infrastructure/Modules/Todos/Integrations/Messaging/Handlers/TodoReminderChangedIntegration.Handler.cs	reminder:{message.ReminderId}	1	legacy: unnamed wire literal
+magic-string	src/Infrastructure/Modules/Todos/Integrations/Messaging/Handlers/TodoReminderChangedIntegration.Handler.cs	todo:{message.TodoId}	1	legacy: unnamed wire literal
+magic-string	src/Infrastructure/Modules/Todos/Integrations/Messaging/TodoMessaging.Composition.cs	todo.completed	1	legacy: unnamed wire literal
+magic-string	src/Infrastructure/Modules/Todos/Integrations/Messaging/TodoMessaging.Composition.cs	todo.reminder.changed	1	legacy: unnamed wire literal
+magic-string	src/Infrastructure/Modules/Todos/Persistence/Projections/TodoReminder.Projection.cs	todo-reminders	1	legacy: unnamed wire literal
+magic-string	src/Infrastructure/Modules/Todos/Persistence/Schemas/Seeders/Todo.Seeder.cs	seeder:todo-categories	1	legacy: unnamed wire literal
+magic-string	src/Infrastructure/Modules/Todos/Persistence/Schemas/Seeders/Todo.Seeder.cs	seeder:todo-lists	1	legacy: unnamed wire literal
+magic-string	src/Infrastructure/Modules/Todos/Persistence/Schemas/Seeders/Todo.Seeder.cs	seeder:todos	1	legacy: unnamed wire literal
+magic-string	src/Infrastructure/Modules/Todos/Persistence/Schemas/Seeders/TodoBackfill.Seeder.cs	seeder:todo-backfill	1	legacy: unnamed wire literal
+magic-string	src/Infrastructure/Modules/Todos/Persistence/Schemas/Seeders/TodoBackfill.Seeder.cs	seeder:todos	1	legacy: unnamed wire literal
+magic-string	src/Infrastructure/Modules/Todos/Persistence/Schemas/Seeders/TodoCategory.Seeder.cs	seeder:todo-categories	1	legacy: unnamed wire literal
+magic-string	src/Infrastructure/Modules/Todos/Persistence/Schemas/Seeders/TodoList.Seeder.cs	seeder:todo-lists	1	legacy: unnamed wire literal
+monadic-result	src/Application/BuildingBlocks/Ports/Storage/Security/Guard/StorageAntiForgeryGuard.Interface.cs	IsBlockedAsync	1	legacy: non-monadic signature
+monadic-result	src/Core/BuildingBlocks/Domain/Aggregates/Aggregate.Interface.cs	RemoveAllEvents	1	legacy: non-monadic signature
+monadic-result	src/Core/BuildingBlocks/Domain/EventSourcing/EventSourcedAggregate.Interface.cs	ClearUncommittedEvents	1	legacy: non-monadic signature
+monadic-result	src/Core/BuildingBlocks/Domain/EventSourcing/EventSourcedAggregate.Interface.cs	LoadFromHistory	1	legacy: non-monadic signature
+monadic-result	src/Core/BuildingBlocks/Domain/EventSourcing/Snapshotable.Interface.cs	RestoreSnapshot	1	legacy: non-monadic signature
+monadic-result	src/Infrastructure/BuildingBlocks/Adapters/Messaging/IMessagingModule.Interface.cs	Configure	1	legacy: non-monadic signature
+monadic-result	src/Infrastructure/BuildingBlocks/Adapters/Messaging/IMessagingModule.Interface.cs	RegisterEventTypes	1	legacy: non-monadic signature
+monadic-result	src/Infrastructure/BuildingBlocks/Adapters/Persistence/EntityFramework/EventSourcing/IEventStoreModule.Interface.cs	Configure	1	legacy: non-monadic signature
+monadic-result	src/Infrastructure/BuildingBlocks/Adapters/Storage/Security/Guard/StorageAntiForgeryGuard.Service.cs	IsBlockedAsync	1	legacy: non-monadic signature
+outcome-shape	src/Application/BuildingBlocks/Caching/Caching.Outcome.cs	Codes	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Ports/Notifications/Hubs/Notification.Hub.Outcome.cs	Codes	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Ports/Notifications/Options/Channels/ChannelSetting.Outcome.cs	Codes	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Ports/Notifications/Options/Channels/ChannelSetting.Outcome.cs	code-ref:"Channel.{channelName}.NoEnabledProvider"	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Ports/Notifications/Options/Channels/ChannelSetting.Outcome.cs	code-ref:"Channel.{channelName}.Section.Required"	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Ports/Notifications/Options/Providers/ProviderSetting.Outcome.cs	Codes	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Ports/Notifications/Options/Providers/ProviderSetting.Outcome.cs	code-ref:"Provider.{providerName}.Priority.OutOfRange"	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Ports/Notifications/Options/Providers/ProviderSetting.Outcome.cs	code-ref:"Provider.{providerName}.RetryCount.OutOfRange"	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Ports/Notifications/Options/Providers/ProviderSetting.Outcome.cs	code-ref:"Provider.{providerName}.Section.Required"	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Ports/Notifications/Options/Providers/ProviderSetting.Outcome.cs	code-ref:"Provider.{providerName}.Timeout.OutOfRange"	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Ports/Notifications/Providers/NotificationProvider.Outcome.cs	Codes	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Ports/Notifications/Providers/NotificationProvider.Outcome.cs	code-ref:"Provider.{providerName}.Recipient.Required"	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Ports/Storage/Models/Storage.Outcome.cs	static	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Mapping/QueryMap.Outcome.cs	Codes	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Mapping/QueryMap.Outcome.cs	code-ref:QueryErrorCodes.MapAlreadyRegistered	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Mapping/QueryMap.Outcome.cs	code-ref:QueryErrorCodes.MapCompositeEmpty	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Mapping/QueryMap.Outcome.cs	code-ref:QueryErrorCodes.MapCompositeTypeMismatch	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Mapping/QueryMap.Outcome.cs	code-ref:QueryErrorCodes.MapDuplicate	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Mapping/QueryMap.Outcome.cs	code-ref:QueryErrorCodes.MapNameRequired	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Mapping/QueryMap.Outcome.cs	code-ref:QueryErrorCodes.MapNameTooLong	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Mapping/QueryMap.Outcome.cs	code-ref:QueryErrorCodes.MapNotRegistered	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Mapping/QueryMap.Outcome.cs	code-ref:QueryErrorCodes.MapSearchableNotString	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	Codes	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.AggregateSyntax	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.AggregateUnsupported	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.BuilderAmbiguousField	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.BuilderEntityShapeRequired	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.BuilderExpressionUnsupported	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.BuilderIncludeInvalid	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.BuilderMaxRowsInvalid	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.BuilderProjectionMismatch	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.BuilderProjectionRequired	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.BuilderShapeConflict	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.BuilderTabularShapeRequired	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.FieldDuplicate	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.FieldNotFilterable	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.FieldNotGroupable	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.FieldNotMapped	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.FieldNotSelectable	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.FieldNotSortable	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.FilterDepthExceeded	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.FilterSyntax	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.FilterTooLong	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.FilterTooManyConditions	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.FilterValueInvalid	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.OperatorTypeMismatch	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.OperatorUnsupported	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.OrderSyntax	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.PageInvalid	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.PageSizeInvalid	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.SearchModeMismatch	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.SearchNotConfigured	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.SearchRequired	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.SearchTooLong	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.SearchTooManyFields	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.SearchTooManyTerms	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.TabularFieldNotGrouped	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.TabularMixedShape	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Querying/Query.Outcome.cs	code-ref:QueryErrorCodes.Unsupported	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Security/Authorization/Domain/PermissionMetadata.Outcome.cs	Codes	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Security/Authorization/Permissions/Store/Permission.Store.Outcome.cs	code-ref:"PermissionStore.{operation}.Failed"	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Security/Authorization/Permissions/Store/Permission.Store.Outcome.cs	code-ref:"PermissionStore.{operation}.ReadFailed"	1	legacy: outcome shape
+outcome-shape	src/Application/BuildingBlocks/Security/Identity/Auth/Outcome/Identity.Outcome.cs	code-ref:stableCode	1	legacy: outcome shape
+outcome-shape	src/Core/BuildingBlocks/Modeling/Metadata/Metadata.Outcome.cs	Codes	1	legacy: outcome shape
+outcome-shape	src/Core/BuildingBlocks/Modeling/Metadata/Metadata.Outcome.cs	code-ref:Code	2	legacy: outcome shape
+outcome-shape	src/Infrastructure/BuildingBlocks/Adapters/Persistence/EntityFramework/UnitOfWorks/Persistence.Outcome.cs	Codes	1	legacy: outcome shape
+outcome-shape	src/Infrastructure/BuildingBlocks/Adapters/Persistence/EntityFramework/UnitOfWorks/Persistence.Outcome.cs	grouping	1	legacy: outcome shape

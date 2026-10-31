@@ -133,7 +133,7 @@ public sealed class PaymentPolicyEnforcementTest
 
         var store = new Mock<IPaymentReadStore>();
         store.Setup(x => x.FindAsync(payment.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync((PaymentReadModel?)null);
+            .ReturnsAsync(Result<PaymentReadModel>.Fail(PaymentsOutcome.Failure.NotFound(payment.Id)));
 
         var repository = new Mock<IEventSourcedRepository<Payment, Guid>>();
         repository.Setup(x => x.LoadAsync(payment.Id, It.IsAny<CancellationToken>()))

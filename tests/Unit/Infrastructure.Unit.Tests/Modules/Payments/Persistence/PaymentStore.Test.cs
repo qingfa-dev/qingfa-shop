@@ -77,7 +77,7 @@ public sealed class PaymentStoreTest
         await store.RecordAsync(PaymentProvider.Fake, "fake_1", paymentId, CancellationToken.None);
 
         (await store.FindAsync(PaymentProvider.Fake, "fake_1", CancellationToken.None))
-            .Should().Be(paymentId);
+            .Value.Should().Be(paymentId);
     }
 
     [Fact]
@@ -100,7 +100,7 @@ public sealed class PaymentStoreTest
         var store = new PaymentReferenceStore(context, TimeProvider.System);
 
         (await store.FindAsync(PaymentProvider.Stripe, "missing", CancellationToken.None))
-            .Should().BeNull();
+            .IsFailure.Should().BeTrue();
     }
 
     [Fact]

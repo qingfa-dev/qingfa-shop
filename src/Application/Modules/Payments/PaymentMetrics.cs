@@ -9,46 +9,53 @@ namespace Application.Modules.Payments;
 public static class PaymentMetrics
 {
     /// <summary>The meter name registered with OpenTelemetry.</summary>
-    public const string MeterName = "QingFa.Shop.Payments";
+    public const string MeterName = PaymentMetricConstant.MeterName;
 
     /// <summary>The provider tag name.</summary>
-    public const string ProviderTag = "provider";
+    public const string ProviderTag = PaymentMetricConstant.ProviderTag;
 
     /// <summary>The operation tag name.</summary>
-    public const string OperationTag = "operation";
-
-    /// <summary>The latency histogram unit.</summary>
-    public const string MillisecondsUnit = "ms";
+    public const string OperationTag = PaymentMetricConstant.OperationTag;
 
     private static readonly Meter Meter = new(MeterName);
 
     /// <summary>Payments created.</summary>
-    public static readonly Counter<long> Initiated = Meter.CreateCounter<long>("payments.initiated");
+    public static readonly Counter<long> Initiated =
+        Meter.CreateCounter<long>(PaymentMetricConstant.Instrument.Initiated);
 
     /// <summary>Provider settlements applied.</summary>
-    public static readonly Counter<long> Settled = Meter.CreateCounter<long>("payments.settled");
+    public static readonly Counter<long> Settled =
+        Meter.CreateCounter<long>(PaymentMetricConstant.Instrument.Settled);
 
     /// <summary>Payments that failed.</summary>
-    public static readonly Counter<long> Failed = Meter.CreateCounter<long>("payments.failed");
+    public static readonly Counter<long> Failed =
+        Meter.CreateCounter<long>(PaymentMetricConstant.Instrument.Failed);
 
     /// <summary>Refunds confirmed by the provider.</summary>
-    public static readonly Counter<long> RefundsSucceeded = Meter.CreateCounter<long>("refunds.succeeded");
+    public static readonly Counter<long> RefundsSucceeded =
+        Meter.CreateCounter<long>(PaymentMetricConstant.Instrument.RefundsSucceeded);
 
     /// <summary>Webhook deliveries accepted.</summary>
-    public static readonly Counter<long> WebhooksReceived = Meter.CreateCounter<long>("webhooks.received");
+    public static readonly Counter<long> WebhooksReceived =
+        Meter.CreateCounter<long>(PaymentMetricConstant.Instrument.WebhooksReceived);
 
     /// <summary>Webhook deliveries deduplicated.</summary>
-    public static readonly Counter<long> WebhooksDuplicate = Meter.CreateCounter<long>("webhooks.duplicate");
+    public static readonly Counter<long> WebhooksDuplicate =
+        Meter.CreateCounter<long>(PaymentMetricConstant.Instrument.WebhooksDuplicate);
 
     /// <summary>Webhook deliveries rejected for amount mismatch.</summary>
-    public static readonly Counter<long> WebhooksMismatch = Meter.CreateCounter<long>("webhooks.mismatch");
+    public static readonly Counter<long> WebhooksMismatch =
+        Meter.CreateCounter<long>(PaymentMetricConstant.Instrument.WebhooksMismatch);
 
     /// <summary>Webhook deliveries pruned by the retention sweep.</summary>
-    public static readonly Counter<long> WebhooksPruned = Meter.CreateCounter<long>("webhooks.pruned");
+    public static readonly Counter<long> WebhooksPruned =
+        Meter.CreateCounter<long>(PaymentMetricConstant.Instrument.WebhooksPruned);
 
     /// <summary>Provider call latency in milliseconds.</summary>
     public static readonly Histogram<double> ProviderDuration =
-        Meter.CreateHistogram<double>("payments.provider.duration", MillisecondsUnit);
+        Meter.CreateHistogram<double>(
+            PaymentMetricConstant.Instrument.ProviderDuration,
+            PaymentMetricConstant.MillisecondsUnit);
 
     /// <summary>Records the latency of one provider call.</summary>
     /// <typeparam name="T">The call's result type.</typeparam>

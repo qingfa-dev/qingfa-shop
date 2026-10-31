@@ -37,15 +37,16 @@ public static class GetPayment
         {
             ArgumentNullException.ThrowIfNull(query);
 
-            PaymentReadModel? row = await store.FindAsync(query.PaymentId, cancellationToken);
+            Result<PaymentReadModel> row = await store.FindAsync(query.PaymentId, cancellationToken);
 
             // Enforce: another customer's payment is reported as absent, never forbidden.
-            if (row is not null)
+            if (row.IsSuccess)
             {
-                bool visible = query.CustomerId is null || row.CustomerId == query.CustomerId;
+                PaymentReadModel found = row.Value;
+                bool visible = query.CustomerId is null || found.CustomerId == query.CustomerId;
 
                 return visible
-                    ? Result<PaymentResponseModel>.Success(ApplyExpiry(row.ToResponse(), row.ExpiresAt))
+                    ? Result<PaymentResponseModel>.Success(ApplyExpiry(found.ToResponse(), found.ExpiresAt))
                     : Result<PaymentResponseModel>.Fail(PaymentsOutcome.Failure.NotFound(query.PaymentId));
             }
 

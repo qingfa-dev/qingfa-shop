@@ -13,53 +13,77 @@ namespace Infrastructure.Modules.Payments.Persistence;
 public sealed class PaymentReadStore(DbContext context) : IPaymentReadStore
 {
     /// <inheritdoc />
-    public Task<PaymentReadModel?> FindAsync(Guid id, CancellationToken cancellationToken)
-        => context.Set<PaymentReadModel>().AsNoTracking()
-            .FirstOrDefaultAsync(row => row.Id == id, cancellationToken);
+    public async Task<Result<PaymentReadModel>> FindAsync(Guid id, CancellationToken cancellationToken)
+    {
+        PaymentReadModel? row = await context.Set<PaymentReadModel>().AsNoTracking()
+            .FirstOrDefaultAsync(model => model.Id == id, cancellationToken);
+
+        return row is null
+            ? Result<PaymentReadModel>.Fail(PaymentsOutcome.Failure.NotFound(id))
+            : Result<PaymentReadModel>.Success(row);
+    }
 
     /// <inheritdoc />
-    public Task<PaymentReadModel?> FindByProviderReferenceAsync(
+    public async Task<Result<PaymentReadModel>> FindByProviderReferenceAsync(
         PaymentProvider provider,
         string providerReference,
         CancellationToken cancellationToken)
     {
         string name = provider.ToWire();
 
-        return context.Set<PaymentReadModel>().AsNoTracking()
+        PaymentReadModel? row = await context.Set<PaymentReadModel>().AsNoTracking()
             .FirstOrDefaultAsync(
-                row => row.Provider == name && row.ProviderReference == providerReference,
+                model => model.Provider == name && model.ProviderReference == providerReference,
                 cancellationToken);
+
+        return row is null
+            ? Result<PaymentReadModel>.Fail(PaymentsOutcome.Failure.ReferenceNotFound(providerReference))
+            : Result<PaymentReadModel>.Success(row);
     }
 
     /// <inheritdoc />
-    public Task<PaymentReadModel?> FindByIdempotencyKeyAsync(
+    public async Task<Result<PaymentReadModel>> FindByIdempotencyKeyAsync(
         Guid customerId,
         string idempotencyKey,
         CancellationToken cancellationToken)
-        => context.Set<PaymentReadModel>().AsNoTracking()
+    {
+        PaymentReadModel? row = await context.Set<PaymentReadModel>().AsNoTracking()
             .FirstOrDefaultAsync(
-                row => row.CustomerId == customerId && row.IdempotencyKey == idempotencyKey,
+                model => model.CustomerId == customerId && model.IdempotencyKey == idempotencyKey,
                 cancellationToken);
 
+        return row is null
+            ? Result<PaymentReadModel>.Fail(PaymentsOutcome.Failure.NotFound(Guid.Empty))
+            : Result<PaymentReadModel>.Success(row);
+    }
+
     /// <inheritdoc />
-    public async Task<IReadOnlyList<PaymentReadModel>> ListAsync(
+    public async Task<Result<IReadOnlyList<PaymentReadModel>>> ListAsync(
         Guid customerId,
         string? externalReference,
         int skip,
         int take,
         CancellationToken cancellationToken)
-        => await Filter(customerId, externalReference)
-            .OrderByDescending(row => row.CreatedAt)
+    {
+        List<PaymentReadModel> rows = await Filter(customerId, externalReference)
+            .OrderByDescending(model => model.CreatedAt)
             .Skip(skip)
             .Take(take)
             .ToListAsync(cancellationToken);
 
-    /// <inheritdoc />
-    public Task<int> CountAsync(Guid customerId, string? externalReference, CancellationToken cancellationToken)
-        => Filter(customerId, externalReference).CountAsync(cancellationToken);
+        return Result<IReadOnlyList<PaymentReadModel>>.Success(rows);
+    }
 
     /// <inheritdoc />
-    public async Task<QueryPage<PaymentReadModel>> SearchAsync(
+    public async Task<Result<int>> CountAsync(
+        Guid customerId,
+        string? externalReference,
+        CancellationToken cancellationToken)
+        => Result<int>.Success(
+            await Filter(customerId, externalReference).CountAsync(cancellationToken));
+
+    /// <inheritdoc />
+    public async Task<Result<QueryPage<PaymentReadModel>>> SearchAsync(
         PaymentSearchFilter filter,
         PageRequest page,
         CancellationToken cancellationToken)
@@ -70,49 +94,56 @@ public sealed class PaymentReadStore(DbContext context) : IPaymentReadStore
         IQueryable<PaymentReadModel> query = context.Set<PaymentReadModel>().AsNoTracking();
 
         if (!string.IsNullOrWhiteSpace(filter.Status))
-            query = query.Where(row => row.Status == filter.Status.ToLowerInvariant());
+            query = query.Where(model => model.Status == filter.Status.ToLowerInvariant());
 
         if (!string.IsNullOrWhiteSpace(filter.Provider))
-            query = query.Where(row => row.Provider == filter.Provider.ToLowerInvariant());
+            query = query.Where(model => model.Provider == filter.Provider.ToLowerInvariant());
 
         if (!string.IsNullOrWhiteSpace(filter.Currency))
-            query = query.Where(row => row.Currency == filter.Currency.ToUpperInvariant());
+            query = query.Where(model => model.Currency == filter.Currency.ToUpperInvariant());
 
         if (filter.CreatedFrom is { } from)
-            query = query.Where(row => row.CreatedAt >= from.UtcDateTime);
+            query = query.Where(model => model.CreatedAt >= from.UtcDateTime);
 
         if (filter.CreatedTo is { } to)
-            query = query.Where(row => row.CreatedAt <= to.UtcDateTime);
+            query = query.Where(model => model.CreatedAt <= to.UtcDateTime);
 
         int total = await query.CountAsync(cancellationToken);
 
         List<PaymentReadModel> rows = await query
-            .OrderByDescending(row => row.CreatedAt)
+            .OrderByDescending(model => model.CreatedAt)
             .Skip((page.Page - 1) * page.PageSize)
             .Take(page.PageSize)
             .ToListAsync(cancellationToken);
 
-        return new QueryPage<PaymentReadModel>(rows, page.Page, page.PageSize, total);
+        return Result<QueryPage<PaymentReadModel>>.Success(
+            new QueryPage<PaymentReadModel>(rows, page.Page, page.PageSize, total));
     }
 
     /// <inheritdoc />
-    public Task<RefundReadModel?> FindRefundAsync(
+    public async Task<Result<RefundReadModel>> FindRefundAsync(
         Guid paymentId,
         Guid refundId,
         CancellationToken cancellationToken)
-        => context.Set<RefundReadModel>().AsNoTracking()
+    {
+        RefundReadModel? row = await context.Set<RefundReadModel>().AsNoTracking()
             .FirstOrDefaultAsync(
-                row => row.PaymentId == paymentId && row.Id == refundId,
+                model => model.PaymentId == paymentId && model.Id == refundId,
                 cancellationToken);
+
+        return row is null
+            ? Result<RefundReadModel>.Fail(PaymentsOutcome.Failure.RefundNotFound(refundId))
+            : Result<RefundReadModel>.Success(row);
+    }
 
     /// <summary>Builds the customer-scoped query.</summary>
     private IQueryable<PaymentReadModel> Filter(Guid customerId, string? externalReference)
     {
         IQueryable<PaymentReadModel> query = context.Set<PaymentReadModel>().AsNoTracking()
-            .Where(row => row.CustomerId == customerId);
+            .Where(model => model.CustomerId == customerId);
 
         return string.IsNullOrWhiteSpace(externalReference)
             ? query
-            : query.Where(row => row.ExternalReference == externalReference);
+            : query.Where(model => model.ExternalReference == externalReference);
     }
 }

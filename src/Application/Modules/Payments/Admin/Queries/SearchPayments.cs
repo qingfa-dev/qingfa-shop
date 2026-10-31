@@ -34,14 +34,14 @@ public static class SearchPayments
         {
             ArgumentNullException.ThrowIfNull(query);
 
-            QueryPage<PaymentReadModel> page = await store.SearchAsync(
+            Result<QueryPage<PaymentReadModel>> page = await store.SearchAsync(
                 query.Filter, query.Page, cancellationToken);
 
-            return Result<QueryPage<PaymentResponseModel>>.Success(new QueryPage<PaymentResponseModel>(
-                Items: [.. page.Items.Select(row => row.ToResponse())],
-                Page: page.Page,
-                PageSize: page.PageSize,
-                TotalCount: page.TotalCount));
+            return page.Map(found => new QueryPage<PaymentResponseModel>(
+                Items: [.. found.Items.Select(row => row.ToResponse())],
+                Page: found.Page,
+                PageSize: found.PageSize,
+                TotalCount: found.TotalCount));
         }
     }
 

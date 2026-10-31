@@ -36,16 +36,18 @@ public static class ListMyPayments
 
             int skip = (query.Page.Page - 1) * query.Page.PageSize;
 
-            IReadOnlyList<PaymentReadModel> rows = await store.ListAsync(
+            Result<IReadOnlyList<PaymentReadModel>> rows = await store.ListAsync(
                 query.CustomerId, query.ExternalReference, skip, query.Page.PageSize, cancellationToken);
 
-            int total = await store.CountAsync(query.CustomerId, query.ExternalReference, cancellationToken);
+            Result<int> total = await rows.BindAsync(
+                (_, ct) => store.CountAsync(query.CustomerId, query.ExternalReference, ct),
+                cancellationToken);
 
-            return Result<QueryPage<PaymentResponseModel>>.Success(new QueryPage<PaymentResponseModel>(
-                Items: [.. rows.Select(row => row.ToResponse())],
+            return total.Map(count => new QueryPage<PaymentResponseModel>(
+                Items: [.. rows.Value.Select(row => row.ToResponse())],
                 Page: query.Page.Page,
                 PageSize: query.Page.PageSize,
-                TotalCount: total));
+                TotalCount: count));
         }
     }
 

@@ -36,7 +36,7 @@ public static class MoneyConverter
     public static Result<long> ToMinorUnits(Money money)
     {
         int exponent = Exponent(money.Currency.Code ?? PaymentConstant.Defaults.Currency);
-        decimal scaled = money.Amount * (decimal)Math.Pow(10, exponent);
+        decimal scaled = money.Amount * (decimal)Math.Pow(MoneyConverterConstant.DecimalBase, exponent);
 
         if (scaled != decimal.Truncate(scaled))
             return Result<long>.Fail(PaymentsOutcome.Failure.AmountInvalid(
