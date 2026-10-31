@@ -11,7 +11,7 @@ public static class PercentageExtensions
     /// <returns>The percentage divided by one hundred.</returns>
     public static decimal ToFraction(this Percentage percentage)
     {
-        return percentage.Value / 100m;
+        return percentage.Value / PercentageConstant.Defaults.Hundred;
     }
 
     /// <summary>

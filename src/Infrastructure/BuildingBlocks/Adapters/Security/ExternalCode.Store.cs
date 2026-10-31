@@ -23,7 +23,7 @@ public sealed class ExternalCodeStore(IDistributedCache cache, ExternalAuthOptio
     : IExternalCodeStore
 {
     private const string KeyPrefix = "auth:external:";
-    private const int CodeByteLength = 32;
+    private const int CodeByteLength = ExternalAuthConstant.Constraints.CodeByteLength;
 
     private TimeSpan Lifetime => TimeSpan.FromSeconds(Math.Max(1, option.CodeLifetimeSeconds));
 

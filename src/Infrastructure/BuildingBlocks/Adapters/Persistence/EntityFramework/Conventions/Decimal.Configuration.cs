@@ -15,10 +15,10 @@ namespace Infrastructure.BuildingBlocks.Adapters.Persistence.EntityFramework.Con
 public static class DecimalConvention
 {
     /// <summary>Default precision for decimal columns.</summary>
-    public const int DefaultPrecision = 18;
+    public const int DefaultPrecision = DecimalConstant.DefaultPrecision;
 
     /// <summary>Default scale for decimal columns.</summary>
-    public const int DefaultScale = 6;
+    public const int DefaultScale = DecimalConstant.DefaultScale;
 
     /// <summary>
     /// Applies decimal precision configuration to all decimal properties in the model.

@@ -1,3 +1,5 @@
+using Infrastructure.BuildingBlocks.Adapters.Persistence.EntityFramework.Conventions;
+
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 namespace Infrastructure.BuildingBlocks.Adapters.Persistence.EntityFramework.Converters;
@@ -12,10 +14,10 @@ namespace Infrastructure.BuildingBlocks.Adapters.Persistence.EntityFramework.Con
 public sealed class NullableDecimalValueConverter : ValueConverter<decimal?, decimal?>
 {
     /// <summary>Default precision for decimal columns.</summary>
-    public const int DefaultPrecision = 18;
+    public const int DefaultPrecision = DecimalConstant.DefaultPrecision;
 
     /// <summary>Default scale for decimal columns.</summary>
-    public const int DefaultScale = 6;
+    public const int DefaultScale = DecimalConstant.DefaultScale;
 
     /// <summary>Creates a new nullable decimal converter with default precision and scale.</summary>
     public NullableDecimalValueConverter()

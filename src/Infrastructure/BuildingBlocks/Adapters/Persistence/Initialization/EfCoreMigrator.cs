@@ -69,7 +69,7 @@ public sealed class EfCoreMigrator<TContext> : IPersistenceMigrator
     public EfCoreMigrator(
         TContext context,
         ILogger logger,
-        string name = "migrator:efcore",
+        string name = MigrationConstant.Names.Default,
         string? displayName = null,
         int order = MigrationConstant.Limits.DefaultOrder,
         int maxRetryAttempts = 3)
@@ -143,7 +143,7 @@ public sealed class EfCoreMigrator<TContext> : IPersistenceMigrator
             {
                 // Retry: transient failures (timeout, deadlock) may succeed on retry with exponential backoff.
                 lastException = ex;
-                var delayMs = (int)Math.Min(1000 * Math.Pow(2, attempt), 10000);
+                var delayMs = (int)Math.Min(MigrationConstant.Limits.RetryBaseDelayMs * Math.Pow(2, attempt), MigrationConstant.Limits.RetryMaxDelayMs);
                 _logger.LogWarning(
                     ex,
                     "Transient migration failure for '{MigratorName}' on attempt {Attempt}; retrying in {DelayMs}ms.",

@@ -38,7 +38,7 @@ public sealed class EfCoreQueryCapabilities : IQueryCapabilities
 
     // ---- Limits --------------------------------------------------------
     /// <summary>EF Core has no hard page-size limit; use a sensible default.</summary>
-    public int? MaxPageSize => 10_000;
+    public int? MaxPageSize => QueryCapabilityConstant.Limits.MaxPageSize;
 
     /// <summary>EF Core has no hard expression depth limit.</summary>
     public int? MaxExpressionDepth => null;

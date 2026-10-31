@@ -6,20 +6,16 @@ namespace Infrastructure.BuildingBlocks.Adapters.Persistence.EntityFramework.Pro
 public static class PersistenceProviderDetector
 {
     /// <summary>Provider name for InMemory.</summary>
-    public const string InMemoryProviderName =
-        "Microsoft.EntityFrameworkCore.InMemory";
+    public const string InMemoryProviderName = PersistenceProviderConstant.Names.InMemory;
 
     /// <summary>Provider name for PostgreSQL via Npgsql.</summary>
-    public const string PostgreSqlProviderName =
-        "Npgsql.EntityFrameworkCore.PostgreSQL";
+    public const string PostgreSqlProviderName = PersistenceProviderConstant.Names.PostgreSql;
 
     /// <summary>Provider name for SQLite.</summary>
-    public const string SqliteProviderName =
-        "Microsoft.EntityFrameworkCore.Sqlite";
+    public const string SqliteProviderName = PersistenceProviderConstant.Names.Sqlite;
 
     /// <summary>Provider name for SQL Server.</summary>
-    public const string SqlServerProviderName =
-        "Microsoft.EntityFrameworkCore.SqlServer";
+    public const string SqlServerProviderName = PersistenceProviderConstant.Names.SqlServer;
 
     /// <summary>
     /// Detects the provider kind from the given provider name.

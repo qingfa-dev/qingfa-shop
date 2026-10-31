@@ -1,5 +1,7 @@
 using Application.BuildingBlocks.Caching;
 
+using Core.BuildingBlocks.Domain.ValueObjects.Percentage;
+
 using Infrastructure.BuildingBlocks.Adapters.Caching.Options;
 using Infrastructure.BuildingBlocks.Adapters.Caching.Services;
 
@@ -104,7 +106,7 @@ public static class CachingComposition
         {
             services.AddMemoryCache(options =>
             {
-                options.CompactionPercentage = setting.Memory.CompactionPercentage / 100.0;
+                options.CompactionPercentage = setting.Memory.CompactionPercentage / (double)PercentageConstant.Defaults.Hundred;
                 options.SizeLimit = setting.Memory.SizeLimitBytes;
             });
         }

@@ -68,7 +68,7 @@ public sealed class EfCoreResetter<TContext> : IPersistenceResetter
         IPersistenceSchemaCatalog schemaCatalog,
         ResetScope scope = ResetScope.Full,
         string[]? targets = null,
-        string name = "resetter:efcore",
+        string name = ResetterConstant.Names.Default,
         string? displayName = null,
         int order = ResetterConstant.Limits.DefaultOrder,
         bool disableForeignKeys = true)
@@ -457,7 +457,7 @@ public sealed class EfCoreResetter<TContext> : IPersistenceResetter
 
         await using DbCommand command = dbConnection.CreateCommand();
         command.CommandText = sql;
-        command.CommandTimeout = 30;
+        command.CommandTimeout = PersistenceConstant.Commands.TimeoutSeconds;
         await command.ExecuteNonQueryAsync(cancellationToken);
     }
 }

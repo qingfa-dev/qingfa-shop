@@ -7,7 +7,7 @@ namespace Gateway;
 public sealed class CorrelationIdMiddleware(RequestDelegate next)
 {
     /// <summary>The header carrying the correlation id.</summary>
-    public const string HeaderName = "X-Correlation-ID";
+    public const string HeaderName = GatewayConstant.Headers.CorrelationId;
 
     /// <summary>Reads or mints a correlation id, then echoes it on the response.</summary>
     /// <param name="context">The current request.</param>

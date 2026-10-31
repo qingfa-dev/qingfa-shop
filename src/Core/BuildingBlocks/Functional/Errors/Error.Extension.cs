@@ -473,7 +473,7 @@ public partial record Error
     /// </remarks>
     public static Error FromException(
         Exception exception,
-        string code = "general.error",
+        string code = ErrorConstant.Defaults.Code,
         ErrorSeverity severity = ErrorSeverity.Critical)
     {
         ArgumentNullException.ThrowIfNull(exception);
@@ -481,7 +481,7 @@ public partial record Error
         return InternalServerError(code, exception.Message)
             .WithSeverity(severity)
             .WithMetadata(
-                "exception.type",
+                ErrorConstant.Defaults.ExceptionTypeKey,
                 exception.GetType().FullName!);
     }
 

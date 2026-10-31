@@ -21,8 +21,8 @@ public sealed class UserEntityConfiguration : IEntityTypeConfiguration<User>
         builder.Property(user => user.LastName)
             .HasMaxLength(UserConstant.Constraints.Name.MaxLastNameLength);
 
-        builder.Property(user => user.CreatedBy).HasMaxLength(MaxActorLength);
-        builder.Property(user => user.ModifiedBy).HasMaxLength(MaxActorLength);
+        builder.Property(user => user.CreatedBy).HasMaxLength(IdentitySchemaConstant.Columns.Actor.MaxLength);
+        builder.Property(user => user.ModifiedBy).HasMaxLength(IdentitySchemaConstant.Columns.Actor.MaxLength);
 
         builder.HasIndex(user => user.NormalizedUserName).IsUnique();
         builder.HasIndex(user => user.NormalizedEmail);
@@ -52,6 +52,4 @@ public sealed class UserEntityConfiguration : IEntityTypeConfiguration<User>
             .HasForeignKey(passkey => passkey.UserId)
             .OnDelete(DeleteBehavior.Cascade);
     }
-
-    private const int MaxActorLength = 450;
 }

@@ -1,3 +1,5 @@
+using AppHost;
+
 using Aspire.Hosting.JavaScript;
 
 using Microsoft.Extensions.Configuration;
@@ -16,7 +18,7 @@ var redis = builder.AddRedis("redis");
 // volume keeps queues across AppHost restarts. Compose declares its own volume.
 var rabbitmq = builder
     .AddRabbitMQ("rabbitmq")
-    .WithDataVolume("rabbitmq-data");
+    .WithDataVolume(AppHostConstant.Volumes.RabbitMqData);
 
 // Initialize: forward the payments configuration so `dotnet run` and Compose agree.
 // Secrets are never written here; they arrive through the environment.

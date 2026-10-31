@@ -84,7 +84,7 @@ public static class BackgroundJobExtensions
             // Resource: Hangfire server resource acquisition
             builder.Services.AddHangfireServer(serverOptions =>
             {
-                serverOptions.ServerName = "General-Worker-Server";
+                serverOptions.ServerName = BackgroundJobDefaults.Defaults.ServerName;
                 serverOptions.Queues = DefaultQueues;
             });
         }

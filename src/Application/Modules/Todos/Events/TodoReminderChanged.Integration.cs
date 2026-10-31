@@ -30,7 +30,7 @@ public sealed record TodoReminderChangedIntegration : IntegrationEvent
 
     /// <inheritdoc />
     [JsonIgnore]
-    public override string EventName => "todo.reminder.changed";
+    public override string EventName => TodoIntegrationConstant.Events.ReminderChanged;
 
     /// <inheritdoc />
     [JsonIgnore]

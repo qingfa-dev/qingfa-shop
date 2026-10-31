@@ -18,7 +18,7 @@ public sealed record TodoCompletedIntegration : IntegrationEvent
 
     /// <inheritdoc />
     [JsonIgnore]
-    public override string EventName => "todo.completed";
+    public override string EventName => TodoIntegrationConstant.Events.Completed;
 
     /// <inheritdoc />
     [JsonIgnore]

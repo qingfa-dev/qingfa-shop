@@ -1,3 +1,5 @@
+using Infrastructure.BuildingBlocks.Adapters.Http.Options;
+
 using Microsoft.AspNetCore.Http;
 
 namespace Infrastructure.BuildingBlocks.Adapters.Http;
@@ -11,11 +13,11 @@ internal sealed class CorrelationIdPropagationHandler(IHttpContextAccessor acces
         CancellationToken ct)
     {
         var id = accessor.HttpContext?
-            .Request.Headers["X-Correlation-Id"]
+            .Request.Headers[HttpConstant.Headers.CorrelationId]
             .FirstOrDefault();
 
         if (!string.IsNullOrWhiteSpace(id))
-            request.Headers.TryAddWithoutValidation("X-Correlation-Id", id);
+            request.Headers.TryAddWithoutValidation(HttpConstant.Headers.CorrelationId, id);
 
         return base.SendAsync(request, ct);
     }

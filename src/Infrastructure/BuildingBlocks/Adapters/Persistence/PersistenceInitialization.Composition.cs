@@ -41,7 +41,7 @@ public static class PersistenceInitializationComposition
         // Register: non-generic ILogger used by the initializer/resetter/migrator.
         // MS DI only registers ILogger<T>; this keeps the public constructors simple.
         services.TryAddSingleton<ILogger>(sp =>
-            sp.GetRequiredService<ILoggerFactory>().CreateLogger("Infrastructure.BuildingBlocks.Adapters.Persistence.Initialization"));
+            sp.GetRequiredService<ILoggerFactory>().CreateLogger(typeof(EfCoreMigrator<>).Namespace!));
 
         // Register: the orchestrator as scoped, matching the DbContext lifetime.
         services.TryAddScoped<IPersistenceInitializer, EfCorePersistenceInitializer<TContext>>();

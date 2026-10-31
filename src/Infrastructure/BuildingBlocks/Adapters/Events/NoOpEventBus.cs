@@ -28,7 +28,7 @@ public sealed class NoOpEventBus(ILogger<NoOpEventBus> logger) : IEventBus
 internal static partial class NoOpEventBusLoggers
 {
     [LoggerMessage(
-        EventId = 222,
+        EventId = NoOpEventBusConstant.LogEventIds.Accepted,
         Level = LogLevel.Debug,
         Message = "No transport is configured; accepting integration event {EventName} ({MessageId}).")]
     public static partial void Accepted(ILogger logger, string eventName, Guid messageId);

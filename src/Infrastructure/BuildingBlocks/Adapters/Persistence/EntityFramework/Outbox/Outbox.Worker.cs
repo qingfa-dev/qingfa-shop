@@ -101,19 +101,19 @@ public sealed class OutboxWorker : BackgroundService
 internal static partial class OutboxWorkerLoggers
 {
     [LoggerMessage(
-        EventId = 234,
+        EventId = OutboxWorkerConstant.LogEventIds.DispatchFailed,
         Level = LogLevel.Warning,
         Message = "Outbox dispatch failed: {ErrorCode} - {ErrorMessage}.")]
     public static partial void DispatchFailed(ILogger logger, string errorCode, string errorMessage);
 
     [LoggerMessage(
-        EventId = 235,
+        EventId = OutboxWorkerConstant.LogEventIds.Unhandled,
         Level = LogLevel.Error,
         Message = "Outbox worker iteration failed: {Reason}.")]
     public static partial void Unhandled(ILogger logger, string reason);
 
     [LoggerMessage(
-        EventId = 236,
+        EventId = OutboxWorkerConstant.LogEventIds.RetentionFailed,
         Level = LogLevel.Warning,
         Message = "Outbox retention failed: {ErrorCode} - {ErrorMessage}.")]
     public static partial void RetentionFailed(ILogger logger, string errorCode, string errorMessage);
