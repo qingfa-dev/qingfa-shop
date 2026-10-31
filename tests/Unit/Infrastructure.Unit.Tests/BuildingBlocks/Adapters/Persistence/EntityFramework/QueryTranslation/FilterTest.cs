@@ -117,7 +117,7 @@ public sealed class FilterTest
         var result = Translator.ApplyFilter(source, filter, Map);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(e => e.Code == QueryErrorCodes.FilterValueInvalid);
+        result.Errors.Should().Contain(e => e.Code == QueryOutcome.Codes.FilterValueInvalid);
     }
 
     [Fact(DisplayName = "ApplyFilter_WithCompositeField_BuildsOrChain")]

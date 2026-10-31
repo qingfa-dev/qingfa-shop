@@ -102,7 +102,7 @@ public sealed class FieldsTest
         var result = QueryTranslationEfCore<QueryProbe>.ResolveSelectable("tags", map);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(e => e.Code == QueryErrorCodes.FieldNotSelectable);
+        result.Errors.Should().Contain(e => e.Code == QueryOutcome.Codes.FieldNotSelectable);
     }
 
     [Fact(DisplayName = "ResolveSelectable_WithIndexedField_ReturnsNotSelectableError")]
@@ -124,7 +124,7 @@ public sealed class FieldsTest
         var result = QueryTranslationEfCore<QueryProbe>.ResolveSelectable("internal", map);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(e => e.Code == QueryErrorCodes.FieldNotSelectable);
+        result.Errors.Should().Contain(e => e.Code == QueryOutcome.Codes.FieldNotSelectable);
     }
 
     [Fact(DisplayName = "ResolveGroupable_WithGroupableField_ReturnsField")]
@@ -185,7 +185,7 @@ public sealed class FieldsTest
         var result = QueryTranslationEfCore<QueryProbe>.ResolveGroupable("hidden", map);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(e => e.Code == QueryErrorCodes.FieldNotGroupable);
+        result.Errors.Should().Contain(e => e.Code == QueryOutcome.Codes.FieldNotGroupable);
     }
 
     [Fact(DisplayName = "ResolveAggregatable_WithValidField_ReturnsField")]

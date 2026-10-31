@@ -94,7 +94,7 @@ public sealed class QueryBuilderCoverageTest
             new QueryParameters()).Build();
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.MapNotRegistered);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.MapNotRegistered);
     }
 
     [Fact(DisplayName = "FromParameters with a registered provider should parse the parameters")]
@@ -142,7 +142,7 @@ public sealed class QueryBuilderCoverageTest
         var result = failed.AsResult();
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.MapNotRegistered);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.MapNotRegistered);
     }
 
     // ---- Filters -------------------------------------------------------
@@ -195,7 +195,7 @@ public sealed class QueryBuilderCoverageTest
             .Build();
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotMapped);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotMapped);
     }
 
     [Fact(DisplayName = "Where node should reject a non-filterable field")]
@@ -206,7 +206,7 @@ public sealed class QueryBuilderCoverageTest
             .Build();
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotFilterable);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotFilterable);
     }
 
     [Fact(DisplayName = "Where group should validate every child")]
@@ -237,7 +237,7 @@ public sealed class QueryBuilderCoverageTest
         var result = QueryBuilder<Item>.Create(CreateMap()).Where(group).Build();
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotMapped);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotMapped);
     }
 
     [Fact(DisplayName = "Where node should reject an unsupported node type")]
@@ -249,7 +249,7 @@ public sealed class QueryBuilderCoverageTest
 
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().Contain(
-            error => error.Code == QueryErrorCodes.BuilderExpressionUnsupported);
+            error => error.Code == QueryOutcome.Codes.BuilderExpressionUnsupported);
     }
 
     [Fact(DisplayName = "TryWhere should accept a typed node")]
@@ -269,7 +269,7 @@ public sealed class QueryBuilderCoverageTest
             .TryWhere(Condition("missing", FilterOperator.Equal, 1, typeof(int)));
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotMapped);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotMapped);
     }
 
     [Fact(DisplayName = "TryOrWhere should accept a typed node")]
@@ -326,7 +326,7 @@ public sealed class QueryBuilderCoverageTest
             .TryWhere(item => item.Flag);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotFilterable);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotFilterable);
     }
 
     [Fact(DisplayName = "TryWhere should preserve a failed state without re-running the transform")]
@@ -339,7 +339,7 @@ public sealed class QueryBuilderCoverageTest
         var result = failed.TryWhere("name=test");
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.MapNotRegistered);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.MapNotRegistered);
     }
 
     // ---- Monadic hooks -------------------------------------------------
@@ -362,7 +362,7 @@ public sealed class QueryBuilderCoverageTest
             .Build();
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.PageInvalid);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.PageInvalid);
     }
 
     [Fact(DisplayName = "Ensure should keep the query when the invariant holds")]
@@ -403,7 +403,7 @@ public sealed class QueryBuilderCoverageTest
             .TryBind(_ => Result<Query<Item>>.Fail(QueryOutcome.Failure.PageInvalid));
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.PageInvalid);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.PageInvalid);
     }
 
     [Fact(DisplayName = "TryEnsure should keep a query that satisfies the invariant")]
@@ -471,7 +471,7 @@ public sealed class QueryBuilderCoverageTest
             .Build();
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotMapped);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotMapped);
     }
 
     [Fact(DisplayName = "OrderBy sort field should replace the ordering")]
@@ -492,7 +492,7 @@ public sealed class QueryBuilderCoverageTest
             .Build();
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotSortable);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotSortable);
     }
 
     [Fact(DisplayName = "OrderBy sort field should reject an unmapped field")]
@@ -502,7 +502,7 @@ public sealed class QueryBuilderCoverageTest
             .OrderBy(new SortField("missing", SortDirection.Ascending, SortNulls.None))
             .Build();
 
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotMapped);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotMapped);
     }
 
     [Fact(DisplayName = "OrderByDescending expression should sort descending")]
@@ -571,7 +571,7 @@ public sealed class QueryBuilderCoverageTest
             .Build();
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.OrderSyntax);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.OrderSyntax);
     }
 
     [Fact(DisplayName = "TryOrderBy text should replace the ordering")]
@@ -589,7 +589,7 @@ public sealed class QueryBuilderCoverageTest
         var result = QueryBuilder<Item>.Create(CreateMap()).TryOrderBy("missing");
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotMapped);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotMapped);
     }
 
     [Fact(DisplayName = "TryOrderBy expression should replace the ordering")]
@@ -683,7 +683,7 @@ public sealed class QueryBuilderCoverageTest
         var result = QueryBuilder<Item>.Create(CreateMap()).Page(0, 10).Build();
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.PageInvalid);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.PageInvalid);
     }
 
     [Fact(DisplayName = "Page should reject a page size above the maximum")]
@@ -694,7 +694,7 @@ public sealed class QueryBuilderCoverageTest
             .Build();
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.PageSizeInvalid);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.PageSizeInvalid);
     }
 
     [Fact(DisplayName = "TryPage should set the page")]
@@ -722,7 +722,7 @@ public sealed class QueryBuilderCoverageTest
         var result = QueryBuilder<Item>.Create(CreateMap()).TryPage(1, 0);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.PageSizeInvalid);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.PageSizeInvalid);
     }
 
     // ---- Search --------------------------------------------------------
@@ -747,7 +747,7 @@ public sealed class QueryBuilderCoverageTest
         var result = QueryBuilder<Item>.Create(CreateMap()).Search(text).Build();
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.SearchTooLong);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.SearchTooLong);
     }
 
     [Fact(DisplayName = "Search should reject more terms than allowed")]
@@ -758,7 +758,7 @@ public sealed class QueryBuilderCoverageTest
         var result = QueryBuilder<Item>.Create(CreateMap()).Search(text).Build();
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.SearchTooManyTerms);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.SearchTooManyTerms);
     }
 
     [Fact(DisplayName = "Search should require a searchable field")]
@@ -769,7 +769,7 @@ public sealed class QueryBuilderCoverageTest
             .Build();
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.SearchNotConfigured);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.SearchNotConfigured);
     }
 
     [Fact(DisplayName = "Search should build a basic request")]
@@ -816,7 +816,7 @@ public sealed class QueryBuilderCoverageTest
             .Search(request)
             .Build();
 
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.SearchNotConfigured);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.SearchNotConfigured);
     }
 
     [Fact(DisplayName = "Search request should reject an empty field list")]
@@ -826,7 +826,7 @@ public sealed class QueryBuilderCoverageTest
 
         var result = QueryBuilder<Item>.Create(CreateMap()).Search(request).Build();
 
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.SearchNotConfigured);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.SearchNotConfigured);
     }
 
     [Fact(DisplayName = "Search request should reject too many fields")]
@@ -839,7 +839,7 @@ public sealed class QueryBuilderCoverageTest
 
         var result = QueryBuilder<Item>.Create(CreateMap()).Search(request).Build();
 
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.SearchTooManyFields);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.SearchTooManyFields);
     }
 
     [Fact(DisplayName = "Search request should reject an unmapped field")]
@@ -852,7 +852,7 @@ public sealed class QueryBuilderCoverageTest
 
         var result = QueryBuilder<Item>.Create(CreateMap()).Search(request).Build();
 
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotMapped);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotMapped);
     }
 
     [Fact(DisplayName = "Search request should reject a non-searchable field")]
@@ -865,7 +865,7 @@ public sealed class QueryBuilderCoverageTest
 
         var result = QueryBuilder<Item>.Create(CreateMap()).Search(request).Build();
 
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.SearchNotConfigured);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.SearchNotConfigured);
     }
 
     [Fact(DisplayName = "TrySearch should build the request")]
@@ -1000,7 +1000,7 @@ public sealed class QueryBuilderCoverageTest
 
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().Contain(
-            error => error.Code == QueryErrorCodes.BuilderMaxRowsInvalid);
+            error => error.Code == QueryOutcome.Codes.BuilderMaxRowsInvalid);
     }
 
     [Fact(DisplayName = "TryMaxRows should preserve a failed state")]
@@ -1014,7 +1014,7 @@ public sealed class QueryBuilderCoverageTest
 
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().Contain(
-            error => error.Code == QueryErrorCodes.MapNotRegistered);
+            error => error.Code == QueryOutcome.Codes.MapNotRegistered);
     }
 
     [Fact(DisplayName = "TryInclude should add the path")]
@@ -1032,7 +1032,7 @@ public sealed class QueryBuilderCoverageTest
 
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().Contain(
-            error => error.Code == QueryErrorCodes.BuilderIncludeInvalid);
+            error => error.Code == QueryOutcome.Codes.BuilderIncludeInvalid);
     }
 
     [Fact(DisplayName = "TryInclude should preserve a failed state")]
@@ -1046,7 +1046,7 @@ public sealed class QueryBuilderCoverageTest
 
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().Contain(
-            error => error.Code == QueryErrorCodes.MapNotRegistered);
+            error => error.Code == QueryOutcome.Codes.MapNotRegistered);
     }
 
     [Fact(DisplayName = "TryWithOptions should replace the execution options")]
@@ -1084,7 +1084,7 @@ public sealed class QueryBuilderCoverageTest
         var result = QueryBuilder<Item>.Create(CreateMap()).Select("missing").Build();
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotMapped);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotMapped);
     }
 
     [Fact(DisplayName = "Select typed fields should replace the columns")]
@@ -1104,7 +1104,7 @@ public sealed class QueryBuilderCoverageTest
         var result = QueryBuilder<Item>.Create(CreateMap()).Select(item => item.Secret).Build();
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotSelectable);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotSelectable);
     }
 
     [Fact(DisplayName = "Select typed fields should reject a null entry")]
@@ -1115,7 +1115,7 @@ public sealed class QueryBuilderCoverageTest
         var result = QueryBuilder<Item>.Create(CreateMap()).Select(fields).Build();
 
         result.Errors.Should().Contain(
-            error => error.Code == QueryErrorCodes.BuilderExpressionUnsupported);
+            error => error.Code == QueryOutcome.Codes.BuilderExpressionUnsupported);
     }
 
     [Fact(DisplayName = "Select typed fields should reject an empty field name")]
@@ -1125,7 +1125,7 @@ public sealed class QueryBuilderCoverageTest
 
         var result = QueryBuilder<Item>.Create(CreateMap()).Select(fields).Build();
 
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotMapped);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotMapped);
     }
 
     [Fact(DisplayName = "Select typed fields should reject an unmapped field")]
@@ -1135,7 +1135,7 @@ public sealed class QueryBuilderCoverageTest
 
         var result = QueryBuilder<Item>.Create(CreateMap()).Select(fields).Build();
 
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotMapped);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotMapped);
     }
 
     [Fact(DisplayName = "Select typed fields should reject a non-selectable field")]
@@ -1145,7 +1145,7 @@ public sealed class QueryBuilderCoverageTest
 
         var result = QueryBuilder<Item>.Create(CreateMap()).Select(fields).Build();
 
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotSelectable);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotSelectable);
     }
 
     [Fact(DisplayName = "AddSelect text should append the columns")]
@@ -1215,7 +1215,7 @@ public sealed class QueryBuilderCoverageTest
     {
         var result = QueryBuilder<Item>.Create(CreateMap()).GroupBy("missing").Build();
 
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotMapped);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotMapped);
     }
 
     [Fact(DisplayName = "GroupBy expression should expand the members")]
@@ -1234,7 +1234,7 @@ public sealed class QueryBuilderCoverageTest
     {
         var result = QueryBuilder<Item>.Create(CreateMap()).GroupBy(item => item.Code).Build();
 
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotGroupable);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotGroupable);
     }
 
     [Fact(DisplayName = "AddGroupBy text should append the keys")]
@@ -1275,7 +1275,7 @@ public sealed class QueryBuilderCoverageTest
     {
         var result = QueryBuilder<Item>.Create(CreateMap()).Aggregate("sum(name)").Build();
 
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.AggregateUnsupported);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.AggregateUnsupported);
     }
 
     [Fact(DisplayName = "Aggregate expression should use the supplied alias")]
@@ -1326,7 +1326,7 @@ public sealed class QueryBuilderCoverageTest
         var result = QueryBuilder<Item>.Create(CreateMap()).TrySelect("missing");
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotMapped);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotMapped);
     }
 
     [Fact(DisplayName = "TrySelect expression should replace the columns")]
@@ -1459,7 +1459,7 @@ public sealed class QueryBuilderCoverageTest
 
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().Contain(
-            error => error.Code == QueryErrorCodes.BuilderEntityShapeRequired);
+            error => error.Code == QueryOutcome.Codes.BuilderEntityShapeRequired);
     }
 
     [Fact(DisplayName = "BuildProjected should reject a mismatched response type")]
@@ -1471,7 +1471,7 @@ public sealed class QueryBuilderCoverageTest
 
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().Contain(
-            error => error.Code == QueryErrorCodes.BuilderProjectionMismatch);
+            error => error.Code == QueryOutcome.Codes.BuilderProjectionMismatch);
     }
 
     [Fact(DisplayName = "BuildTabular should reject a stored projection")]
@@ -1484,7 +1484,7 @@ public sealed class QueryBuilderCoverageTest
 
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().Contain(
-            error => error.Code == QueryErrorCodes.BuilderShapeConflict);
+            error => error.Code == QueryOutcome.Codes.BuilderShapeConflict);
     }
 
     [Fact(DisplayName = "BuildTabular should report the caller supplied entity error")]

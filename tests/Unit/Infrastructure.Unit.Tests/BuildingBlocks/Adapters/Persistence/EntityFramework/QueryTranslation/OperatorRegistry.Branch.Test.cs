@@ -65,7 +65,7 @@ public sealed class OperatorRegistryBranchTest
         Result<Expression> result = registry.Build(name, member, value);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.OperatorUnsupported);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.OperatorUnsupported);
     }
 
     [Fact(DisplayName = "Build should reject a null operator name")]
@@ -78,7 +78,7 @@ public sealed class OperatorRegistryBranchTest
         Result<Expression> result = registry.Build(null!, member, value);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.OperatorUnsupported);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.OperatorUnsupported);
     }
 
     [Fact(DisplayName = "Build should return the expression produced by a registered builder")]
@@ -108,6 +108,6 @@ public sealed class OperatorRegistryBranchTest
         Result<Expression> result = registry.Build("boom", member, value);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.OperatorUnsupported);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.OperatorUnsupported);
     }
 }

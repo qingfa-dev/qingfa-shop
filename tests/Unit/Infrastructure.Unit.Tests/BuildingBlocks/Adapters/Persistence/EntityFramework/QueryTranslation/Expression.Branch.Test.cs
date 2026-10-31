@@ -80,7 +80,7 @@ public sealed class ExpressionBranchTest
         Result<Expression> result = QueryTranslationEfCore<BranchProbe>.BuildMember(field, parameter, null);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotFilterable);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotFilterable);
     }
 
     [Fact(DisplayName = "BuildMember should reject a composite field with no scalar expression")]
@@ -95,7 +95,7 @@ public sealed class ExpressionBranchTest
         Result<Expression> result = QueryTranslationEfCore<BranchProbe>.BuildMember(field, parameter, null);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotFilterable);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotFilterable);
     }
 
     [Fact(DisplayName = "BuildMember should reject an index value on a non-indexed field")]
@@ -110,7 +110,7 @@ public sealed class ExpressionBranchTest
         Result<Expression> result = QueryTranslationEfCore<BranchProbe>.BuildMember(field, parameter, "x");
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotFilterable);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotFilterable);
     }
 
     [Fact(DisplayName = "BuildGuard should treat a nullable value leaf as nullable")]

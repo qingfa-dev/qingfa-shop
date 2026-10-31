@@ -90,7 +90,7 @@ public sealed class AggregateBranchTest
         Result<TabularResult> result = Translator.BuildTabularClientSide(rows, query, Map);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.AggregateUnsupported);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.AggregateUnsupported);
     }
 
     [Fact(DisplayName = "Grouped aggregate conversion failure should be returned")]
@@ -109,7 +109,7 @@ public sealed class AggregateBranchTest
         Result<TabularResult> result = Translator.BuildTabularClientSide(rows, query, Map);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.AggregateUnsupported);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.AggregateUnsupported);
     }
 
     [Fact(DisplayName = "Grouped aggregate resolution failure should be returned")]
@@ -125,7 +125,7 @@ public sealed class AggregateBranchTest
         Result<TabularResult> result = Translator.BuildTabularClientSide(rows, query, Map);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.AggregateUnsupported);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.AggregateUnsupported);
     }
 
     [Fact(DisplayName = "Unknown aggregate function should be rejected")]
@@ -140,7 +140,7 @@ public sealed class AggregateBranchTest
         Result<TabularResult> result = Translator.BuildTabularClientSide(rows, query, Map);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.AggregateUnsupported);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.AggregateUnsupported);
     }
 
     [Fact(DisplayName = "Grouped projection should honor a key alias")]

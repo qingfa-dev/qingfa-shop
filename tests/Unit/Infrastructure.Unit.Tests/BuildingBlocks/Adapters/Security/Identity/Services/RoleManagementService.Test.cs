@@ -100,7 +100,7 @@ public sealed class RoleManagementServiceTest
             result.IsFailure.Should().BeTrue();
             result.StatusCode.Should().Be(400);
             result.Errors.Should().ContainSingle(
-                error => error.Code == QueryErrorCodes.Unsupported);
+                error => error.Code == QueryOutcome.Codes.Unsupported);
         }
     }
 

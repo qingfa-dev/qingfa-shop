@@ -18,7 +18,7 @@ public sealed class FieldsBranchTest
         Result<QueryField> result = QueryTranslationEfCore<BranchProbe>.ResolveGroupable("missing", Map);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotMapped);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotMapped);
     }
 
     [Fact(DisplayName = "ResolveAggregatable should reject an unmapped field")]
@@ -29,7 +29,7 @@ public sealed class FieldsBranchTest
         Result<QueryField> result = QueryTranslationEfCore<BranchProbe>.ResolveAggregatable(spec, Map);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotMapped);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotMapped);
     }
 
     [Fact(DisplayName = "ResolveAggregatable should reject a non-selectable field")]
@@ -43,7 +43,7 @@ public sealed class FieldsBranchTest
         Result<QueryField> result = QueryTranslationEfCore<BranchProbe>.ResolveAggregatable(spec, map);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotSelectable);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotSelectable);
     }
 
     [Fact(DisplayName = "ResolveAggregatable should reject a collection field")]
@@ -54,7 +54,7 @@ public sealed class FieldsBranchTest
         Result<QueryField> result = QueryTranslationEfCore<BranchProbe>.ResolveAggregatable(spec, Map);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotSelectable);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotSelectable);
     }
 
     [Fact(DisplayName = "ResolveAggregatable should reject an indexed field")]
@@ -65,6 +65,6 @@ public sealed class FieldsBranchTest
         Result<QueryField> result = QueryTranslationEfCore<BranchProbe>.ResolveAggregatable(spec, Map);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotSelectable);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotSelectable);
     }
 }

@@ -56,7 +56,7 @@ public sealed class QueryExpressionTranslatorBranchesTest
             item => item.Locked == "x", CreateMap());
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotFilterable);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotFilterable);
     }
 
     [Fact(DisplayName = "Non-filterable boolean member should fail typed")]
@@ -66,7 +66,7 @@ public sealed class QueryExpressionTranslatorBranchesTest
             item => item.Flag, CreateMap());
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotFilterable);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotFilterable);
     }
 
     [Fact(DisplayName = "Negated non-filterable boolean member should fail typed")]
@@ -76,7 +76,7 @@ public sealed class QueryExpressionTranslatorBranchesTest
             item => !item.Flag, CreateMap());
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotFilterable);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotFilterable);
     }
 
     [Fact(DisplayName = "String method on a non-filterable field should fail typed")]
@@ -86,7 +86,7 @@ public sealed class QueryExpressionTranslatorBranchesTest
             item => item.Locked.StartsWith("x"), CreateMap());
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotFilterable);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotFilterable);
     }
 
     [Fact(DisplayName = "StartsWith should map to its operator")]
@@ -117,7 +117,7 @@ public sealed class QueryExpressionTranslatorBranchesTest
 
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().Contain(
-            error => error.Code == QueryErrorCodes.BuilderExpressionUnsupported);
+            error => error.Code == QueryOutcome.Codes.BuilderExpressionUnsupported);
     }
 
     [Fact(DisplayName = "Unsupported predicate node should fail typed")]
@@ -128,7 +128,7 @@ public sealed class QueryExpressionTranslatorBranchesTest
 
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().Contain(
-            error => error.Code == QueryErrorCodes.BuilderExpressionUnsupported);
+            error => error.Code == QueryOutcome.Codes.BuilderExpressionUnsupported);
     }
 
     [Fact(DisplayName = "Member on the right should flip the relational operator")]
@@ -185,7 +185,7 @@ public sealed class QueryExpressionTranslatorBranchesTest
 
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().Contain(
-            error => error.Code == QueryErrorCodes.BuilderExpressionUnsupported);
+            error => error.Code == QueryOutcome.Codes.BuilderExpressionUnsupported);
     }
 
     [Fact(DisplayName = "A failing right operand should fail the group")]
@@ -196,7 +196,7 @@ public sealed class QueryExpressionTranslatorBranchesTest
 
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().Contain(
-            error => error.Code == QueryErrorCodes.BuilderExpressionUnsupported);
+            error => error.Code == QueryOutcome.Codes.BuilderExpressionUnsupported);
     }
 
     [Fact(DisplayName = "A comparison without a constant operand should fail typed")]
@@ -207,7 +207,7 @@ public sealed class QueryExpressionTranslatorBranchesTest
 
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().Contain(
-            error => error.Code == QueryErrorCodes.BuilderExpressionUnsupported);
+            error => error.Code == QueryOutcome.Codes.BuilderExpressionUnsupported);
     }
 
     [Fact(DisplayName = "A negated failing operand should preserve the failure")]
@@ -226,7 +226,7 @@ public sealed class QueryExpressionTranslatorBranchesTest
             item => item.Ambiguous == 1, CreateMap());
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.BuilderAmbiguousField);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.BuilderAmbiguousField);
     }
 
     // ---- Ordering branches --------------------------------------------
@@ -238,7 +238,7 @@ public sealed class QueryExpressionTranslatorBranchesTest
             item => item.Code, SortDirection.Ascending, CreateMap());
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotSortable);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotSortable);
     }
 
     [Fact(DisplayName = "Order expression should reject an unmapped path")]
@@ -248,7 +248,7 @@ public sealed class QueryExpressionTranslatorBranchesTest
             item => item.Tags.Count, SortDirection.Ascending, CreateMap());
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotMapped);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotMapped);
     }
 
     // ---- Select branches ----------------------------------------------
@@ -260,7 +260,7 @@ public sealed class QueryExpressionTranslatorBranchesTest
             item => item.Secret, CreateMap());
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotSelectable);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotSelectable);
     }
 
     [Fact(DisplayName = "Select expression should reject an unmapped path")]
@@ -270,7 +270,7 @@ public sealed class QueryExpressionTranslatorBranchesTest
             item => item.Tags.Count, CreateMap());
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotMapped);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotMapped);
     }
 
     // ---- Grouping branches --------------------------------------------
@@ -292,7 +292,7 @@ public sealed class QueryExpressionTranslatorBranchesTest
             item => new { First = item.Name, Second = item.Name }, CreateMap());
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldDuplicate);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldDuplicate);
     }
 
     [Fact(DisplayName = "Group expression should reject a non-groupable field")]
@@ -302,7 +302,7 @@ public sealed class QueryExpressionTranslatorBranchesTest
             item => item.Description, CreateMap());
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotGroupable);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotGroupable);
     }
 
     [Fact(DisplayName = "Group expression should reject an unmapped path")]
@@ -312,7 +312,7 @@ public sealed class QueryExpressionTranslatorBranchesTest
             item => item.Tags.Count, CreateMap());
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotMapped);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotMapped);
     }
 
     // ---- Aggregate branches -------------------------------------------
@@ -324,7 +324,7 @@ public sealed class QueryExpressionTranslatorBranchesTest
             AggregateFunction.Count, item => item.Secret, null, CreateMap());
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotSelectable);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotSelectable);
     }
 
     [Fact(DisplayName = "Aggregate expression should keep a caller supplied alias")]
@@ -343,6 +343,6 @@ public sealed class QueryExpressionTranslatorBranchesTest
             AggregateFunction.Count, item => item.Tags.Count, null, CreateMap());
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotMapped);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotMapped);
     }
 }

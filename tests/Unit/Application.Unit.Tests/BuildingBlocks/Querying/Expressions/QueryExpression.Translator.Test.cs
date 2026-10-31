@@ -116,7 +116,7 @@ public sealed class QueryExpressionTranslatorTest
             item => item.Tags.Contains("sale"), CreateMap());
 
         result.IsFailure.Should().BeTrue();
-        result.Errors[0].Code.Should().Be(QueryErrorCodes.BuilderExpressionUnsupported);
+        result.Errors[0].Code.Should().Be(QueryOutcome.Codes.BuilderExpressionUnsupported);
     }
 
     [Fact(DisplayName = "Where expression should reject a computed value operand")]
@@ -126,7 +126,7 @@ public sealed class QueryExpressionTranslatorTest
             item => item.Score > item.Score * 2, CreateMap());
 
         result.IsFailure.Should().BeTrue();
-        result.Errors[0].Code.Should().Be(QueryErrorCodes.BuilderExpressionUnsupported);
+        result.Errors[0].Code.Should().Be(QueryOutcome.Codes.BuilderExpressionUnsupported);
     }
 
     [Fact(DisplayName = "Where expression should preserve double negation on a boolean member")]
@@ -188,7 +188,7 @@ public sealed class QueryExpressionTranslatorTest
 
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().Contain(
-            error => error.Code == QueryErrorCodes.BuilderExpressionUnsupported);
+            error => error.Code == QueryOutcome.Codes.BuilderExpressionUnsupported);
     }
 
     [Fact(DisplayName = "Where expression should reject a captured string receiver that collides with a mapped field")]
@@ -199,7 +199,7 @@ public sealed class QueryExpressionTranslatorTest
 
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().Contain(
-            error => error.Code == QueryErrorCodes.BuilderExpressionUnsupported);
+            error => error.Code == QueryOutcome.Codes.BuilderExpressionUnsupported);
     }
 
     [Fact(DisplayName = "Order expression should reject a static property that collides with a mapped field")]
@@ -210,7 +210,7 @@ public sealed class QueryExpressionTranslatorTest
 
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().Contain(
-            error => error.Code == QueryErrorCodes.BuilderExpressionUnsupported);
+            error => error.Code == QueryOutcome.Codes.BuilderExpressionUnsupported);
     }
 
     [Fact(DisplayName = "Where expression should evaluate a captured Contains value")]

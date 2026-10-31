@@ -99,7 +99,7 @@ public sealed class QueryBuilderProjectionTest
 
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().Contain(
-            error => error.Code == QueryErrorCodes.BuilderShapeConflict);
+            error => error.Code == QueryOutcome.Codes.BuilderShapeConflict);
     }
 
     [Fact(DisplayName = "BuildProjected should preserve an existing failed state before checking the projection")]
@@ -110,9 +110,9 @@ public sealed class QueryBuilderProjectionTest
             .BuildProjected<string>();
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotMapped);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotMapped);
         result.Errors.Should().NotContain(
-            error => error.Code == QueryErrorCodes.BuilderProjectionRequired);
+            error => error.Code == QueryOutcome.Codes.BuilderProjectionRequired);
     }
 
     [Fact(DisplayName = "BuildTabular should reject select plus aggregate without group")]
@@ -193,7 +193,7 @@ public sealed class QueryBuilderProjectionTest
             .Build();
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldDuplicate);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldDuplicate);
     }
 
     [Fact(DisplayName = "AddSelect should reject an alias already used by an earlier call")]
@@ -205,7 +205,7 @@ public sealed class QueryBuilderProjectionTest
             .Build();
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldDuplicate);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldDuplicate);
     }
 
     [Fact(DisplayName = "AddGroupBy should reject a key already grouped by an earlier call")]
@@ -217,7 +217,7 @@ public sealed class QueryBuilderProjectionTest
             .Build();
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldDuplicate);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldDuplicate);
     }
 
     [Fact(DisplayName = "Aggregate should reject an alias already used by an earlier call")]
@@ -229,7 +229,7 @@ public sealed class QueryBuilderProjectionTest
             .Build();
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldDuplicate);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldDuplicate);
     }
 
     [Fact(DisplayName = "Aggregate append should enforce the merged aggregate limit")]
@@ -243,6 +243,6 @@ public sealed class QueryBuilderProjectionTest
         var result = builder.Build();
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.AggregateSyntax);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.AggregateSyntax);
     }
 }

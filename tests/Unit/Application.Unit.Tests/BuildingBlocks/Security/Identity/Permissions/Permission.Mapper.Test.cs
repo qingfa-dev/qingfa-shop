@@ -68,7 +68,7 @@ public sealed class PermissionMapperTest
 
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().ContainSingle()
-            .Which.Code.Should().Be(QueryErrorCodes.PageSizeInvalid);
+            .Which.Code.Should().Be(QueryOutcome.Codes.PageSizeInvalid);
     }
 
     [Fact(DisplayName = "Snapshot should reject a non-positive page")]
@@ -79,7 +79,7 @@ public sealed class PermissionMapperTest
 
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().ContainSingle()
-            .Which.Code.Should().Be(QueryErrorCodes.PageInvalid);
+            .Which.Code.Should().Be(QueryOutcome.Codes.PageInvalid);
     }
 
     [Fact(DisplayName = "Snapshot should return an empty page past the end")]

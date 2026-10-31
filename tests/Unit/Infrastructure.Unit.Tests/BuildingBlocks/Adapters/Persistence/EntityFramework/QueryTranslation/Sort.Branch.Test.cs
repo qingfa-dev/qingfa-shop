@@ -87,7 +87,7 @@ public sealed class SortBranchTest
             new List<BranchProbe>().AsQueryable(), order, Map);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotSortable);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotSortable);
     }
 
     [Fact(DisplayName = "Sorting an indexed field without an index should fail")]
@@ -104,7 +104,7 @@ public sealed class SortBranchTest
             new List<BranchProbe>().AsQueryable(), order, map);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotFilterable);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotFilterable);
     }
 
     [Theory(DisplayName = "Paging should reject an invalid page window")]
@@ -120,7 +120,7 @@ public sealed class SortBranchTest
             new PageRequest(page, pageSize));
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FilterSyntax);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FilterSyntax);
     }
 
     [Fact(DisplayName = "Paging should accept the largest safe offset")]

@@ -48,7 +48,7 @@ public sealed class SearchRequestFactoryTest
         // Assert
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().ContainSingle()
-            .Which.Code.Should().Be(QueryErrorCodes.SearchRequired);
+            .Which.Code.Should().Be(QueryOutcome.Codes.SearchRequired);
     }
 
     [Fact]
@@ -63,7 +63,7 @@ public sealed class SearchRequestFactoryTest
         // Assert
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().ContainSingle()
-            .Which.Code.Should().Be(QueryErrorCodes.SearchTooLong);
+            .Which.Code.Should().Be(QueryOutcome.Codes.SearchTooLong);
     }
 
     [Fact]
@@ -75,6 +75,6 @@ public sealed class SearchRequestFactoryTest
         // Assert
         result.IsFailure.Should().BeTrue();
         result.Errors.Should().ContainSingle()
-            .Which.Code.Should().Be(QueryErrorCodes.SearchModeMismatch);
+            .Which.Code.Should().Be(QueryOutcome.Codes.SearchModeMismatch);
     }
 }

@@ -35,7 +35,7 @@ public sealed class ExpressionsTest
         var result = QueryTranslationEfCore<QueryProbe>.BuildMember(field, parameter, "test");
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(e => e.Code == QueryErrorCodes.FieldNotFilterable);
+        result.Errors.Should().Contain(e => e.Code == QueryOutcome.Codes.FieldNotFilterable);
     }
 
     [Fact(DisplayName = "BuildMember_WithIndexValue_ReturnsIndexedExpression")]
@@ -50,7 +50,7 @@ public sealed class ExpressionsTest
 
         // IsIndexed=true but expression only has 1 parameter, so it fails
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(e => e.Code == QueryErrorCodes.FieldNotFilterable);
+        result.Errors.Should().Contain(e => e.Code == QueryOutcome.Codes.FieldNotFilterable);
     }
 
     [Fact(DisplayName = "BuildMember_WithIndexButNoIndexType_ReturnsError")]

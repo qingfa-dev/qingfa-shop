@@ -81,7 +81,7 @@ public sealed class PermissionCatalogServiceTest
 
         result.IsFailure.Should().BeTrue();
         result.StatusCode.Should().Be(400);
-        result.Errors.Should().ContainSingle(error => error.Code == QueryErrorCodes.Unsupported);
+        result.Errors.Should().ContainSingle(error => error.Code == QueryOutcome.Codes.Unsupported);
         registry.Verify(
             candidate => candidate.RefreshAsync(It.IsAny<CancellationToken>()),
             Times.Never);

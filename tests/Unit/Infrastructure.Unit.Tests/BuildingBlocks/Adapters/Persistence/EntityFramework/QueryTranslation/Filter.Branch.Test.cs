@@ -25,7 +25,7 @@ public sealed class FilterBranchTest
             Map);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FilterSyntax);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FilterSyntax);
     }
 
     [Fact(DisplayName = "Empty string on a nullable value field should build a null check")]
@@ -62,7 +62,7 @@ public sealed class FilterBranchTest
             new List<BranchProbe>().AsQueryable(), filter, Map);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FilterValueInvalid);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FilterValueInvalid);
     }
 
     [Theory(DisplayName = "Null on a nullable value field should build a null check")]
@@ -115,7 +115,7 @@ public sealed class FilterBranchTest
             new List<BranchProbe>().AsQueryable(), filter, Map);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FilterSyntax);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FilterSyntax);
     }
 
     [Fact(DisplayName = "Unknown operator should be rejected")]
@@ -128,7 +128,7 @@ public sealed class FilterBranchTest
             new List<BranchProbe>().AsQueryable(), filter, Map);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FilterSyntax);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FilterSyntax);
     }
 
     [Fact(DisplayName = "A collection element comparison that cannot be built should fail")]
@@ -141,7 +141,7 @@ public sealed class FilterBranchTest
             new List<BranchProbe>().AsQueryable(), filter, Map);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FilterValueInvalid);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FilterValueInvalid);
     }
 
     [Fact(DisplayName = "A reference collection element should be null-guarded")]
@@ -230,7 +230,7 @@ public sealed class FilterBranchTest
             new List<BranchProbe>().AsQueryable(), filter, map);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FilterValueInvalid);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FilterValueInvalid);
     }
 
     [Fact(DisplayName = "An indexed field without an index value should fail")]
@@ -243,7 +243,7 @@ public sealed class FilterBranchTest
             new List<BranchProbe>().AsQueryable(), filter, Map);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(error => error.Code == QueryErrorCodes.FieldNotFilterable);
+        result.Errors.Should().Contain(error => error.Code == QueryOutcome.Codes.FieldNotFilterable);
     }
 
     [Fact(DisplayName = "An indexed field with an index value should build the element access")]

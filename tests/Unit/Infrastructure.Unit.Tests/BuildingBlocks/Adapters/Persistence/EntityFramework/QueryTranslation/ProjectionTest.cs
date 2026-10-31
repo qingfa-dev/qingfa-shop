@@ -38,7 +38,7 @@ public sealed class ProjectionTest
         var result = Translator.BuildSelectPlan(source, select, Map);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(e => e.Code == QueryErrorCodes.FilterSyntax);
+        result.Errors.Should().Contain(e => e.Code == QueryOutcome.Codes.FilterSyntax);
     }
 
     [Fact(DisplayName = "BuildSelectPlan_WithNonSelectableField_ReturnsNotSelectableError")]
@@ -51,7 +51,7 @@ public sealed class ProjectionTest
         var result = Translator.BuildSelectPlan(source, select, map);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(e => e.Code == QueryErrorCodes.FieldNotSelectable);
+        result.Errors.Should().Contain(e => e.Code == QueryOutcome.Codes.FieldNotSelectable);
     }
 
     [Fact(DisplayName = "BuildSelectPlan_WithUnknownField_ReturnsNotMappedError")]
@@ -76,7 +76,7 @@ public sealed class ProjectionTest
         var result = Translator.BuildSelectPlan(source, select, map);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(e => e.Code == QueryErrorCodes.FieldNotSelectable);
+        result.Errors.Should().Contain(e => e.Code == QueryOutcome.Codes.FieldNotSelectable);
     }
 
     [Fact(DisplayName = "BuildSelectPlan_WithIndexedField_ReturnsNotSelectableError")]
@@ -89,7 +89,7 @@ public sealed class ProjectionTest
         var result = Translator.BuildSelectPlan(source, select, map);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(e => e.Code == QueryErrorCodes.FieldNotSelectable);
+        result.Errors.Should().Contain(e => e.Code == QueryOutcome.Codes.FieldNotSelectable);
     }
 
     [Fact(DisplayName = "BuildSelectPlan_WithCollectionField_ReturnsNotSelectableError")]
@@ -102,7 +102,7 @@ public sealed class ProjectionTest
         var result = Translator.BuildSelectPlan(source, select, map);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors.Should().Contain(e => e.Code == QueryErrorCodes.FieldNotSelectable);
+        result.Errors.Should().Contain(e => e.Code == QueryOutcome.Codes.FieldNotSelectable);
     }
 
     [Fact(DisplayName = "BuildSelectPlan_WithAlias_UsesAliasInColumns")]
