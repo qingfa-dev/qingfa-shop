@@ -1,0 +1,29 @@
+namespace Infrastructure.BuildingBlocks.Adapters.Caching.Options.Distributed;
+
+/// <summary>Options for the L2 distributed cache.</summary>
+/// <remarks>
+/// The provider itself is registered by its own composition (currently
+/// <c>AddRedisCache</c>); this type only describes how the hybrid facade uses it.
+/// </remarks>
+public sealed class DistributedCacheSetting
+{
+    /// <summary>Enables the L2 tier.</summary>
+    public bool Enabled { get; set; } = DistributedCacheSettingConstant.Defaults.Enabled;
+
+    /// <summary>
+    /// Distributed cache provider: "redis" or "sqlserver".
+    /// </summary>
+    public string? Provider { get; set; }
+
+    /// <summary>
+    /// Name of the connection string in the <c>ConnectionStrings</c> configuration section.
+    /// </summary>
+    public string? ConnectionStringName { get; set; }
+
+    /// <summary>Lifetime of an entry in the L2 cache, in minutes.</summary>
+    public int DefaultExpirationMinutes { get; set; } =
+        DistributedCacheSettingConstant.Defaults.ExpirationMinutes;
+
+    /// <summary>The configured L2 lifetime as a <see cref="TimeSpan"/>.</summary>
+    public TimeSpan DefaultExpiration => TimeSpan.FromMinutes(DefaultExpirationMinutes);
+}

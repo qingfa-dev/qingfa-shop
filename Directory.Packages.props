@@ -39,9 +39,9 @@
       release. They are separate properties because the families can ship
       on different patch cadences.
     -->
-    <DotNetVersion>10.0.13</DotNetVersion>
-    <AspNetCoreVersion>10.0.13</AspNetCoreVersion>
-    <EFCoreVersion>10.0.13</EFCoreVersion>
+    <DotNetVersion>10.0.14</DotNetVersion>
+    <AspNetCoreVersion>10.0.14</AspNetCoreVersion>
+    <EFCoreVersion>10.0.14</EFCoreVersion>
     <!-- Microsoft.Extensions.* "extra" libraries (Hybrid cache, resilience,
          service discovery) ship on their own version line. -->
     <ExtensionsVersion>10.11.0</ExtensionsVersion>
@@ -59,13 +59,14 @@
       Microsoft.OpenApi 3.x is outside that range, so the latest compatible 2.x
       release (2.13.0) is used instead of the absolute latest.
     -->
+    <PackageVersion Include="Microsoft.Extensions.Logging" Version="$(DotNetVersion)" />
     <PackageVersion Include="Microsoft.OpenApi" Version="2.13.0" />
     <PackageVersion Include="Scalar.AspNetCore" Version="2.18.3" />
     <!-- Lightweight endpoint-routing abstraction. Only if the API adopts Carter. -->
     <PackageVersion Include="Carter" Version="10.0.0" />
     <!-- Reverse proxy / gateway. Intended for future platform deployments. -->
     <PackageVersion Include="Yarp.ReverseProxy" Version="2.3.0" />
-    <!-- Core .NET packages used by Contract library -->
+    <!-- Shared JSON package available to production libraries -->
     <PackageVersion Include="System.Text.Json" Version="$(DotNetVersion)" />
   </ItemGroup>
   <!-- ====================================================================
@@ -177,6 +178,9 @@
        ==================================================================== -->
   <ItemGroup>
     <PackageVersion Include="Microsoft.AspNetCore.Authentication.JwtBearer" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.Google" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.MicrosoftAccount" Version="$(AspNetCoreVersion)" />
+    <PackageVersion Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="Microsoft.AspNetCore.DataProtection.EntityFrameworkCore" Version="$(AspNetCoreVersion)" />
     <PackageVersion Include="System.IdentityModel.Tokens.Jwt" Version="8.23.0" />
@@ -250,6 +254,7 @@
   <ItemGroup>
     <PackageVersion Include="AspNetCore.HealthChecks.Npgsql" Version="9.0.0" />
     <PackageVersion Include="AspNetCore.HealthChecks.Redis" Version="9.0.0" />
+    <PackageVersion Include="AspNetCore.HealthChecks.RabbitMQ" Version="9.0.0" />
     <PackageVersion Include="AspNetCore.HealthChecks.UI.Client" Version="9.0.0" />
   </ItemGroup>
   <!-- ====================================================================
@@ -319,6 +324,8 @@
     <PackageVersion Include="xunit.analyzers" Version="2.2.0" />
     <!-- Collector-based coverage: dotnet test -collect:"XPlat Code Coverage". -->
     <PackageVersion Include="coverlet.collector" Version="10.1.0" />
+    <!-- MSBuild-based coverage: dotnet test -p:CollectCoverage=true. -->
+    <PackageVersion Include="coverlet.msbuild" Version="10.1.0" />
     <!-- Assertions. AwesomeAssertions is the MIT-licensed continuation of the FluentAssertions 7.x line (8.x+ is commercially licensed). -->
     <PackageVersion Include="AwesomeAssertions" Version="9.6.0" />
     <PackageVersion Include="Moq" Version="4.21.0" />
@@ -374,5 +381,8 @@
   <ItemGroup>
     <PackageVersion Include="WolverineFx" Version="6.52.0" />
     <PackageVersion Include="WolverineFx.RabbitMQ" Version="6.52.0" />
+    <!-- Wolverine 6 core no longer ships the Roslyn code generator; hosts that
+         compose Wolverine need this package or pre-generated static code. -->
+    <PackageVersion Include="WolverineFx.RuntimeCompilation" Version="6.52.0" />
   </ItemGroup>
 </Project>

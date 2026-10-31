@@ -9,7 +9,7 @@
   <ItemGroup>
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="Mapster" />
-    <PackageReference Include="Mediator.Abstractions" />
+    <PackageReference Include="MediatR" />
     <PackageReference Include="Slugify.Core" />
   </ItemGroup>
 </Project>

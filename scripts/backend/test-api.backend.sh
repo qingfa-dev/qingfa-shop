@@ -4,5 +4,5 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 . "$ROOT/scripts/common/trace.common.sh"
 
-trace_exec dotnet test --project "$ROOT/tests/Integration/Api.Tests/Api.Tests.csproj" \
+trace_exec dotnet test --project "$ROOT/tests/Integration/Api.Integration.Tests/Api.Integration.Tests.csproj" \
   -c "${CONFIGURATION:-Release}" --no-build

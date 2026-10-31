@@ -6,12 +6,74 @@ cd "$ROOT"
 
 status=0
 
-# 1. A namespace mirrors the folder path under its project root.
-#    The project root is the folder that holds the .csproj. Its expected
-#    namespace comes from <RootNamespace> when the project declares one,
-#    otherwise from Assembly.Marker.cs, otherwise from the folder name.
-#    This keeps intentional roots such as QingFa.Shop.Architecture.Tests
-#    working without forcing every project into one naming style.
+# ---------------------------------------------------------------------------
+# Role / sub-role vocabulary
+# ---------------------------------------------------------------------------
+read -r -d '' ROLES <<'EOF' || true
+action adapter aggregate aggregate-root assertion assertions authorization behavior
+binder builder callback cache cache-key client collection column command combinator
+comparer comparator composition configuration constant constants constraint consumer
+container context controller converter coordinator contract criteria cursor decorator
+definition descriptor dispatcher dto endpoint entity entity-configuration enum error
+event exception executor expression expressions extension extensions factory failure
+fake field fields filter fixture formatter function gateway guard handler health-check
+helper hosted-service identity include index infrastructure integration interceptor
+interface invariant job listener liveness logger mapper mapping matcher materializer
+maybe mediator message metadata migration middleware mock model modifier module monitor
+navigation navigations normalizer notification observer operation operator option
+options optional orchestrator ordering outcome page page-request page-result pagination
+paginator parser pipeline policy predicate procedure processor projection provider proxy
+publisher query query-builder query-constant query-descriptor query-expression query-map
+query-model query-option query-parameter query-provider read-model readiness registry
+repository request resolver response result retry route router rule scheduler schema
+search search-query search-result seeder serializer service session settings severity
+snapshot sort sort-descriptor sort-order sorter spec specification spy state status
+store strategy stub subscriber success table test test-case test-data test-host
+test-server tests theory transaction transformer translator transport trigger type unit
+unit-of-work use-case util utilities validator validation validation-result value-object
+view view-model webhook worker workflow write-model
+marker design tabular querymap queryconstant readmodel flow double base default generic config
+seed e2e-spec enumerate create update upsert update delete read abstract write streamable
+EOF
+
+read -r -d '' SUBROLES <<'EOF' || true
+async sync efcore entity-framework postgres postgresql sql redis http https grpc json
+xml yaml csv binary default generic concrete abstract base derived read write create
+update delete remove find get list count exists single first last stream streaming
+batch cached decorated fallback retry bulk paged cursor offset descending ascending
+case-insensitive case-sensitive nullable required optional internal external public
+private protected static instance immutable mutable readonly writeonly partial
+generated custom standard legacy v1 v2
+EOF
+
+# Build hash sets once (bash 4+). `for r in $ROLES` splits on whitespace.
+declare -A ROLE_SET=() SUBROLE_SET=()
+for r in $ROLES;    do ROLE_SET[$r]=1;    done
+for r in $SUBROLES; do SUBROLE_SET[$r]=1; done
+
+is_role()    { [ -n "${1:-}" ] || return 1; [ -n "${ROLE_SET[$1]:-}" ]; }
+is_subrole() { [ -n "${1:-}" ] || return 1; [ -n "${SUBROLE_SET[$1]:-}" ]; }
+
+# ---------------------------------------------------------------------------
+# Only scan directories that actually exist
+# ---------------------------------------------------------------------------
+scan_dirs=()
+for d in src tests app; do
+  [ -d "$d" ] && scan_dirs+=("$d")
+done
+if [ ${#scan_dirs[@]} -eq 0 ]; then
+  echo "no source directories (src/tests/app) found under $ROOT"
+  exit 1
+fi
+
+cs_files() {
+  find "${scan_dirs[@]}" -type f -name '*.cs' \
+    -not -path '*/obj/*' -not -path '*/bin/*' -not -path '*/Migrations/*' 2>/dev/null
+}
+
+# ---------------------------------------------------------------------------
+# 1. Namespace mirrors folder path under the project root
+# ---------------------------------------------------------------------------
 while read -r file; do
   project_dir="$file"
   while [ "$project_dir" != "." ] && ! compgen -G "$project_dir/*.csproj" >/dev/null; do
@@ -20,83 +82,86 @@ while read -r file; do
 
   compgen -G "$project_dir/*.csproj" >/dev/null || continue
 
-  # Detail: tests/Testing is a shared kit that uses one flat namespace
-  # (`Testing`) so consumers write a single using; foldering is not mirrored.
-  [ "$project_dir" = "tests/Testing" ] && continue
+  # tests/Testing is a flat shared kit — foldering is not mirrored.
+  if [ "$project_dir" = "tests/Testing" ]; then
+    continue
+  fi
 
-  root_ns="$(grep -m1 -oP '<RootNamespace>\K[^<]+' "$project_dir"/*.csproj 2>/dev/null || true)"
+  # <RootNamespace>…</RootNamespace> (sed -E: portable, no -P)
+  root_ns="$(sed -E -n 's:.*<RootNamespace>([^<]*).*:\1:p' \
+              "$project_dir"/*.csproj 2>/dev/null | head -n1 || true)"
+
   if [ -z "$root_ns" ] && [ -f "$project_dir/Assembly.Marker.cs" ]; then
-    root_ns="$(grep -m1 -oP '^namespace \K[A-Za-z0-9_.]+' "$project_dir/Assembly.Marker.cs" || true)"
+    root_ns="$(sed -E -n 's/^namespace[[:space:]]+([A-Za-z0-9_.]+).*/\1/p' \
+                "$project_dir/Assembly.Marker.cs" 2>/dev/null | head -n1 || true)"
   fi
   [ -n "$root_ns" ] || root_ns="$(basename "$project_dir")"
 
   rel="${file#"$project_dir"/}"
   rel_dir="$(dirname "$rel")"
-  [ "$rel_dir" = "." ] && rel_dir=""
+  if [ "$rel_dir" = "." ]; then rel_dir=""; fi
 
   expected="$root_ns"
-  [ -n "$rel_dir" ] && expected="$expected.$(echo "$rel_dir" | tr '/' '.')"
+  if [ -n "$rel_dir" ]; then
+    expected="$expected.$(printf '%s' "$rel_dir" | tr '/' '.')"
+  fi
 
-  actual="$(grep -m1 -oP '^namespace \K[A-Za-z0-9_.]+' "$file" || true)"
+  actual="$(sed -E -n 's/^namespace[[:space:]]+([A-Za-z0-9_.]+).*/\1/p' \
+            "$file" 2>/dev/null | head -n1 || true)"
   [ -n "$actual" ] || continue
 
   if [ "$actual" != "$expected" ]; then
     echo "namespace mismatch: $file declares $actual, folder implies $expected"
     status=1
   fi
-done < <(find src tests app -name '*.cs' -not -path '*/obj/*' -not -path '*/bin/*' -not -path '*/Migrations/*')
+done < <(cs_files)
 
-# 2. Every file's last dotted segment is a known role, or a known sub-role
-#    whose chain already contains a known role.
-ROLES="controller router resolver middleware interceptor guard handler endpoint webhook
-service use-case command query workflow orchestrator policy rule specification validator
-mapper transformer factory builder strategy provider model entity aggregate value-object
-dto schema migration seed repository store projection snapshot interface type enum
-constant config options event message result error util helper extension decorator
-adapter client gateway proxy listener scheduler worker job spec test tests mock stub fake
-fixture e2e-spec base
-outcome marker composition collection behavior logger operator severity default exception
-generic design tabular request querymap queryconstant configuration flow double"
-
-SUBROLES="async sync"
-
-is_role() {
-  echo "$ROLES" | tr ' ' '\n' | grep -qx "$1"
-}
-
-is_subrole() {
-  echo "$SUBROLES" | tr ' ' '\n' | grep -qx "$1"
-}
-
+# ---------------------------------------------------------------------------
+# 2. Last dotted segment is a known role, or a known sub-role whose
+#    chain already contains a known role.
+# ---------------------------------------------------------------------------
 while read -r file; do
   name="$(basename "$file" .cs)"
+
+  # no dot in filename → rule does not apply
   case "$name" in
     *.*) ;;
-    *) continue ;;
+    *)   continue ;;
   esac
 
-  last="$(echo "${name##*.}" | tr '[:upper:]' '[:lower:]')"
+  last="${name##*.}"
+  last="${last,,}"
+
+  if [ -z "$last" ]; then
+    echo "unknown role '': $file"
+    status=1
+    continue
+  fi
 
   if is_role "$last"; then
     continue
   fi
 
-  # A sub-role is only accepted when the chain already names a role, so
-  # `Result.Extension.Flow.Async.cs` passes but `Foo.Async.cs` does not.
   if is_subrole "$last"; then
     chain="${name%.*}"
     found=0
-    while [ -n "$chain" ] && [ "$chain" != "$name" ]; do
-      seg="$(echo "${chain##*.}" | tr '[:upper:]' '[:lower:]')"
+    while [ -n "$chain" ]; do
+      seg="${chain##*.}"
+      seg="${seg,,}"
       if is_role "$seg"; then found=1; break; fi
-      chain="${chain%.*}"
+      case "$chain" in
+        *.*) chain="${chain%.*}" ;;
+        *)   break ;;
+      esac
     done
-    [ "$found" -eq 1 ] && continue
+    if [ "$found" -eq 1 ]; then
+      continue
+    fi
   fi
 
   echo "unknown role '${name##*.}': $file"
   status=1
-done < <(find src tests app -name '*.cs' -not -path '*/obj/*' -not -path '*/bin/*' -not -path '*/Migrations/*')
+done < <(cs_files)
 
 if [ "$status" -ne 0 ]; then
   echo "structure check failed"

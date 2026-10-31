@@ -1,15 +1,13 @@
-using Xunit;
-
 namespace QingFa.Shop.Architecture.Tests;
 
 /// <summary>
-/// Vertical slice architecture tests ensuring feature isolation.
+/// Vertical slice architecture tests ensuring module isolation.
 /// </summary>
 /// <remarks>
-/// Each vertical slice (feature) should be self-contained:
+/// Each vertical slice (module) should be self-contained:
 /// - Commands/Queries/Handlers/Validators in the same namespace
-/// - No direct dependencies between slices
-/// - Shared code only via Core, Contract, Application.Services
+/// - No direct dependencies between modules
+/// - Shared code only via Core and Application.BuildingBlocks
 /// 
 /// Note: Full NetArchTest rules are documented here but require NetArchTest API compatibility.
 /// Current version uses simplified compile-time checks.
@@ -20,21 +18,21 @@ public sealed class VerticalSliceArchitectureTests
     [Fact]
     public void VerticalSliceRules_AreDocumented()
     {
-        // Commands live in Application.Features.{Feature}.Commands
-        // Queries live in Application.Features.{Feature}.Queries
-        // Handlers live in Application.Features.{Feature}.Handlers (or alongside command/query)
-        // Validators live in Application.Features.{Feature}.Validators
-        // No direct dependencies between feature slices
-        // Cross-slice communication via Application.Services or Domain Events
+        // Commands live in Application.Modules.{Module}.Commands
+        // Queries live in Application.Modules.{Module}.Queries
+        // Handlers live in Application.Modules.{Module}.Handlers (or alongside command/query)
+        // Validators live in Application.Modules.{Module}.Validators
+        // No direct dependencies between module slices
+        // Cross-module communication via Application.BuildingBlocks contracts or Domain Events
 
         true.Should().BeTrue(because: "Vertical slice rules are documented; NetArchTest implementation pending API compatibility");
     }
 
     [Fact]
-    public void ApplicationServices_OrchestrateFeatures()
+    public void ApplicationBuildingBlocks_OrchestrateModules()
     {
-        // Application.Services contains orchestrator services that coordinate multiple features
-        // Features do not directly reference other features
-        true.Should().BeTrue(because: "Application.Services is the orchestration layer for cross-feature workflows");
+        // Application.BuildingBlocks contains reusable orchestration contracts used by modules
+        // Modules do not directly reference other modules
+        true.Should().BeTrue(because: "Application.BuildingBlocks is the shared orchestration layer for cross-module workflows");
     }
 }

@@ -1,60 +1,66 @@
 # Architecture.Tests
 
-Architectural fitness functions — NetArchTest rules for layers, slices, naming, comments. _test · architecture_
+Architectural fitness functions — layer, slice, naming, and comment-label rules. _test · architecture_
 
 ## Summary
 
-Architecture.Tests encodes **architectural constraints as executable tests** using NetArchTest. These run on every `dotnet build` and fail CI if violated. They replace manual code reviews for structural rules: layer dependencies, vertical slice isolation, naming conventions, and comment label vocabulary.
+Architecture.Tests encodes **architectural constraints as executable tests** using reflection-based fitness checks. They run as part of `make lib.test` (after the unit suites) and fail CI if violated. The BuildingBlocks → Modules boundary is enforced today; broader NetArchTest rules document the intended dependency graph and enforce what reflection can verify.
 
 ## Contains
 
 | Path | Role | Notes |
 |---|---|---|
 | `Assembly.Marker.cs` | marker | Anchors assembly for scanning |
-| `LayerArchitectureTests.cs` | spec | Layer dependency rules (Core → Contract → App → Infra) |
-| `VerticalSliceArchitectureTests.cs` | spec | Feature isolation, handler/validator co-location |
-| `NamingConventionTests.cs` | spec | Dotted file naming (PascalCase, .Interface, .Base, .Validator, etc.) |
-| `CodeCommentLabelTests.cs` | spec | Documents approved comment label vocabulary |
+| `LayerArchitecture.Tests.cs` | spec | Layer dependency rules (Core → Application → Infrastructure) |
+| `BuildingBlockBoundary.Tests.cs` | spec | BuildingBlocks must not reference Modules; migrations exempt |
+| `CommandMarker.Tests.cs` | spec | Non-transactional commands stay in self-managed identity slices |
+| `VerticalSliceArchitecture.Tests.cs` | spec | Module isolation, handler/validator co-location |
+| `NamingConvention.Tests.cs` | spec | Dotted file naming (PascalCase, .Interface, .Base, .Validator, etc.) |
+| `CodeCommentLabel.Tests.cs` | spec | Documents approved comment label vocabulary |
 
 ## Boundaries
 
 In scope:
-- NetArchTest rules for all production assemblies.
+- Reflection checks for all production assemblies.
 - Layer dependency graph validation.
+- BuildingBlocks → Modules boundary enforcement.
 - Vertical slice structure enforcement.
 - Naming convention compliance (C# PascalCase, suffixes).
 - Comment label vocabulary documentation.
 
 Out of scope:
 - Runtime behavior tests → [`../Integration/`](../Integration/), [`../Unit/`](../Unit/).
-- Contract tests → [`../Contract/`](../Contract/).
 - Code formatting → `.editorconfig`, `dotnet format`.
 - Business logic correctness → unit/integration tests.
 
 ## Assumptions
 
-- All production assemblies have `AssemblyMarker` type for reliable scanning.
-- NetArchTest runs at build time via package reference (no separate tool install).
-- Rules are **strict** — violations fail the build.
-- New rules added here must pass on current codebase before merging.
+- All production assemblies have an `AssemblyMarker` type for reliable scanning.
+- Checks run through the test runner, not during `dotnet build`.
+- New rules added here must pass on the current codebase before merging.
 
 ## Invariants
 
 - **Core** has zero project references.
-- **Contract** depends only on Core.
-- **Application** depends on Core + Contract; NOT Infrastructure.
-- **Infrastructure** depends on Core + Contract + Application + ServiceDefaults.
+- **Application** depends on Core; NOT Infrastructure.
+- **Infrastructure** depends on Core + Application + ServiceDefaults.
 - **ServiceDefaults** has zero project references.
 - **Web.Api** depends on all layers (composition root).
 - No circular dependencies between any layers.
 - Production code never references test assemblies.
+- `Core.BuildingBlocks.*` never references `Core.Modules.*`.
+- `Application.BuildingBlocks.*` never references `Application.Modules.*` or `Core.Modules.*`.
+- `Infrastructure.BuildingBlocks.*` never references `Infrastructure.Modules.*`, `Application.Modules.*`, or `Core.Modules.*`.
+- `Infrastructure/Migrations` is exempt as a composition artifact; `Web.Api` is also a composition root.
 - All interfaces end with `.Interface`; abstract classes with `.Base`.
 - All handlers/validators/mappers/policies/factories/builders use standard suffixes.
 
 ## Contracts
 
 - `LayerArchitectureTests` — layer dependency matrix.
-- `VerticalSliceArchitectureTests` — feature folder structure.
+- `BuildingBlockBoundaryTests` — BuildingBlocks/Modules dependency direction.
+- `VerticalSliceArchitectureTests` — module folder structure.
+- `CommandMarkerTests` — self-managed identity command slices.
 - `NamingConventionTests` — C# naming rules from dotted naming guide.
 - `CodeCommentLabelTests` — approved label vocabulary reference.
 
@@ -68,15 +74,17 @@ Out of scope:
 
 ## Reading Order
 
-1. `LayerArchitectureTests.cs` — core layer rules.
-2. `VerticalSliceArchitectureTests.cs` — feature isolation.
-3. `NamingConventionTests.cs` — naming conventions.
-4. `CodeCommentLabelTests.cs` — comment labels.
+1. `LayerArchitecture.Tests.cs` — core layer rules.
+2. `BuildingBlockBoundary.Tests.cs` — BuildingBlocks/Modules boundary.
+3. `VerticalSliceArchitecture.Tests.cs` — module isolation.
+4. `CommandMarker.Tests.cs` — self-managed identity commands.
+5. `NamingConvention.Tests.cs` — naming conventions.
+6. `CodeCommentLabel.Tests.cs` — comment labels.
 
 ## Related
 
 - Parent: [`../README.md`](../README.md)
-- Siblings: [`../Unit/`](../Unit/), [`../Integration/`](../Integration/), [`../Contract/`](../Contract/), [`../Testing/`](../Testing/)
+- Siblings: [`../Unit/`](../Unit/), [`../Integration/`](../Integration/), [`../Testing/`](../Testing/)
 - Guides: [`../../guide/dotted-file-naming-guide.md`](../../guide/dotted-file-naming-guide.md), [`../../guide/code-comment-style-guide.md`](../../guide/code-comment-style-guide.md)
 - ADR: [`../../docs/adr/0008-architecture-tests.md`](../../docs/adr/0008-architecture-tests.md)
 
@@ -89,5 +97,5 @@ Out of scope:
 ## Notes
 
 - `TODO-2026Q3:` Add rule: "All public APIs have XML docs" (CS1591).
-- `TEMP:` `VerticalSliceArchitectureTests` feature namespace check is soft; tighten when features exist.
+- `TEMP:` `VerticalSliceArchitectureTests` module namespace check is soft; the executable boundary rule lives in `BuildingBlockBoundaryTests`.
 - `DEADLINE-2026-12-01:` Implement Roslyn analyzer for comment labels (replace documentation-only test).

@@ -8,22 +8,45 @@
 
   <ItemGroup>
     <ProjectReference Include="../Core/Core.csproj" />
-    <ProjectReference Include="../Contract/Contract.csproj" />
     <ProjectReference Include="../Application/Application.csproj" />
     <ProjectReference Include="../ServiceDefaults/ServiceDefaults.csproj" />
   </ItemGroup>
 
   <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Infrastructure.Unit.Tests" />
+    <InternalsVisibleTo Include="Infrastructure.Integration.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
+    <PackageReference Include="Scalar.AspNetCore" />
+    <PackageReference Include="Carter" />
     <PackageReference Include="Microsoft.EntityFrameworkCore" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Relational" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
+    <PackageReference Include="Microsoft.AspNetCore.Identity.EntityFrameworkCore" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.JwtBearer" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.Google" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.MicrosoftAccount" />
+    <PackageReference Include="Microsoft.AspNetCore.Authentication.OpenIdConnect" />
     <PackageReference Include="Npgsql.EntityFrameworkCore.PostgreSQL" />
     <PackageReference Include="EFCore.NamingConventions" />
+    <PackageReference Include="Scrutor" />
     <PackageReference Include="Microsoft.Extensions.Caching.Hybrid" />
     <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" />
     <PackageReference Include="StackExchange.Redis" />
+    <PackageReference Include="System.IdentityModel.Tokens.Jwt" />
     <PackageReference Include="WolverineFx" />
     <PackageReference Include="WolverineFx.RabbitMQ" />
+    <PackageReference Include="WolverineFx.RuntimeCompilation" />
+    <PackageReference Include="Hangfire.AspNetCore" />
+    <PackageReference Include="Hangfire.Redis.StackExchange" />
+    <PackageReference Include="Hangfire.InMemory" />
+    <PackageReference Include="Sinch" />
     <PackageReference Include="Stripe.net" />
     <PackageReference Include="FluentEmail.Core" />
     <PackageReference Include="FluentEmail.SendGrid" />
@@ -34,6 +57,7 @@
     <PackageReference Include="nClam" />
     <PackageReference Include="AspNetCore.HealthChecks.Npgsql" />
     <PackageReference Include="AspNetCore.HealthChecks.Redis" />
+    <PackageReference Include="AspNetCore.HealthChecks.RabbitMQ" />
     <PackageReference Include="OpenTelemetry.Instrumentation.EntityFrameworkCore" />
     <PackageReference Include="OpenTelemetry.Instrumentation.StackExchangeRedis" />
   </ItemGroup>

@@ -1,8 +1,8 @@
-# Deploy overlay: pull the three application images and run upstream backing services.
+# Deploy overlay: pull the four application images and run upstream backing services.
 #
-# CD publishes only gateway, api, shopfront, and admin. The tuned Postgres/Redis
-# wrappers in app/Infrastructure stay local, so a pull-only host uses the upstream
-# images with the same tuning flags here instead of owning database image rebuilds.
+# CD publishes only gateway, api, shopfront, and admin. The tuned Postgres, Redis,
+# and RabbitMQ images in app/Infrastructure stay local, so a pull-only host uses
+# the upstream images instead of owning backing-service image rebuilds.
 #
 # Usage:
 #   DOCKER_REGISTRY=ghcr.io/<owner>/<repo> IMAGE_TAG=latest \
@@ -38,3 +38,9 @@ services:
       - 128mb
       - --maxmemory-policy
       - allkeys-lru
+
+  # Fallback: the deploy host pulls the upstream broker instead of rebuilding the
+  # locally tuned image. Queue data still lives on the rabbitmq-data volume.
+  rabbitmq:
+    image: rabbitmq:4.3-management-alpine
+    build: !reset null

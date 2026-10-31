@@ -5,10 +5,10 @@
 host.install: _dotnet.restore ## Restore NuGet packages
 
 host.format: _dotnet.restore ## Format the AppHost and orchestration tests
-	$(call run,$@,$(ROOT)/scripts/backend/format.backend.sh app/AppHost tests/Integration/AppHost.Tests)
+	$(call run,$@,$(ROOT)/scripts/backend/format.backend.sh app/AppHost tests/Integration/AppHost.Integration.Tests)
 
 host.format.check: _dotnet.restore ## Verify AppHost formatting without writing
-	$(call run,$@,$(ROOT)/scripts/backend/format-check.backend.sh app/AppHost tests/Integration/AppHost.Tests)
+	$(call run,$@,$(ROOT)/scripts/backend/format-check.backend.sh app/AppHost tests/Integration/AppHost.Integration.Tests)
 
 host.lint: host.format.check structure.check ## Formatting and structure checks
 

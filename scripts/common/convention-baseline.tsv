@@ -1,0 +1,12 @@
+# Convention gate baseline: reviewed legacy exceptions.
+# Format: rule<TAB>path<TAB>key<TAB>count<TAB>reason
+# The list only shrinks: fix the finding and delete its row.
+monadic-result	src/Application/BuildingBlocks/Ports/Storage/Security/Guard/StorageAntiForgeryGuard.Interface.cs	IsBlockedAsync	1	legacy: non-monadic signature
+monadic-result	src/Core/BuildingBlocks/Domain/Aggregates/Aggregate.Interface.cs	RemoveAllEvents	1	legacy: non-monadic signature
+monadic-result	src/Core/BuildingBlocks/Domain/EventSourcing/EventSourcedAggregate.Interface.cs	ClearUncommittedEvents	1	legacy: non-monadic signature
+monadic-result	src/Core/BuildingBlocks/Domain/EventSourcing/EventSourcedAggregate.Interface.cs	LoadFromHistory	1	legacy: non-monadic signature
+monadic-result	src/Core/BuildingBlocks/Domain/EventSourcing/Snapshotable.Interface.cs	RestoreSnapshot	1	legacy: non-monadic signature
+monadic-result	src/Infrastructure/BuildingBlocks/Adapters/Messaging/IMessagingModule.Interface.cs	Configure	1	legacy: non-monadic signature
+monadic-result	src/Infrastructure/BuildingBlocks/Adapters/Messaging/IMessagingModule.Interface.cs	RegisterEventTypes	1	legacy: non-monadic signature
+monadic-result	src/Infrastructure/BuildingBlocks/Adapters/Persistence/EntityFramework/EventSourcing/IEventStoreModule.Interface.cs	Configure	1	legacy: non-monadic signature
+monadic-result	src/Infrastructure/BuildingBlocks/Adapters/Storage/Security/Guard/StorageAntiForgeryGuard.Service.cs	IsBlockedAsync	1	legacy: non-monadic signature

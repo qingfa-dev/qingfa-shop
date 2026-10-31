@@ -48,7 +48,15 @@ services:
     environment:
       ASPNETCORE_ENVIRONMENT: Development
       ConnectionStrings__db: Host=postgres;Port=5432;Database=db;Username=qingfa;Password=qingfa
+      EfCore__ConnectionStringName: db
       ConnectionStrings__redis: redis:6379
+      ConnectionStrings__rabbitmq: amqp://${RABBITMQ_USER:-qingfa}:${RABBITMQ_PASS:-qingfa}@rabbitmq:5672
+      Messaging__Transport: RabbitMq
+      Payments__Providers__Stripe__Enabled: ${PAYMENTS_STRIPE_ENABLED:-false}
+      Payments__Providers__PayPal__Enabled: ${PAYMENTS_PAYPAL_ENABLED:-false}
+      Payments__Policy__HostedCheckoutIntentLifetime: ${PAYMENTS_INTENT_LIFETIME:-00:30:00}
+      Payments__Policy__ProviderExpiryGracePeriod: ${PAYMENTS_EXPIRY_GRACE:-00:02:00}
+      Payments__Policy__MaximumAmountsByCurrency__USD: ${PAYMENTS_MAX_USD:-100000}
     ports:
       - "8080:8080"
     healthcheck:
@@ -61,6 +69,8 @@ services:
       postgres:
         condition: service_healthy
       redis:
+        condition: service_healthy
+      rabbitmq:
         condition: service_healthy
     deploy:
       resources:
@@ -115,6 +125,37 @@ services:
         limits:
           cpus: "0.25"
           memory: 128M
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  rabbitmq:
+    image: ${DOCKER_REGISTRY:-qingfa-shop}/rabbitmq:${IMAGE_TAG:-local}
+    build:
+      context: .
+      dockerfile: app/Infrastructure/RabbitMQ/Dockerfile
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: ${RABBITMQ_USER:-qingfa}
+      RABBITMQ_DEFAULT_PASS: ${RABBITMQ_PASS:-qingfa}
+    ports:
+      - "127.0.0.1:${RABBITMQ_PORT:-5672}:5672"
+      - "127.0.0.1:${RABBITMQ_MANAGEMENT_PORT:-15672}:15672"
+    volumes:
+      - rabbitmq-data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "check_port_connectivity"]
+      interval: 10s
+      timeout: 5s
+      start_period: 20s
+      retries: 10
+    deploy:
+      resources:
+        limits:
+          cpus: "0.50"
+          memory: 512M
     logging:
       driver: json-file
       options:
@@ -177,3 +218,4 @@ services:
 volumes:
   pgdata:
   redisdata:
+  rabbitmq-data:

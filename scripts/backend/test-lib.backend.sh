@@ -6,13 +6,13 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 CONFIG="${CONFIGURATION:-Release}"
 
 # Initialize: the .NET 10 SDK runs MTP projects through `dotnet test --project`
-# (see the `test.runner` entry in global.json).
+# (see the `test.runner` entry in global.json). Order is base layer first, with
+# architecture rules last; test.dotnet.unit mirrors this list.
 projects=(
-  "Architecture.Tests/Architecture.Tests.csproj"
-  "Unit/Core.Tests/Core.Tests.csproj"
-  "Unit/Contract.Unit.Tests/Contract.Unit.Tests.csproj"
-  "Unit/Application.Tests/Application.Tests.csproj"
+  "Unit/Core.Unit.Tests/Core.Unit.Tests.csproj"
+  "Unit/Application.Unit.Tests/Application.Unit.Tests.csproj"
   "Unit/Infrastructure.Unit.Tests/Infrastructure.Unit.Tests.csproj"
+  "Architecture.Tests/Architecture.Tests.csproj"
 )
 
 # Validate: MTP exits 8 when a project contains zero tests. A scaffolded suite

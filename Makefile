@@ -14,4 +14,6 @@ include $(ROOT)/make/host.mk
 include $(ROOT)/make/store.mk
 include $(ROOT)/make/admin.mk
 include $(ROOT)/make/infra.mk
+include $(ROOT)/make/test.mk
+include $(ROOT)/make/coverage.mk
 include $(ROOT)/make/ci.mk

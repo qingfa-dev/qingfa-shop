@@ -6,19 +6,41 @@ Source code for QingFa.Shop — production libraries and applications. _layer_
 
 This folder contains all production code organized by architectural layer:
 - **Core** — Domain primitives, shared kernel, and cross-cutting abstractions.
-- **Contract** — Public DTOs, events, and API contracts shared across services.
 - **Application** — Use cases, commands, queries, and application services.
 - **Infrastructure** — External adapters (EF Core, Redis, Wolverine, Stripe, Email, S3).
 - **ServiceDefaults** — Shared Aspire configuration (OTel, resilience, service discovery, health checks).
 
 Applications live in `../app/`.
 
+Each layer splits into `BuildingBlocks/` (reusable platform capabilities) and
+`Modules/` (business capabilities):
+
+```text
+Core:
+  BuildingBlocks/Domain, BuildingBlocks/Modeling, BuildingBlocks/Functional
+  Modules/Todos
+
+Application:
+  BuildingBlocks/{Caching,EventSourcing,Messaging,Persistence,Ports,Querying,Security,UseCases}
+  Modules/Todos
+  Modules/{PermissionCatalog,Persistence}   # composite-catalog composition artifacts
+
+Infrastructure:
+  BuildingBlocks/Adapters/{BackgroundJobs,Caching,Events,Http,Messaging,Notifications,Observability,OpenApi,Persistence,Security,Serialization,Storage}
+  Modules/Todos
+  Migrations
+```
+
+Dependencies point inward: `Modules → BuildingBlocks`. `Infrastructure/Migrations`
+is the exempt composition artifact allowed to reference both buckets.
+`Application/Modules/{PermissionCatalog,Persistence}` are composite-catalog
+composition artifacts, not business module folders.
+
 ## Contains
 
 | Path | Role | Notes |
 |---|---|---|
 | `Core/` | layer · kernel | Domain primitives, value objects, events, interfaces |
-| `Contract/` | layer · api | Public DTOs, events, MediatR messages, FluentValidation rules |
 | `Application/` | layer · service | Use cases, command/query handlers, mappers, policies |
 | `Infrastructure/` | layer · adapter | EF Core, Redis, Wolverine, Stripe, Email, S3, HealthChecks |
 | `ServiceDefaults/` | layer · shared | Aspire service configuration, OTel, resilience policies |
@@ -44,17 +66,15 @@ Out of scope:
 
 ## Invariants
 
-- **Core** has zero external dependencies (only `FluentValidation`, `Mapster`, `Mediator.Abstractions`, `Slugify.Core`).
-- **Contract** depends only on Core and .NET BCL (no MediatR in Contract — use `Mediator.Abstractions` if needed).
-- **Application** depends on Core + Contract; never on Infrastructure.
-- **Infrastructure** depends on Core + Contract + Application + ServiceDefaults.
+- **Core** has zero external dependencies (only `FluentValidation`, `Mapster`, `MediatR`, `Slugify.Core`).
+- **Application** depends on Core; never on Infrastructure.
+- **Infrastructure** depends on Core + Application + ServiceDefaults.
 - **ServiceDefaults** has no project references (only NuGet packages).
 
 ## Contracts
 
 - `Core` → [`AssemblyMarker`](../src/Core/Assembly.Marker.cs) anchors the assembly.
-- `Contract` → Public DTOs, `ICommand<T>`, `IQuery<T>`, domain events.
-- `Application` → `IApplicationService`, command/query handlers, `Mapster` mappers.
+- `Application` → `AddApplication()`, command/query handlers, `Mapster` mappers.
 - `Infrastructure` → EF Core `DbContext`, Wolverine handlers, external clients.
 - `ServiceDefaults` → `AddServiceDefaults()` extension.
 
@@ -62,21 +82,17 @@ Out of scope:
 
 ```mermaid
 graph TD
-    Core[Core] --> Contract[Contract]
-    Core --> Application[Application]
-    Contract --> Application
+    Core[Core] --> Application[Application]
     Application --> Infrastructure[Infrastructure]
     ServiceDefaults[ServiceDefaults] -.-> Infrastructure
-    ServiceDefaults -.-> Application
 ```
 
 ## Reading Order
 
 1. [`Core/README.md`](Core/README.md) — kernel, domain primitives.
-2. [`Contract/README.md`](Contract/README.md) — public contracts.
-3. [`Application/README.md`](Application/README.md) — use cases.
-4. [`Infrastructure/README.md`](Infrastructure/README.md) — adapters.
-5. [`ServiceDefaults/README.md`](ServiceDefaults/README.md) — shared config.
+2. [`Application/README.md`](Application/README.md) — use cases.
+3. [`Infrastructure/README.md`](Infrastructure/README.md) — adapters.
+4. [`ServiceDefaults/README.md`](ServiceDefaults/README.md) — shared config.
 
 ## Related
 
@@ -87,7 +103,7 @@ graph TD
 ## Ownership
 
 - Owning team: **Platform**.
-- Review required from: API, Storefront, Admin for Contract changes.
+- Review required from: API, Storefront, Admin for public API changes.
 - Infrastructure changes require Platform + Security review.
 
 ## Notes

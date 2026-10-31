@@ -36,11 +36,34 @@ internal static class GatewayRouter
         // catch-all below protects every other /api call.
         new RouteConfig
         {
-            RouteId = "api-time",
+            RouteId = GatewayConstant.Routes.ApiTime,
             ClusterId = ApiCluster,
             Match = new RouteMatch { Path = "/api/time" },
             Transforms = StripPrefix("/time"),
             AuthorizationPolicy = AnonymousPolicy,
+        },
+        // Validate: providers cannot present a bearer token, and the catch-all would
+        // strip /api from a path the Api serves verbatim.
+        new RouteConfig
+        {
+            RouteId = GatewayConstant.Routes.ApiPaymentsWebhook,
+            ClusterId = ApiCluster,
+            Match = new RouteMatch { Path = "/api/payments/webhooks/{**remainder}" },
+            AuthorizationPolicy = AnonymousPolicy,
+        },
+        new RouteConfig
+        {
+            RouteId = GatewayConstant.Routes.ApiPaymentsAdmin,
+            ClusterId = ApiCluster,
+            Match = new RouteMatch { Path = "/api/admin/payments/{**remainder}" },
+            AuthorizationPolicy = ProtectedApiPolicy,
+        },
+        new RouteConfig
+        {
+            RouteId = GatewayConstant.Routes.ApiPayments,
+            ClusterId = ApiCluster,
+            Match = new RouteMatch { Path = "/api/payments/{**remainder}" },
+            AuthorizationPolicy = ProtectedApiPolicy,
         },
         new RouteConfig
         {

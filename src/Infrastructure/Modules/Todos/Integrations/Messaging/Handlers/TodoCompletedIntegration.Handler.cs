@@ -1,0 +1,34 @@
+using Application.BuildingBlocks.Caching;
+using Application.BuildingBlocks.Messaging.Handlers;
+using Application.BuildingBlocks.Messaging.Inbox;
+using Application.Modules.Todos.Common;
+using Application.Modules.Todos.Events;
+
+namespace Infrastructure.Modules.Todos.Integrations.Messaging.Handlers;
+
+/// <summary>Invalidates the cached todo after the completion event is consumed.</summary>
+public sealed class TodoCompletedIntegrationHandler(
+    ICacheService cache,
+    IInboxStore inbox)
+    : IntegrationEventHandler<TodoCompletedIntegration>(inbox)
+{
+    /// <summary>Wolverine entry point.</summary>
+    /// <param name="message">The integration event.</param>
+    /// <param name="cancellationToken">A token that cancels the handler.</param>
+    /// <returns>A task that completes when the handler finishes.</returns>
+    public Task Handle(
+        TodoCompletedIntegration message,
+        CancellationToken cancellationToken)
+        => ExecuteOnceAsync(message, cancellationToken);
+
+    /// <inheritdoc />
+    protected override async Task<Result> HandleAsync(
+        TodoCompletedIntegration message,
+        CancellationToken cancellationToken)
+    {
+        // Cache: the read model may serve the stale completion until this entry is evicted.
+        return await cache
+            .RemoveAsync($"{TodoCacheConstant.Keys.TodoPrefix}{message.TodoId}", cancellationToken)
+            .ConfigureAwait(false);
+    }
+}

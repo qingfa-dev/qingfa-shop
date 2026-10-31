@@ -1,0 +1,126 @@
+using Application.BuildingBlocks.Querying;
+using Application.BuildingBlocks.Security.Authorization.Attributes;
+using Application.Modules.Todos.Permissions;
+using Application.Modules.Todos.Reminders.Commands;
+using Application.Modules.Todos.Reminders.Queries;
+
+using Carter;
+
+using MediatR;
+
+using Infrastructure.BuildingBlocks.Adapters.Serialization;
+
+namespace Web.Api.Endpoints.Todos;
+
+/// <summary>Carter module for todo reminders.</summary>
+public sealed class TodoReminderEndpoint : ICarterModule
+{
+    private const string BasePath = "/api/todos/{todoId:guid}/reminders";
+
+    /// <inheritdoc />
+    public void AddRoutes(IEndpointRouteBuilder app)
+    {
+        RouteGroupBuilder group = app.MapGroup(BasePath)
+            .WithTags("TodoReminders")
+            .RequireAuthorization();
+
+        group.MapGet("/", SearchAsync)
+            .WithName("SearchTodoReminders")
+            .WithSummary("List the reminders of one todo.")
+            .HasPermission(TodoPermissionCatalog.Items.Read);
+
+        group.MapGet("/{reminderId:guid}", GetAsync)
+            .WithName("GetTodoReminder")
+            .WithSummary("Get one reminder of a todo.")
+            .HasPermission(TodoPermissionCatalog.Items.Read);
+
+        group.MapPost("/", ScheduleAsync)
+            .WithName("ScheduleTodoReminder")
+            .WithSummary("Schedule a reminder for a todo.")
+            .HasPermission(TodoPermissionCatalog.Items.Create);
+
+        group.MapPatch("/{reminderId:guid}/snooze", SnoozeAsync)
+            .WithName("SnoozeTodoReminder")
+            .WithSummary("Move a reminder forward.")
+            .HasPermission(TodoPermissionCatalog.Items.Update);
+
+        group.MapDelete("/{reminderId:guid}", DismissAsync)
+            .WithName("DismissTodoReminder")
+            .WithSummary("Dismiss a reminder permanently.")
+            .HasPermission(TodoPermissionCatalog.Items.Update);
+    }
+
+    private static async Task<IResult> SearchAsync(
+        Guid todoId,
+        [AsParameters] QueryParameters parameters,
+        IMediator mediator,
+        CancellationToken cancellationToken)
+        => (await mediator.Send(
+                new SearchTodoReminders.UseCase(new SearchTodoReminders.Request(parameters, todoId)),
+                cancellationToken))
+            .ToApiResult();
+
+    private static async Task<IResult> GetAsync(
+        Guid todoId,
+        Guid reminderId,
+        IMediator mediator,
+        CancellationToken cancellationToken)
+        => (await mediator.Send(
+                new GetTodoReminder.UseCase(new GetTodoReminder.Request(reminderId, todoId)),
+                cancellationToken))
+            .ToApiResult();
+
+    private static async Task<IResult> ScheduleAsync(
+        Guid todoId,
+        ScheduleRequest request,
+        IMediator mediator,
+        CancellationToken cancellationToken)
+    {
+        var command = new ScheduleTodoReminder.Request
+        {
+            TodoId = todoId,
+            RemindAtUtc = request.RemindAtUtc,
+        };
+
+        return (await mediator.Send(
+                new ScheduleTodoReminder.UseCase(command),
+                cancellationToken))
+            .ToApiResult(value => $"/api/todos/{todoId}/reminders/{value.Id}");
+    }
+
+    private static async Task<IResult> SnoozeAsync(
+        Guid todoId,
+        Guid reminderId,
+        SnoozeRequest request,
+        IMediator mediator,
+        CancellationToken cancellationToken)
+    {
+        var command = new SnoozeTodoReminder.Request
+        {
+            TodoId = todoId,
+            ReminderId = reminderId,
+            RemindAtUtc = request.RemindAtUtc,
+        };
+
+        return (await mediator.Send(
+                new SnoozeTodoReminder.UseCase(command),
+                cancellationToken))
+            .ToApiResult();
+    }
+
+    private static async Task<IResult> DismissAsync(
+        Guid todoId,
+        Guid reminderId,
+        IMediator mediator,
+        CancellationToken cancellationToken)
+        => (await mediator.Send(
+                new DismissTodoReminder.UseCase(new DismissTodoReminder.Request(reminderId, todoId)),
+                cancellationToken))
+            .ToApiResult();
+
+    /// <summary>Schedule request body.</summary>
+    public sealed record ScheduleRequest(DateTimeOffset RemindAtUtc);
+
+    /// <summary>Snooze request body.</summary>
+    public sealed record SnoozeRequest(DateTimeOffset RemindAtUtc);
+}

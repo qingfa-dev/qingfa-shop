@@ -1,7 +1,5 @@
 using System.Reflection;
 
-using Xunit;
-
 namespace QingFa.Shop.Architecture.Tests;
 
 /// <summary>
@@ -14,7 +12,6 @@ namespace QingFa.Shop.Architecture.Tests;
 public sealed class NamingConventionTests
 {
     private static readonly Assembly CoreAssembly = typeof(Core.AssemblyMarker).Assembly;
-    private static readonly Assembly ContractAssembly = typeof(Contract.AssemblyMarker).Assembly;
     private static readonly Assembly ApplicationAssembly = typeof(Application.AssemblyMarker).Assembly;
     private static readonly Assembly InfrastructureAssembly = typeof(Infrastructure.AssemblyMarker).Assembly;
     private static readonly Assembly ServiceDefaultsAssembly = typeof(ServiceDefaults.AssemblyMarker).Assembly;
@@ -23,7 +20,6 @@ public sealed class NamingConventionTests
     private static readonly Assembly[] AllAssemblies =
     [
         CoreAssembly,
-        ContractAssembly,
         ApplicationAssembly,
         InfrastructureAssembly,
         ServiceDefaultsAssembly,
@@ -36,7 +32,6 @@ public sealed class NamingConventionTests
     private static readonly string[] FirstPartyNamespaces =
     [
         "Core",
-        "Contract",
         "Application",
         "Infrastructure",
         "ServiceDefaults",

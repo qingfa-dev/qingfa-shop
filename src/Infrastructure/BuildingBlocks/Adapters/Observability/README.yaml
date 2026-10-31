@@ -1,0 +1,504 @@
+kind: BuildingBlockModule
+id: shared-observability
+name: Shared.Observability
+version: "1.0.0"
+status: stable
+schema_version: "3.0"
+
+meta:
+  name: Observability
+  description: >
+    OpenTelemetry tracing, correlation IDs, health check endpoints, and
+    structured logging infrastructure. Provides composable middleware and
+    configuration for end-to-end request tracing, liveness/readiness
+    probes, and HTTP request logging with sensitive header redaction.
+  category: "Infrastructure | Observability"
+  stability: Stable
+  dependencies:
+    - name: Microsoft.AspNetCore.Diagnostics.HealthChecks
+      version: "10.0.0"
+      scope: runtime
+    - name: AspNetCore.HealthChecks.NpgSql
+      version: "9.0.0"
+      scope: runtime
+    - name: AspNetCore.HealthChecks.Redis
+      version: "9.0.0"
+      scope: runtime
+
+principles:
+  - id: P1
+    name: Composable Registration
+    description: >
+      Each sub-feature (correlation, logging, health checks) registers
+      and configures independently through dedicated extension methods.
+    rationale: >
+      Enables selective adoption of observability capabilities and keeps
+      each concern isolated for testability and maintainability.
+  - id: P2
+    name: Sensible Defaults
+    description: >
+      All settings ship with production-ready defaults defined in
+      ObservabilityConstant, requiring zero configuration for common use.
+    rationale: >
+      Reduces setup friction and prevents misconfiguration by providing
+      safe, battle-tested defaults out of the box.
+  - id: P3
+    name: Fail-Fast Validation
+    description: >
+      ObservabilitySetting is validated on application startup via
+      FluentValidation, rejecting invalid configuration before the
+      request pipeline starts.
+    rationale: >
+      Prevents runtime failures from malformed configuration by catching
+      errors early in the application lifecycle.
+  - id: P4
+    name: Security by Default
+    description: >
+      Sensitive HTTP headers (Authorization, Cookie, X-Api-Key) are
+      stripped from HTTP logging output and health check reports expose
+      status-only responses by default.
+    rationale: >
+      Prevents accidental credential leakage in logs and avoids
+      exposing internal system details through health endpoints.
+
+features:
+  - id: F1
+    name: Correlation ID Propagation
+    type: core
+    description: >
+      Extracts or generates a unique correlation ID per request, injects
+      it into the response headers, and enriches the logging scope for
+      end-to-end request tracing.
+    api_highlight: "ICorrelationContext { CorrelationId: string? }"
+  - id: F2
+    name: Health Check Endpoints
+    type: core
+    description: >
+      Maps /health/live and /health/ready endpoints with tag-based
+      predicate filtering, database and cache probes, and configurable
+      response detail level.
+    api_highlight: "/health/live, /health/ready"
+  - id: F3
+    name: Structured HTTP Logging
+    type: core
+    description: >
+      Configures ASP.NET HTTP logging with request method, path, status
+      code, duration fields, and automatic sensitive header redaction.
+    api_highlight: "HttpLoggingFields"
+  - id: F4
+    name: Settings Validation
+    type: utility
+    description: >
+      Validates ObservabilitySetting via FluentValidation on startup,
+      producing typed Result error codes for correlation header and
+      service name violations.
+    api_highlight: "ObservabilitySettingValidator"
+
+abstractions:
+  - category: Extension Methods
+    order: 1
+    description: >
+      Entry points for registering and configuring observability services
+      and middleware in the ASP.NET Core pipeline.
+    items:
+      - id: A1
+        name: ObservabilityExtension
+        type: extension
+        path: ./Observability.Extension.cs
+        description: >
+          Top-level extension methods that compose all observability
+          sub-features into a single registration and pipeline call.
+        purpose: >
+          Enables one-line observability setup via AddObservability and
+          UseObservability in Program.cs.
+        methods:
+          - name: "AddObservability(WebApplicationBuilder)"
+            description: Registers settings, validator, and all sub-feature services.
+          - name: "UseObservability(WebApplication)"
+            description: Configures all sub-feature middleware in the request pipeline.
+      - id: A2
+        name: CorrelationExtension
+        type: extension
+        path: ./Correlation/Correlation.Extension.cs
+        description: >
+          Registers ICorrelationContext as scoped and inserts
+          CorrelationMiddleware into the pipeline.
+        purpose: >
+          Enables standalone correlation ID tracking without pulling in
+          the full observability stack.
+        methods:
+          - name: "AddObservabilityCorrelation(WebApplicationBuilder)"
+            description: Registers scoped ICorrelationContext.
+          - name: "UseObservabilityCorrelation(WebApplication)"
+            description: Inserts CorrelationMiddleware into the pipeline.
+      - id: A3
+        name: HealthChecksExtension
+        type: extension
+        path: ./HealthChecks/HealthChecks.Extension.cs
+        description: >
+          Registers health check services and maps /health/live and
+          /health/ready endpoints with tag-based filtering.
+        purpose: >
+          Provides container orchestrator health probes with database and
+          cache dependency checks.
+        methods:
+          - name: "AddObservabilityHealthChecks(WebApplicationBuilder)"
+            description: Registers health checks with NpgSql and Redis probes.
+          - name: "UseObservabilityHealthChecks(WebApplication)"
+            description: Maps /health/live and /health/ready endpoints.
+      - id: A4
+        name: LoggingExtension
+        type: extension
+        path: ./Logging/Logging.Extension.cs
+        description: >
+          Configures ASP.NET HTTP logging fields and redacts sensitive
+          headers based on ObservabilitySetting.
+        purpose: >
+          Enables structured HTTP request logging with automatic credential
+          redaction.
+        methods:
+          - name: "AddObservabilityLogging(WebApplicationBuilder)"
+            description: Configures minimum log level and HTTP logging fields.
+          - name: "UseObservabilityLogging(WebApplication)"
+            description: Inserts HTTP logging middleware into the pipeline.
+
+  - category: Middleware and Interfaces
+    order: 2
+    description: >
+      Runtime components that handle correlation ID extraction, propagation,
+      and scoped context management.
+    items:
+      - id: B1
+        name: ICorrelationContext
+        type: interface
+        path: ./Correlation/ICorrelationContext.cs
+        description: >
+          Scoped contract for accessing and setting the current request's
+          correlation ID throughout the dependency graph.
+        purpose: >
+          Provides a decoupled way for any service to read or write the
+          correlation ID without depending on HTTP context.
+      - id: B2
+        name: CorrelationContext
+        type: class
+        path: ./Correlation/CorrelationContext.cs
+        description: >
+          Internal sealed implementation of ICorrelationContext backed by
+          a mutable CorrelationId property.
+        purpose: >
+          Holds the correlation ID value for the duration of a single
+          scoped request.
+      - id: B3
+        name: CorrelationMiddleware
+        type: middleware
+        path: ./Correlation/CorrelationMiddleware.cs
+        description: >
+          ASP.NET Core middleware that extracts the correlation ID from the
+          incoming request header (or generates a new GUID), sets it on
+          the response header, and enriches the logging scope.
+        purpose: >
+          Ensures every request carries a traceable correlation ID through
+          the entire pipeline and into log output.
+
+  - category: Configuration and Validation
+    order: 3
+    description: >
+      Settings, constants, validation rules, and result types for
+      observability configuration.
+    items:
+      - id: C1
+        name: ObservabilitySetting
+        type: class
+        path: ./ObservabilitySetting.cs
+        description: >
+          Strongly-typed POCO bound to the "Observability" configuration
+          section with properties for service name, correlation header,
+          log level, sensitive headers, and health check detail exposure.
+        purpose: >
+          Centralizes all observability configuration in a single
+          injectable type with validated defaults.
+      - id: C2
+        name: ObservabilitySettingValidator
+        type: class
+        path: ./ObservabilitySetting.Validator.cs
+        description: >
+          FluentValidation validator ensuring CorrelationHeader is
+          non-empty, matches a safe pattern, and ServiceName is non-empty.
+        purpose: >
+          Prevents startup with invalid observability configuration by
+          failing fast with typed error codes.
+      - id: C3
+        name: ObservabilitySettingResult
+        type: class
+        path: ./ObservabilitySetting.Result.cs
+        description: >
+          Static factory producing typed Error values for CorrelationHeader
+          empty/invalid and ServiceName empty validation failures.
+        purpose: >
+          Provides machine-readable error codes for observability
+          configuration validation failures.
+      - id: C4
+        name: ObservabilityConstant
+        type: class
+        path: ./ObservabilityConstant.cs
+        description: >
+          Static constants defining default values (service name, header,
+          log level, sensitive headers), validation constraints (min/max
+          lengths), and regex patterns for correlation header validation.
+        purpose: >
+          Single source of truth for all default values and validation
+          boundaries used across the module.
+
+technical:
+  mechanisms:
+    - id: M1
+      name: Correlation Pipeline Flow
+      scope: "Request lifecycle"
+      description: >
+        CorrelationMiddleware extracts the X-Correlation-Id header from
+        the incoming request. If absent, it generates a new GUID. The ID
+        is set on ICorrelationContext (scoped), written to the response
+        header, and injected into the logging scope via BeginScope.
+      steps:
+        - "Read correlation header from request; generate GUID if missing"
+        - "Set CorrelationId on scoped ICorrelationContext"
+        - "Write correlation ID to response header"
+        - "Open logging scope with CorrelationId and invoke next middleware"
+    - id: M2
+      name: Health Check Endpoint Resolution
+      scope: "Startup configuration"
+      description: >
+        Two health endpoints are mapped with tag-based predicate filtering.
+        /health/live uses the "live" tag for liveness probes. /health/ready
+        runs all registered checks including NpgSql and Redis probes.
+        Response detail is controlled by ExposeDetailedReport.
+      steps:
+        - "Resolve PostgreSQL connection string (Aspire resource or fallback)"
+        - "Resolve Redis connection string (Aspire resource or fallback)"
+        - "Register health checks with NpgSql (tags: ready, database) and Redis (tags: ready, cache)"
+        - "Map /health/live (live tag) and /health/ready (all checks) endpoints"
+    - id: M3
+      name: Settings Validation Pipeline
+      scope: "Application startup"
+      description: >
+        ObservabilitySetting is bound from the "Observability" config section,
+        validated by ObservabilitySettingValidator via FluentValidation, and
+        validated on start. The validated instance is registered as a singleton
+        for direct injection into middleware and services.
+      pattern: |
+        builder.Services
+          .AddOptions<ObservabilitySetting>()
+          .BindConfiguration("Observability")
+          .ValidateFluentValidation()
+          .ValidateOnStart();
+        builder.Services.AddSingleton(sp =>
+          sp.GetRequiredService<IOptions<ObservabilitySetting>>().Value);
+
+anti_patterns:
+  - id: AP1
+    name: Hardcoding Correlation Header Name
+    severity: high
+    avoid: >
+      Hardcoding the correlation header name in middleware or service code
+      instead of reading it from ObservabilitySetting.
+    bad_example: |
+      // Bad
+      var id = context.Request.Headers["X-Correlation-Id"].FirstOrDefault();
+    better_approach: >
+      Read the header name from ObservabilitySetting.CorrelationHeader to
+      support configurable header names.
+    good_example: |
+      // Good
+      var id = context.Request.Headers[_options.CorrelationHeader].FirstOrDefault();
+    impact: >
+      Configuration changes require code modifications; breaks multi-tenant
+      or multi-header scenarios.
+  - id: AP2
+    name: Skipping Settings Validation
+    severity: high
+    avoid: >
+      Removing ValidateOnStart() or ValidateFluentValidation() from the
+      options registration pipeline.
+    bad_example: |
+      // Bad
+      builder.Services.AddOptions<ObservabilitySetting>()
+        .BindConfiguration("Observability");
+    better_approach: >
+      Always validate observability settings on startup using the FluentValidation
+      validator to catch misconfiguration early.
+    good_example: |
+      // Good
+      builder.Services.AddOptions<ObservabilitySetting>()
+        .BindConfiguration("Observability")
+        .ValidateFluentValidation()
+        .ValidateOnStart();
+    impact: >
+      Invalid correlation header patterns or empty service names reach runtime,
+      causing silent failures in request tracing.
+  - id: AP3
+    name: Exposing Detailed Health Reports in Production
+    severity: medium
+    avoid: >
+      Setting ExposeDetailedReport=true in production environments, which
+      exposes internal dependency status, durations, and error details.
+    bad_example: |
+      // Bad — exposes internals
+      app.MapHealthChecks("/health/ready", new HealthCheckOptions {
+        ResponseWriter = WriteDetailedReport
+      });
+    better_approach: >
+      Keep ExposeDetailedReport=false in production (the default) and use
+      status-only responses; use detailed reports only in staging or
+      development.
+    good_example: |
+      // Good — status only
+      ExposeDetailedReport = false
+    impact: >
+      Leaks internal system topology, dependency versions, and failure details
+      to external consumers.
+
+usage:
+  scenarios:
+    - id: S1
+      title: Standard API Setup
+      context: >
+        When bootstrapping a new ASP.NET Core API with full observability
+        (correlation, logging, health checks) in two lines.
+      pattern: |
+        // Program.cs
+        var builder = WebApplication.CreateBuilder(args);
+
+        // Register all observability services
+        builder.AddObservability();
+
+        var app = builder.Build();
+
+        // Configure all observability middleware
+        app.UseObservability();
+
+        app.MapControllers();
+        app.Run();
+      benefits:
+        - Single-call registration for all observability capabilities
+        - Sensible defaults with zero configuration
+        - Consistent middleware ordering
+    - id: S2
+      title: Reading Correlation ID in Services
+      context: >
+        When a service needs to include the current correlation ID in
+        outbound calls, log messages, or diagnostic output.
+      pattern: |
+        // Inject ICorrelationContext in any scoped service
+        public class OrderService(ICorrelationContext correlation)
+        {
+          public async Task PlaceOrderAsync(OrderDto dto)
+          {
+            var correlationId = correlation.CorrelationId;
+
+            _logger.LogInformation(
+              "Placing order {OrderId} [CorrelationId: {CorrelationId}]",
+              dto.Id, correlationId);
+
+            // Propagate to outbound HTTP calls
+            _httpClient.DefaultRequestHeaders
+              .Add("X-Correlation-Id", correlationId ?? Guid.NewGuid().ToString("N"));
+
+            await _httpClient.PostAsJsonAsync("/api/orders", dto);
+          }
+        }
+      benefits:
+        - End-to-end request tracing across service boundaries
+        - Automatic logging scope enrichment
+        - Decoupled from HttpContext via DI
+    - id: S3
+      title: Custom Health Check Configuration
+      context: >
+        When you need to register additional health checks or override
+        the default endpoint behavior for specific deployment scenarios.
+      pattern: |
+        // Program.cs — adding a custom health check
+        builder.Services.AddHealthChecks()
+          .AddCheck<CustomServiceHealthCheck>(
+            "custom-service",
+            tags: ["ready", "custom"]);
+
+        // Override endpoint behavior
+        app.MapHealthChecks("/health/live", new HealthCheckOptions
+        {
+          Predicate = check => check.Tags.Contains("live"),
+          ResponseWriter = UIResponseWriter.WriteHealthCheckUIResponse
+        });
+      benefits:
+        - Extensible health check registration
+        - Tag-based predicate filtering for selective probe execution
+        - Custom response writers for different consumers
+
+testing:
+  strategies:
+    - id: TS1
+      title: Correlation Middleware Integration Test
+      objective: >
+        Verify that CorrelationMiddleware generates a correlation ID when
+        absent, echoes an existing one, and enriches the logging scope.
+      scope: integration
+      code_example: |
+        [Fact]
+        public async Task CorrelationMiddleware_NoHeader_GeneratesId()
+        {
+          // Arrange
+          using var factory = new WebApplicationFactory<Program>();
+          var client = factory.CreateClient();
+
+          // Act
+          var response = await client.GetAsync("/health/live");
+
+          // Assert
+          response.Headers.Should().ContainKey("X-Correlation-Id");
+          response.Headers.GetValues("X-Correlation-Id")
+            .First().Should().NotBeNullOrEmpty();
+        }
+      notes: >
+        Requires the full WebApplicationFactory stack; no external services
+        needed since health checks resolve connection strings lazily.
+    - id: TS2
+      title: Settings Validation Unit Test
+      objective: >
+        Verify that ObservabilitySettingValidator rejects empty correlation
+        headers and invalid header patterns with the correct error codes.
+      scope: unit
+      code_example: |
+        [Fact]
+        public void Validator_EmptyCorrelationHeader_ReturnsValidationError()
+        {
+          // Arrange
+          var validator = new ObservabilitySettingValidator();
+          var setting = new ObservabilitySetting { CorrelationHeader = "" };
+
+          // Act
+          var result = validator.Validate(setting);
+
+          // Assert
+          result.IsValid.Should().BeFalse();
+          result.Errors.Should().Contain(e =>
+            e.ErrorCode == "Observability.CorrelationHeader.Empty");
+        }
+
+        [Fact]
+        public void Validator_InvalidHeaderPattern_ReturnsValidationError()
+        {
+          // Arrange
+          var validator = new ObservabilitySettingValidator();
+          var setting = new ObservabilitySetting { CorrelationHeader = "invalid header!" };
+
+          // Act
+          var result = validator.Validate(setting);
+
+          // Assert
+          result.IsValid.Should().BeFalse();
+          result.Errors.Should().Contain(e =>
+            e.ErrorCode == "Observability.CorrelationHeader.Invalid");
+        }
+      notes: >
+        Pure unit tests — no I/O, no DI container, no database required.
+
+tree_file: docs/codebase/shared.tree.txt

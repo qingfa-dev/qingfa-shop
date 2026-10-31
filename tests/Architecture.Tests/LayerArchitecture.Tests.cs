@@ -1,7 +1,5 @@
 using System.Reflection;
 
-using Xunit;
-
 namespace QingFa.Shop.Architecture.Tests;
 
 /// <summary>
@@ -9,7 +7,7 @@ namespace QingFa.Shop.Architecture.Tests;
 /// </summary>
 /// <remarks>
 /// Layer hierarchy (inner → outer):
-/// Core → Contract → Application → Infrastructure
+/// Core → Application → Infrastructure
 /// ServiceDefaults is a shared horizontal layer (no project deps).
 /// 
 /// Note: Full NetArchTest rules are documented here but require NetArchTest API compatibility.
@@ -18,7 +16,6 @@ namespace QingFa.Shop.Architecture.Tests;
 public sealed class LayerArchitectureTests
 {
     private static readonly Assembly CoreAssembly = typeof(Core.AssemblyMarker).Assembly;
-    private static readonly Assembly ContractAssembly = typeof(Contract.AssemblyMarker).Assembly;
     private static readonly Assembly ApplicationAssembly = typeof(Application.AssemblyMarker).Assembly;
     private static readonly Assembly InfrastructureAssembly = typeof(Infrastructure.AssemblyMarker).Assembly;
     private static readonly Assembly ServiceDefaultsAssembly = typeof(ServiceDefaults.AssemblyMarker).Assembly;
@@ -29,12 +26,6 @@ public sealed class LayerArchitectureTests
     public void Core_AssemblyExists()
     {
         CoreAssembly.Should().NotBeNull(because: "Core layer must exist");
-    }
-
-    [Fact]
-    public void Contract_AssemblyExists()
-    {
-        ContractAssembly.Should().NotBeNull(because: "Contract layer must exist");
     }
 
     [Fact]
@@ -66,9 +57,8 @@ public sealed class LayerArchitectureTests
     public void LayerDependencyRules_AreDocumented()
     {
         // Core: Zero project dependencies (only NuGet: FluentValidation, Mapster, Mediator.Abstractions, Slugify.Core)
-        // Contract: Depends only on Core (no MediatR runtime, only Mediator.Abstractions)
-        // Application: Depends on Core + Contract; NOT Infrastructure, ServiceDefaults, Web.Api
-        // Infrastructure: Depends on Core + Contract + Application + ServiceDefaults; NOT Web.Api
+        // Application: Depends on Core; NOT Infrastructure, ServiceDefaults, Web.Api
+        // Infrastructure: Depends on Core + Application + ServiceDefaults; NOT Web.Api
         // ServiceDefaults: Zero project dependencies (only NuGet)
         // Web.Api: Depends on all layers (composition root)
         // No circular dependencies between any layers
@@ -84,7 +74,6 @@ public sealed class LayerArchitectureTests
         {
             "QingFa.Shop.Unit",
             "QingFa.Shop.Integration",
-            "QingFa.Shop.Contract.Tests",
             "QingFa.Shop.Architecture.Tests",
             "QingFa.Shop.Testing"
         };
@@ -92,7 +81,6 @@ public sealed class LayerArchitectureTests
         var productionAssemblies = new[]
         {
             CoreAssembly,
-            ContractAssembly,
             ApplicationAssembly,
             InfrastructureAssembly,
             ServiceDefaultsAssembly,

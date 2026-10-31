@@ -8,16 +8,19 @@
 
   <ItemGroup>
     <ProjectReference Include="../Core/Core.csproj" />
-    <ProjectReference Include="../Contract/Contract.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <InternalsVisibleTo Include="Application.Unit.Tests" />
   </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="MediatR" />
     <PackageReference Include="FluentValidation" />
     <PackageReference Include="FluentValidation.DependencyInjectionExtensions" />
-    <PackageReference Include="Mapster" />
-    <PackageReference Include="Mapster.DependencyInjection" />
-    <PackageReference Include="Scrutor" />
-    <PackageReference Include="Microsoft.Extensions.DependencyInjection.Abstractions" />
   </ItemGroup>
 </Project>

@@ -1,6 +1,6 @@
 # QingFa.Shop
 
-A modern e-commerce platform built with .NET Aspire, Vue 3 + TypeScript, PostgreSQL, and Redis.
+A modern e-commerce platform built with .NET Aspire, Vue 3 + TypeScript, PostgreSQL, Redis, and RabbitMQ.
 
 ## Overview
 
@@ -8,12 +8,12 @@ QingFa.Shop is a cloud-native e-commerce solution leveraging .NET Aspire for ser
 
 ## Tech Stack
 
-- **Frontend**: Vue 3 + TypeScript + Vite + Pinia + Vue Router
-- **Backend**: .NET 9 + ASP.NET Core + Entity Framework Core
+- **Frontend**: Vue 3 + TypeScript + Vite + StyleX + Vue Router
+- **Backend**: .NET 10 + ASP.NET Core + Entity Framework Core
 - **Orchestration**: .NET Aspire (Service Discovery, Telemetry, Health Checks)
-- **Database**: PostgreSQL 16 + EF Core Migrations
+- **Database**: PostgreSQL 17 + EF Core Migrations
 - **Cache/Session**: Redis 7 (StackExchange.Redis)
-- **Messaging**: MassTransit + RabbitMQ (Aspire component)
+- **Messaging**: Wolverine + RabbitMQ (Aspire resource and Compose service)
 - **Auth**: JWT + Refresh Tokens (ASP.NET Core Identity)
 - **Payments**: Stripe .NET SDK
 - **Observability**: OpenTelemetry + Prometheus + Grafana (via Aspire Dashboard)
@@ -28,13 +28,12 @@ QingFa.Shop/
 │   ├── pnpm-workspace.yaml    # Web.Storefront + Web.Admin members
 │   ├── AppHost/               # Aspire orchestration (api, gateway, Vite apps)
 │   ├── Gateway/               # YARP edge: routing, JWT validation, rate limiting
-│   ├── Infrastructure/        # Postgres + Redis image definitions
+│   ├── Infrastructure/        # Postgres, Redis, and RabbitMQ image definitions
 │   ├── Web.Api/               # Backend API (ASP.NET Core)
 │   ├── Web.Admin/             # Admin SPA (Vite, served under /admin/)
 │   └── Web.Storefront/        # Storefront SPA (Vite)
 ├── src/
 │   ├── Core/                  # Domain models, interfaces
-│   ├── Contract/              # Public request/response contracts
 │   ├── Application/           # Use cases and handlers
 │   ├── Infrastructure/        # EF Core, Redis, external services
 │   └── ServiceDefaults/       # Shared Aspire service config
@@ -45,6 +44,31 @@ QingFa.Shop/
 ├── compose.deploy.yaml        # Pull-only deployment overlay
 └── Makefile                   # Facade: `make help`
 ```
+
+Each layer splits into `BuildingBlocks/` (reusable platform capabilities) and
+`Modules/` (business capabilities):
+
+```text
+Core:
+  BuildingBlocks/Domain, BuildingBlocks/Modeling, BuildingBlocks/Functional
+  Modules/Todos
+
+Application:
+  BuildingBlocks/{Caching,EventSourcing,Messaging,Persistence,Ports,Querying,Security,UseCases}
+  Modules/Todos
+  Modules/{PermissionCatalog,Persistence}   # composite-catalog composition artifacts
+
+Infrastructure:
+  BuildingBlocks/Adapters/{BackgroundJobs,Caching,Events,Http,Messaging,Notifications,Observability,OpenApi,Persistence,Security,Serialization,Storage}
+  Modules/Todos
+  Migrations
+```
+
+BuildingBlocks never reference Modules. Modules may reference BuildingBlocks;
+cross-module communication goes through BuildingBlocks contracts or the
+composition root. `Application/Modules/{PermissionCatalog,Persistence}` are
+composite-catalog composition artifacts, not business module folders.
+`Infrastructure/Migrations` is the exempt composition artifact.
 
 ## Prerequisites
 
@@ -70,7 +94,7 @@ dotnet run --project app/AppHost
 
 This starts:
 - **Aspire Dashboard** → the URL printed in the console (observability, service graph, logs)
-- **PostgreSQL** and **Redis** containers
+- **PostgreSQL**, **Redis**, and **RabbitMQ** containers
 - **API** → `api` resource
 - **Gateway** → `gateway` resource (the browser entry point)
 - **Storefront** and **Admin** → Vite dev servers behind the gateway
@@ -99,10 +123,14 @@ prints `==> <target>` and then the exact CLI it executes (`$ dotnet ...`,
 # Workspace
 make install         # restore .NET + install the web workspace
 make build           # .NET solution + both SPA bundles
-make lint            # formatting, structure, and vue-tsc checks
+make lint            # formatting, structure, convention gate, and vue-tsc checks
+make convention.check # magic values, outcomes, and monadic Result gate
 make format          # write C# and Prettier fixes
-make test            # unit, Api, and web tests
+make test            # .NET unit, Api, then web tests
 make test.all        # every suite, including AppHost and infra
+make test.infra.broker  # RabbitMQ composition + transport (Testcontainers)
+make coverage        # .NET unit + web coverage gates (line 90 / branch 80)
+make coverage.all    # every suite plus the merged .NET coverage gate
 
 # Libraries
 make lib.install
@@ -138,7 +166,10 @@ make host.test
 make store.install
 make store.format
 make store.lint
-make store.test
+make store.test           # unit then integration
+make store.test.unit
+make store.test.integration
+make store.e2e            # optional Playwright
 make store.build
 make store.publish
 
@@ -146,19 +177,37 @@ make store.publish
 make admin.install
 make admin.format
 make admin.lint
-make admin.test
+make admin.test           # unit then integration
+make admin.test.unit
+make admin.test.integration
+make admin.e2e            # optional Playwright
 make admin.build
 make admin.publish
 
 # Infra
 make infra.config
-make infra.build     # gateway, api, shopfront, admin, postgres, redis
+make infra.build     # gateway, api, shopfront, admin, postgres, redis, rabbitmq
 make infra.test
 make infra.up        # docker compose up -d --build
-make infra.smoke     # assert the gateway edge and both SPA titles
+make infra.backing.up      # postgres, redis, and rabbitmq only
+make infra.backing.health  # probe all three
+make infra.backing.down    # stop them, keep volumes
+make infra.smoke     # assert the gateway edge, SPA titles, and backing health
 make infra.logs SERVICE=gateway
 make infra.down
 ```
+
+When the Compose stack is running, the RabbitMQ management UI is at
+`http://localhost:15672` (`qingfa` / `qingfa` by default).
+
+## API contract
+
+Every `/api/*` response is the monad itself: `Result<T>` on success and the non-generic `Result`
+on failure. The HTTP status comes from `Result.StatusCode`; `201` carries a `Location`, `204` has no
+body. `ApiJson.Options` in `src/Infrastructure/BuildingBlocks/Adapters/Serialization` is the single serializer.
+Identity routes live under `/api/auth/*` and `/api/identity/*`; the old `/api/authorization/*`
+surface is gone. The full contract is in
+[`docs/specs/2026-10-30-api-result-envelope-design.md`](docs/specs/2026-10-30-api-result-envelope-design.md).
 
 ### .NET Commands (Direct)
 
@@ -205,14 +254,19 @@ pnpm format:check
 
 ## Environment Variables
 
-### API (`app/Web.Api/.env`)
+### API (exported by the shell, AppHost, or Compose)
 
 ```env
 # Database
-CONNECTION_STRING=Host=localhost;Database=qingfa_shop;Username=postgres;Password=postgres
+ConnectionStrings__db=Host=localhost;Port=5432;Database=db;Username=qingfa;Password=qingfa
+EfCore__ConnectionStringName=db
 
 # Redis
-REDIS_CONNECTION_STRING=localhost:6379
+ConnectionStrings__redis=localhost:6379
+
+# RabbitMQ (leave unset for Wolverine's in-process transport)
+ConnectionStrings__rabbitmq=amqp://qingfa:qingfa@localhost:5672
+Messaging__Transport=RabbitMq
 
 # JWT
 JWT_SECRET=your-super-secret-key-min-32-chars
@@ -228,6 +282,13 @@ STRIPE_WEBHOOK_SECRET=whsec_...
 # Aspire (auto-injected when running via AppHost)
 ASPIRE_DASHBOARD_OTLP_ENDPOINT_URL=http://localhost:4317
 ```
+
+### Compose broker overrides
+
+`RABBITMQ_USER`, `RABBITMQ_PASS`, `RABBITMQ_PORT`, and
+`RABBITMQ_MANAGEMENT_PORT` change the Compose broker. The API's
+`ConnectionStrings__rabbitmq` is built from the same user/password pair, so
+override both together.
 
 ### Web
 
@@ -297,7 +358,7 @@ kubectl apply -f ./manifests/
 | `dotnet format` | C# formatting (EditorConfig) |
 | `Prettier` | TS/Vue/CSS/Markdown formatting |
 | `vue-tsc` | Vue SFC type-checking |
-| `Vitest` | Web unit tests |
+| `Vitest` | Web unit and integration tests |
 
 ## Testing Strategy
 
@@ -306,7 +367,37 @@ kubectl apply -f ./manifests/
 | Unit (C#) | xUnit | `tests/Unit` |
 | Architecture (C#) | xUnit | `tests/Architecture.Tests` |
 | Integration (C#) | xUnit + Testcontainers | `tests/Integration` |
-| Web | Vitest + `@vue/test-utils` | `app/Web.*/src/__tests__` |
+| Web | Vitest + `@vue/test-utils` | `app/Web.*/src/__tests__` (unit + `integration/` for router/API flows) |
+
+### Test order
+
+`make test` runs the fast gate in layer order:
+
+1. **.NET unit** — Core → Application → Infrastructure → Architecture
+2. **.NET integration** — Api
+3. **Web unit** — Storefront → Admin
+4. **Web integration** — Storefront → Admin
+
+`make test.all` extends this with the full integration and optional browser layers:
+
+1. .NET unit (same five suites)
+2. .NET integration — Api → AppHost/Gateway → Infrastructure
+3. Web unit → web integration
+4. Web e2e — Storefront → Admin (Playwright; skipped when no suite is configured)
+
+### Coverage
+
+`make coverage` is the pull-request gate: .NET unit suites plus both web apps
+must meet **90% line / 80% branch**, enforced per assembly and per app. The
+merged .NET gate (`make coverage.report`) runs on `main` and the nightly
+schedule after the Api, AppHost, and infrastructure coverage jobs upload their
+raw Cobertura files.
+
+- Gated .NET assemblies: `Core`, `Application`, `Infrastructure`, `Web.Api`.
+- Report-only: `ServiceDefaults`, `Gateway`, `AppHost`, and all `*.Tests`
+  assemblies.
+- Reports land in `artifacts/coverage/` (git-ignored).
+- Override the floors locally: `COVERAGE_LINES=95 COVERAGE_BRANCHES=85 make coverage`.
 
 ## Contributing
 

@@ -5,10 +5,10 @@
 api.install: _dotnet.restore ## Restore NuGet packages
 
 api.format: _dotnet.restore ## Format the Api and its integration tests
-	$(call run,$@,$(ROOT)/scripts/backend/format.backend.sh app/Web.Api tests/Integration/Api.Tests)
+	$(call run,$@,$(ROOT)/scripts/backend/format.backend.sh app/Web.Api tests/Integration/Api.Integration.Tests)
 
 api.format.check: _dotnet.restore ## Verify Api formatting without writing
-	$(call run,$@,$(ROOT)/scripts/backend/format-check.backend.sh app/Web.Api tests/Integration/Api.Tests)
+	$(call run,$@,$(ROOT)/scripts/backend/format-check.backend.sh app/Web.Api tests/Integration/Api.Integration.Tests)
 
 api.lint: api.format.check structure.check ## Formatting and structure checks
 

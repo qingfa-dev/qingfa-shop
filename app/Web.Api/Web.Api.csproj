@@ -10,15 +10,16 @@
 
   <ItemGroup>
     <ProjectReference Include="../../src/Core/Core.csproj" />
-    <ProjectReference Include="../../src/Contract/Contract.csproj" />
     <ProjectReference Include="../../src/Application/Application.csproj" />
     <ProjectReference Include="../../src/Infrastructure/Infrastructure.csproj" />
     <ProjectReference Include="../../src/ServiceDefaults/ServiceDefaults.csproj" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Microsoft.AspNetCore.OpenApi" />
-    <PackageReference Include="Scalar.AspNetCore" />
+    <InternalsVisibleTo Include="Api.Integration.Tests" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="Carter" />
     <PackageReference Include="MediatR" />
     <PackageReference Include="FluentValidation" />

@@ -4,12 +4,9 @@ using System.Threading.RateLimiting;
 using Gateway;
 
 using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.AspNetCore.RateLimiting;
 using Microsoft.IdentityModel.Tokens;
 
 using ServiceDefaults;
-
-using Yarp.ReverseProxy.Configuration;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -50,8 +47,8 @@ builder.Services.AddRateLimiter(options =>
             context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
             _ => new FixedWindowRateLimiterOptions
             {
-                PermitLimit = 100,
-                Window = TimeSpan.FromSeconds(10),
+                PermitLimit = GatewayConstant.RateLimiting.PermitLimit,
+                Window = TimeSpan.FromSeconds(GatewayConstant.RateLimiting.WindowSeconds),
                 QueueLimit = 0,
             }));
 });

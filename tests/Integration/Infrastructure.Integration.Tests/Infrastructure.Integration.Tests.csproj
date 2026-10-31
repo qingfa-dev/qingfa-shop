@@ -4,14 +4,17 @@
     <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
-    <AssemblyName>QingFa.Shop.Integration.Infrastructure.Tests</AssemblyName>
-    <RootNamespace>QingFa.Shop.Integration.Infrastructure.Tests</RootNamespace>
+    <NoWarn>$(NoWarn);xUnit1041</NoWarn>
   </PropertyGroup>
 
   <ItemGroup>
     <ProjectReference Include="../../../src/Infrastructure/Infrastructure.csproj" />
     <ProjectReference Include="../../../src/Core/Core.csproj" />
     <ProjectReference Include="../../Testing/Testing.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <FrameworkReference Include="Microsoft.AspNetCore.App" />
   </ItemGroup>
 
   <ItemGroup>
@@ -24,6 +27,7 @@
     <PackageReference Include="Testcontainers.RabbitMq" />
     <PackageReference Include="Respawn" />
     <PackageReference Include="Microsoft.EntityFrameworkCore.Design" />
+    <PackageReference Include="Microsoft.Extensions.Caching.StackExchangeRedis" />
   </ItemGroup>
 
   <ItemGroup>
