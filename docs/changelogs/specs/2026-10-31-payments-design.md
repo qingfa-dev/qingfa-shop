@@ -375,7 +375,7 @@ place provider differences are consulted; no `switch (provider)` exists outside 
 |---|---|---|---|---|
 | `Fake` | in-memory | `X-Fake-Signature: sha256=<hex>` over raw body | yes | yes |
 | `Stripe` | `Stripe.net` | `Stripe-Signature` via `EventUtility.ConstructEvent`, 300 s tolerance | yes | yes |
-| `PayPal` | typed `HttpClient` (Orders v2, Payments v1) | `POST /v1/notifications/verify-webhook-signature` with `PAYPAL-TRANSMISSION-*` headers | yes | yes (refunds a capture, full or partial) |
+| `PayPal` | typed `HttpClient` (Orders v2, Payments v1) | `POST /v1/notifications/verify-webhook-signature` with `PAYPAL-TRANSMISSION-*` headers | yes | full refunds only (PayPal refunds a capture) |
 
 Fake outcomes are scripted by `externalReference` prefix (`decline:`, `requires-action:`, `timeout:`)
 so tests never depend on random behaviour.
@@ -865,6 +865,15 @@ Each row is a required automated test. "Where" names the owning suite.
 | E-49 | Currency absent from `MaximumAmountsByCurrency` | `400 Payments.Payment.CurrencyUnsupported` | Application unit |
 | E-50 | Amount above the ceiling for that currency | `400 Payments.Payment.AmountExceedsLimit` | Application unit |
 | E-51 | Admin search filtered by currency | `200`, only matching rows | Infrastructure unit + API |
+| E-52 | Dispute opened on a captured payment | `Opened`, captured/refunded totals unchanged | Core unit |
+| E-53 | Duplicate dispute id replayed | No-op, one dispute | Core unit |
+| E-54 | Dispute on a pending payment | `409 Payments.Payment.InvalidState` | Core unit |
+| E-55 | Dispute above the captured amount | `409 Payments.Dispute.ExceedsCaptured` | Core unit |
+| E-56 | Resolve a dispute by provider reference | Terminal status recorded | Core unit |
+| E-57 | Resolve an unknown dispute | `404 Payments.Dispute.NotFound` | Core unit |
+| E-58 | Provider still reports the payment open | Reconciliation skips it | Infrastructure unit |
+| E-59 | Provider reports a capture the webhook missed | Reconciliation settles once | Infrastructure unit |
+| E-60 | Retention sweep | Only processed rows past the window are pruned | Infrastructure unit |
 
 ## 15. Delivery sequence
 
@@ -887,7 +896,7 @@ Each step is independently committable and green.
   payments and settles through the same `SettlePayment` command, so a lost webhook cannot leave a
   payment stuck.
 - Dispute/chargeback transitions.
-- (Implemented) PayPal refunds against the provider capture id, full or partial.
+- (Implemented) PayPal refunds against the provider capture id; partial refunds remain unsupported.
 - (Implemented) Webhook retention: processed deliveries older than `Payments:Retention:WebhookEventRetentionDays`
   are pruned by a hosted worker; unprocessed deliveries are never pruned.
 - FX and multi-currency settlement.

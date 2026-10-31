@@ -197,7 +197,7 @@ public static class PaymentsOutcome
     /// <summary>Stable error codes for contracts and tests.</summary>
     public static class Codes
     {
-        // Payment
+        #region Payment
 
         /// <summary>Payment not found.</summary>
         public const string NotFound = "Payments.Payment.NotFound";
@@ -237,13 +237,15 @@ public static class PaymentsOutcome
 
         /// <summary>Unknown capture mode.</summary>
         public const string CaptureModeInvalid = "Payments.CaptureMode.Invalid";
-
-        // Customer
+        #endregion
+        #region Customer
 
         /// <summary>Missing authenticated customer.</summary>
         public const string CustomerRequired = "Payments.Customer.Required";
 
-        // Refund
+
+        #endregion
+        #region Refund
 
         /// <summary>Refund larger than the captured remainder.</summary>
         public const string RefundExceedsCredit = "Payments.Refund.ExceedsCredit";
@@ -269,7 +271,9 @@ public static class PaymentsOutcome
         /// <summary>Partial refund not supported by the provider.</summary>
         public const string PartialRefundUnsupported = "Payments.Refund.PartialUnsupported";
 
-        // Provider
+
+        #endregion
+        #region Provider
 
         /// <summary>Unknown provider name.</summary>
         public const string ProviderUnknown = "Payments.Provider.Unknown";
@@ -292,7 +296,9 @@ public static class PaymentsOutcome
         /// <summary>Provider credentials rejected.</summary>
         public const string ProviderConfigurationInvalid = "Payments.Provider.ConfigurationInvalid";
 
-        // Webhook
+
+        #endregion
+        #region Webhook
 
         /// <summary>Bad webhook signature.</summary>
         public const string WebhookSignatureInvalid = "Payments.Webhook.SignatureInvalid";
@@ -314,5 +320,7 @@ public static class PaymentsOutcome
 
         /// <summary>Amount mismatch outcome recorded on the webhook row.</summary>
         public const string WebhookAmountMismatch = "Payments.Webhook.AmountMismatch";
+
+        #endregion
     }
 }
