@@ -91,6 +91,7 @@ jobs:
           cache-dependency-path: "**/packages.lock.json"
       - run: make lib.install
       - run: make lib.lint api.lint gate.lint host.lint
+      - run: make convention.check
       - run: make lib.build api.build gate.build host.build
       - name: Unit coverage gate
         run: make coverage.unit

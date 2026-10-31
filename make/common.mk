@@ -18,7 +18,7 @@ doctor: ## Check the local toolchain
 
 ##@ Quality
 
-.PHONY: install format format.check structure.check lint build
+.PHONY: install format format.check structure.check convention.check lint build
 
 install: lib.install api.install gate.install host.install store.install admin.install ## Restore .NET and web dependencies
 
@@ -29,6 +29,9 @@ format.check: lib.format.check api.format.check gate.format.check host.format.ch
 structure.check: ## Verify namespaces match folders and file roles are known
 	$(call run,$@,$(ROOT)/scripts/common/structure-check.common.sh)
 
-lint: lib.lint api.lint gate.lint host.lint store.lint admin.lint ## Formatting, structure, and type checks
+convention.check: ## Verify magic values, outcome shape, and monadic Results
+	$(call run,$@,$(ROOT)/scripts/common/convention-check.common.sh $(if $(SELF_TEST),--self-test) $(if $(BASELINE),--baseline $(BASELINE)))
+
+lint: lib.lint api.lint gate.lint host.lint store.lint admin.lint convention.check ## Formatting, structure, conventions, and type checks
 
 build: lib.build api.build gate.build host.build store.build admin.build ## Build the solution and both web apps
