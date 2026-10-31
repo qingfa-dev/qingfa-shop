@@ -95,6 +95,30 @@ public sealed class PayPalGatewayOperationTest
     }
 
     [Fact]
+    public void Capabilities_ShouldAllowPartialRefundsAndManualCapture()
+    {
+        PayPalPaymentGateway gateway = Build("{}");
+
+        gateway.Capabilities.SupportsPartialRefund.Should().BeTrue();
+        gateway.Capabilities.SupportsManualCapture.Should().BeTrue();
+        gateway.Capabilities.SupportsWebhooks.Should().BeTrue();
+    }
+
+    [Fact]
+    public async Task Refund_PartialAmount_ShouldSucceed()
+    {
+        PayPalPaymentGateway gateway = Build("""{"id":"REFUND-2","status":"COMPLETED"}""", capture: "/v2/payments/captures/CAP-1/refund");
+
+        var result = await gateway.RefundAsync(
+            new PaymentRefundRequest("ORDER-1", Guid.NewGuid(), Usd(4m), "refund:2", "partial", "CAP-1"),
+            CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Succeeded.Should().BeTrue();
+        result.Value.Amount.Amount.Should().Be(4m);
+    }
+
+    [Fact]
     public async Task Refund_WithoutCaptureReference_ShouldFail()
     {
         PayPalPaymentGateway gateway = Build("{}");

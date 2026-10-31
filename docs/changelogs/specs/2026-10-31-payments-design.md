@@ -375,7 +375,7 @@ place provider differences are consulted; no `switch (provider)` exists outside 
 |---|---|---|---|---|
 | `Fake` | in-memory | `X-Fake-Signature: sha256=<hex>` over raw body | yes | yes |
 | `Stripe` | `Stripe.net` | `Stripe-Signature` via `EventUtility.ConstructEvent`, 300 s tolerance | yes | yes |
-| `PayPal` | typed `HttpClient` (Orders v2, Payments v1) | `POST /v1/notifications/verify-webhook-signature` with `PAYPAL-TRANSMISSION-*` headers | yes | full refunds only (PayPal refunds a capture) |
+| `PayPal` | typed `HttpClient` (Orders v2, Payments v1) | `POST /v1/notifications/verify-webhook-signature` with `PAYPAL-TRANSMISSION-*` headers | yes | yes (refunds a capture, full or partial) |
 
 Fake outcomes are scripted by `externalReference` prefix (`decline:`, `requires-action:`, `timeout:`)
 so tests never depend on random behaviour.
@@ -887,7 +887,7 @@ Each step is independently committable and green.
   payments and settles through the same `SettlePayment` command, so a lost webhook cannot leave a
   payment stuck.
 - Dispute/chargeback transitions.
-- (Implemented) PayPal refunds against the provider capture id; partial refunds remain unsupported.
+- (Implemented) PayPal refunds against the provider capture id, full or partial.
 - (Implemented) Webhook retention: processed deliveries older than `Payments:Retention:WebhookEventRetentionDays`
   are pruned by a hosted worker; unprocessed deliveries are never pruned.
 - FX and multi-currency settlement.
