@@ -57,8 +57,11 @@ public static class ProcessPaymentWebhook
             if (resolved.IsFailure)
                 return Result<bool>.Fail(resolved.Errors);
 
-            Result<Maybe<PaymentProviderEvent>> parsed = await resolved.Value.ParseWebhookAsync(
-                command.RawBody, command.Headers, cancellationToken);
+            Result<Maybe<PaymentProviderEvent>> parsed = await PaymentMetrics.TrackAsync(
+                command.Provider,
+                PaymentConstant.Operations.Webhook,
+                () => resolved.Value.ParseWebhookAsync(
+                    command.RawBody, command.Headers, cancellationToken));
 
             if (parsed.IsFailure)
                 return Result<bool>.Fail(parsed.Errors);

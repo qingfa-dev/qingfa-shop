@@ -61,12 +61,15 @@ public static class CapturePayment
             if (resolved.IsFailure)
                 return Result<PaymentResponseModel>.Fail(resolved.Errors);
 
-            Result<PaymentCaptureResult> captured = await resolved.Value.CaptureAsync(
+            Result<PaymentCaptureResult> captured = await PaymentMetrics.TrackAsync(
+                payment.Provider,
+                PaymentConstant.Operations.Capture,
+                () => resolved.Value.CaptureAsync(
                 new PaymentCaptureRequest(
                     payment.ProviderReference,
                     amount,
                     $"{PaymentConstant.IdempotencyPrefixes.Capture}{payment.Id:N}:{payment.CapturedAmount.Amount:0.####}"),
-                cancellationToken);
+                cancellationToken));
 
             if (captured.IsFailure)
                 return Result<PaymentResponseModel>.Fail(captured.Errors);

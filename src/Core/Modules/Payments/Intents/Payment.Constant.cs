@@ -183,6 +183,28 @@ public static class PaymentConstant
         public const string InitialCapture = "initial_capture";
     }
 
+    /// <summary>Operation names attached to provider metrics and traces.</summary>
+    public static class Operations
+    {
+        /// <summary>Intent creation.</summary>
+        public const string Create = "create";
+
+        /// <summary>Intent retrieval.</summary>
+        public const string Retrieve = "retrieve";
+
+        /// <summary>Capture.</summary>
+        public const string Capture = "capture";
+
+        /// <summary>Cancellation or void.</summary>
+        public const string Cancel = "cancel";
+
+        /// <summary>Refund.</summary>
+        public const string Refund = "refund";
+
+        /// <summary>Webhook parsing and verification.</summary>
+        public const string Webhook = "webhook";
+    }
+
     /// <summary>Canonical webhook processing outcomes.</summary>
     public static class Outcomes
     {

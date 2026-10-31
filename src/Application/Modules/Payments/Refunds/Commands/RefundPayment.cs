@@ -98,14 +98,17 @@ public static class RefundPayment
             if (requested.IsFailure)
                 return Result<Response>.Fail(requested.Errors);
 
-            Result<PaymentRefundResult> refunded = await gateway.RefundAsync(
+            Result<PaymentRefundResult> refunded = await PaymentMetrics.TrackAsync(
+                payment.Provider,
+                PaymentConstant.Operations.Refund,
+                () => gateway.RefundAsync(
                 new PaymentRefundRequest(
                     payment.ProviderReference,
                     refundId,
                     command.Request.Amount,
                     $"{PaymentConstant.IdempotencyPrefixes.Refund}{refundId:N}",
                     command.Request.Reason),
-                cancellationToken);
+                cancellationToken));
 
             Result<Payment> completed = refunded.IsFailure || !refunded.Value.Succeeded
                 ? requested.Value.FailRefund(

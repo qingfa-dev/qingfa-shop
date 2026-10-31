@@ -63,11 +63,14 @@ public static class CancelPayment
 
             if (payment.ProviderReference is not null)
             {
-                Result<PaymentCancelResult> cancelled = await resolved.Value.CancelAsync(
-                    new PaymentCancelRequest(
-                        payment.ProviderReference,
-                        $"{PaymentConstant.IdempotencyPrefixes.Cancel}{payment.Id:N}"),
-                    cancellationToken);
+                Result<PaymentCancelResult> cancelled = await PaymentMetrics.TrackAsync(
+                    payment.Provider,
+                    PaymentConstant.Operations.Cancel,
+                    () => resolved.Value.CancelAsync(
+                        new PaymentCancelRequest(
+                            payment.ProviderReference,
+                            $"{PaymentConstant.IdempotencyPrefixes.Cancel}{payment.Id:N}"),
+                        cancellationToken));
 
                 if (cancelled.IsFailure)
                     return Result<PaymentResponseModel>.Fail(cancelled.Errors);

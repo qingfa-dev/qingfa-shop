@@ -72,8 +72,10 @@ public static class ConfirmPayment
             if (resolved.IsFailure)
                 return Result<PaymentResponseModel>.Fail(resolved.Errors);
 
-            Result<PaymentIntentResult> intent = await resolved.Value.RetrieveAsync(
-                providerReference, cancellationToken);
+            Result<PaymentIntentResult> intent = await PaymentMetrics.TrackAsync(
+                provider,
+                PaymentConstant.Operations.Retrieve,
+                () => resolved.Value.RetrieveAsync(providerReference, cancellationToken));
 
             if (intent.IsFailure)
                 return Result<PaymentResponseModel>.Fail(intent.Errors);

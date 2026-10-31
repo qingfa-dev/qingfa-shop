@@ -152,7 +152,10 @@ public static class CreatePayment
             Guid id,
             CancellationToken cancellationToken)
         {
-            Result<PaymentIntentResult> intent = await gateway.CreateIntentAsync(
+            Result<PaymentIntentResult> intent = await PaymentMetrics.TrackAsync(
+                gateway.Provider,
+                PaymentConstant.Operations.Create,
+                () => gateway.CreateIntentAsync(
                 new PaymentIntentRequest(
                     id,
                     request.Amount,
@@ -164,7 +167,7 @@ public static class CreatePayment
                     request.CaptureMode,
                     $"{PaymentConstant.IdempotencyPrefixes.Create}{idempotencyKey}",
                     new Dictionary<string, string>()),
-                cancellationToken);
+                cancellationToken));
 
             if (intent.IsFailure)
                 return Result<Payment>.Fail(intent.Errors);
