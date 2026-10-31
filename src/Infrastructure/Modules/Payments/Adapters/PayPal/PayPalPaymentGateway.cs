@@ -26,7 +26,6 @@ public sealed class PayPalPaymentGateway(
     /// <inheritdoc />
     public PaymentGatewayCapabilities Capabilities { get; } = new()
     {
-        SupportsPartialRefund = true,
         SupportsManualCapture = true,
         SupportsWebhooks = true
     };

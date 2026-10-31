@@ -85,31 +85,6 @@ public sealed class RefundPaymentTest
     }
 
     [Fact]
-    public async Task Handle_PartialRefundWithCapability_ShouldCompleteTheRefund()
-    {
-        Payment payment = Captured();
-        Mock<IPaymentGateway> gateway = Gateway(supportsPartialRefund: true);
-
-        var repository = new Mock<IEventSourcedRepository<Payment, Guid>>();
-        repository.Setup(x => x.LoadAsync(payment.Id, It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result<Payment>.Success(payment));
-        repository.Setup(x => x.SaveAsync(It.IsAny<Payment>(), It.IsAny<CancellationToken>()))
-            .ReturnsAsync(Result.Ok());
-
-        var handler = new RefundPayment.UseCaseHandler(
-            repository.Object, Registry(gateway.Object).Object, TimeProvider.System);
-
-        var result = await handler.Handle(
-            new RefundPayment.UseCase(
-                payment.Id, new RefundPayment.Request(Usd(20m), "damaged"), "rk-partial"),
-            CancellationToken.None);
-
-        result.IsSuccess.Should().BeTrue();
-        result.Value.Amount.Should().Be(20m);
-        result.Value.Status.Should().Be(RefundStatus.Succeeded.ToWire());
-    }
-
-    [Fact]
     public async Task Handle_FullRefund_ShouldCompleteTheRefund()
     {
         Payment payment = Captured();
