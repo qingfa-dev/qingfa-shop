@@ -3,14 +3,18 @@ using Application.Modules.Payments.Ports;
 using Infrastructure.BuildingBlocks;
 using Infrastructure.Modules.Payments;
 using Infrastructure.Modules.Payments.Adapters.Fake;
+using Infrastructure.Modules.Payments.Adapters.PayPal;
+using Infrastructure.Modules.Payments.Adapters.Stripe;
 using Infrastructure.Modules.Payments.Persistence;
 using Infrastructure.Modules.Todos.Integrations.Messaging;
 using Infrastructure.Modules.Todos.Persistence.EventSourcing;
 using Infrastructure.Modules.Todos.Services;
 
 using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
+using Microsoft.Extensions.Options;
 
 namespace Infrastructure.Modules;
 
@@ -31,11 +35,66 @@ public static class ModularInfraComposition
     {
         ArgumentNullException.ThrowIfNull(builder);
 
-        // Register: the fake provider is always available for local runs and tests.
-        builder.Services.AddSingleton<IPaymentGateway, FakePaymentGateway>();
+        builder.AddPaymentsProviders();
+        builder.AddTodoServices();
+        return builder;
+    }
+
+    /// <summary>Registers the payment providers that configuration enables.</summary>
+    /// <param name="builder">The host builder.</param>
+    /// <returns>The same builder, for chaining.</returns>
+    private static WebApplicationBuilder AddPaymentsProviders(this WebApplicationBuilder builder)
+    {
+        builder.Services.AddOptions<PaymentsOptions>()
+            .BindConfiguration(PaymentsOptions.SectionName)
+            .ValidateOnStart();
+
+        builder.Services.AddSingleton<IValidateOptions<PaymentsOptions>>(
+            new PaymentsOptionsValidator(builder.Environment.EnvironmentName));
+
+        builder.Services.AddOptions<StripeOptions>().BindConfiguration(StripeOptions.SectionName);
+        builder.Services.AddOptions<PayPalOptions>().BindConfiguration(PayPalOptions.SectionName);
+
+        // Initialize: expose the bound values as plain injectables for the adapter constructors.
+        builder.Services.AddSingleton(provider => provider.GetRequiredService<IOptions<StripeOptions>>().Value);
+        builder.Services.AddSingleton(provider => provider.GetRequiredService<IOptions<PayPalOptions>>().Value);
+
+        PaymentsOptions payments = builder.Configuration
+            .GetSection(PaymentsOptions.SectionName)
+            .Get<PaymentsOptions>() ?? new PaymentsOptions();
+
+        // Enforce: a disabled provider must be absent from the registry, so a caller cannot
+        // select it by name.
+        if (payments.Providers.Fake.Enabled)
+            builder.Services.AddSingleton<IPaymentGateway, FakePaymentGateway>();
+
+        if (payments.Providers.Stripe.Enabled)
+        {
+            builder.Services.AddSingleton<StripePaymentGateway>();
+            builder.Services.AddSingleton<IPaymentGateway>(
+                provider => provider.GetRequiredService<StripePaymentGateway>());
+        }
+
+        if (payments.Providers.PayPal.Enabled)
+        {
+            builder.Services.AddHttpClient<PayPalTokenProvider>((provider, client) =>
+            {
+                PayPalOptions paypal = provider.GetRequiredService<IOptions<PayPalOptions>>().Value;
+                client.BaseAddress = new Uri(paypal.BaseAddress);
+            });
+
+            builder.Services.AddHttpClient<PayPalPaymentGateway>((provider, client) =>
+            {
+                PayPalOptions paypal = provider.GetRequiredService<IOptions<PayPalOptions>>().Value;
+                client.BaseAddress = new Uri(paypal.BaseAddress);
+            });
+
+            builder.Services.AddSingleton<IPaymentGateway>(
+                provider => provider.GetRequiredService<PayPalPaymentGateway>());
+        }
+
         builder.Services.TryAddSingleton<IPaymentGatewayRegistry, PaymentGatewayRegistry>();
 
-        builder.AddTodoServices();
         return builder;
     }
 
