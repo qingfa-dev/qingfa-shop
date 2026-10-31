@@ -40,6 +40,12 @@ public static class PayPalConstant
 
         /// <summary>A capture was refunded.</summary>
         public const string CaptureRefunded = "PAYMENT.CAPTURE.REFUNDED";
+
+        /// <summary>A customer opened a dispute.</summary>
+        public const string DisputeCreated = "CUSTOMER.DISPUTE.CREATED";
+
+        /// <summary>A customer dispute was resolved.</summary>
+        public const string DisputeResolved = "CUSTOMER.DISPUTE.RESOLVED";
     }
 
     /// <summary>Values returned by the webhook verification endpoint.</summary>

@@ -101,6 +101,26 @@ public static class PaymentValidator
                 PaymentsOutcome.Failure.RefundExceedsCredit(amount.Amount, payment.CreditAllowed));
     }
 
+    /// <summary>Validates a dispute against the payment it targets.</summary>
+    /// <param name="payment">The disputed payment.</param>
+    /// <param name="amount">The disputed amount.</param>
+    /// <returns>Success, or the first broken invariant.</returns>
+    public static Result ValidateDispute(Payment payment, Money amount)
+    {
+        ArgumentNullException.ThrowIfNull(payment);
+
+        return Result.Ok()
+            .Ensure(() => amount.Amount > 0,
+                PaymentsOutcome.Failure.AmountInvalid("the disputed amount must be positive"))
+            .Ensure(() => amount.Currency == payment.Amount.Currency,
+                PaymentsOutcome.Failure.CurrencyMismatch(
+                    payment.Amount.Currency.Code ?? string.Empty,
+                    amount.Currency.Code ?? string.Empty))
+            .Ensure(() => amount.Amount <= payment.CapturedAmount.Amount,
+                PaymentsOutcome.Failure.DisputeExceedsCaptured(
+                    amount.Amount, payment.CapturedAmount.Amount));
+    }
+
     /// <summary>Clamps a provider failure code to the persisted width.</summary>
     /// <param name="failureCode">The provider code, if any.</param>
     /// <returns>A code that fits the column, or <c>null</c>.</returns>

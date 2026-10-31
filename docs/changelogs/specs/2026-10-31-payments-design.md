@@ -552,6 +552,8 @@ Codes are grouped by category: `Payments.Payment.*` (validation/state/idempotenc
 | `Payments.Webhook.PayloadInvalid` | 400 | body cannot be parsed |
 | `Payments.Webhook.PayloadTooLarge` | 413 | body > `WebhookMaxBytes` |
 | `Payments.Webhook.ProviderUnsupported` | 404 | unknown `{provider}` route value |
+| `Payments.Dispute.NotFound` | 404 | unknown dispute for that payment |
+| `Payments.Dispute.ExceedsCaptured` | 409 | disputed amount above the captured amount |
 | `Payments.Webhook.AmountMismatch` | 200 (recorded) | amount/currency disagrees with the payment; outcome `AmountMismatch`, no settlement |
 
 ### 10.6 Webhook contract
@@ -879,6 +881,8 @@ Each step is independently committable and green.
 
 ## 16. Deferred
 
+- (Implemented) Disputes: opened/resolved provider disputes are recorded on the aggregate and queryable
+  through `GET /api/admin/payments/{id}/disputes`; a lost dispute does not re-write refund totals.
 - (Implemented) Provider reconciliation: a sweep re-reads stale `pending`/`processing`/`authorized`
   payments and settles through the same `SettlePayment` command, so a lost webhook cannot leave a
   payment stuck.

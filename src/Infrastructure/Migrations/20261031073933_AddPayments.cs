@@ -15,6 +15,26 @@ namespace Infrastructure.Migrations
                 name: "payment");
 
             migrationBuilder.CreateTable(
+                name: "payment_disputes",
+                schema: "payment",
+                columns: table => new
+                {
+                    id = table.Column<Guid>(type: "uuid", nullable: false),
+                    payment_id = table.Column<Guid>(type: "uuid", nullable: false),
+                    provider_reference = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
+                    amount = table.Column<decimal>(type: "numeric(19,4)", precision: 19, scale: 4, nullable: false),
+                    currency = table.Column<string>(type: "character varying(3)", maxLength: 3, nullable: false),
+                    reason = table.Column<string>(type: "character varying(256)", maxLength: 256, nullable: false),
+                    status = table.Column<string>(type: "character varying(32)", maxLength: 32, nullable: false),
+                    opened_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    resolved_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true)
+                },
+                constraints: table =>
+                {
+                    table.PrimaryKey("PK_payment_disputes", x => x.id);
+                });
+
+            migrationBuilder.CreateTable(
                 name: "payment_idempotency_keys",
                 schema: "payment",
                 columns: table => new
@@ -122,6 +142,19 @@ namespace Infrastructure.Migrations
                 });
 
             migrationBuilder.CreateIndex(
+                name: "IX_payment_disputes_payment_id",
+                schema: "payment",
+                table: "payment_disputes",
+                column: "payment_id");
+
+            migrationBuilder.CreateIndex(
+                name: "IX_payment_disputes_provider_reference",
+                schema: "payment",
+                table: "payment_disputes",
+                column: "provider_reference",
+                unique: true);
+
+            migrationBuilder.CreateIndex(
                 name: "IX_payment_idempotency_keys_customer_id_idempotency_key",
                 schema: "payment",
                 table: "payment_idempotency_keys",
@@ -197,6 +230,10 @@ namespace Infrastructure.Migrations
         /// <inheritdoc />
         protected override void Down(MigrationBuilder migrationBuilder)
         {
+            migrationBuilder.DropTable(
+                name: "payment_disputes",
+                schema: "payment");
+
             migrationBuilder.DropTable(
                 name: "payment_idempotency_keys",
                 schema: "payment");

@@ -1,4 +1,5 @@
 using Application.BuildingBlocks.Querying.Pagination;
+using Application.Modules.Payments.Disputes.Models;
 using Application.Modules.Payments.Intents.Models;
 using Application.Modules.Payments.Refunds.Models;
 
@@ -81,6 +82,14 @@ public interface IPaymentReadStore
     Task<Result<IReadOnlyList<PaymentReadModel>>> ListForReconciliationAsync(
         DateTimeOffset receivedBefore,
         int take,
+        CancellationToken cancellationToken);
+
+    /// <summary>Lists the disputes raised against a payment.</summary>
+    /// <param name="paymentId">The payment id.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The disputes, or a stable failure.</returns>
+    Task<Result<IReadOnlyList<DisputeReadModel>>> ListDisputesAsync(
+        Guid paymentId,
         CancellationToken cancellationToken);
 
     /// <summary>Finds one refund belonging to a payment.</summary>

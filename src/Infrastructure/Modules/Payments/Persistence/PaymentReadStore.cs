@@ -1,4 +1,5 @@
 using Application.BuildingBlocks.Querying.Pagination;
+using Application.Modules.Payments.Disputes.Models;
 using Application.Modules.Payments.Intents.Models;
 using Application.Modules.Payments.Persistence;
 using Application.Modules.Payments.Refunds.Models;
@@ -143,6 +144,19 @@ public sealed class PaymentReadStore(DbContext context) : IPaymentReadStore
             .ToListAsync(cancellationToken);
 
         return Result<IReadOnlyList<PaymentReadModel>>.Success(rows);
+    }
+
+    /// <inheritdoc />
+    public async Task<Result<IReadOnlyList<DisputeReadModel>>> ListDisputesAsync(
+        Guid paymentId,
+        CancellationToken cancellationToken)
+    {
+        List<DisputeReadModel> rows = await context.Set<DisputeReadModel>().AsNoTracking()
+            .Where(model => model.PaymentId == paymentId)
+            .OrderByDescending(model => model.OpenedAt)
+            .ToListAsync(cancellationToken);
+
+        return Result<IReadOnlyList<DisputeReadModel>>.Success(rows);
     }
 
     /// <inheritdoc />

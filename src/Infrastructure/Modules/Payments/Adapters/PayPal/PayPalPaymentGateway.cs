@@ -277,6 +277,10 @@ public sealed class PayPalPaymentGateway(
                 (PaymentProviderEventType.Failed, ReadOrderId(resource)),
             PayPalConstant.EventType.CaptureRefunded =>
                 (PaymentProviderEventType.Refunded, ReadOrderId(resource)),
+            PayPalConstant.EventType.DisputeCreated =>
+                (PaymentProviderEventType.DisputeOpened, ReadDisputeOrderId(resource)),
+            PayPalConstant.EventType.DisputeResolved =>
+                (PaymentProviderEventType.DisputeLost, ReadDisputeOrderId(resource)),
             _ => null
         };
 
@@ -292,12 +296,35 @@ public sealed class PayPalPaymentGateway(
             DateTimeOffset.UtcNow,
             CaptureReference: mapped.Value.Type is PaymentProviderEventType.Captured
                 ? ReadString(resource, "id")
-                : null));
+                : null,
+            DisputeReference: mapped.Value.Type is PaymentProviderEventType.DisputeOpened
+                or PaymentProviderEventType.DisputeLost
+                ? ReadString(resource, "dispute_id")
+                : null,
+            DisputeReason: ReadString(resource, "reason")));
     }
 
     /// <summary>Reads a string property, tolerating absence.</summary>
     private static string ReadString(JsonElement element, string name)
         => element.TryGetProperty(name, out JsonElement value) ? value.GetString() ?? string.Empty : string.Empty;
+
+    /// <summary>Reads the disputed order id from a dispute resource.</summary>
+    private static string ReadDisputeOrderId(JsonElement resource)
+    {
+        if (!resource.TryGetProperty("disputed_transactions", out JsonElement transactions)
+            || transactions.ValueKind is not JsonValueKind.Array)
+            return string.Empty;
+
+        foreach (JsonElement transaction in transactions.EnumerateArray())
+        {
+            string orderId = ReadString(transaction, "seller_transaction_id");
+
+            if (!string.IsNullOrEmpty(orderId))
+                return orderId;
+        }
+
+        return string.Empty;
+    }
 
     /// <summary>Reads the first capture id from a captured order response.</summary>
     private static string? ReadCaptureId(JsonElement root, string orderId)

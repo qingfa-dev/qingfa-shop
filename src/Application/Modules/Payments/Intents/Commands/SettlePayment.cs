@@ -6,6 +6,7 @@ using Application.Modules.Payments.Ports.Models;
 
 using Core.BuildingBlocks.Domain.ValueObjects.Money;
 using Core.Modules.Payments;
+using Core.Modules.Payments.Disputes;
 using Core.Modules.Payments.Intents;
 
 namespace Application.Modules.Payments.Intents.Commands;
@@ -23,6 +24,8 @@ public static class SettlePayment
     /// <param name="FailureCode">The provider failure code, when failed.</param>
     /// <param name="ProviderEventId">The provider event id, used for correlation.</param>
     /// <param name="CaptureReference">The provider capture id, when the provider reports one.</param>
+    /// <param name="DisputeReference">The provider dispute reference, for dispute observations.</param>
+    /// <param name="DisputeReason">The provider dispute reason, for dispute observations.</param>
     public sealed record UseCase(
         PaymentProvider Provider,
         string ProviderReference,
@@ -30,7 +33,9 @@ public static class SettlePayment
         Money? Amount,
         string? FailureCode,
         string ProviderEventId,
-        string? CaptureReference = null) : ICommand<PaymentResponseModel>;
+        string? CaptureReference = null,
+        string? DisputeReference = null,
+        string? DisputeReason = null) : ICommand<PaymentResponseModel>;
 
     #endregion
 
@@ -86,6 +91,20 @@ public static class SettlePayment
             if (command.Observed is PaymentProviderEventType.Refunded or PaymentProviderEventType.RefundFailed)
                 return Result<PaymentResponseModel>.Success(payment.ToResponse());
 
+            if (command.Observed is PaymentProviderEventType.DisputeOpened
+                or PaymentProviderEventType.DisputeWon
+                or PaymentProviderEventType.DisputeLost)
+            {
+                Result<Payment> disputed = ApplyDispute(payment, command);
+
+                if (disputed.IsFailure)
+                    return Result<PaymentResponseModel>.Fail(disputed.Errors);
+
+                Result saved = await repository.SaveAsync(payment, cancellationToken);
+
+                return saved.Map(() => payment.ToResponse());
+            }
+
             Result<(Payment Payment, bool ShouldSave)> evaluated = Evaluate(
                 payment.ApplyObservation(
                     ToObservation(command.Observed),
@@ -102,6 +121,29 @@ public static class SettlePayment
                         ? SaveAsync(state.Payment, ct)
                         : Task.FromResult(Result<PaymentResponseModel>.Success(state.Payment.ToResponse())),
                     cancellationToken);
+        }
+
+        /// <summary>Applies a dispute observation; disputes are tracked beside the payment status.</summary>
+        private Result<Payment> ApplyDispute(Payment payment, UseCase command)
+        {
+            if (string.IsNullOrWhiteSpace(command.DisputeReference))
+                return Result<Payment>.Fail(PaymentsOutcome.Failure.ReferenceRequired("dispute reference"));
+
+            if (command.Observed is PaymentProviderEventType.DisputeOpened)
+            {
+                return payment.OpenDispute(
+                    PaymentDisputeExtension.DeterministicId(command.DisputeReference),
+                    command.DisputeReference,
+                    command.Amount ?? payment.Amount,
+                    command.DisputeReason ?? PaymentConstant.Reasons.ProviderDispute,
+                    clock.GetUtcNow());
+            }
+
+            DisputeOutcome outcome = command.Observed is PaymentProviderEventType.DisputeWon
+                ? DisputeOutcome.Won
+                : DisputeOutcome.Lost;
+
+            return payment.ResolveDispute(command.DisputeReference, outcome, clock.GetUtcNow());
         }
 
         /// <summary>Decides whether the observation persisted a transition or was already applied.</summary>

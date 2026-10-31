@@ -2,11 +2,13 @@ using System.Diagnostics.CodeAnalysis;
 
 using Application.BuildingBlocks.EventSourcing;
 using Application.BuildingBlocks.Messaging.Serialization;
+using Application.Modules.Payments.Disputes.Models;
 using Application.Modules.Payments.Intents.Models;
 using Application.Modules.Payments.Refunds.Models;
 
 using Core.BuildingBlocks.Domain.Events;
 using Core.Modules.Payments;
+using Core.Modules.Payments.Disputes;
 using Core.Modules.Payments.Intents;
 using Core.Modules.Payments.Refunds;
 
@@ -110,6 +112,37 @@ public sealed class PaymentProjection(DbContext context, IDomainEventSerializer 
                     row.ApprovalUrl = null;
                     row.UpdatedAt = expired.ExpiredAtUtc.UtcDateTime;
                 }, cancellationToken);
+                break;
+
+            case DisputeOpened disputeOpened:
+                context.Set<DisputeReadModel>().Add(new DisputeReadModel
+                {
+                    Id = disputeOpened.DisputeId,
+                    PaymentId = disputeOpened.PaymentId,
+                    ProviderReference = disputeOpened.ProviderDisputeReference,
+                    Amount = disputeOpened.Amount.Amount,
+                    Currency = disputeOpened.Amount.Currency.Code ?? PaymentConstant.Defaults.Currency,
+                    Reason = disputeOpened.Reason,
+                    Status = DisputeStatus.Opened.ToWire(),
+                    OpenedAt = disputeOpened.OccurredAtUtc.UtcDateTime
+                });
+                break;
+
+            case DisputeResolved disputeResolved:
+                DisputeReadModel? disputeRow = await context.Set<DisputeReadModel>()
+                    .FindAsync([disputeResolved.DisputeId], cancellationToken);
+
+                if (disputeRow is not null)
+                {
+                    disputeRow.Status = disputeResolved.Outcome switch
+                    {
+                        DisputeOutcome.Lost => DisputeStatus.Lost.ToWire(),
+                        DisputeOutcome.Accepted => DisputeStatus.Accepted.ToWire(),
+                        _ => DisputeStatus.Won.ToWire()
+                    };
+                    disputeRow.ResolvedAt = disputeResolved.OccurredAtUtc.UtcDateTime;
+                }
+
                 break;
 
             case RefundRequested requested:

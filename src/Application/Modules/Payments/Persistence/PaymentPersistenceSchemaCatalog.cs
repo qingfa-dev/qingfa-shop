@@ -19,6 +19,7 @@ public sealed class PaymentPersistenceSchemaCatalog
         "payment_refunds",
         "payment_webhook_events",
         "payment_idempotency_keys",
-        "payment_references"
+        "payment_references",
+        "payment_disputes"
     ];
 }

@@ -23,7 +23,10 @@ public enum PaymentProviderEventType
     Cancelled,
     Expired,
     Refunded,
-    RefundFailed
+    RefundFailed,
+    DisputeOpened,
+    DisputeWon,
+    DisputeLost
 }
 
 /// <summary>An intent-creation request.</summary>
@@ -85,4 +88,6 @@ public sealed record PaymentProviderEvent(
     string? RefundReference,
     Money? Amount,
     DateTimeOffset OccurredAt,
-    string? CaptureReference = null);
+    string? CaptureReference = null,
+    string? DisputeReference = null,
+    string? DisputeReason = null);

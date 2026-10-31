@@ -1,6 +1,7 @@
 using Core.BuildingBlocks.Domain.Events;
 using Core.BuildingBlocks.Domain.EventSourcing;
 using Core.BuildingBlocks.Domain.ValueObjects.Money;
+using Core.Modules.Payments.Disputes;
 using Core.Modules.Payments.Refunds;
 
 namespace Core.Modules.Payments.Intents;
@@ -9,6 +10,7 @@ namespace Core.Modules.Payments.Intents;
 public sealed class Payment : EventSourcedAggregate<Guid>
 {
     private readonly List<Refund> _refunds = [];
+    private readonly List<Dispute> _disputes = [];
 
     internal Payment() { }
 
@@ -71,6 +73,12 @@ public sealed class Payment : EventSourcedAggregate<Guid>
 
     /// <summary>The refunds issued against this payment.</summary>
     public IReadOnlyList<Refund> Refunds => _refunds;
+
+    /// <summary>The disputes raised against this payment.</summary>
+    public IReadOnlyList<Dispute> Disputes => _disputes;
+
+    /// <summary>Whether a dispute is still open.</summary>
+    public bool HasOpenDispute => _disputes.Any(dispute => dispute.IsOpen);
 
     /// <summary>Builds an unpersisted payment before its initiation event is validated.</summary>
     internal static Payment Draft(
@@ -358,6 +366,17 @@ public sealed class Payment : EventSourcedAggregate<Guid>
                 Status = PaymentStatus.Expired;
                 ApprovalUrl = null;
                 UpdatedAt = expired.ExpiredAtUtc;
+                break;
+
+            case DisputeOpened disputeOpened:
+                _disputes.Add(Dispute.Open(disputeOpened));
+                UpdatedAt = disputeOpened.OccurredAtUtc;
+                break;
+
+            case DisputeResolved disputeResolved:
+                _disputes.FirstOrDefault(dispute => dispute.Id == disputeResolved.DisputeId)
+                    ?.Resolve(disputeResolved.Outcome, disputeResolved.OccurredAtUtc);
+                UpdatedAt = disputeResolved.OccurredAtUtc;
                 break;
 
             case RefundRequested requested:

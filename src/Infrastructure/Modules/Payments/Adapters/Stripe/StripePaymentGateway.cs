@@ -196,6 +196,22 @@ public sealed class StripePaymentGateway : IPaymentGateway
                 return Task.FromResult(Result<Maybe<PaymentProviderEvent>>.Success(
                     Maybe<PaymentProviderEvent>.Empty()));
 
+            if (stripeEvent.Data.Object is Dispute dispute)
+            {
+                return Task.FromResult(Result<Maybe<PaymentProviderEvent>>.Success(
+                    Maybe<PaymentProviderEvent>.From(new PaymentProviderEvent(
+                        stripeEvent.Id,
+                        type.Value,
+                        ReadDisputeIntent(dispute),
+                        null,
+                        dispute.Amount > 0
+                            ? MoneyConverter.FromMinorUnits(dispute.Amount, new Currency(dispute.Currency))
+                            : null,
+                        stripeEvent.Created,
+                        DisputeReference: dispute.Id,
+                        DisputeReason: dispute.Reason))));
+            }
+
             var intent = stripeEvent.Data.Object as PaymentIntent;
 
             return Task.FromResult(Result<Maybe<PaymentProviderEvent>>.Success(
@@ -215,6 +231,10 @@ public sealed class StripePaymentGateway : IPaymentGateway
                 PaymentsOutcome.Failure.WebhookSignatureInvalid()));
         }
     }
+
+    /// <summary>Reads the disputed payment intent from a dispute payload.</summary>
+    private static string ReadDisputeIntent(Dispute dispute)
+        => dispute.PaymentIntentId ?? dispute.PaymentIntent?.Id ?? string.Empty;
 
     /// <summary>Creates an intent service bound to the configured key.</summary>
     private PaymentIntentService NewService() => new(_client);

@@ -189,6 +189,45 @@ public sealed class PaymentProjectionTest
         refund.ProviderReference.Should().Be("re_1");
     }
 
+    [Fact]
+    public async Task ApplyAsync_DisputeOpened_ShouldInsertTheDisputeRow()
+    {
+        await using var connection = new SqliteConnection("DataSource=:memory:");
+        await connection.OpenAsync();
+
+        DbContextOptions<ApplicationDbContext> options = new DbContextOptionsBuilder<ApplicationDbContext>()
+            .UseSqlite(connection)
+            .Options;
+
+        await using var context = new ApplicationDbContext(options);
+        await context.Database.EnsureCreatedAsync();
+
+        Guid paymentId = Guid.NewGuid();
+        Guid disputeId = Guid.NewGuid();
+
+        var serializer = new Mock<IDomainEventSerializer>();
+        serializer.Setup(x => x.Deserialize("DisputeOpened", 1, It.IsAny<string>()))
+            .Returns(new Core.Modules.Payments.Disputes.DisputeOpened(
+                paymentId,
+                disputeId,
+                "dp_1",
+                new Money(10m, new Currency("USD")),
+                "fraudulent",
+                DateTimeOffset.UtcNow));
+
+        var projection = new PaymentProjection(context, serializer.Object);
+        var result = await projection.ApplyAsync(Stored("DisputeOpened", 4), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+
+        Application.Modules.Payments.Disputes.Models.DisputeReadModel row =
+            await context.Set<Application.Modules.Payments.Disputes.Models.DisputeReadModel>().SingleAsync();
+
+        row.Id.Should().Be(disputeId);
+        row.Status.Should().Be("opened");
+        row.Amount.Should().Be(10m);
+    }
+
     private static StoredEvent Stored(string eventName, long version) => new(
         StreamId: "payment-1",
         Version: version,

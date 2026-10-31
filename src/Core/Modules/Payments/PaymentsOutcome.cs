@@ -98,6 +98,16 @@ public static class PaymentsOutcome
             code: Codes.RefundNotFound,
             message: $"Refund '{refundId}' was not found.");
 
+        /// <summary>The dispute does not exist on that payment.</summary>
+        public static Error DisputeNotFound(Guid disputeId) => Error.NotFound(
+            code: Codes.DisputeNotFound,
+            message: $"Dispute '{disputeId}' was not found.");
+
+        /// <summary>The disputed amount exceeds the captured amount.</summary>
+        public static Error DisputeExceedsCaptured(decimal requested, decimal captured) => Error.Conflict(
+            code: Codes.DisputeExceedsCaptured,
+            message: $"A dispute of {requested} exceeds the captured {captured}.");
+
         /// <summary>The refund reason is missing or too long.</summary>
         public static Error RefundReasonRequired() => Error.BadRequest(
             code: Codes.RefundReasonRequired,
@@ -243,6 +253,12 @@ public static class PaymentsOutcome
 
         /// <summary>Unknown refund.</summary>
         public const string RefundNotFound = "Payments.Refund.NotFound";
+
+        /// <summary>Unknown dispute.</summary>
+        public const string DisputeNotFound = "Payments.Dispute.NotFound";
+
+        /// <summary>Disputed amount above the captured amount.</summary>
+        public const string DisputeExceedsCaptured = "Payments.Dispute.ExceedsCaptured";
 
         /// <summary>Missing or over-long refund reason.</summary>
         public const string RefundReasonRequired = "Payments.Refund.ReasonRequired";

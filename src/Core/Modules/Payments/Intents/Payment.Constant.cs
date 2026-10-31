@@ -188,6 +188,9 @@ public static class PaymentConstant
         /// <summary>The provider rejected a refund without a code.</summary>
         public const string RefundFailed = "refund_failed";
 
+        /// <summary>Recorded when a dispute arrives without a provider reason.</summary>
+        public const string ProviderDispute = "provider_dispute";
+
         /// <summary>Recorded when a capture arrives after expiry.</summary>
         public const string LateSettlement = "late_settlement";
 
@@ -250,5 +253,8 @@ public static class PaymentConstant
 
         /// <summary>The base of the decimal scale used for minor units.</summary>
         public const int DecimalBase = 10;
+
+        /// <summary>Bytes of a hash used to derive a deterministic identifier.</summary>
+        public const int DeterministicIdBytes = 16;
     }
 }
