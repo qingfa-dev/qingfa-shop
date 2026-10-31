@@ -5,6 +5,7 @@ using Infrastructure.Modules.Payments;
 using Infrastructure.Modules.Payments.Adapters.Fake;
 using Infrastructure.Modules.Payments.Adapters.PayPal;
 using Infrastructure.Modules.Payments.Adapters.Stripe;
+using Infrastructure.Modules.Payments.Integrations.Messaging;
 using Infrastructure.Modules.Payments.Persistence;
 using Infrastructure.Modules.Todos.Integrations.Messaging;
 using Infrastructure.Modules.Todos.Persistence.EventSourcing;
@@ -29,7 +30,7 @@ public static class ModularInfraComposition
     /// <returns>The module registration set.</returns>
     public static InfrastructureModuleRegistrations CreateRegistrations() =>
         new(
-            Messaging: [new TodoMessagingModule()],
+            Messaging: [new TodoMessagingModule(), new PaymentMessagingModule()],
             EventStores: [new TodoEventStoreModule(), new PaymentEventStoreModule()]);
 
     /// <summary>Registers module services.</summary>
