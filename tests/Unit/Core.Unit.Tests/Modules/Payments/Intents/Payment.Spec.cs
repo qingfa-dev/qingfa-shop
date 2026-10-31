@@ -3,7 +3,6 @@ using AwesomeAssertions;
 using Core.BuildingBlocks.Domain.ValueObjects.Money;
 using Core.Modules.Payments;
 using Core.Modules.Payments.Intents;
-using Core.Modules.Payments.Refunds;
 
 namespace Core.Unit.Tests.Modules.Payments.Intents;
 
@@ -39,15 +38,9 @@ public sealed class PaymentSpec
         payment.MarkProcessing(null, Now);
         payment.Capture(Usd(49.90m), "cap_1", Now);
 
-        var history = payment.UncommittedEvents.ToList();
         Guid refundId = Guid.NewGuid();
-        history.Add(new RefundRequested(
-            refundId, payment.Id, Usd(49.90m), "damaged", "rk-1", Now));
-        history.Add(new RefundSucceeded(
-            refundId, payment.Id, Usd(49.90m), "re_1", Now));
-
-        payment.ClearUncommittedEvents();
-        payment.LoadFromHistory(history.Count, history);
+        payment.RequestRefund(refundId, Usd(49.90m), "damaged", "rk-1", Now);
+        payment.CompleteRefund(refundId, "re_1", Now);
         return payment;
     }
 
