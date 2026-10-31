@@ -16,10 +16,10 @@ public static class PaymentValidator
             .Ensure(() => !string.IsNullOrWhiteSpace(payment.ExternalReference),
                 PaymentsOutcome.Failure.ReferenceRequired("external reference"))
             .Ensure(() => payment.ExternalReference.Length <= PaymentConstant.Constraints.ReferenceMaxLength,
-                PaymentsOutcome.Failure.AmountInvalid("external reference is too long"))
+                PaymentsOutcome.Failure.ReferenceTooLong("external reference"))
             .Ensure(() => !string.IsNullOrWhiteSpace(payment.IdempotencyKey),
-                PaymentsOutcome.Failure.ReferenceRequired("idempotency key"))
+                PaymentsOutcome.Failure.IdempotencyKeyRequired())
             .Ensure(() => payment.IdempotencyKey.Length <= PaymentConstant.Constraints.IdempotencyKeyMaxLength,
-                PaymentsOutcome.Failure.AmountInvalid("idempotency key is too long"));
+                PaymentsOutcome.Failure.IdempotencyKeyTooLong());
     }
 }

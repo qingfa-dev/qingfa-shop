@@ -3,6 +3,7 @@ using AwesomeAssertions;
 using Core.BuildingBlocks.Domain.ValueObjects.Money;
 using Core.Modules.Payments;
 using Core.Modules.Payments.Intents;
+using Core.Modules.Payments.Refunds;
 
 namespace Core.Unit.Tests.Modules.Payments.Intents;
 
@@ -32,6 +33,24 @@ public sealed class PaymentSpec
         return result.Value;
     }
 
+    private static Payment Refunded()
+    {
+        Payment payment = NewPayment();
+        payment.MarkProcessing(null, Now);
+        payment.Capture(Usd(49.90m), "cap_1", Now);
+
+        var history = payment.UncommittedEvents.ToList();
+        Guid refundId = Guid.NewGuid();
+        history.Add(new RefundRequested(
+            refundId, payment.Id, Usd(49.90m), "damaged", "rk-1", Now));
+        history.Add(new RefundSucceeded(
+            refundId, payment.Id, Usd(49.90m), "re_1", Now));
+
+        payment.ClearUncommittedEvents();
+        payment.LoadFromHistory(history.Count, history);
+        return payment;
+    }
+
     [Fact]
     public void Initiate_ShouldCreatePendingPaymentWithOneEvent()
     {
@@ -43,15 +62,14 @@ public sealed class PaymentSpec
     }
 
     [Fact]
-    public void Capture_FromPending_ShouldBeRejected()
+    public void Capture_AutomaticFromPending_ShouldSucceed()
     {
         Payment payment = NewPayment();
 
-        var result = payment.Capture(Usd(49.90m), "cap_1", Now);
+        payment.Capture(Usd(49.90m), "cap_1", Now).IsSuccess.Should().BeTrue();
 
-        result.IsFailure.Should().BeTrue();
-        result.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.InvalidState);
-        payment.UncommittedEvents.Should().ContainSingle();
+        payment.Status.Should().Be(PaymentStatus.Captured);
+        payment.CapturedAmount.Amount.Should().Be(49.90m);
     }
 
     [Fact]
@@ -117,7 +135,7 @@ public sealed class PaymentSpec
         var result = payment.Authorize("auth_1", new Money(49.90m, new Currency("EUR")), Now);
 
         result.IsFailure.Should().BeTrue();
-        result.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.AmountInvalid);
+        result.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.CurrencyMismatch);
     }
 
     [Fact]
@@ -242,5 +260,185 @@ public sealed class PaymentSpec
         payment.Capture(Usd(49.90m), "cap_late", Now.AddHours(2)).IsSuccess.Should().BeTrue();
 
         payment.Status.Should().Be(PaymentStatus.Captured);
+        payment.UncommittedEvents.OfType<PaymentCaptured>()
+            .Single().Reason.Should().Be(PaymentConstant.Defaults.LateSettlement);
+    }
+
+    [Fact]
+    public void Capture_OnCancelled_ShouldFail()
+    {
+        Payment payment = NewPayment();
+        payment.Cancel("changed mind", Now).IsSuccess.Should().BeTrue();
+
+        var result = payment.Capture(Usd(49.90m), "cap_1", Now);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.InvalidState);
+        payment.Status.Should().Be(PaymentStatus.Cancelled);
+    }
+
+    [Fact]
+    public void Capture_OnRefunded_ShouldFail()
+    {
+        Payment payment = Refunded();
+        payment.Status.Should().Be(PaymentStatus.Refunded);
+
+        var result = payment.Capture(Usd(49.90m), "cap_1", Now);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.InvalidState);
+    }
+
+    [Fact]
+    public void ApplyObservation_Unknown_ShouldFailWithoutAnEvent()
+    {
+        Payment payment = NewPayment();
+        payment.MarkProcessing(null, Now);
+        int eventsBefore = payment.UncommittedEvents.Count;
+
+        var result = payment.ApplyObservation((PaymentObservation)99, "ref_1", Usd(1m), null, Now);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.InvalidState);
+        payment.UncommittedEvents.Should().HaveCount(eventsBefore);
+    }
+
+    [Fact]
+    public void Initiate_NegativeAmount_ShouldFail()
+    {
+        var result = PaymentFactory.Initiate(
+            Guid.NewGuid(), PaymentProvider.Fake, "ref", Usd(-1m), PaymentCaptureMode.Automatic,
+            "cart-1", "key-1", "fp-1", Guid.NewGuid(), null, null, Now);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.AmountInvalid);
+    }
+
+    [Fact]
+    public void Capture_WithDifferentCurrency_ShouldFail()
+    {
+        Payment payment = NewPayment();
+
+        var result = payment.Capture(new Money(49.90m, new Currency("EUR")), "cap_1", Now);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.CurrencyMismatch);
+        payment.Status.Should().Be(PaymentStatus.Pending);
+    }
+
+    [Fact]
+    public void Capture_AutomaticPartial_ShouldFail()
+    {
+        Payment payment = NewPayment();
+
+        var result = payment.Capture(Usd(20m), "cap_1", Now);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.AmountInvalid);
+        payment.CapturedAmount.Amount.Should().Be(0m);
+    }
+
+    [Fact]
+    public void Capture_LatePartial_ShouldFail()
+    {
+        Payment payment = NewPayment();
+        payment.Expire(Now.AddHours(1)).IsSuccess.Should().BeTrue();
+
+        var result = payment.Capture(Usd(20m), "cap_late", Now.AddHours(2));
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.AmountInvalid);
+        payment.Status.Should().Be(PaymentStatus.Expired);
+        payment.CapturedAmount.Amount.Should().Be(0m);
+    }
+
+    [Fact]
+    public void PartialCapture_ThenRemainder_ShouldReachCaptured()
+    {
+        Payment payment = NewPayment(PaymentCaptureMode.Manual);
+        payment.MarkProcessing(null, Now);
+        payment.Authorize("auth_1", Usd(49.90m), Now);
+
+        payment.Capture(Usd(20m), "cap_1", Now).IsSuccess.Should().BeTrue();
+        payment.AuthorizedAmount.Amount.Should().Be(49.90m);
+
+        payment.Capture(Usd(29.90m), "cap_2", Now).IsSuccess.Should().BeTrue();
+
+        payment.Status.Should().Be(PaymentStatus.Captured);
+        payment.CapturedAmount.Amount.Should().Be(49.90m);
+        payment.AuthorizedAmount.Amount.Should().Be(49.90m);
+        payment.RemainingCapturable.Should().Be(0m);
+    }
+
+    [Fact]
+    public void Expire_WithoutExpiryInstant_ShouldFail()
+    {
+        Payment payment = PaymentFactory.Initiate(
+            Guid.NewGuid(), PaymentProvider.Fake, "ref", Usd(10m), PaymentCaptureMode.Automatic,
+            "cart-1", "key-1", "fp-1", Guid.NewGuid(), null, null, Now).Value;
+
+        var result = payment.Expire(Now.AddHours(1));
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.InvalidState);
+        payment.Status.Should().Be(PaymentStatus.Pending);
+    }
+
+    [Fact]
+    public void Expire_BeforeExpiryInstant_ShouldFail()
+    {
+        Payment payment = NewPayment();
+
+        var result = payment.Expire(Now.AddMinutes(29));
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.InvalidState);
+        payment.Status.Should().Be(PaymentStatus.Pending);
+    }
+
+    [Fact]
+    public void Expire_AtExpiryInstant_ShouldSucceed()
+    {
+        Payment payment = NewPayment();
+
+        var result = payment.Expire(Now.AddMinutes(30));
+
+        result.IsSuccess.Should().BeTrue();
+        payment.Status.Should().Be(PaymentStatus.Expired);
+    }
+
+    [Fact]
+    public void Initiate_MissingIdempotencyKey_ShouldFail()
+    {
+        var result = PaymentFactory.Initiate(
+            Guid.NewGuid(), PaymentProvider.Fake, "ref", Usd(10m), PaymentCaptureMode.Automatic,
+            "cart-1", "   ", "fp-1", Guid.NewGuid(), null, null, Now);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.IdempotencyKeyRequired);
+    }
+
+    [Fact]
+    public void Initiate_ReferenceTooLong_ShouldFail()
+    {
+        var result = PaymentFactory.Initiate(
+            Guid.NewGuid(), PaymentProvider.Fake, "ref", Usd(10m), PaymentCaptureMode.Automatic,
+            new string('x', PaymentConstant.Constraints.ReferenceMaxLength + 1),
+            "key-1", "fp-1", Guid.NewGuid(), null, null, Now);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.ReferenceTooLong);
+    }
+
+    [Fact]
+    public void Initiate_IdempotencyKeyTooLong_ShouldFail()
+    {
+        var result = PaymentFactory.Initiate(
+            Guid.NewGuid(), PaymentProvider.Fake, "ref", Usd(10m), PaymentCaptureMode.Automatic,
+            "cart-1", new string('k', PaymentConstant.Constraints.IdempotencyKeyMaxLength + 1),
+            "fp-1", Guid.NewGuid(), null, null, Now);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.IdempotencyKeyTooLong);
     }
 }

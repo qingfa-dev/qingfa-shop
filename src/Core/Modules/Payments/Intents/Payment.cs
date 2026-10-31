@@ -110,13 +110,14 @@ public sealed class Payment : EventSourcedAggregate<Guid>
     public decimal RemainingCapturable => Math.Max(0m, Amount.Amount - CapturedAmount.Amount);
 
     /// <summary>Whether the payment can accept a capture right now.</summary>
-    public bool CanCapture => Status is PaymentStatus.Processing
+    public bool CanCapture => Status is PaymentStatus.Pending
+        or PaymentStatus.Processing
         or PaymentStatus.Authorized
         or PaymentStatus.Expired
         or PaymentStatus.Failed;
 
     /// <summary>Whether the payment can accept a refund right now.</summary>
-    public bool CanRefund => Status is PaymentStatus.Captured or PaymentStatus.PartiallyRefunded
+    public bool CanRefund => (Status is PaymentStatus.Captured or PaymentStatus.PartiallyRefunded)
         && CreditAllowed > 0;
 
     /// <summary>Applies a provider observation using the aggregate's transition rules.</summary>
@@ -157,7 +158,8 @@ public sealed class Payment : EventSourcedAggregate<Guid>
             return Result<Payment>.Fail(PaymentsOutcome.Failure.AmountInvalid("authorized amount is out of range"));
 
         if (authorized.Currency != Amount.Currency)
-            return Result<Payment>.Fail(PaymentsOutcome.Failure.AmountInvalid("authorized currency does not match"));
+            return Result<Payment>.Fail(PaymentsOutcome.Failure.CurrencyMismatch(
+                Amount.Currency.Code ?? string.Empty, authorized.Currency.Code ?? string.Empty));
 
         return RaiseEvent(new PaymentAuthorized(Id, providerReference, authorized, nowUtc));
     }
@@ -165,14 +167,16 @@ public sealed class Payment : EventSourcedAggregate<Guid>
     /// <summary>Captures part or all of the payment.</summary>
     public Result<Payment> Capture(Money captured, string providerReference, DateTimeOffset nowUtc)
     {
-        if (string.IsNullOrWhiteSpace(providerReference))
-            return Result<Payment>.Fail(PaymentsOutcome.Failure.ProviderReferenceMissing());
-
+        // Validate: A capture is only legal while the payment is in a capturable state.
         if (!CanCapture)
             return Result<Payment>.Fail(PaymentsOutcome.Failure.InvalidState(Status, "capture"));
 
+        if (string.IsNullOrWhiteSpace(providerReference))
+            return Result<Payment>.Fail(PaymentsOutcome.Failure.ProviderReferenceMissing());
+
         bool lateSettlement = Status is PaymentStatus.Expired or PaymentStatus.Failed;
 
+        // Enforce: Manual capture needs a prior authorization except for late settlement.
         if (CaptureMode is PaymentCaptureMode.Manual && Status is not PaymentStatus.Authorized && !lateSettlement)
             return Result<Payment>.Fail(PaymentsOutcome.Failure.InvalidState(Status, "capture before authorization"));
 
@@ -186,6 +190,11 @@ public sealed class Payment : EventSourcedAggregate<Guid>
         if (captured.Amount > RemainingCapturable)
             return Result<Payment>.Fail(PaymentsOutcome.Failure.AmountInvalid(
                 "captured amount exceeds the remaining amount"));
+
+        // Enforce: Automatic capture and late settlement must take the full remainder.
+        if (captured.Amount < RemainingCapturable && Status is not PaymentStatus.Authorized)
+            return Result<Payment>.Fail(PaymentsOutcome.Failure.AmountInvalid(
+                "partial capture requires an authorization"));
 
         string reason = Status switch
         {
@@ -233,11 +242,16 @@ public sealed class Payment : EventSourcedAggregate<Guid>
         return RaiseEvent(new PaymentCancelled(Id, reason, nowUtc));
     }
 
-    /// <summary>Expires an unpaid intent.</summary>
+    /// <summary>Expires an unpaid intent once its expiry instant has passed.</summary>
     public Result<Payment> Expire(DateTimeOffset nowUtc)
     {
+        // Validate: Only a pending intent can expire.
         if (Status is not PaymentStatus.Pending)
             return Result<Payment>.Fail(PaymentsOutcome.Failure.InvalidState(Status, "expire"));
+
+        // Enforce: The expiry instant must exist and have passed; grace periods belong to Application.
+        if (ExpiresAt is null || nowUtc < ExpiresAt)
+            return Result<Payment>.Fail(PaymentsOutcome.Failure.InvalidState(Status, "expire before the expiry instant"));
 
         return RaiseEvent(new PaymentExpired(Id, nowUtc));
     }
@@ -283,7 +297,9 @@ public sealed class Payment : EventSourcedAggregate<Guid>
             case PaymentCaptured captured:
                 ProviderReference = captured.ProviderReference;
                 CapturedAmount = captured.TotalCapturedAmount;
-                AuthorizedAmount = captured.TotalCapturedAmount;
+                // Enforce: A partial capture preserves the outstanding authorization amount.
+                if (CapturedAmount.Amount >= Amount.Amount)
+                    AuthorizedAmount = Amount;
                 Status = RefundedAmount.Amount > 0
                     ? (CapturedAmount.Amount > RefundedAmount.Amount ? PaymentStatus.PartiallyRefunded : PaymentStatus.Refunded)
                     : (CapturedAmount.Amount < Amount.Amount ? PaymentStatus.Authorized : PaymentStatus.Captured);
