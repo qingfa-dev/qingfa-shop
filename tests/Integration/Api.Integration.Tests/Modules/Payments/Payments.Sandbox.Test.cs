@@ -24,24 +24,37 @@ public sealed class PaymentsSandboxTest(ResultContractStackFixture fixture)
     /// <summary>The environment variable that carries a Stripe test key.</summary>
     private const string StripeKeyVariable = "STRIPE__SECRETKEY";
 
+    /// <summary>The environment variable that carries the Stripe webhook secret.</summary>
+    private const string StripeWebhookVariable = "STRIPE__WEBHOOKSECRET";
+
+    /// <summary>The environment variable that carries a PayPal client id.</summary>
+    private const string PayPalClientVariable = "PAYPAL__CLIENTID";
+
     /// <summary>The environment variable that carries a PayPal client secret.</summary>
     private const string PayPalSecretVariable = "PAYPAL__CLIENTSECRET";
+
+    /// <summary>The environment variable that carries the PayPal webhook id.</summary>
+    private const string PayPalWebhookVariable = "PAYPAL__WEBHOOKID";
 
     [Fact]
     public async Task Sandbox_StripeEnabledCreate_ShouldReachTheProvider()
     {
-        if (!IsEnabled(StripeKeyVariable))
-            Assert.Skip($"Set {StripeKeyVariable} to run the Stripe sandbox check.");
+        // Validate: the script enables the provider only when both secrets are present.
+        if (!HasSecrets(StripeKeyVariable, StripeWebhookVariable))
+            Assert.Skip($"Set {StripeKeyVariable} and {StripeWebhookVariable} to run the Stripe sandbox check.");
 
+        AssertProviderEnabled(PaymentProvider.Stripe);
         await AssertProviderAcceptedAsync(PaymentProvider.Stripe);
     }
 
     [Fact]
     public async Task Sandbox_PayPalEnabledCreate_ShouldReachTheProvider()
     {
-        if (!IsEnabled(PayPalSecretVariable))
-            Assert.Skip($"Set {PayPalSecretVariable} to run the PayPal sandbox check.");
+        if (!HasSecrets(PayPalClientVariable, PayPalSecretVariable, PayPalWebhookVariable))
+            Assert.Skip(
+                $"Set {PayPalClientVariable}, {PayPalSecretVariable}, and {PayPalWebhookVariable} to run the PayPal sandbox check.");
 
+        AssertProviderEnabled(PaymentProvider.PayPal);
         await AssertProviderAcceptedAsync(PaymentProvider.PayPal);
     }
 
@@ -74,16 +87,25 @@ public sealed class PaymentsSandboxTest(ResultContractStackFixture fixture)
             body);
     }
 
-    /// <summary>Reports whether a provider is enabled and its secret is present.</summary>
-    private bool IsEnabled(string variable)
-    {
-        if (string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(variable)))
-            return false;
+    /// <summary>Reports whether every required environment variable is present.</summary>
+    private static bool HasSecrets(params string[] variables)
+        => variables.All(name => !string.IsNullOrWhiteSpace(Environment.GetEnvironmentVariable(name)));
 
+    /// <summary>Fails loudly when the secret is set but the host did not register the provider.</summary>
+    private void AssertProviderEnabled(PaymentProvider provider)
+    {
         PaymentsOptions options = fixture.Factory.Services
             .GetRequiredService<IOptions<PaymentsOptions>>()
             .Value;
 
-        return options.Providers.Stripe.Enabled || options.Providers.PayPal.Enabled;
+        bool enabled = provider switch
+        {
+            PaymentProvider.Stripe => options.Providers.Stripe.Enabled,
+            PaymentProvider.PayPal => options.Providers.PayPal.Enabled,
+            _ => options.Providers.Fake.Enabled
+        };
+
+        enabled.Should().BeTrue(
+            $"the sandbox script must export Payments__Providers__{provider}.__Enabled before the host boots");
     }
 }

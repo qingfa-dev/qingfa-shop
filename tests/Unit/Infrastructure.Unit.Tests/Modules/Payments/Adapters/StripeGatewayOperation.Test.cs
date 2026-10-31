@@ -130,13 +130,47 @@ public sealed class StripeGatewayOperationTest
     }
 
     /// <summary>Builds an adapter whose HTTP calls return the supplied JSON.</summary>
-    private static StripePaymentGateway Build(string json)
+    private static StripePaymentGateway Build(string json, HttpStatusCode status = HttpStatusCode.OK)
     {
-        var httpClient = new HttpClient(new JsonHandler(json));
+        var httpClient = new HttpClient(new JsonHandler(json, status));
 
         return new StripePaymentGateway(
             Options,
             new StripeClient(Options.SecretKey, httpClient: new SystemNetHttpClient(httpClient)));
+    }
+
+    [Theory]
+    [InlineData(HttpStatusCode.Unauthorized, PaymentsOutcome.Codes.ProviderConfigurationInvalid)]
+    [InlineData(HttpStatusCode.Forbidden, PaymentsOutcome.Codes.ProviderConfigurationInvalid)]
+    [InlineData(HttpStatusCode.BadRequest, PaymentsOutcome.Codes.ProviderRequestRejected)]
+    [InlineData(HttpStatusCode.InternalServerError, PaymentsOutcome.Codes.ProviderRequestRejected)]
+    public async Task CreateIntent_ProviderFailure_ShouldMapToTheOutcome(
+        HttpStatusCode status,
+        string expectedCode)
+    {
+        StripePaymentGateway gateway = Build(
+            """{"error":{"type":"invalid_request_error","message":"nope"}}""",
+            status);
+
+        var result = await gateway.CreateIntentAsync(Request(), CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors[0].Code.Should().Be(expectedCode);
+    }
+
+    [Fact]
+    public async Task Refund_ProviderFailure_ShouldMapToTheOutcome()
+    {
+        StripePaymentGateway gateway = Build(
+            """{"error":{"type":"invalid_request_error","message":"nope"}}""",
+            HttpStatusCode.BadRequest);
+
+        var result = await gateway.RefundAsync(
+            new PaymentRefundRequest("pi_1", Guid.NewGuid(), Usd(10m), "refund:1", "returned"),
+            CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.ProviderRequestRejected);
     }
 
     /// <summary>Builds a canonical intent request.</summary>
@@ -152,14 +186,14 @@ public sealed class StripeGatewayOperationTest
         "key-1",
         new Dictionary<string, string>());
 
-    /// <summary>Answers every Stripe call with the same JSON body.</summary>
-    private sealed class JsonHandler(string json) : HttpMessageHandler
+    /// <summary>Answers every Stripe call with the same JSON body and status.</summary>
+    private sealed class JsonHandler(string json, HttpStatusCode status) : HttpMessageHandler
     {
         /// <inheritdoc />
         protected override Task<HttpResponseMessage> SendAsync(
             HttpRequestMessage request,
             CancellationToken cancellationToken)
-            => Task.FromResult(new HttpResponseMessage(HttpStatusCode.OK)
+            => Task.FromResult(new HttpResponseMessage(status)
             {
                 Content = new StringContent(json, Encoding.UTF8, "application/json")
             });

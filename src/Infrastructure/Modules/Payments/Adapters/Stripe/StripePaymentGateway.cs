@@ -60,25 +60,32 @@ public sealed class StripePaymentGateway : IPaymentGateway
 
         PaymentIntentService service = NewService();
 
-        PaymentIntent intent = await service.CreateAsync(
-            new PaymentIntentCreateOptions
-            {
-                Amount = minor.Value,
-                Currency = request.Amount.Currency.Code!.ToLowerInvariant(),
-                CaptureMethod = request.CaptureMode is PaymentCaptureMode.Manual
-                    ? StripeConstant.CaptureMethod.Manual
-                    : StripeConstant.CaptureMethod.Automatic,
-                AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions { Enabled = true },
-                Metadata = new Dictionary<string, string>(request.Metadata)
+        try
+        {
+            PaymentIntent intent = await service.CreateAsync(
+                new PaymentIntentCreateOptions
                 {
-                    [StripeConstant.Metadata.PaymentId] = request.PaymentId.ToString("N"),
-                    [StripeConstant.Metadata.ExternalReference] = request.ExternalReference
-                }
-            },
-            new RequestOptions { IdempotencyKey = request.IdempotencyKey },
-            cancellationToken);
+                    Amount = minor.Value,
+                    Currency = request.Amount.Currency.Code!.ToLowerInvariant(),
+                    CaptureMethod = request.CaptureMode is PaymentCaptureMode.Manual
+                        ? StripeConstant.CaptureMethod.Manual
+                        : StripeConstant.CaptureMethod.Automatic,
+                    AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions { Enabled = true },
+                    Metadata = new Dictionary<string, string>(request.Metadata)
+                    {
+                        [StripeConstant.Metadata.PaymentId] = request.PaymentId.ToString("N"),
+                        [StripeConstant.Metadata.ExternalReference] = request.ExternalReference
+                    }
+                },
+                new RequestOptions { IdempotencyKey = request.IdempotencyKey },
+                cancellationToken);
 
-        return Result<PaymentIntentResult>.Success(Map(intent));
+            return Result<PaymentIntentResult>.Success(Map(intent));
+        }
+        catch (StripeException exception)
+        {
+            return Result<PaymentIntentResult>.Fail(ToFailure(exception));
+        }
     }
 
     /// <inheritdoc />
@@ -106,14 +113,21 @@ public sealed class StripePaymentGateway : IPaymentGateway
 
         PaymentIntentService service = NewService();
 
-        PaymentIntent intent = await service.CaptureAsync(
-            request.ProviderReference,
-            new PaymentIntentCaptureOptions { AmountToCapture = minor.Value },
-            new RequestOptions { IdempotencyKey = request.IdempotencyKey },
-            cancellationToken);
+        try
+        {
+            PaymentIntent intent = await service.CaptureAsync(
+                request.ProviderReference,
+                new PaymentIntentCaptureOptions { AmountToCapture = minor.Value },
+                new RequestOptions { IdempotencyKey = request.IdempotencyKey },
+                cancellationToken);
 
-        return Result<PaymentCaptureResult>.Success(
-            new PaymentCaptureResult(intent.Id, request.Amount, true, null));
+            return Result<PaymentCaptureResult>.Success(
+                new PaymentCaptureResult(intent.Id, request.Amount, true, null));
+        }
+        catch (StripeException exception)
+        {
+            return Result<PaymentCaptureResult>.Fail(ToFailure(exception));
+        }
     }
 
     /// <inheritdoc />
@@ -125,13 +139,20 @@ public sealed class StripePaymentGateway : IPaymentGateway
 
         PaymentIntentService service = NewService();
 
-        await service.CancelAsync(
-            request.ProviderReference,
-            new PaymentIntentCancelOptions(),
-            new RequestOptions { IdempotencyKey = request.IdempotencyKey },
-            cancellationToken);
+        try
+        {
+            await service.CancelAsync(
+                request.ProviderReference,
+                new PaymentIntentCancelOptions(),
+                new RequestOptions { IdempotencyKey = request.IdempotencyKey },
+                cancellationToken);
 
-        return Result<PaymentCancelResult>.Success(new PaymentCancelResult(true, null));
+            return Result<PaymentCancelResult>.Success(new PaymentCancelResult(true, null));
+        }
+        catch (StripeException exception)
+        {
+            return Result<PaymentCancelResult>.Fail(ToFailure(exception));
+        }
     }
 
     /// <inheritdoc />
@@ -148,13 +169,20 @@ public sealed class StripePaymentGateway : IPaymentGateway
 
         var service = new RefundService(_client);
 
-        Refund refund = await service.CreateAsync(
-            new RefundCreateOptions { PaymentIntent = request.ProviderReference, Amount = minor.Value },
-            new RequestOptions { IdempotencyKey = request.IdempotencyKey },
-            cancellationToken);
+        try
+        {
+            Refund refund = await service.CreateAsync(
+                new RefundCreateOptions { PaymentIntent = request.ProviderReference, Amount = minor.Value },
+                new RequestOptions { IdempotencyKey = request.IdempotencyKey },
+                cancellationToken);
 
-        return Result<PaymentRefundResult>.Success(
-            new PaymentRefundResult(refund.Id, request.Amount, true, null));
+            return Result<PaymentRefundResult>.Success(
+                new PaymentRefundResult(refund.Id, request.Amount, true, null));
+        }
+        catch (StripeException exception)
+        {
+            return Result<PaymentRefundResult>.Fail(ToFailure(exception));
+        }
     }
 
     /// <inheritdoc />
@@ -230,6 +258,18 @@ public sealed class StripePaymentGateway : IPaymentGateway
             return Task.FromResult(Result<Maybe<PaymentProviderEvent>>.Fail(
                 PaymentsOutcome.Failure.WebhookSignatureInvalid()));
         }
+    }
+
+    /// <summary>Maps a Stripe failure onto the canonical outcome.</summary>
+    private static Error ToFailure(StripeException exception)
+    {
+        ArgumentNullException.ThrowIfNull(exception);
+
+        // Boundary: rejected credentials are a configuration fault, not a transient provider error.
+        return exception.HttpStatusCode is System.Net.HttpStatusCode.Unauthorized
+            or System.Net.HttpStatusCode.Forbidden
+            ? PaymentsOutcome.Failure.ProviderConfigurationInvalid(PaymentProvider.Stripe)
+            : PaymentsOutcome.Failure.ProviderRequestRejected(PaymentProvider.Stripe);
     }
 
     /// <summary>Reads the disputed payment intent from a dispute payload.</summary>
