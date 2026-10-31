@@ -161,19 +161,31 @@ Baseline key: `path` + member name.
 
 | Rule | Findings | Baseline rows |
 |---|---|---|
-| `magic-number` | 70 | 55 |
-| `magic-string` | 56 | 55 |
-| `outcome-shape` | 68 | 67 |
-| `monadic-result` | 17 | 17 |
+| `magic-number` | 0 | 0 |
+| `magic-string` | 0 | 0 |
+| `outcome-shape` | 0 | 0 |
+| `monadic-result` | 9 | 9 |
 
-Total: 211 findings suppressed by 194 baseline rows (the difference is repeated
-identical values in one file, carried as a row count).
+Total: 9 findings suppressed by 9 baseline rows. The original 211 findings /
+194 rows fell in four passes: the Payments constant and monadic-result pass,
+the EF Core configuration and seeder extraction, the provider, event,
+messaging, storage, gateway, and AppHost extractions, and the outcome-shape
+pass (query codes, notification builders, metadata, permissions, identity, and
+the persistence mapper rename). No row was ever added.
 
-The largest clusters are `CommandTimeout = 30` in seeders and resetters,
-`HasMaxLength(256)` in EF configurations, `LoggerMessage` event IDs, EF
-provider names, seeder names, the payments read store's `Task<T>` returns, and
-legacy outcomes that keep their codes in a sibling class (`QueryErrorCodes`)
-instead of a nested `Codes`.
+Three rules are fully cleared. The remaining baseline is deliberate:
+
+- `monadic-result` (9): module composition hooks (`Configure`,
+  `RegisterEventTypes`), aggregate state mutators (`LoadFromHistory`,
+  `RestoreSnapshot`, `RemoveAllEvents`, `ClearUncommittedEvents`), and the
+  storage anti-forgery `Task<bool>` contract. Changing those signatures would
+  ripple through the composition root and callers.
+
+The outcome-shape pass moved every code into its owning outcome: `QueryErrorCodes`
+became `QueryOutcome.Codes`, notification and permission code builders moved
+inside `Codes`, `StorageOutcome` became a static class, and the persistence
+failure mapper was renamed from `Persistence.Outcome.cs` to
+`Persistence.Mapper.cs` because it maps failures rather than declaring them.
 
 ## Architecture
 
@@ -370,7 +382,7 @@ cases in the Python file, which run `make convention.check SELF_TEST=1`.
 |---|---|
 | `scripts/common/convention-check.common.py` | four rules, masking, baseline ratchet, `--self-test` |
 | `scripts/common/convention-check.common.sh` | Make/CI entry point |
-| `scripts/common/convention-baseline.tsv` | 194 rows suppressing 211 findings |
+| `scripts/common/convention-baseline.tsv` | 9 rows suppressing 9 findings |
 | `make/common.mk` | `convention.check` target; `lint` prerequisite |
 | `.github/workflows/ci.yml` | explicit `make convention.check` step before build |
 | `AGENTS.md` | `## Convention gate` rules and baseline policy |
@@ -381,23 +393,16 @@ Verification performed:
 | Command | Result |
 |---|---|
 | `python3 … --self-test` | 23 fixtures pass |
-| `make convention.check` | pass, 211 baselined |
+| `make convention.check` | pass, 9 baselined |
 | Scratch `1234` + `Task<string>` file | fails with `magic-number` and `monadic-result` |
 | Extra `100` in a baselined file | fails with `new occurrence(s) of baselined value` |
 | Fake baseline row | fails with `stale baseline entry` |
 | `make lint` | pass, includes the gate |
 | `make convention.check SELF_TEST=1` | pass through the Make target |
-| `make ci` | blocked before the build by unrelated Payments work-in-progress |
+| `make ci` | pass, including the gate, Api, and RabbitMQ suites |
 
-`make ci` currently stops in `_dotnet.build` because the in-progress Payments
-constant extraction leaves `StripePaymentGateway.cs` referencing
-`StripeConstant.EventType` and `StripeConstant.IntentLifetimeMinutes`, which do
-not exist yet. The convention gate itself ran first and passed. That compile
-error is outside this change; re-run `make ci` once the Payments extraction
-lands.
-
-The checker found 70 numeric, 56 wire-string, 68 outcome, and 17 monadic
-findings on the tree at introduction. None were auto-fixed; the baseline keeps
-the gate honest until the clusters are cleaned up. Finishing the Payments
-extraction will legitimately make some rows stale; delete those rows in the
-same change.
+The checker initially found 70 numeric, 56 wire-string, 68 outcome, and 17
+monadic findings. Successive passes removed every numeric, wire-string, and
+outcome finding plus 8 monadic findings without adding a row, leaving 9
+findings across 9 rows. What remains is intentional legacy: composition-hook
+and aggregate-mutator signatures, plus the storage anti-forgery `Task<bool>`.
