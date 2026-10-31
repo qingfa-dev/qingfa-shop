@@ -64,81 +64,111 @@ public static class RefundPayment
         {
             ArgumentNullException.ThrowIfNull(command);
 
-            Result<Payment> loaded = await repository.LoadAsync(command.PaymentId, cancellationToken);
+            Guid refundId = Guid.NewGuid();
 
-            if (loaded.IsFailure)
-                return Result<Response>.Fail(loaded.Errors);
+            Result<Payment> refunded = await repository
+                .LoadAsync(command.PaymentId, cancellationToken)
+                .BindAsync((payment, ct) => RefundAsync(payment, command, refundId, ct), cancellationToken)
+                .BindAsync((payment, ct) => SaveAsync(payment, ct), cancellationToken);
 
-            Payment payment = loaded.Value;
+            return Created(refunded
+                .Map(payment => ToResponse(payment.Refunds.Single(item => item.Id == refundId), payment.Id)));
+        }
 
-            Result<IPaymentGateway> resolved = registry.Resolve(payment.Provider);
+        /// <summary>Requests the refund and applies the provider outcome to the aggregate.</summary>
+        private async Task<Result<Payment>> RefundAsync(
+            Payment payment,
+            UseCase command,
+            Guid refundId,
+            CancellationToken cancellationToken)
+            => await registry.Resolve(payment.Provider)
+                .BindAsync(
+                    (gateway, ct) => RefundAtProviderAsync(payment, gateway, command, refundId, ct),
+                    cancellationToken);
 
-            if (resolved.IsFailure)
-                return Result<Response>.Fail(resolved.Errors);
-
-            IPaymentGateway gateway = resolved.Value;
-
+        /// <summary>Calls the provider and completes or fails the refund accordingly.</summary>
+        private async Task<Result<Payment>> RefundAtProviderAsync(
+            Payment payment,
+            IPaymentGateway gateway,
+            UseCase command,
+            Guid refundId,
+            CancellationToken cancellationToken)
+        {
             // Validate: a provider without the capability may only refund the full remainder.
             if (command.Request.Amount.Amount < payment.CreditAllowed
                 && !gateway.Capabilities.SupportsPartialRefund)
-                return Result<Response>.Fail(PaymentsOutcome.Failure.PartialRefundUnsupported());
+                return Result<Payment>.Fail(PaymentsOutcome.Failure.PartialRefundUnsupported());
 
             if (payment.ProviderReference is null)
-                return Result<Response>.Fail(PaymentsOutcome.Failure.ProviderReferenceMissing());
+                return Result<Payment>.Fail(PaymentsOutcome.Failure.ProviderReferenceMissing());
 
-            Guid refundId = Guid.NewGuid();
+            return await payment
+                .RequestRefund(
+                    refundId,
+                    command.Request.Amount,
+                    command.Request.Reason,
+                    command.IdempotencyKey,
+                    clock.GetUtcNow())
+                .BindAsync(
+                    (requested, ct) => CallProviderAsync(requested, gateway, command, refundId, ct),
+                    cancellationToken);
+        }
 
-            Result<Payment> requested = payment.RequestRefund(
-                refundId,
-                command.Request.Amount,
-                command.Request.Reason,
-                command.IdempotencyKey,
-                clock.GetUtcNow());
-
-            if (requested.IsFailure)
-                return Result<Response>.Fail(requested.Errors);
-
+        /// <summary>Refunds at the provider, then completes or fails the recorded refund.</summary>
+        private async Task<Result<Payment>> CallProviderAsync(
+            Payment payment,
+            IPaymentGateway gateway,
+            UseCase command,
+            Guid refundId,
+            CancellationToken cancellationToken)
+        {
             Result<PaymentRefundResult> refunded = await PaymentMetrics.TrackAsync(
                 payment.Provider,
                 PaymentConstant.Operations.Refund,
                 () => gateway.RefundAsync(
-                new PaymentRefundRequest(
-                    payment.ProviderReference,
-                    refundId,
-                    command.Request.Amount,
-                    $"{PaymentConstant.IdempotencyPrefixes.Refund}{refundId:N}",
-                    command.Request.Reason),
-                cancellationToken));
+                    new PaymentRefundRequest(
+                        payment.ProviderReference!,
+                        refundId,
+                        command.Request.Amount,
+                        $"{PaymentConstant.IdempotencyPrefixes.Refund}{refundId:N}",
+                        command.Request.Reason),
+                    cancellationToken));
 
-            Result<Payment> completed = refunded.IsFailure || !refunded.Value.Succeeded
-                ? requested.Value.FailRefund(
+            return refunded.IsSuccess && refunded.Value.Succeeded
+                ? payment.CompleteRefund(refundId, refunded.Value.ProviderReference, clock.GetUtcNow())
+                : payment.FailRefund(
                     refundId,
-                    refunded.IsFailure ? refunded.Errors[0].Code : refunded.Value.FailureCode ?? PaymentConstant.Reasons.RefundFailed,
+                    refunded.IsFailure
+                        ? refunded.Errors[0].Code
+                        : refunded.Value.FailureCode ?? PaymentConstant.Reasons.RefundFailed,
                     refunded.IsFailure ? refunded.Errors[0].Message : null,
-                    clock.GetUtcNow())
-                : requested.Value.CompleteRefund(refundId, refunded.Value.ProviderReference, clock.GetUtcNow());
-
-            if (completed.IsFailure)
-                return Result<Response>.Fail(completed.Errors);
-
-            Result saved = await repository.SaveAsync(completed.Value, cancellationToken);
-
-            if (saved.IsFailure)
-                return Result<Response>.Fail(saved.Errors);
-
-            PaymentMetrics.RefundsSucceeded.Add(1);
-
-            Refund refund = completed.Value.Refunds.Single(item => item.Id == refundId);
-
-            return Result<Response>.Success(new Response(
-                    refund.Id,
-                    payment.Id,
-                    refund.Status.ToWire(),
-                    refund.Amount.Amount,
-                    refund.Amount.Currency.Code ?? payment.Amount.Currency.Code ?? PaymentConstant.Defaults.Currency,
-                    refund.ProviderReference))
-                .WithStatus(ResultConstant.StatusCode.Created);
+                    clock.GetUtcNow());
         }
+
+        /// <summary>Persists the aggregate and reports the refund metric.</summary>
+        private async Task<Result<Payment>> SaveAsync(Payment payment, CancellationToken cancellationToken)
+        {
+            Result saved = await repository.SaveAsync(payment, cancellationToken);
+
+            saved.Tap(() => PaymentMetrics.RefundsSucceeded.Add(1));
+
+            return saved.Map(() => payment);
+        }
+
+        /// <summary>Applies the created status to a successful result only.</summary>
+        private static Result<Response> Created(Result<Response> result)
+            => result.IsSuccess
+                ? result.WithStatus(ResultConstant.StatusCode.Created)
+                : result;
+
+        /// <summary>Maps the refund entity onto the response.</summary>
+        private static Response ToResponse(Refund refund, Guid paymentId) => new(
+            refund.Id,
+            paymentId,
+            refund.Status.ToWire(),
+            refund.Amount.Amount,
+            refund.Amount.Currency.Code ?? PaymentConstant.Defaults.Currency,
+            refund.ProviderReference);
     }
 
     #endregion

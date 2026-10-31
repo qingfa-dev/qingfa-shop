@@ -52,45 +52,55 @@ public static class ProcessPaymentWebhook
             if (command.RawBody.IsEmpty)
                 return Result<bool>.Fail(PaymentsOutcome.Failure.WebhookPayloadInvalid());
 
-            Result<IPaymentGateway> resolved = registry.Resolve(command.Provider);
+            return await registry.Resolve(command.Provider)
+                .BindAsync((gateway, ct) => ParseAsync(gateway, command, ct), cancellationToken)
+                .BindAsync((parsed, ct) => AcceptAsync(parsed, command, ct), cancellationToken);
+        }
 
-            if (resolved.IsFailure)
-                return Result<bool>.Fail(resolved.Errors);
-
-            Result<Maybe<PaymentProviderEvent>> parsed = await PaymentMetrics.TrackAsync(
+        /// <summary>Verifies the signature and normalizes the delivery.</summary>
+        private static async Task<Result<Maybe<PaymentProviderEvent>>> ParseAsync(
+            IPaymentGateway gateway,
+            UseCase command,
+            CancellationToken cancellationToken)
+            => await PaymentMetrics.TrackAsync(
                 command.Provider,
                 PaymentConstant.Operations.Webhook,
-                () => resolved.Value.ParseWebhookAsync(
-                    command.RawBody, command.Headers, cancellationToken));
+                () => gateway.ParseWebhookAsync(command.RawBody, command.Headers, cancellationToken));
 
-            if (parsed.IsFailure)
-                return Result<bool>.Fail(parsed.Errors);
-
+        /// <summary>Records, deduplicates, and settles an accepted delivery.</summary>
+        private async Task<Result<bool>> AcceptAsync(
+            Maybe<PaymentProviderEvent> parsed,
+            UseCase command,
+            CancellationToken cancellationToken)
+        {
             // Handle: an unsupported event type is acknowledged, never retried.
-            if (parsed.Value.HasNoValue)
+            if (parsed.HasNoValue)
                 return Result<bool>.Success(false);
 
             PaymentMetrics.WebhooksReceived.Add(1);
 
-            PaymentProviderEvent providerEvent = parsed.Value.Value;
+            PaymentProviderEvent providerEvent = parsed.Value;
             string providerName = command.Provider.ToWire();
 
-            Result<bool> recorded = await webhookStore.TryRecordAsync(
-                providerName,
-                providerEvent.EventId,
-                providerEvent.Type.ToString(),
-                Encoding.UTF8.GetString(command.RawBody.Span),
-                cancellationToken);
+            return await webhookStore
+                .TryRecordAsync(
+                    providerName,
+                    providerEvent.EventId,
+                    providerEvent.Type.ToString(),
+                    Encoding.UTF8.GetString(command.RawBody.Span),
+                    cancellationToken)
+                .BindAsync((recorded, ct) => recorded
+                    ? SettleAsync(providerEvent, command, providerName, ct)
+                    : Task.FromResult(Duplicate()), cancellationToken);
+        }
 
-            if (recorded.IsFailure)
-                return Result<bool>.Fail(recorded.Errors);
-
-            if (!recorded.Value)
-            {
-                PaymentMetrics.WebhooksDuplicate.Add(1);
-                return Result<bool>.Success(false);
-            }
-
+        /// <summary>Settles an accepted delivery, auditing an amount mismatch first.</summary>
+        private async Task<Result<bool>> SettleAsync(
+            PaymentProviderEvent providerEvent,
+            UseCase command,
+            string providerName,
+            CancellationToken cancellationToken)
+        {
             // Handle: a mismatched amount is audited, acknowledged, and never settled;
             // retrying the provider would not change the payload.
             if (await IsAmountMismatchAsync(command.Provider, providerEvent, cancellationToken))
@@ -100,7 +110,7 @@ public static class ProcessPaymentWebhook
                 await webhookStore.MarkProcessedAsync(
                     providerName,
                     providerEvent.EventId,
-                    PaymentConstant.Outcomes.AmountMismatch,
+                    PaymentsOutcome.Codes.WebhookAmountMismatch,
                     cancellationToken);
 
                 return Result<bool>.Success(false);
@@ -122,9 +132,7 @@ public static class ProcessPaymentWebhook
                 settled.IsFailure ? PaymentConstant.Outcomes.Failed : PaymentConstant.Outcomes.Settled,
                 cancellationToken);
 
-            return settled.IsFailure
-                ? Result<bool>.Fail(settled.Errors)
-                : Result<bool>.Success(true);
+            return settled.Map(_ => true);
         }
 
         /// <summary>Checks the observed amount against the payment it targets.</summary>
@@ -151,6 +159,13 @@ public static class ProcessPaymentWebhook
 
             return observed.Currency != payment.Amount.Currency
                 || observed.Amount > payment.Amount.Amount;
+        }
+
+        /// <summary>Reports a deduplicated delivery.</summary>
+        private static Result<bool> Duplicate()
+        {
+            PaymentMetrics.WebhooksDuplicate.Add(1);
+            return Result<bool>.Success(false);
         }
     }
 

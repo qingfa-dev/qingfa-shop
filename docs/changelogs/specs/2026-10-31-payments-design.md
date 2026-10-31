@@ -677,6 +677,9 @@ new RouteConfig
 - **DB-2** Projection checkpoints use the existing `ProjectionCheckpoint` store.
 - **DB-3** Refund totals are recomputed from succeeded refund rows, never incremented blindly.
 - **DB-4** `payments.customer_id` is required; only authenticated customers create payments in this slice.
+- **DB-7** Read ports are monadic: `IPaymentReadStore` and `IPaymentReferenceStore` return
+  `Result<T>`, and an absent row is `PaymentsOutcome.Failure.NotFound` / `ReferenceNotFound` rather
+  than `null`. The convention gate enforces this shape for `*.Interface.cs`.
 
 ### 11.3 Migration
 

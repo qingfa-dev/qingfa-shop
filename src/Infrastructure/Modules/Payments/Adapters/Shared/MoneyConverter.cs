@@ -50,7 +50,7 @@ public static class MoneyConverter
     /// <param name="currency">The currency code.</param>
     /// <returns>The domain amount.</returns>
     public static Money FromMinorUnits(long amount, Currency currency)
-        => new(amount / (decimal)Math.Pow(10, Exponent(currency.Code ?? PaymentConstant.Defaults.Currency)), currency);
+        => new(amount / (decimal)Math.Pow(PaymentConstant.Defaults.DecimalBase, Exponent(currency.Code ?? PaymentConstant.Defaults.Currency)), currency);
 
     /// <summary>Formats an amount for a provider that takes decimal strings.</summary>
     /// <param name="money">The amount.</param>

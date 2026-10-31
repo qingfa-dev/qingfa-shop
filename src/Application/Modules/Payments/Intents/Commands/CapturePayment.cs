@@ -43,71 +43,92 @@ public static class CapturePayment
         {
             ArgumentNullException.ThrowIfNull(command);
 
-            Result<Payment> loaded = await repository.LoadAsync(command.PaymentId, cancellationToken);
+            Result<Payment> captured = await repository
+                .LoadAsync(command.PaymentId, cancellationToken)
+                .BindAsync((payment, ct) => CaptureAsync(payment, command, ct), cancellationToken)
+                .BindAsync((payment, ct) => SaveAsync(payment, ct), cancellationToken);
 
-            if (loaded.IsFailure)
-                return Result<PaymentResponseModel>.Fail(loaded.Errors);
+            return captured.Map(payment => payment.ToResponse());
+        }
 
-            Payment payment = loaded.Value;
-
+        /// <summary>Captures at the provider and records the transition on the aggregate.</summary>
+        private async Task<Result<Payment>> CaptureAsync(
+            Payment payment,
+            UseCase command,
+            CancellationToken cancellationToken)
+        {
+            // Validate: a payment without a provider reference cannot be captured.
             if (payment.ProviderReference is null)
-                return Result<PaymentResponseModel>.Fail(PaymentsOutcome.Failure.ProviderReferenceMissing());
+                return Result<Payment>.Fail(PaymentsOutcome.Failure.ProviderReferenceMissing());
 
             Money amount = command.Amount
                 ?? new Money(payment.RemainingCapturable, payment.Amount.Currency);
 
-            Result<IPaymentGateway> resolved = registry.Resolve(payment.Provider);
+            return await registry.Resolve(payment.Provider)
+                .BindAsync(
+                    (gateway, ct) => CaptureAtProviderAsync(payment, gateway, amount, ct),
+                    cancellationToken);
+        }
 
-            if (resolved.IsFailure)
-                return Result<PaymentResponseModel>.Fail(resolved.Errors);
-
+        /// <summary>Calls the provider and maps the result onto the aggregate.</summary>
+        private async Task<Result<Payment>> CaptureAtProviderAsync(
+            Payment payment,
+            IPaymentGateway gateway,
+            Money amount,
+            CancellationToken cancellationToken)
+        {
             Result<PaymentCaptureResult> captured = await PaymentMetrics.TrackAsync(
                 payment.Provider,
                 PaymentConstant.Operations.Capture,
-                () => resolved.Value.CaptureAsync(
-                new PaymentCaptureRequest(
-                    payment.ProviderReference,
-                    amount,
-                    $"{PaymentConstant.IdempotencyPrefixes.Capture}{payment.Id:N}:{payment.CapturedAmount.Amount:0.####}"),
-                cancellationToken));
+                () => gateway.CaptureAsync(
+                    new PaymentCaptureRequest(
+                        payment.ProviderReference!,
+                        amount,
+                        $"{PaymentConstant.IdempotencyPrefixes.Capture}{payment.Id:N}:{payment.CapturedAmount.Amount:0.####}"),
+                    cancellationToken));
 
-            if (captured.IsFailure)
-                return Result<PaymentResponseModel>.Fail(captured.Errors);
-
-            if (!captured.Value.Succeeded)
-            {
-                Result<Payment> failed = payment.CaptureFailed(
-                    amount,
-                    captured.Value.FailureCode ?? PaymentConstant.Reasons.CaptureFailed,
-                    null,
-                    clock.GetUtcNow());
-
-                if (failed.IsFailure)
-                    return Result<PaymentResponseModel>.Fail(failed.Errors);
-
-                await repository.SaveAsync(failed.Value, cancellationToken);
-
-                return Result<PaymentResponseModel>.Fail(
-                    PaymentsOutcome.Failure.ProviderDeclined(captured.Value.FailureCode));
-            }
-
-            Result<Payment> transition = payment.Capture(
-                amount, captured.Value.ProviderReference, clock.GetUtcNow());
-
-            if (transition.IsFailure)
-                return Result<PaymentResponseModel>.Fail(transition.Errors);
-
-            Result saved = await repository.SaveAsync(transition.Value, cancellationToken);
-
-            if (saved.IsFailure)
-            {
-                PaymentMetrics.Failed.Add(1);
-                return Result<PaymentResponseModel>.Fail(saved.Errors);
-            }
-
-            PaymentMetrics.Settled.Add(1);
-            return Result<PaymentResponseModel>.Success(transition.Value.ToResponse());
+            return await captured
+                .BindAsync((result, ct) => ApplyAsync(payment, result, amount, ct), cancellationToken);
         }
+
+        /// <summary>Records a declined capture or the successful transition.</summary>
+        private async Task<Result<Payment>> ApplyAsync(
+            Payment payment,
+            PaymentCaptureResult result,
+            Money amount,
+            CancellationToken cancellationToken)
+        {
+            if (result.Succeeded)
+                return payment.Capture(amount, result.ProviderReference, clock.GetUtcNow());
+
+            Result<Payment> failed = payment.CaptureFailed(
+                amount,
+                result.FailureCode ?? PaymentConstant.Reasons.CaptureFailed,
+                null,
+                clock.GetUtcNow());
+
+            return await failed
+                .BindAsync((recorded, ct) => SaveAsync(recorded, ct), cancellationToken)
+                .BindAsync(
+                    (_, _) => Task.FromResult(Result<Payment>.Fail(
+                        PaymentsOutcome.Failure.ProviderDeclined(result.FailureCode))),
+                    cancellationToken);
+        }
+
+        /// <summary>Persists the aggregate and reports the settlement metric.</summary>
+        private async Task<Result<Payment>> SaveAsync(Payment payment, CancellationToken cancellationToken)
+        {
+            Result saved = await repository.SaveAsync(payment, cancellationToken);
+
+            saved.Switch(
+                RecordSettled,
+                _ => PaymentMetrics.Failed.Add(1));
+
+            return saved.Map(() => payment);
+        }
+
+        /// <summary>Records one settled capture.</summary>
+        private static void RecordSettled() => PaymentMetrics.Settled.Add(1);
     }
 
     #endregion

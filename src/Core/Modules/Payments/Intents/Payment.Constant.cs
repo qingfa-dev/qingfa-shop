@@ -244,5 +244,8 @@ public static class PaymentConstant
 
         /// <summary>Default ceiling for a single payment.</summary>
         public const decimal MaxAmount = 100000m;
+
+        /// <summary>The base of the decimal scale used for minor units.</summary>
+        public const int DecimalBase = 10;
     }
 }

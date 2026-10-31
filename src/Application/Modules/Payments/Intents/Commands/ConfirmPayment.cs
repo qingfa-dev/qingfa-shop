@@ -38,67 +38,76 @@ public static class ConfirmPayment
         {
             ArgumentNullException.ThrowIfNull(command);
 
+            return await ResolveAsync(command, cancellationToken)
+                .BindAsync((target, ct) => RefreshAsync(target, ct), cancellationToken);
+        }
+
+        /// <summary>Resolves the provider and reference from the projection or the event stream.</summary>
+        private async Task<Result<Target>> ResolveAsync(UseCase command, CancellationToken cancellationToken)
+        {
             Result<PaymentReadModel> row = await store.FindAsync(command.PaymentId, cancellationToken);
 
-            PaymentProvider provider;
-            string? providerReference;
-            PaymentStatus status;
+            if (row.IsSuccess)
+                return Result<Target>.Success(new Target(
+                    PaymentProviderExtension.FromWire(row.Value.Provider),
+                    row.Value.ProviderReference,
+                    PaymentStatusExtension.FromWire(row.Value.Status)));
 
-            if (row is null)            {
-                // Fallback: read the event stream while the projection is still catching up.
-                Result<Payment> loaded = await repository.LoadAsync(command.PaymentId, cancellationToken);
+            // Fallback: read the event stream while the projection is still catching up.
+            Result<Payment> loaded = await repository.LoadAsync(command.PaymentId, cancellationToken);
 
-                if (loaded.IsFailure)
-                    return Result<PaymentResponseModel>.Fail(
-                        PaymentsOutcome.Failure.NotFound(command.PaymentId));
-
-                provider = loaded.Value.Provider;
-                providerReference = loaded.Value.ProviderReference;
-                status = loaded.Value.Status;
-            }
-            else
-            {
-                provider = PaymentProviderExtension.FromWire(row.Value.Provider);
-                providerReference = row.Value.ProviderReference;
-                status = PaymentStatusExtension.FromWire(row.Value.Status);
-            }
-
-            if (providerReference is null)
-                return Result<PaymentResponseModel>.Fail(
-                    PaymentsOutcome.Failure.InvalidState(status, "confirm"));
-
-            Result<IPaymentGateway> resolved = registry.Resolve(provider);
-
-            if (resolved.IsFailure)
-                return Result<PaymentResponseModel>.Fail(resolved.Errors);
-
-            Result<PaymentIntentResult> intent = await PaymentMetrics.TrackAsync(
-                provider,
-                PaymentConstant.Operations.Retrieve,
-                () => resolved.Value.RetrieveAsync(providerReference, cancellationToken));
-
-            if (intent.IsFailure)
-                return Result<PaymentResponseModel>.Fail(intent.Errors);
-
-            PaymentProviderEventType observed = intent.Value.Status switch
-            {
-                PaymentProviderIntentStatus.Captured => PaymentProviderEventType.Captured,
-                PaymentProviderIntentStatus.Authorized => PaymentProviderEventType.Authorized,
-                PaymentProviderIntentStatus.Cancelled => PaymentProviderEventType.Cancelled,
-                _ => PaymentProviderEventType.Failed
-            };
-
-            return await mediator.Send(
-                new SettlePayment.UseCase(
-                    provider,
-                    providerReference,
-                    observed,
-                    null,
-                    intent.Value.FailureCode,
-                    $"{PaymentConstant.IdempotencyPrefixes.Confirm}{command.PaymentId:N}"),
-                cancellationToken);
+            return loaded.Map(payment => new Target(
+                payment.Provider,
+                payment.ProviderReference,
+                payment.Status));
         }
+
+        /// <summary>Asks the provider for the current state and settles through the shared command.</summary>
+        private async Task<Result<PaymentResponseModel>> RefreshAsync(
+            Target target,
+            CancellationToken cancellationToken)
+        {
+            if (target.ProviderReference is null)
+                return Result<PaymentResponseModel>.Fail(
+                    PaymentsOutcome.Failure.InvalidState(target.Status, "confirmed"));
+
+            return await registry
+                .Resolve(target.Provider)
+                .BindAsync(
+                    (gateway, ct) => PaymentMetrics.TrackAsync(
+                        target.Provider,
+                        PaymentConstant.Operations.Retrieve,
+                        () => gateway.RetrieveAsync(target.ProviderReference, ct)),
+                    cancellationToken)
+                .BindAsync(
+                    (intent, ct) => mediator.Send(
+                        new SettlePayment.UseCase(
+                            target.Provider,
+                            target.ProviderReference,
+                            ToEventType(intent.Status),
+                            null,
+                            intent.FailureCode,
+                            $"{PaymentConstant.IdempotencyPrefixes.Confirm}{target.ProviderReference}"),
+                        ct),
+                    cancellationToken);
+        }
+
+        /// <summary>Maps a provider intent status onto the observed event type.</summary>
+        private static PaymentProviderEventType ToEventType(PaymentProviderIntentStatus status) => status switch
+        {
+            PaymentProviderIntentStatus.Captured => PaymentProviderEventType.Captured,
+            PaymentProviderIntentStatus.Authorized => PaymentProviderEventType.Authorized,
+            PaymentProviderIntentStatus.Cancelled => PaymentProviderEventType.Cancelled,
+            _ => PaymentProviderEventType.Failed
+        };
     }
+
+    #region Models
+
+    /// <summary>The provider identity a confirmation needs.</summary>
+    private sealed record Target(PaymentProvider Provider, string? ProviderReference, PaymentStatus Status);
+
+    #endregion
 
     #endregion
 }

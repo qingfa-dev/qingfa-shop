@@ -31,7 +31,6 @@ magic-number	src/Infrastructure/BuildingBlocks/Adapters/Security/Identity/Servic
 magic-number	src/Infrastructure/BuildingBlocks/Adapters/Storage/Helpers/EncryptionHelper.cs	16	1	legacy: unnamed numeric literal
 magic-number	src/Infrastructure/BuildingBlocks/Adapters/Storage/Helpers/EncryptionHelper.cs	32	1	legacy: unnamed numeric literal
 magic-number	src/Infrastructure/BuildingBlocks/Adapters/Storage/Security/Scanners/Storage.MalwareScanner.Service.cs	30	1	legacy: unnamed numeric literal
-magic-number	src/Infrastructure/Modules/Payments/Adapters/Shared/MoneyConverter.cs	10	2	legacy: unnamed numeric literal
 magic-number	src/Infrastructure/Modules/Todos/Persistence/Schemas/EntityConfiguration/TodoCategoryEntityTypeConfiguration.cs	256	3	legacy: unnamed numeric literal
 magic-number	src/Infrastructure/Modules/Todos/Persistence/Schemas/EntityConfiguration/TodoListEntityTypeConfiguration.cs	256	3	legacy: unnamed numeric literal
 magic-number	src/Infrastructure/Modules/Todos/Persistence/Schemas/EntityConfiguration/TodoReadModel.Configuration.cs	256	3	legacy: unnamed numeric literal

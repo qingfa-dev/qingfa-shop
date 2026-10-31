@@ -62,144 +62,226 @@ public static class CreatePayment
         {
             ArgumentNullException.ThrowIfNull(command);
 
-            if (!Guid.TryParse(userContext.UserId, out Guid customerId))
-                return Result<PaymentResponseModel>.Fail(PaymentsOutcome.Failure.CustomerRequired());
+            Result<State> created = await Result<State>.Success(new State())
+                .BindAsync((state, _) => Task.FromResult(Resolve(command, state)), cancellationToken)
+                .BindAsync((state, ct) => ReserveAsync(state, command, ct), cancellationToken)
+                .BindAsync((state, ct) => state.Reservation.IsNew
+                    ? CreateAsync(state, command, ct)
+                    : ReplayAsync(state, ct), cancellationToken)
+                .BindAsync((state, ct) => PersistAsync(state, command, ct), cancellationToken);
 
-            // Validate: the configured per-currency ceiling applies before any provider call.
+            if (created.IsFailure)
+                return created.Map(_ => new PaymentResponseModel());
+
+            Result<PaymentResponseModel> response = Map(created.Value);
+
+            return created.Value.WasCreated
+                ? response
+                : response.WithMetadata(PaymentConstant.Metadata.IdempotencyReplay, true);
+        }
+
+        /// <summary>Resolves the customer, the currency ceiling, and the request fingerprint.</summary>
+        private Result<State> Resolve(UseCase command, State state)
+        {
+            if (!Guid.TryParse(userContext.UserId, out Guid customerId))
+                return Result<State>.Fail(PaymentsOutcome.Failure.CustomerRequired());
+
             string currencyCode = command.Request.Amount.Currency.Code ?? string.Empty;
 
             if (!policy.MaximumAmountsByCurrency.TryGetValue(currencyCode, out decimal maximum))
-                return Result<PaymentResponseModel>.Fail(
-                    PaymentsOutcome.Failure.CurrencyUnsupported(currencyCode));
+                return Result<State>.Fail(PaymentsOutcome.Failure.CurrencyUnsupported(currencyCode));
 
+            // Validate: the configured per-currency ceiling applies before any provider call.
             if (command.Request.Amount.Amount > maximum)
-                return Result<PaymentResponseModel>.Fail(
+                return Result<State>.Fail(
                     PaymentsOutcome.Failure.AmountExceedsLimit(command.Request.Amount.Amount, maximum));
 
-            string fingerprint = Fingerprint(command.Request);
+            return Result<State>.Success(state with
+            {
+                CustomerId = customerId,
+                Maximum = maximum,
+                Fingerprint = Fingerprint(command.Request)
+            });
+        }
 
-            // Enforce: reserve the key synchronously so a replay never creates a second
-            // provider intent while the projection is still catching up.
+        /// <summary>Reserves the idempotency key synchronously.</summary>
+        private async Task<Result<State>> ReserveAsync(
+            State state,
+            UseCase command,
+            CancellationToken cancellationToken)
+        {
             Result<IdempotencyReservation> reservation = await idempotency.ReserveAsync(
-                customerId, command.IdempotencyKey, fingerprint, cancellationToken);
+                state.CustomerId, command.IdempotencyKey, state.Fingerprint, cancellationToken);
 
-            if (reservation.IsFailure)
-                return Result<PaymentResponseModel>.Fail(reservation.Errors);
+            return reservation.Map(reserved => state with { Reservation = reserved });
+        }
 
-            if (!reservation.Value.IsNew)
-            {
-                if (!reservation.Value.FingerprintMatches)
-                    return Result<PaymentResponseModel>.Fail(PaymentsOutcome.Failure.IdempotencyConflict());
+        /// <summary>Returns the stored payment for a replay.</summary>
+        private async Task<Result<State>> ReplayAsync(State state, CancellationToken cancellationToken)
+        {
+            if (!state.Reservation.FingerprintMatches)
+                return Result<State>.Fail(PaymentsOutcome.Failure.IdempotencyConflict());
 
-                Result<Payment> replay = await repository.LoadAsync(reservation.Value.PaymentId, cancellationToken);
+            Result<Payment> replay = await repository.LoadAsync(
+                state.Reservation.PaymentId, cancellationToken);
 
-                return replay.IsFailure
-                    ? Result<PaymentResponseModel>.Fail(replay.Errors)
-                    : Result<PaymentResponseModel>.Success(replay.Value.ToResponse())
-                        .WithMetadata(PaymentConstant.Metadata.IdempotencyReplay, true);
-            }
-
-            Result<Payment> created = await registry.Resolve(command.Request.Provider)
-                .BindAsync(
-                    (gateway, ct) => CreateWithGatewayAsync(
-                        gateway,
-                        command.Request,
-                        customerId,
-                        command.IdempotencyKey,
-                        fingerprint,
-                        reservation.Value.PaymentId,
-                        maximum,
-                        ct),
-                    cancellationToken);
-
-            if (created.IsFailure)
-            {
-                // Fallback: release the reservation so a retry can create the payment.
-                await idempotency.ReleaseAsync(
-                    customerId, command.IdempotencyKey, reservation.Value.PaymentId, cancellationToken);
-
-                return Result<PaymentResponseModel>.Fail(created.Errors);
-            }
-
-            Result saved = await repository.SaveAsync(created.Value, cancellationToken);
-
-            if (saved.IsFailure)
-            {
-                await idempotency.ReleaseAsync(
-                    customerId, command.IdempotencyKey, reservation.Value.PaymentId, cancellationToken);
-
-                return Result<PaymentResponseModel>.Fail(saved.Errors);
-            }
-
-            // Enforce: provider callbacks must resolve before the projection catches up.
-            if (created.Value.ProviderReference is not null)
-            {
-                await references.RecordAsync(
-                    created.Value.Provider,
-                    created.Value.ProviderReference,
-                    created.Value.Id,
-                    cancellationToken);
-            }
-
-            PaymentMetrics.Initiated.Add(
-                1,
-                new KeyValuePair<string, object?>(PaymentMetrics.ProviderTag, created.Value.Provider.ToWire()));
-
-            return Result<PaymentResponseModel>.Success(created.Value.ToResponse())
-                .WithStatus(ResultConstant.StatusCode.Created);
+            return replay.Map(payment => state with { Payment = payment, WasCreated = false });
         }
 
         /// <summary>Creates the provider intent and the aggregate that records it.</summary>
         private async Task<Result<Payment>> CreateWithGatewayAsync(
             IPaymentGateway gateway,
-            Request request,
-            Guid customerId,
-            string idempotencyKey,
-            string fingerprint,
-            Guid id,
-            decimal maximumAmount,
+            State state,
+            UseCase command,
             CancellationToken cancellationToken)
         {
             Result<PaymentIntentResult> intent = await PaymentMetrics.TrackAsync(
                 gateway.Provider,
                 PaymentConstant.Operations.Create,
                 () => gateway.CreateIntentAsync(
-                new PaymentIntentRequest(
-                    id,
-                    request.Amount,
-                    gateway.Provider,
-                    customerId,
-                    request.ExternalReference,
-                    request.ReturnUrl,
-                    request.CancelUrl,
-                    request.CaptureMode,
-                    $"{PaymentConstant.IdempotencyPrefixes.Create}{idempotencyKey}",
-                    new Dictionary<string, string>()),
-                cancellationToken));
+                    new PaymentIntentRequest(
+                        state.Reservation.PaymentId,
+                        command.Request.Amount,
+                        gateway.Provider,
+                        state.CustomerId,
+                        command.Request.ExternalReference,
+                        command.Request.ReturnUrl,
+                        command.Request.CancelUrl,
+                        command.Request.CaptureMode,
+                        $"{PaymentConstant.IdempotencyPrefixes.Create}{command.IdempotencyKey}",
+                        new Dictionary<string, string>()),
+                    cancellationToken));
 
-            if (intent.IsFailure)
-                return Result<Payment>.Fail(intent.Errors);
+            return await intent
+                .BindAsync(
+                    (value, _) => Task.FromResult(Initiate(gateway, state, command, value)),
+                    cancellationToken);
+        }
 
-            PaymentIntentResult value = intent.Value;
-
-            return PaymentFactory.Initiate(
-                    id: id,
+        /// <summary>Records the initiation event, failing the payment when the provider declined.</summary>
+        private Result<Payment> Initiate(
+            IPaymentGateway gateway,
+            State state,
+            UseCase command,
+            PaymentIntentResult value)
+            => PaymentFactory
+                .Initiate(
+                    id: state.Reservation.PaymentId,
                     provider: gateway.Provider,
                     providerReference: value.ProviderReference,
-                    amount: request.Amount,
-                    captureMode: request.CaptureMode,
-                    externalReference: request.ExternalReference,
-                    idempotencyKey: idempotencyKey,
-                    idempotencyFingerprint: fingerprint,
-                    customerId: customerId,
+                    amount: command.Request.Amount,
+                    captureMode: command.Request.CaptureMode,
+                    externalReference: command.Request.ExternalReference,
+                    idempotencyKey: command.IdempotencyKey,
+                    idempotencyFingerprint: state.Fingerprint,
+                    customerId: state.CustomerId,
                     approvalUrl: value.ApprovalUrl,
                     // Fallback: providers that do not state an expiry use the configured lifetime.
                     expiresAt: value.ExpiresAt ?? clock.GetUtcNow().Add(policy.HostedCheckoutIntentLifetime),
                     nowUtc: clock.GetUtcNow(),
-                    maxAmount: maximumAmount)
+                    maxAmount: state.Maximum)
                 .Bind(payment => value.Status is PaymentProviderIntentStatus.Failed
-                    ? payment.Fail(value.FailureCode ?? PaymentConstant.Reasons.ProviderFailed, null, clock.GetUtcNow())
+                    ? payment.Fail(
+                        value.FailureCode ?? PaymentConstant.Reasons.ProviderFailed,
+                        null,
+                        clock.GetUtcNow())
                     : Result<Payment>.Success(payment));
+
+        /// <summary>Creates the aggregate for a new payment.</summary>
+        private async Task<Result<State>> CreateAsync(
+            State state,
+            UseCase command,
+            CancellationToken cancellationToken)
+        {
+            Result<Payment> created = await registry
+                .Resolve(command.Request.Provider)
+                .BindAsync(
+                    (gateway, ct) => CreateWithGatewayAsync(gateway, state, command, ct),
+                    cancellationToken);
+
+            if (created.IsFailure)
+            {
+                // Fallback: release the reservation so a retry can create the payment.
+                await Release(state, command, cancellationToken);
+                return Result<State>.Fail(created.Errors);
+            }
+
+            return created.Map(payment => state with { Payment = payment, WasCreated = true });
+        }
+
+        /// <summary>Persists a newly created payment and records its provider reference.</summary>
+        private async Task<Result<State>> PersistAsync(
+            State state,
+            UseCase command,
+            CancellationToken cancellationToken)
+        {
+            if (!state.WasCreated)
+                return Result<State>.Success(state);
+
+            Result saved = await repository.SaveAsync(state.Payment!, cancellationToken);
+
+            if (saved.IsSuccess)
+            {
+                await RecordReference(state.Payment!, cancellationToken);
+                return Result<State>.Success(state);
+            }
+
+            // Fallback: release the reservation so a retry can create the payment.
+            await Release(state, command, cancellationToken);
+
+            return Result<State>.Fail(saved.Errors);
+        }
+
+        /// <summary>Records the provider reference so callbacks resolve before the projection catches up.</summary>
+        private Task RecordReference(Payment payment, CancellationToken cancellationToken)
+            => payment.ProviderReference is null
+                ? Task.CompletedTask
+                : references.RecordAsync(
+                    payment.Provider,
+                    payment.ProviderReference,
+                    payment.Id,
+                    cancellationToken);
+
+        /// <summary>Releases the reservation so a retry can create the payment.</summary>
+        private Task Release(State state, UseCase command, CancellationToken cancellationToken)
+            => idempotency.ReleaseAsync(
+                state.CustomerId,
+                command.IdempotencyKey,
+                state.Reservation.PaymentId,
+                cancellationToken);
+
+        /// <summary>Maps the stored payment to the response.</summary>
+        private static Result<PaymentResponseModel> Map(State state)
+        {
+            Payment payment = state.Payment
+                ?? throw new InvalidOperationException("The payment was not created or replayed.");
+
+            Result<PaymentResponseModel> response = Result<PaymentResponseModel>.Success(payment.ToResponse());
+
+            if (!state.WasCreated)
+                return response.WithMetadata(PaymentConstant.Metadata.IdempotencyReplay, true);
+
+            PaymentMetrics.Initiated.Add(
+                1,
+                new KeyValuePair<string, object?>(PaymentMetrics.ProviderTag, payment.Provider.ToWire()));
+
+            return response.WithStatus(ResultConstant.StatusCode.Created);
+        }
+
+        /// <summary>The request context threaded through the creation flow.</summary>
+        private sealed record State
+        {
+            public Guid CustomerId { get; init; }
+
+            public decimal Maximum { get; init; }
+
+            public string Fingerprint { get; init; } = string.Empty;
+
+            public IdempotencyReservation Reservation { get; init; } = null!;
+
+            public Payment? Payment { get; init; }
+
+            public bool WasCreated { get; init; }
         }
 
         /// <summary>Computes the stable request fingerprint used to detect key reuse.</summary>

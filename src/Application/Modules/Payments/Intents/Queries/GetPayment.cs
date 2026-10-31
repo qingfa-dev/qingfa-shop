@@ -37,39 +37,60 @@ public static class GetPayment
         {
             ArgumentNullException.ThrowIfNull(query);
 
+            return await ReadAsync(query, cancellationToken)
+                .BindAsync((row, ct) => Visible(row, query), cancellationToken);
+        }
+
+        /// <summary>Reads the projection, falling back to the event stream while it catches up.</summary>
+        private async Task<Result<PaymentReadModel>> ReadAsync(
+            UseCase query,
+            CancellationToken cancellationToken)
+        {
             Result<PaymentReadModel> row = await store.FindAsync(query.PaymentId, cancellationToken);
 
-            // Enforce: another customer's payment is reported as absent, never forbidden.
             if (row.IsSuccess)
-            {
-                PaymentReadModel found = row.Value;
-                bool visible = query.CustomerId is null || found.CustomerId == query.CustomerId;
-
-                return visible
-                    ? Result<PaymentResponseModel>.Success(ApplyExpiry(found.ToResponse(), found.ExpiresAt))
-                    : Result<PaymentResponseModel>.Fail(PaymentsOutcome.Failure.NotFound(query.PaymentId));
-            }
+                return row;
 
             // Fallback: read the event stream while the projection is still catching up.
             Result<Payment> loaded = await repository.LoadAsync(query.PaymentId, cancellationToken);
 
-            if (loaded.IsFailure)
-                return Result<PaymentResponseModel>.Fail(PaymentsOutcome.Failure.NotFound(query.PaymentId));
-
-            Payment payment = loaded.Value;
-            bool owned = query.CustomerId is null || payment.CustomerId == query.CustomerId;
-
-            if (!owned)
-                return Result<PaymentResponseModel>.Fail(PaymentsOutcome.Failure.NotFound(query.PaymentId));
-
-            PaymentResponseModel response = payment.ToResponse();
-
-            // Enforce: an unpaid intent past expiry reads as expired without a write.
-            return Result<PaymentResponseModel>.Success(
-                payment.IsExpired(clock.GetUtcNow(), policy.ProviderExpiryGracePeriod)
-                    ? response with { Status = PaymentStatus.Expired.ToWire(), ApprovalUrl = null }
-                    : response);
+            return loaded.Map(ToReadModel);
         }
+
+        /// <summary>Enforces ownership and reports an overdue pending payment as expired.</summary>
+        private Task<Result<PaymentResponseModel>> Visible(PaymentReadModel row, UseCase query)
+        {
+            // Enforce: another customer's payment is reported as absent, never forbidden.
+            bool visible = query.CustomerId is null || row.CustomerId == query.CustomerId;
+
+            return Task.FromResult(visible
+                ? Result<PaymentResponseModel>.Success(ApplyExpiry(row.ToResponse(), row.ExpiresAt))
+                : Result<PaymentResponseModel>.Fail(PaymentsOutcome.Failure.NotFound(query.PaymentId)));
+        }
+
+        /// <summary>Projects an aggregate into the read model shape.</summary>
+        private static PaymentReadModel ToReadModel(Payment payment) => new()
+        {
+            Id = payment.Id,
+            Provider = payment.Provider.ToWire(),
+            ProviderReference = payment.ProviderReference,
+            Status = payment.Status.ToWire(),
+            Amount = payment.Amount.Amount,
+            Currency = payment.Amount.Currency.Code ?? PaymentConstant.Defaults.Currency,
+            CapturedAmount = payment.CapturedAmount.Amount,
+            RefundedAmount = payment.RefundedAmount.Amount,
+            ExternalReference = payment.ExternalReference,
+            IdempotencyKey = payment.IdempotencyKey,
+            IdempotencyFingerprint = payment.IdempotencyFingerprint,
+            CustomerId = payment.CustomerId,
+            ApprovalUrl = payment.ApprovalUrl,
+            ExpiresAt = payment.ExpiresAt?.UtcDateTime,
+            CreatedAt = payment.CreatedAt.UtcDateTime,
+            UpdatedAt = payment.UpdatedAt.UtcDateTime,
+            FailureCode = payment.FailureCode,
+            FailureMessage = payment.FailureMessage,
+            Version = (int)payment.Version
+        };
 
         /// <summary>Reports an overdue pending row as expired.</summary>
         private PaymentResponseModel ApplyExpiry(PaymentResponseModel response, DateTime? expiresAt)
