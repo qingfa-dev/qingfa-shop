@@ -21,7 +21,7 @@ public static class ConfirmPayment
 
     /// <summary>The command.</summary>
     /// <param name="PaymentId">The payment to refresh.</param>
-    public sealed record UseCase(Guid PaymentId) : ICommand<PaymentResponseModel>;
+    public sealed record UseCase(Guid PaymentId) : ICommand<PaymentResponseModel>, INonTransactionalCommand;
 
     #endregion
 

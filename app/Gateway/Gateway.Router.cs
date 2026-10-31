@@ -42,6 +42,29 @@ internal static class GatewayRouter
             Transforms = StripPrefix("/time"),
             AuthorizationPolicy = AnonymousPolicy,
         },
+        // Validate: providers cannot present a bearer token, and the catch-all would
+        // strip /api from a path the Api serves verbatim.
+        new RouteConfig
+        {
+            RouteId = "api-payments-webhook",
+            ClusterId = ApiCluster,
+            Match = new RouteMatch { Path = "/api/payments/webhooks/{**remainder}" },
+            AuthorizationPolicy = AnonymousPolicy,
+        },
+        new RouteConfig
+        {
+            RouteId = "api-payments-admin",
+            ClusterId = ApiCluster,
+            Match = new RouteMatch { Path = "/api/admin/payments/{**remainder}" },
+            AuthorizationPolicy = ProtectedApiPolicy,
+        },
+        new RouteConfig
+        {
+            RouteId = "api-payments",
+            ClusterId = ApiCluster,
+            Match = new RouteMatch { Path = "/api/payments/{**remainder}" },
+            AuthorizationPolicy = ProtectedApiPolicy,
+        },
         new RouteConfig
         {
             RouteId = "api",

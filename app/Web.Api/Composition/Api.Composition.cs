@@ -38,6 +38,7 @@ public static class ApiComposition
             configurator.WithModule<TodoReminderEndpoint>();
             configurator.WithModule<PaymentEndpoint>();
             configurator.WithModule<PaymentAdminEndpoint>();
+            configurator.WithModule<PaymentWebhookEndpoint>();
         });
 
         return builder;
