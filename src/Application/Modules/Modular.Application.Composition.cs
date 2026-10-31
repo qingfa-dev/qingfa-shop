@@ -1,6 +1,7 @@
 using Application.BuildingBlocks.Persistence;
 using Application.BuildingBlocks.Security.Authorization.Registry;
 using Application.Modules.PermissionCatalog;
+using Application.Modules.Payments.Persistence;
 using Application.Modules.Payments.Permissions;
 using Application.Modules.Persistence;
 using Application.Modules.Todos.Persistence;
@@ -37,6 +38,10 @@ public static class ModularApplicationComposition
         builder.Services.AddSingleton<PaymentPermissionCatalog>();
         builder.Services.AddSingleton<IPermissionCatalogContributor>(
             provider => provider.GetRequiredService<PaymentPermissionCatalog>());
+
+        builder.Services.AddSingleton<PaymentPersistenceSchemaCatalog>();
+        builder.Services.AddSingleton<IPersistenceSchemaCatalogContributor>(
+            provider => provider.GetRequiredService<PaymentPersistenceSchemaCatalog>());
 
         return builder;
     }

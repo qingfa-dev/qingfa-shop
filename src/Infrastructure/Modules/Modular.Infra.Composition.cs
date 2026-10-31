@@ -1,4 +1,5 @@
 using Infrastructure.BuildingBlocks;
+using Infrastructure.Modules.Payments.Persistence;
 using Infrastructure.Modules.Todos.Integrations.Messaging;
 using Infrastructure.Modules.Todos.Persistence.EventSourcing;
 using Infrastructure.Modules.Todos.Services;
@@ -15,7 +16,7 @@ public static class ModularInfraComposition
     public static InfrastructureModuleRegistrations CreateRegistrations() =>
         new(
             Messaging: [new TodoMessagingModule()],
-            EventStores: [new TodoEventStoreModule()]);
+            EventStores: [new TodoEventStoreModule(), new PaymentEventStoreModule()]);
 
     /// <summary>Registers module services.</summary>
     /// <param name="builder">The host builder.</param>
