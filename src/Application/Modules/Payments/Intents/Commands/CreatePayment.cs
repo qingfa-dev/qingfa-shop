@@ -129,12 +129,23 @@ public static class CreatePayment
                     cancellationToken);
 
             if (created.IsFailure)
+            {
+                // Fallback: release the reservation so a retry can create the payment.
+                await idempotency.ReleaseAsync(
+                    customerId, command.IdempotencyKey, reservation.Value.PaymentId, cancellationToken);
+
                 return Result<PaymentResponseModel>.Fail(created.Errors);
+            }
 
             Result saved = await repository.SaveAsync(created.Value, cancellationToken);
 
             if (saved.IsFailure)
+            {
+                await idempotency.ReleaseAsync(
+                    customerId, command.IdempotencyKey, reservation.Value.PaymentId, cancellationToken);
+
                 return Result<PaymentResponseModel>.Fail(saved.Errors);
+            }
 
             // Enforce: provider callbacks must resolve before the projection catches up.
             if (created.Value.ProviderReference is not null)

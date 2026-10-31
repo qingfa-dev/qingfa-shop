@@ -8,6 +8,7 @@ using Application.Modules.Payments.Ports.Models;
 using AwesomeAssertions;
 
 using Core.BuildingBlocks.Domain.ValueObjects.Money;
+using Core.BuildingBlocks.Functional.Results;
 using Core.Modules.Payments;
 using Core.Modules.Payments.Intents;
 
@@ -99,5 +100,41 @@ public sealed class CreatePaymentTest
 
         result.IsSuccess.Should().BeTrue();
         result.Value.Status.Should().Be("failed");
+    }
+
+    [Fact]
+    public async Task Handle_ProviderFailure_ShouldReleaseTheReservation()
+    {
+        Guid customerId = Guid.Parse("33333333-3333-3333-3333-333333333333");
+        Guid reservedId = Guid.NewGuid();
+
+        var idempotency = new Mock<IPaymentIdempotencyStore>();
+        idempotency.Setup(x => x.ReserveAsync(customerId, "key-3", It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<IdempotencyReservation>.Success(
+                new IdempotencyReservation(reservedId, IsNew: true, FingerprintMatches: true)));
+
+        var registry = new Mock<IPaymentGatewayRegistry>();
+        registry.Setup(x => x.Resolve(It.IsAny<PaymentProvider>()))
+            .Returns(Result<IPaymentGateway>.Fail(
+                Error.ServiceUnavailable("Payments.Provider.Disabled", "disabled")));
+
+        var repository = new Mock<IEventSourcedRepository<Payment, Guid>>();
+        var references = new Mock<IPaymentReferenceStore>();
+        var user = new Mock<IUserContext>();
+        user.SetupGet(x => x.UserId).Returns(customerId.ToString());
+
+        var handler = new CreatePayment.UseCaseHandler(
+            repository.Object, idempotency.Object, references.Object, registry.Object, user.Object, TimeProvider.System);
+
+        var request = new CreatePayment.Request(
+            new Money(10m, new Currency("USD")), PaymentProvider.Stripe, "cart-3",
+            PaymentCaptureMode.Automatic, null, null);
+
+        var result = await handler.Handle(new CreatePayment.UseCase(request, "key-3"), CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        idempotency.Verify(
+            x => x.ReleaseAsync(customerId, "key-3", reservedId, It.IsAny<CancellationToken>()),
+            Times.Once);
     }
 }

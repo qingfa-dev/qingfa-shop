@@ -20,4 +20,16 @@ public interface IPaymentIdempotencyStore
         string idempotencyKey,
         string fingerprint,
         CancellationToken cancellationToken);
+
+    /// <summary>Releases a reservation whose payment was never created.</summary>
+    /// <param name="customerId">The owning customer.</param>
+    /// <param name="idempotencyKey">The caller's key.</param>
+    /// <param name="paymentId">The reserved payment id that was not persisted.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>Success, or a stable failure.</returns>
+    Task<Result> ReleaseAsync(
+        Guid customerId,
+        string idempotencyKey,
+        Guid paymentId,
+        CancellationToken cancellationToken);
 }
