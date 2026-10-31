@@ -22,11 +22,16 @@ public static class PaymentRefundExtension
         if (existing is not null)
             return Result<Payment>.Success(payment);
 
+        // Validate: the reason is required and bounded before anything else is recorded.
+        if (string.IsNullOrWhiteSpace(reason)
+            || reason.Length > PaymentConstant.Constraints.ReasonMaxLength)
+            return Result<Payment>.Fail(PaymentsOutcome.Failure.RefundReasonRequired());
+
         if (payment.Status is not (PaymentStatus.Captured or PaymentStatus.PartiallyRefunded))
             return Result<Payment>.Fail(PaymentsOutcome.Failure.RefundNotCaptured(payment.Status));
 
         if (amount.Amount <= 0)
-            return Result<Payment>.Fail(PaymentsOutcome.Failure.AmountInvalid("refund amount is out of range"));
+            return Result<Payment>.Fail(PaymentsOutcome.Failure.AmountInvalid("the refund amount must be positive"));
 
         if (amount.Currency != payment.Amount.Currency)
             return Result<Payment>.Fail(PaymentsOutcome.Failure.CurrencyMismatch(
@@ -55,7 +60,7 @@ public static class PaymentRefundExtension
 
         // Enforce: Only a pending refund can be confirmed; a terminal refund never re-applies.
         if (refund.Status is not RefundStatus.Pending)
-            return Result<Payment>.Fail(PaymentsOutcome.Failure.RefundAlreadySettled(refundId));
+            return Result<Payment>.Fail(PaymentsOutcome.Failure.RefundAlreadySettled(refundId, refund.Status.ToWire()));
 
         return payment.RaiseEvent(new RefundSucceeded(
             refundId, payment.Id, refund.Amount, providerReference, nowUtc));
@@ -77,7 +82,7 @@ public static class PaymentRefundExtension
 
         // Enforce: A settled refund cannot be failed.
         if (refund.Status is not RefundStatus.Pending)
-            return Result<Payment>.Fail(PaymentsOutcome.Failure.RefundAlreadySettled(refundId));
+            return Result<Payment>.Fail(PaymentsOutcome.Failure.RefundAlreadySettled(refundId, refund.Status.ToWire()));
 
         return payment.RaiseEvent(new RefundFailed(
             refundId, payment.Id, failureCode, failureMessage, nowUtc));

@@ -1,5 +1,7 @@
 using Application.Modules.Payments.Persistence;
 
+using Core.Modules.Payments.Intents;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -17,11 +19,11 @@ public sealed class PaymentWebhookEventConfiguration : IEntityTypeConfiguration<
         builder.HasKey(model => model.Id);
 
         builder.Property(model => model.Id).HasColumnName("id").ValueGeneratedNever();
-        builder.Property(model => model.Provider).HasColumnName("provider").HasMaxLength(16).IsRequired();
-        builder.Property(model => model.ProviderEventId).HasColumnName("provider_event_id").HasMaxLength(128).IsRequired();
-        builder.Property(model => model.EventType).HasColumnName("event_type").HasMaxLength(64).IsRequired();
+        builder.Property(model => model.Provider).HasColumnName("provider").HasMaxLength(PaymentConstant.Constraints.ProviderMaxLength).IsRequired();
+        builder.Property(model => model.ProviderEventId).HasColumnName("provider_event_id").HasMaxLength(PaymentConstant.Constraints.ProviderEventIdMaxLength).IsRequired();
+        builder.Property(model => model.EventType).HasColumnName("event_type").HasMaxLength(PaymentConstant.Constraints.EventTypeMaxLength).IsRequired();
         builder.Property(model => model.RawBody).HasColumnName("raw_body").IsRequired();
-        builder.Property(model => model.Outcome).HasColumnName("outcome").HasMaxLength(32).IsRequired();
+        builder.Property(model => model.Outcome).HasColumnName("outcome").HasMaxLength(PaymentConstant.Constraints.StatusMaxLength).IsRequired();
         builder.Property(model => model.ReceivedAt).HasColumnName("received_at");
         builder.Property(model => model.ProcessedAt).HasColumnName("processed_at");
 

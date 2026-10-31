@@ -376,8 +376,9 @@ so tests never depend on random behaviour.
 
 - Stripe: minor units, `long`; zero-decimal currencies sent as-is.
 - PayPal: decimal string with the currency's exponent.
-- Both adapters reject a currency/exponent they do not support with
-  `Payments.Payment.CurrencyUnsupported` (`400`) before calling the provider.
+- Both adapters reject an amount with more decimals than the currency exponent with
+  `Payments.Payment.AmountInvalid` (`400`) before calling the provider. A provider that rejects the
+  currency itself surfaces as `Payments.Provider.RequestRejected` (`502`).
 
 ### 8.6 Registry
 
@@ -414,7 +415,9 @@ enabled provider fails startup.
 
 - **A-1** Endpoints contain no payment logic: authenticate, bind, send, map `Location`.
 - **A-2** `SettlePayment` is the only writer of capture/authorize/failed states.
-- **A-3** Validation lives in Infrastructure/service or the domain; Application does not duplicate it.
+- **A-3** Validation lives in the domain and at the endpoint edge; Application slices carry no
+  FluentValidation validators. Every rejection is a `PaymentsOutcome` error, so the status is the
+  documented one (400/404/409) rather than the shared validator pipeline's 422.
 
 ## 10. API contract
 
@@ -516,9 +519,10 @@ Codes are grouped by category: `Payments.Payment.*` (validation/state/idempotenc
 | `Payments.Payment.ReferenceTooLong` | 400 | external reference exceeds 128 chars |
 | `Payments.Payment.IdempotencyKeyTooLong` | 400 | key exceeds 128 chars |
 | `Payments.Payment.CurrencyMismatch` | 400 | amount currency differs from the payment currency |
-| `Payments.Payment.Expired` | 409 | customer action on an expired intent |
-| `Payments.Payment.CurrencyUnsupported` | 400 | exponent unknown or provider unsupported |
+| `Payments.Payment.ReferenceNotFound` | 404 | provider reference is not linked to any payment |
 | `Payments.Payment.IdempotencyKeyRequired` | 400 | header missing |
+| `Payments.CaptureMode.Invalid` | 400 | capture mode is not `automatic` or `manual` |
+| `Payments.Provider.Unknown` | 400 | provider name is not `stripe`, `paypal`, or `fake` |
 | `Payments.Customer.Required` | 401 | access token has no usable subject |
 | `Payments.Payment.IdempotencyConflict` | 409 | key reused with different body |
 | `Payments.Refund.ExceedsCredit` | 409 | amount > capturable remainder |
@@ -526,7 +530,7 @@ Codes are grouped by category: `Payments.Payment.*` (validation/state/idempotenc
 | `Payments.Refund.NotFound` | 404 | unknown refund for that payment |
 | `Payments.Refund.PartialUnsupported` | 400 | partial refund on a provider without support |
 | `Payments.Refund.ReasonRequired` | 400 | empty or over-long refund reason |
-| `Payments.Refund.AlreadySettled` | 409 | refund already succeeded and cannot change |
+| `Payments.Refund.AlreadySettled` | 409 | refund already `succeeded` or `failed` and cannot change |
 | `Payments.Provider.Declined` | 502 | capture/refund declined; a create decline is a `Failed` resource instead |
 | `Payments.Provider.RequestRejected` | 502 | provider rejected the request |
 | `Payments.Provider.Unavailable` | 502 | provider unreachable/timeout |
@@ -792,7 +796,7 @@ Each row is a required automated test. "Where" names the owning suite.
 |---|---|---|---|
 | E-1 | Zero or negative amount | `400 Payments.Payment.AmountInvalid` | Core unit |
 | E-2 | More decimals than the currency exponent | `400 Payments.Payment.AmountInvalid` | Adapter unit |
-| E-3 | Provider rejects a currency it does not support | `400 Payments.Payment.CurrencyUnsupported` (mapped from the provider rejection) | Adapter unit |
+| E-3 | Provider rejects a currency it does not support | `502 Payments.Provider.RequestRejected` | Adapter unit |
 | E-4 | Currency mismatch between request and payment | `400 Payments.Payment.CurrencyMismatch`, no state change | Core unit |
 | E-5 | Capture above the remaining amount | `400 Payments.Payment.AmountInvalid`, captured total unchanged | Core unit |
 | E-6 | Capture on `Cancelled` / `Refunded` | `409 Payments.Payment.InvalidState` | Core unit |
@@ -834,6 +838,10 @@ Each row is a required automated test. "Where" names the owning suite.
 | E-42 | Complete an unknown refund id | `404 Payments.Refund.NotFound` | Core unit |
 | E-43 | Empty refund reason | `400 Payments.Refund.ReasonRequired` | Application unit |
 | E-44 | Unknown observation value | `409 Payments.Payment.InvalidState`, no event | Core unit |
+| E-45 | Unknown provider name in a create body | `400 Payments.Provider.Unknown` | API integration |
+| E-46 | Unknown capture mode | `400 Payments.CaptureMode.Invalid` | API integration |
+| E-47 | Zero or negative amount through the API | `400 Payments.Payment.AmountInvalid` (never 422) | API integration |
+| E-48 | Unauthenticated create | `401 Payments.Customer.Required` | API integration |
 
 ## 15. Delivery sequence
 

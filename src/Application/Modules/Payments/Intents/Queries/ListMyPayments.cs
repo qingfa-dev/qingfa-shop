@@ -4,8 +4,6 @@ using Application.Modules.Payments.Persistence;
 
 using Application.BuildingBlocks.UseCases.Mediation.Queries;
 
-using FluentValidation;
-
 namespace Application.Modules.Payments.Intents.Queries;
 
 /// <summary>Lists a customer's payments.</summary>
@@ -22,16 +20,6 @@ public static class ListMyPayments
 
     #endregion
 
-    #region Validator
-
-    /// <summary>Validates the query.</summary>
-    public sealed class UseCaseValidator : AbstractValidator<UseCase>
-    {
-        /// <summary>Creates the validator.</summary>
-        public UseCaseValidator() => RuleFor(query => query.Page).NotNull();
-    }
-
-    #endregion
 
     #region Handler
 

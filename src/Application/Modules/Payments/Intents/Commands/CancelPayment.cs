@@ -6,8 +6,6 @@ using Application.Modules.Payments.Ports.Models;
 using Core.Modules.Payments;
 using Core.Modules.Payments.Intents;
 
-using FluentValidation;
-
 namespace Application.Modules.Payments.Intents.Commands;
 
 /// <summary>Voids an uncaptured payment.</summary>
@@ -21,16 +19,6 @@ public static class CancelPayment
 
     #endregion
 
-    #region Validator
-
-    /// <summary>Validates the command.</summary>
-    public sealed class UseCaseValidator : AbstractValidator<UseCase>
-    {
-        /// <summary>Creates the validator.</summary>
-        public UseCaseValidator() => RuleFor(command => command.PaymentId).NotEmpty();
-    }
-
-    #endregion
 
     #region Handler
 

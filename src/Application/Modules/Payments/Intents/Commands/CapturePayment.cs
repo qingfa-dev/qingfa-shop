@@ -7,8 +7,6 @@ using Core.BuildingBlocks.Domain.ValueObjects.Money;
 using Core.Modules.Payments;
 using Core.Modules.Payments.Intents;
 
-using FluentValidation;
-
 namespace Application.Modules.Payments.Intents.Commands;
 
 /// <summary>Captures an authorized payment, fully or partially.</summary>
@@ -31,16 +29,6 @@ public static class CapturePayment
 
     #endregion
 
-    #region Validator
-
-    /// <summary>Validates the command.</summary>
-    public sealed class UseCaseValidator : AbstractValidator<UseCase>
-    {
-        /// <summary>Creates the validator.</summary>
-        public UseCaseValidator() => RuleFor(command => command.PaymentId).NotEmpty();
-    }
-
-    #endregion
 
     #region Handler
 

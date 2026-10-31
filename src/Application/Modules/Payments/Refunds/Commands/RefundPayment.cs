@@ -7,8 +7,6 @@ using Core.Modules.Payments;
 using Core.Modules.Payments.Intents;
 using Core.Modules.Payments.Refunds;
 
-using FluentValidation;
-
 namespace Application.Modules.Payments.Refunds.Commands;
 
 /// <summary>Refunds captured funds.</summary>
@@ -52,32 +50,6 @@ public static class RefundPayment
 
     #endregion
 
-    #region Validator
-
-    /// <summary>Validates the command.</summary>
-    public sealed class UseCaseValidator : AbstractValidator<UseCase>
-    {
-        /// <summary>Creates the validator.</summary>
-        public UseCaseValidator()
-        {
-            RuleFor(command => command.PaymentId).NotEmpty();
-
-            RuleFor(command => command.IdempotencyKey)
-                .MaximumLength(PaymentConstant.Constraints.IdempotencyKeyMaxLength);
-
-            RuleFor(command => command.Request.Amount.Amount)
-                .GreaterThan(0)
-                .WithErrorCode(PaymentsOutcome.Codes.AmountInvalid);
-
-            RuleFor(command => command.Request.Reason)
-                .NotEmpty()
-                .WithErrorCode(PaymentsOutcome.Codes.RefundReasonRequired)
-                .MaximumLength(PaymentConstant.Constraints.ReasonMaxLength)
-                .WithErrorCode(PaymentsOutcome.Codes.RefundReasonRequired);
-        }
-    }
-
-    #endregion
 
     #region Handler
 

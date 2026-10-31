@@ -238,4 +238,44 @@ public sealed class RefundSpec
         result.IsFailure.Should().BeTrue();
         result.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.CurrencyMismatch);
     }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData("   ")]
+    public void RequestRefund_MissingReason_ShouldFail(string reason)
+    {
+        Payment payment = Captured();
+
+        var result = payment.RequestRefund(Guid.NewGuid(), Usd(10m), reason, "rk-none", Now);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.RefundReasonRequired);
+        payment.Refunds.Should().BeEmpty();
+    }
+
+    [Fact]
+    public void RequestRefund_OverlongReason_ShouldFail()
+    {
+        Payment payment = Captured();
+        string reason = new('x', PaymentConstant.Constraints.ReasonMaxLength + 1);
+
+        var result = payment.RequestRefund(Guid.NewGuid(), Usd(10m), reason, "rk-long", Now);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.RefundReasonRequired);
+    }
+
+    [Fact]
+    public void CompleteRefund_OnFailedRefund_ShouldReportTheTerminalState()
+    {
+        Payment payment = Captured();
+        Guid refundId = Guid.NewGuid();
+        payment.RequestRefund(refundId, Usd(10m), "damaged", "rk-1", Now);
+        payment.FailRefund(refundId, "declined", null, Now);
+
+        var result = payment.CompleteRefund(refundId, "re_1", Now);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.RefundAlreadySettled);
+    }
 }

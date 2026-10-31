@@ -168,4 +168,102 @@ public sealed class PaymentApiTest(ResultContractStackFixture fixture)
 
     /// <summary>Creates a unique idempotency key.</summary>
     private static string NewKey() => Guid.NewGuid().ToString();
+
+    [Fact]
+    public async Task Create_WithZeroAmount_ShouldReturn400WithTheCanonicalCode()
+    {
+        if (fixture.SkipReason is not null)
+            Assert.Skip(fixture.SkipReason);
+
+        using HttpClient client = fixture.CreateClient();
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/payments")
+        {
+            Content = JsonContent.Create(new
+            {
+                amount = new { amount = 0m, currency = "USD" },
+                provider = "fake",
+                externalReference = "cart-zero",
+                captureMode = "automatic"
+            })
+        };
+        request.Headers.Add(PaymentConstant.Headers.IdempotencyKey, NewKey());
+
+        using HttpResponseMessage response = await client.SendAsync(request);
+
+        AssertFailureCode(response, PaymentsOutcome.Codes.AmountInvalid, HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Create_WithUnknownProvider_ShouldReturn400()
+    {
+        if (fixture.SkipReason is not null)
+            Assert.Skip(fixture.SkipReason);
+
+        using HttpClient client = fixture.CreateClient();
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/payments")
+        {
+            Content = JsonContent.Create(new
+            {
+                amount = new { amount = 5m, currency = "USD" },
+                provider = "not-a-provider",
+                externalReference = "cart-unknown",
+                captureMode = "automatic"
+            })
+        };
+        request.Headers.Add(PaymentConstant.Headers.IdempotencyKey, NewKey());
+
+        using HttpResponseMessage response = await client.SendAsync(request);
+
+        AssertFailureCode(response, PaymentsOutcome.Codes.ProviderUnknown, HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task Create_WithoutToken_ShouldReturn401()
+    {
+        if (fixture.SkipReason is not null)
+            Assert.Skip(fixture.SkipReason);
+
+        using HttpClient client = fixture.Factory.CreateClient();
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/payments")
+        {
+            Content = JsonContent.Create(new
+            {
+                amount = new { amount = 5m, currency = "USD" },
+                provider = "fake",
+                externalReference = "cart-anon",
+                captureMode = "automatic"
+            })
+        };
+        request.Headers.Add(PaymentConstant.Headers.IdempotencyKey, NewKey());
+
+        using HttpResponseMessage response = await client.SendAsync(request);
+
+        response.StatusCode.Should().Be(HttpStatusCode.Unauthorized);
+    }
+
+    [Fact]
+    public async Task Refund_WithoutReason_ShouldReturn400()
+    {
+        if (fixture.SkipReason is not null)
+            Assert.Skip(fixture.SkipReason);
+
+        using HttpClient customer = fixture.CreateClient();
+        using HttpClient admin = fixture.CreateClient("Admin");
+
+        (Guid id, _) = await CreatePaymentAsync(customer, NewKey(), 20m, "cart-reason");
+
+        using var refund = new HttpRequestMessage(HttpMethod.Post, $"/api/admin/payments/{id}/refunds")
+        {
+            Content = JsonContent.Create(new
+            {
+                amount = new { amount = 5m, currency = "USD" },
+                reason = "   "
+            })
+        };
+        refund.Headers.Add(PaymentConstant.Headers.IdempotencyKey, NewKey());
+
+        using HttpResponseMessage response = await admin.SendAsync(refund);
+
+        AssertFailureCode(response, PaymentsOutcome.Codes.RefundReasonRequired, HttpStatusCode.BadRequest);
+    }
 }

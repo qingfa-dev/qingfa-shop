@@ -7,8 +7,6 @@ using Core.Modules.Payments.Intents;
 
 using Application.BuildingBlocks.UseCases.Mediation.Queries;
 
-using FluentValidation;
-
 namespace Application.Modules.Payments.Intents.Queries;
 
 /// <summary>Reads one payment; a null customer means an admin read.</summary>
@@ -23,16 +21,6 @@ public static class GetPayment
 
     #endregion
 
-    #region Validator
-
-    /// <summary>Validates the query.</summary>
-    public sealed class UseCaseValidator : AbstractValidator<UseCase>
-    {
-        /// <summary>Creates the validator.</summary>
-        public UseCaseValidator() => RuleFor(query => query.PaymentId).NotEmpty();
-    }
-
-    #endregion
 
     #region Handler
 

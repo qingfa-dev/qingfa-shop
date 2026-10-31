@@ -5,8 +5,6 @@ using Core.Modules.Payments;
 
 using Application.BuildingBlocks.UseCases.Mediation.Queries;
 
-using FluentValidation;
-
 namespace Application.Modules.Payments.Refunds.Queries;
 
 /// <summary>Reads one refund of a payment.</summary>
@@ -21,20 +19,6 @@ public static class GetRefund
 
     #endregion
 
-    #region Validator
-
-    /// <summary>Validates the query.</summary>
-    public sealed class UseCaseValidator : AbstractValidator<UseCase>
-    {
-        /// <summary>Creates the validator.</summary>
-        public UseCaseValidator()
-        {
-            RuleFor(query => query.PaymentId).NotEmpty();
-            RuleFor(query => query.RefundId).NotEmpty();
-        }
-    }
-
-    #endregion
 
     #region Handler
 

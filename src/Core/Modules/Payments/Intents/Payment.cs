@@ -136,14 +136,14 @@ public sealed class Payment : EventSourcedAggregate<Guid>
             PaymentObservation.Failed => Fail(failureCode ?? PaymentConstant.Reasons.ProviderFailed, null, nowUtc),
             PaymentObservation.Cancelled => Cancel(PaymentConstant.Reasons.ProviderCancelled, nowUtc),
             PaymentObservation.Expired => ApplyProviderExpiry(nowUtc),
-            _ => Result<Payment>.Fail(PaymentsOutcome.Failure.InvalidState(Status, "apply the provider observation"))
+            _ => Result<Payment>.Fail(PaymentsOutcome.Failure.InvalidState(Status, "observed"))
         };
 
     /// <summary>Marks the payment as processing.</summary>
     public Result<Payment> MarkProcessing(string? providerReference, DateTimeOffset nowUtc)
     {
         if (Status is not (PaymentStatus.Pending or PaymentStatus.Processing))
-            return Result<Payment>.Fail(PaymentsOutcome.Failure.InvalidState(Status, "start processing"));
+            return Result<Payment>.Fail(PaymentsOutcome.Failure.InvalidState(Status, "processed"));
 
         return RaiseEvent(new PaymentProcessing(Id, providerReference, nowUtc));
     }
@@ -152,10 +152,10 @@ public sealed class Payment : EventSourcedAggregate<Guid>
     public Result<Payment> Authorize(string providerReference, Money authorized, DateTimeOffset nowUtc)
     {
         if (CaptureMode is not PaymentCaptureMode.Manual)
-            return Result<Payment>.Fail(PaymentsOutcome.Failure.InvalidState(Status, "authorize"));
+            return Result<Payment>.Fail(PaymentsOutcome.Failure.InvalidState(Status, "authorized"));
 
         if (Status is not (PaymentStatus.Pending or PaymentStatus.Processing))
-            return Result<Payment>.Fail(PaymentsOutcome.Failure.InvalidState(Status, "authorize"));
+            return Result<Payment>.Fail(PaymentsOutcome.Failure.InvalidState(Status, "authorized"));
 
         if (authorized.Amount <= 0 || authorized.Amount > Amount.Amount)
             return Result<Payment>.Fail(PaymentsOutcome.Failure.AmountInvalid("authorized amount is out of range"));
@@ -172,7 +172,7 @@ public sealed class Payment : EventSourcedAggregate<Guid>
     {
         // Validate: A capture is only legal while the payment is in a capturable state.
         if (!CanCapture)
-            return Result<Payment>.Fail(PaymentsOutcome.Failure.InvalidState(Status, "capture"));
+            return Result<Payment>.Fail(PaymentsOutcome.Failure.InvalidState(Status, "captured"));
 
         if (string.IsNullOrWhiteSpace(providerReference))
             return Result<Payment>.Fail(PaymentsOutcome.Failure.ProviderReferenceMissing());
@@ -181,7 +181,7 @@ public sealed class Payment : EventSourcedAggregate<Guid>
 
         // Enforce: Manual capture needs a prior authorization except for late settlement.
         if (CaptureMode is PaymentCaptureMode.Manual && Status is not PaymentStatus.Authorized && !lateSettlement)
-            return Result<Payment>.Fail(PaymentsOutcome.Failure.InvalidState(Status, "capture before authorization"));
+            return Result<Payment>.Fail(PaymentsOutcome.Failure.InvalidState(Status, "captured before authorization"));
 
         if (captured.Amount <= 0)
             return Result<Payment>.Fail(PaymentsOutcome.Failure.AmountInvalid("captured amount must be positive"));
@@ -201,9 +201,9 @@ public sealed class Payment : EventSourcedAggregate<Guid>
 
         string reason = Status switch
         {
-            PaymentStatus.Expired => PaymentConstant.Defaults.LateSettlement,
-            PaymentStatus.Failed => PaymentConstant.Defaults.SettledAfterFailure,
-            _ => PaymentConstant.Defaults.InitialCapture
+            PaymentStatus.Expired => PaymentConstant.Reasons.LateSettlement,
+            PaymentStatus.Failed => PaymentConstant.Reasons.SettledAfterFailure,
+            _ => PaymentConstant.Reasons.InitialCapture
         };
 
         return RaiseEvent(new PaymentCaptured(
@@ -219,7 +219,7 @@ public sealed class Payment : EventSourcedAggregate<Guid>
     public Result<Payment> CaptureFailed(Money attempted, string code, string? message, DateTimeOffset nowUtc)
     {
         if (Status is not PaymentStatus.Authorized)
-            return Result<Payment>.Fail(PaymentsOutcome.Failure.InvalidState(Status, "record a capture failure"));
+            return Result<Payment>.Fail(PaymentsOutcome.Failure.InvalidState(Status, "marked as a failed capture"));
 
         return RaiseEvent(new PaymentCaptureFailed(Id, attempted, code, message, nowUtc));
     }
@@ -228,7 +228,7 @@ public sealed class Payment : EventSourcedAggregate<Guid>
     public Result<Payment> Fail(string code, string? message, DateTimeOffset nowUtc)
     {
         if (Status is not (PaymentStatus.Pending or PaymentStatus.Processing))
-            return Result<Payment>.Fail(PaymentsOutcome.Failure.InvalidState(Status, "fail"));
+            return Result<Payment>.Fail(PaymentsOutcome.Failure.InvalidState(Status, "failed"));
 
         return RaiseEvent(new PaymentFailed(Id, code, message, nowUtc));
     }
@@ -237,10 +237,10 @@ public sealed class Payment : EventSourcedAggregate<Guid>
     public Result<Payment> Cancel(string reason, DateTimeOffset nowUtc)
     {
         if (Status is not (PaymentStatus.Pending or PaymentStatus.Processing or PaymentStatus.Authorized))
-            return Result<Payment>.Fail(PaymentsOutcome.Failure.InvalidState(Status, "cancel"));
+            return Result<Payment>.Fail(PaymentsOutcome.Failure.InvalidState(Status, "cancelled"));
 
         if (CapturedAmount.Amount > 0)
-            return Result<Payment>.Fail(PaymentsOutcome.Failure.InvalidState(Status, "cancel captured funds"));
+            return Result<Payment>.Fail(PaymentsOutcome.Failure.InvalidState(Status, "cancelled after capture"));
 
         return RaiseEvent(new PaymentCancelled(Id, reason, nowUtc));
     }
@@ -250,11 +250,11 @@ public sealed class Payment : EventSourcedAggregate<Guid>
     {
         // Validate: Only a pending intent can expire.
         if (Status is not PaymentStatus.Pending)
-            return Result<Payment>.Fail(PaymentsOutcome.Failure.InvalidState(Status, "expire"));
+            return Result<Payment>.Fail(PaymentsOutcome.Failure.InvalidState(Status, "expired"));
 
         // Enforce: The expiry instant must exist and have passed; grace periods belong to Application.
         if (ExpiresAt is null || nowUtc < ExpiresAt)
-            return Result<Payment>.Fail(PaymentsOutcome.Failure.InvalidState(Status, "expire before the expiry instant"));
+            return Result<Payment>.Fail(PaymentsOutcome.Failure.InvalidState(Status, "expired before its expiry instant"));
 
         return RaiseEvent(new PaymentExpired(Id, nowUtc));
     }
@@ -364,7 +364,7 @@ public sealed class Payment : EventSourcedAggregate<Guid>
     private Result<Payment> ApplyProviderExpiry(DateTimeOffset nowUtc)
     {
         if (Status is not (PaymentStatus.Pending or PaymentStatus.Processing))
-            return Result<Payment>.Fail(PaymentsOutcome.Failure.InvalidState(Status, "apply the provider expiry"));
+            return Result<Payment>.Fail(PaymentsOutcome.Failure.InvalidState(Status, "expired by the provider"));
 
         return RaiseEvent(new PaymentExpired(Id, nowUtc));
     }

@@ -8,8 +8,6 @@ using Core.BuildingBlocks.Domain.ValueObjects.Money;
 using Core.Modules.Payments;
 using Core.Modules.Payments.Intents;
 
-using FluentValidation;
-
 namespace Application.Modules.Payments.Intents.Commands;
 
 /// <summary>Applies an observed provider state; shared by confirm and webhooks.</summary>
@@ -34,20 +32,6 @@ public static class SettlePayment
 
     #endregion
 
-    #region Validator
-
-    /// <summary>Validates the command.</summary>
-    public sealed class UseCaseValidator : AbstractValidator<UseCase>
-    {
-        /// <summary>Creates the validator.</summary>
-        public UseCaseValidator()
-        {
-            RuleFor(command => command.ProviderReference).NotEmpty();
-            RuleFor(command => command.ProviderEventId).NotEmpty();
-        }
-    }
-
-    #endregion
 
     #region Handler
 
@@ -62,6 +46,11 @@ public static class SettlePayment
         public async Task<Result<PaymentResponseModel>> Handle(UseCase command, CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(command);
+
+            // Validate: the provider identity is what links the observation to a payment.
+            if (string.IsNullOrWhiteSpace(command.ProviderReference))
+                return Result<PaymentResponseModel>.Fail(
+                    PaymentsOutcome.Failure.ReferenceRequired("provider reference"));
 
             Guid? paymentId = await references.FindAsync(
                 command.Provider, command.ProviderReference, cancellationToken);

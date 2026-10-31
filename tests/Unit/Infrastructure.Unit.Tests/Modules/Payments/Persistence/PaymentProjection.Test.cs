@@ -103,7 +103,7 @@ public sealed class PaymentProjectionTest
                 "cap_1",
                 new Money(10m, new Currency("USD")),
                 new Money(10m, new Currency("USD")),
-                PaymentConstant.Defaults.InitialCapture,
+                PaymentConstant.Reasons.InitialCapture,
                 DateTimeOffset.UtcNow));
 
         var projection = new PaymentProjection(context, serializer.Object);

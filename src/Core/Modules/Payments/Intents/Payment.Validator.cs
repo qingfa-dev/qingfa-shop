@@ -16,7 +16,7 @@ public static class PaymentValidator
             .Ensure(() => !string.IsNullOrWhiteSpace(payment.ExternalReference),
                 PaymentsOutcome.Failure.ReferenceRequired("external reference"))
             .Ensure(() => payment.ExternalReference.Length <= PaymentConstant.Constraints.ReferenceMaxLength,
-                PaymentsOutcome.Failure.ReferenceTooLong("external reference"))
+                PaymentsOutcome.Failure.ReferenceTooLong("external reference", PaymentConstant.Constraints.ReferenceMaxLength))
             .Ensure(() => !string.IsNullOrWhiteSpace(payment.IdempotencyKey),
                 PaymentsOutcome.Failure.IdempotencyKeyRequired())
             .Ensure(() => payment.IdempotencyKey.Length <= PaymentConstant.Constraints.IdempotencyKeyMaxLength,

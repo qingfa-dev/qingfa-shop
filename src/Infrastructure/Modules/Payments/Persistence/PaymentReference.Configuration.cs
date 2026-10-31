@@ -1,5 +1,7 @@
 using Application.Modules.Payments.Persistence;
 
+using Core.Modules.Payments.Intents;
+
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 
@@ -17,8 +19,8 @@ public sealed class PaymentReferenceConfiguration : IEntityTypeConfiguration<Pay
         builder.HasKey(model => model.Id);
 
         builder.Property(model => model.Id).HasColumnName("id").ValueGeneratedNever();
-        builder.Property(model => model.Provider).HasColumnName("provider").HasMaxLength(16).IsRequired();
-        builder.Property(model => model.ProviderReference).HasColumnName("provider_reference").HasMaxLength(128).IsRequired();
+        builder.Property(model => model.Provider).HasColumnName("provider").HasMaxLength(PaymentConstant.Constraints.ProviderMaxLength).IsRequired();
+        builder.Property(model => model.ProviderReference).HasColumnName("provider_reference").HasMaxLength(PaymentConstant.Constraints.ProviderReferenceMaxLength).IsRequired();
         builder.Property(model => model.PaymentId).HasColumnName("payment_id").IsRequired();
         builder.Property(model => model.CreatedAt).HasColumnName("created_at");
 

@@ -11,8 +11,6 @@ using Core.BuildingBlocks.Domain.ValueObjects.Money;
 using Core.Modules.Payments;
 using Core.Modules.Payments.Intents;
 
-using FluentValidation;
-
 namespace Application.Modules.Payments.Intents.Commands;
 
 /// <summary>Creates a payment intent and the provider-side intent.</summary>
@@ -46,31 +44,6 @@ public static class CreatePayment
 
     #endregion
 
-    #region Validator
-
-    /// <summary>Validates the command.</summary>
-    public sealed class UseCaseValidator : AbstractValidator<UseCase>
-    {
-        /// <summary>Creates the validator.</summary>
-        public UseCaseValidator()
-        {
-            RuleFor(command => command.IdempotencyKey)
-                .MaximumLength(PaymentConstant.Constraints.IdempotencyKeyMaxLength)
-                .WithErrorCode(PaymentsOutcome.Codes.IdempotencyKeyTooLong);
-
-            RuleFor(command => command.Request.ExternalReference)
-                .NotEmpty()
-                .WithErrorCode(PaymentsOutcome.Codes.ReferenceRequired)
-                .MaximumLength(PaymentConstant.Constraints.ReferenceMaxLength)
-                .WithErrorCode(PaymentsOutcome.Codes.ReferenceTooLong);
-
-            RuleFor(command => command.Request.Amount.Amount)
-                .GreaterThan(0)
-                .WithErrorCode(PaymentsOutcome.Codes.AmountInvalid);
-        }
-    }
-
-    #endregion
 
     #region Handler
 

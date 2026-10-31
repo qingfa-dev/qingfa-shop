@@ -4,6 +4,10 @@ using Core.Modules.Payments.Intents;
 namespace Core.Modules.Payments;
 
 /// <summary>Stable payment failure codes and their canonical errors.</summary>
+/// <remarks>
+/// Every failure the module can return is created here, so the code, message, and HTTP
+/// status stay in one place. Handlers, endpoints, and adapters never build an <see cref="Error"/>.
+/// </remarks>
 public static class PaymentsOutcome
 {
     /// <summary>Failure errors raised by the payment domain and its slices.</summary>
@@ -14,70 +18,45 @@ public static class PaymentsOutcome
             code: Codes.NotFound,
             message: $"Payment '{paymentId}' was not found.");
 
-        /// <summary>A provider reference is unknown.</summary>
+        /// <summary>A provider reference is not linked to any payment.</summary>
         public static Error ReferenceNotFound(string reference) => Error.NotFound(
-            code: Codes.NotFound,
+            code: Codes.ReferenceNotFound,
             message: $"No payment matches the provider reference '{reference}'.");
 
         /// <summary>The requested transition is not allowed from the current state.</summary>
-        public static Error InvalidState(PaymentStatus status, string operation) => Error.Conflict(
+        public static Error InvalidState(PaymentStatus status, string action) => Error.Conflict(
             code: Codes.InvalidState,
-            message: $"A payment cannot {operation} while it is '{status.ToWire()}'.");
+            message: $"The payment is '{status.ToWire()}' and cannot be {action}.");
 
-        /// <summary>The amount or currency is invalid.</summary>
+        /// <summary>The amount is outside the allowed range.</summary>
         public static Error AmountInvalid(string reason) => Error.BadRequest(
             code: Codes.AmountInvalid,
             message: $"Payment amount is invalid: {reason}.");
-
-        /// <summary>The currency has no supported exponent.</summary>
-        public static Error CurrencyUnsupported(string currency) => Error.BadRequest(
-            code: Codes.CurrencyUnsupported,
-            message: $"The currency '{currency}' is not supported.");
-
-        /// <summary>A reference exceeds its limit.</summary>
-        public static Error ReferenceTooLong(string name) => Error.BadRequest(
-            code: Codes.ReferenceTooLong,
-            message: $"Payment {name} is too long.");
-
-        /// <summary>A required reference is missing.</summary>
-        public static Error ReferenceRequired(string name) => Error.BadRequest(
-            code: Codes.ReferenceRequired,
-            message: $"Payment {name} is required.");
-
-        /// <summary>An idempotency key exceeds its limit.</summary>
-        public static Error IdempotencyKeyTooLong() => Error.BadRequest(
-            code: Codes.IdempotencyKeyTooLong,
-            message: "The Idempotency-Key header is too long.");
 
         /// <summary>The amount currency differs from the payment currency.</summary>
         public static Error CurrencyMismatch(string expected, string actual) => Error.BadRequest(
             code: Codes.CurrencyMismatch,
             message: $"The amount currency '{actual}' does not match the payment currency '{expected}'.");
 
-        /// <summary>A customer action targeted an expired intent.</summary>
-        public static Error Expired() => Error.Conflict(
-            code: Codes.Expired,
-            message: "The payment intent has expired.");
+        /// <summary>A required reference is missing.</summary>
+        public static Error ReferenceRequired(string name) => Error.BadRequest(
+            code: Codes.ReferenceRequired,
+            message: $"Payment {name} is required.");
 
-        /// <summary>The refund reason is missing or too long.</summary>
-        public static Error RefundReasonRequired() => Error.BadRequest(
-            code: Codes.RefundReasonRequired,
-            message: "A refund reason of at most 256 characters is required.");
-
-        /// <summary>The refund already succeeded and cannot change.</summary>
-        public static Error RefundAlreadySettled(Guid refundId) => Error.Conflict(
-            code: Codes.RefundAlreadySettled,
-            message: $"Refund '{refundId}' has already settled.");
-
-        /// <summary>A provider call requires a reference that does not exist yet.</summary>
-        public static Error ProviderReferenceMissing() => Error.Conflict(
-            code: Codes.ProviderReferenceMissing,
-            message: "The payment has no provider reference yet.");
+        /// <summary>A reference exceeds its limit.</summary>
+        public static Error ReferenceTooLong(string name, int maxLength) => Error.BadRequest(
+            code: Codes.ReferenceTooLong,
+            message: $"Payment {name} must be at most {maxLength} characters.");
 
         /// <summary>The idempotency key header is missing.</summary>
         public static Error IdempotencyKeyRequired() => Error.BadRequest(
             code: Codes.IdempotencyKeyRequired,
             message: "The Idempotency-Key header is required.");
+
+        /// <summary>An idempotency key exceeds its limit.</summary>
+        public static Error IdempotencyKeyTooLong() => Error.BadRequest(
+            code: Codes.IdempotencyKeyTooLong,
+            message: $"The Idempotency-Key header must be at most {PaymentConstant.Constraints.IdempotencyKeyMaxLength} characters.");
 
         /// <summary>The key was reused with a different body.</summary>
         public static Error IdempotencyConflict() => Error.Conflict(
@@ -89,6 +68,11 @@ public static class PaymentsOutcome
             code: Codes.CustomerRequired,
             message: "An authenticated customer is required.");
 
+        /// <summary>The payment has no provider reference yet.</summary>
+        public static Error ProviderReferenceMissing() => Error.Conflict(
+            code: Codes.ProviderReferenceMissing,
+            message: "The payment has no provider reference yet.");
+
         /// <summary>The refund exceeds the capturable remainder.</summary>
         public static Error RefundExceedsCredit(decimal requested, decimal allowed) => Error.Conflict(
             code: Codes.RefundExceedsCredit,
@@ -97,12 +81,22 @@ public static class PaymentsOutcome
         /// <summary>The payment is not in a refundable state.</summary>
         public static Error RefundNotCaptured(PaymentStatus status) => Error.Conflict(
             code: Codes.RefundNotCaptured,
-            message: $"A payment in '{status}' cannot be refunded.");
+            message: $"The payment is '{status.ToWire()}' and cannot be refunded.");
 
         /// <summary>The refund does not exist for that payment.</summary>
         public static Error RefundNotFound(Guid refundId) => Error.NotFound(
             code: Codes.RefundNotFound,
             message: $"Refund '{refundId}' was not found.");
+
+        /// <summary>The refund reason is missing or too long.</summary>
+        public static Error RefundReasonRequired() => Error.BadRequest(
+            code: Codes.RefundReasonRequired,
+            message: $"A refund reason of at most {PaymentConstant.Constraints.ReasonMaxLength} characters is required.");
+
+        /// <summary>The refund already reached a terminal state.</summary>
+        public static Error RefundAlreadySettled(Guid refundId, string status) => Error.Conflict(
+            code: Codes.RefundAlreadySettled,
+            message: $"Refund '{refundId}' is already '{status}' and cannot change.");
 
         /// <summary>The provider cannot refund part of a capture.</summary>
         public static Error PartialRefundUnsupported() => Error.BadRequest(
@@ -122,18 +116,18 @@ public static class PaymentsOutcome
         /// <summary>The provider is not enabled or configured.</summary>
         public static Error ProviderDisabled(PaymentProvider provider) => Error.ServiceUnavailable(
             code: Codes.ProviderDisabled,
-            message: $"The '{provider}' provider is not enabled.");
+            message: $"The '{provider.ToWire()}' provider is not enabled.");
 
         /// <summary>The provider rejected the request.</summary>
         public static Error ProviderRequestRejected(PaymentProvider provider) => Error.Custom(
             code: Codes.ProviderRequestRejected,
-            message: $"The '{provider}' provider rejected the request.",
+            message: $"The '{provider.ToWire()}' provider rejected the request.",
             status: 502);
 
         /// <summary>The provider is unreachable or timed out.</summary>
         public static Error ProviderUnavailable(PaymentProvider provider) => Error.Custom(
             code: Codes.ProviderUnavailable,
-            message: $"The '{provider}' provider is unavailable.",
+            message: $"The '{provider.ToWire()}' provider is unavailable.",
             status: 502);
 
         /// <summary>The provider declined a capture or refund.</summary>
@@ -145,7 +139,7 @@ public static class PaymentsOutcome
         /// <summary>The provider rejected the credentials.</summary>
         public static Error ProviderConfigurationInvalid(PaymentProvider provider) => Error.InternalServerError(
             code: Codes.ProviderConfigurationInvalid,
-            message: $"The '{provider}' provider configuration is invalid.");
+            message: $"The '{provider.ToWire()}' provider configuration is invalid.");
 
         /// <summary>The webhook signature is missing or invalid.</summary>
         public static Error WebhookSignatureInvalid() => Error.BadRequest(
@@ -178,8 +172,13 @@ public static class PaymentsOutcome
     /// <summary>Stable error codes for contracts and tests.</summary>
     public static class Codes
     {
+        // Payment
+
         /// <summary>Payment not found.</summary>
         public const string NotFound = "Payments.Payment.NotFound";
+
+        /// <summary>Provider reference not linked to a payment.</summary>
+        public const string ReferenceNotFound = "Payments.Payment.ReferenceNotFound";
 
         /// <summary>Illegal transition.</summary>
         public const string InvalidState = "Payments.Payment.InvalidState";
@@ -187,8 +186,8 @@ public static class PaymentsOutcome
         /// <summary>Invalid amount.</summary>
         public const string AmountInvalid = "Payments.Payment.AmountInvalid";
 
-        /// <summary>Unsupported currency exponent.</summary>
-        public const string CurrencyUnsupported = "Payments.Payment.CurrencyUnsupported";
+        /// <summary>Amount currency differs from the payment currency.</summary>
+        public const string CurrencyMismatch = "Payments.Payment.CurrencyMismatch";
 
         /// <summary>Missing external reference.</summary>
         public const string ReferenceRequired = "Payments.Payment.ReferenceRequired";
@@ -196,32 +195,24 @@ public static class PaymentsOutcome
         /// <summary>Reference exceeds its limit.</summary>
         public const string ReferenceTooLong = "Payments.Payment.ReferenceTooLong";
 
-        /// <summary>Idempotency key exceeds its limit.</summary>
-        public const string IdempotencyKeyTooLong = "Payments.Payment.IdempotencyKeyTooLong";
-
-        /// <summary>Amount currency differs from the payment currency.</summary>
-        public const string CurrencyMismatch = "Payments.Payment.CurrencyMismatch";
-
-        /// <summary>Customer action on an expired intent.</summary>
-        public const string Expired = "Payments.Payment.Expired";
-
-        /// <summary>Missing or over-long refund reason.</summary>
-        public const string RefundReasonRequired = "Payments.Refund.ReasonRequired";
-
-        /// <summary>Refund already settled.</summary>
-        public const string RefundAlreadySettled = "Payments.Refund.AlreadySettled";
-
-        /// <summary>Provider call before a reference existed.</summary>
-        public const string ProviderReferenceMissing = "Payments.Provider.ReferenceMissing";
-
         /// <summary>Missing idempotency key.</summary>
         public const string IdempotencyKeyRequired = "Payments.Payment.IdempotencyKeyRequired";
+
+        /// <summary>Idempotency key exceeds its limit.</summary>
+        public const string IdempotencyKeyTooLong = "Payments.Payment.IdempotencyKeyTooLong";
 
         /// <summary>Idempotency key reuse with a different body.</summary>
         public const string IdempotencyConflict = "Payments.Payment.IdempotencyConflict";
 
+        /// <summary>Unknown capture mode.</summary>
+        public const string CaptureModeInvalid = "Payments.CaptureMode.Invalid";
+
+        // Customer
+
         /// <summary>Missing authenticated customer.</summary>
         public const string CustomerRequired = "Payments.Customer.Required";
+
+        // Refund
 
         /// <summary>Refund larger than the captured remainder.</summary>
         public const string RefundExceedsCredit = "Payments.Refund.ExceedsCredit";
@@ -232,14 +223,22 @@ public static class PaymentsOutcome
         /// <summary>Unknown refund.</summary>
         public const string RefundNotFound = "Payments.Refund.NotFound";
 
+        /// <summary>Missing or over-long refund reason.</summary>
+        public const string RefundReasonRequired = "Payments.Refund.ReasonRequired";
+
+        /// <summary>Refund already settled.</summary>
+        public const string RefundAlreadySettled = "Payments.Refund.AlreadySettled";
+
         /// <summary>Partial refund not supported by the provider.</summary>
         public const string PartialRefundUnsupported = "Payments.Refund.PartialUnsupported";
+
+        // Provider
 
         /// <summary>Unknown provider name.</summary>
         public const string ProviderUnknown = "Payments.Provider.Unknown";
 
-        /// <summary>Unknown capture mode.</summary>
-        public const string CaptureModeInvalid = "Payments.CaptureMode.Invalid";
+        /// <summary>Provider call before a reference existed.</summary>
+        public const string ProviderReferenceMissing = "Payments.Provider.ReferenceMissing";
 
         /// <summary>Provider not enabled.</summary>
         public const string ProviderDisabled = "Payments.Provider.Disabled";
@@ -255,6 +254,8 @@ public static class PaymentsOutcome
 
         /// <summary>Provider credentials rejected.</summary>
         public const string ProviderConfigurationInvalid = "Payments.Provider.ConfigurationInvalid";
+
+        // Webhook
 
         /// <summary>Bad webhook signature.</summary>
         public const string WebhookSignatureInvalid = "Payments.Webhook.SignatureInvalid";

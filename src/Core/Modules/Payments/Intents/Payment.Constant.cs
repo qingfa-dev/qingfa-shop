@@ -1,19 +1,40 @@
 namespace Core.Modules.Payments.Intents;
 
-/// <summary>Static limits for a payment.</summary>
+/// <summary>Static limits and canonical values for the payments module.</summary>
 public static class PaymentConstant
 {
-    /// <summary>Length limits for free-text fields.</summary>
+    /// <summary>Length limits mirrored by the persistence mappings.</summary>
     public static class Constraints
     {
+        /// <summary>Provider name length.</summary>
+        public const int ProviderMaxLength = 16;
+
+        /// <summary>Status length.</summary>
+        public const int StatusMaxLength = 32;
+
+        /// <summary>Currency code length.</summary>
+        public const int CurrencyMaxLength = 3;
+
         /// <summary>External reference length.</summary>
         public const int ReferenceMaxLength = 128;
 
         /// <summary>Idempotency key length.</summary>
         public const int IdempotencyKeyMaxLength = 128;
 
+        /// <summary>Provider reference length.</summary>
+        public const int ProviderReferenceMaxLength = 128;
+
+        /// <summary>Provider event id length.</summary>
+        public const int ProviderEventIdMaxLength = 128;
+
+        /// <summary>Provider event type length.</summary>
+        public const int EventTypeMaxLength = 64;
+
         /// <summary>Failure code length.</summary>
         public const int FailureCodeMaxLength = 64;
+
+        /// <summary>Failure message length.</summary>
+        public const int FailureMessageMaxLength = 512;
 
         /// <summary>Refund reason length.</summary>
         public const int ReasonMaxLength = 256;
@@ -60,7 +81,7 @@ public static class PaymentConstant
         public const string Json = "application/json";
     }
 
-    /// <summary>Canonical transition reasons stored on events.</summary>
+    /// <summary>Canonical reasons recorded on payment and refund events.</summary>
     public static class Reasons
     {
         /// <summary>The customer cancelled.</summary>
@@ -77,6 +98,15 @@ public static class PaymentConstant
 
         /// <summary>The provider rejected a refund without a code.</summary>
         public const string RefundFailed = "refund_failed";
+
+        /// <summary>Recorded when a capture arrives after expiry.</summary>
+        public const string LateSettlement = "late_settlement";
+
+        /// <summary>Recorded when settlement follows an earlier failure.</summary>
+        public const string SettledAfterFailure = "settled_after_failure";
+
+        /// <summary>Recorded for the first capture.</summary>
+        public const string InitialCapture = "initial_capture";
     }
 
     /// <summary>Canonical webhook processing outcomes.</summary>
@@ -88,12 +118,6 @@ public static class PaymentConstant
         /// <summary>Applied to the aggregate.</summary>
         public const string Settled = "Settled";
 
-        /// <summary>Ignored event type.</summary>
-        public const string Ignored = "Ignored";
-
-        /// <summary>Duplicate delivery.</summary>
-        public const string Duplicate = "Duplicate";
-
         /// <summary>Amount or currency disagreed with the payment.</summary>
         public const string AmountMismatch = "AmountMismatch";
 
@@ -101,23 +125,11 @@ public static class PaymentConstant
         public const string Failed = "Failed";
     }
 
-    /// <summary>Constants used by the domain and adapter boundary.</summary>
+    /// <summary>Default values used at the module boundary.</summary>
     public static class Defaults
     {
-        /// <summary>Reason recorded when a capture arrives after expiry.</summary>
-        public const string LateSettlement = "LateSettlement";
-
-        /// <summary>Reason recorded when settlement follows an earlier failure.</summary>
-        public const string SettledAfterFailure = "SettledAfterFailure";
-
-        /// <summary>Reason recorded for the first capture.</summary>
-        public const string InitialCapture = "Initial";
-
         /// <summary>Default page size for payment queries.</summary>
         public const int DefaultPageSize = 20;
-
-        /// <summary>Default maximum webhook body size in bytes.</summary>
-        public const int WebhookMaxBytes = 65536;
 
         /// <summary>Default currency code.</summary>
         public const string Currency = "USD";

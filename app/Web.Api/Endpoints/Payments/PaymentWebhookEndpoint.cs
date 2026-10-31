@@ -10,8 +10,11 @@ using Core.Modules.Payments;
 using Core.Modules.Payments.Intents;
 
 using Infrastructure.BuildingBlocks.Adapters.Serialization;
+using Infrastructure.Modules.Payments;
 
 using MediatR;
+
+using Microsoft.Extensions.Options;
 
 namespace Web.Api.Endpoints.Payments;
 
@@ -36,10 +39,14 @@ public sealed class PaymentWebhookEndpoint : ICarterModule
     private static async Task<IResult> HandleAsync(
         string provider,
         HttpRequest request,
+        IOptions<PaymentsOptions> options,
         IMediator mediator,
         CancellationToken cancellationToken)
     {
         ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(options);
+
+        int maxBytes = options.Value.Limits.WebhookMaxBytes;
 
         if (!Enum.TryParse(provider, ignoreCase: true, out PaymentProvider parsed))
             return Result.Fail(PaymentsOutcome.Failure.WebhookProviderUnsupported(provider)).ToApiResult();
@@ -48,14 +55,14 @@ public sealed class PaymentWebhookEndpoint : ICarterModule
             || !request.ContentType.StartsWith(PaymentConstant.ContentTypes.Json, StringComparison.OrdinalIgnoreCase))
             return Result.Fail(PaymentsOutcome.Failure.WebhookContentTypeUnsupported()).ToApiResult();
 
-        if (request.ContentLength is > PaymentConstant.Defaults.WebhookMaxBytes)
+        if (request.ContentLength is > 0 && request.ContentLength > maxBytes)
             return Result.Fail(PaymentsOutcome.Failure.WebhookPayloadTooLarge()).ToApiResult();
 
         // Handle: read the raw body; signature verification needs the exact bytes.
         using var reader = new StreamReader(request.Body, Encoding.UTF8);
         string rawBody = await reader.ReadToEndAsync(cancellationToken);
 
-        if (rawBody.Length > PaymentConstant.Defaults.WebhookMaxBytes)
+        if (rawBody.Length > maxBytes)
             return Result.Fail(PaymentsOutcome.Failure.WebhookPayloadTooLarge()).ToApiResult();
 
         IReadOnlyDictionary<string, string> headers = request.Headers

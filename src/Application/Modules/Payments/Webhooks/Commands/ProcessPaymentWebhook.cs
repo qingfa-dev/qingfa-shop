@@ -11,8 +11,6 @@ using Core.BuildingBlocks.Functional.Results;
 using Core.Modules.Payments;
 using Core.Modules.Payments.Intents;
 
-using FluentValidation;
-
 using MediatR;
 
 namespace Application.Modules.Payments.Webhooks.Commands;
@@ -33,16 +31,6 @@ public static class ProcessPaymentWebhook
 
     #endregion
 
-    #region Validator
-
-    /// <summary>Validates the command.</summary>
-    public sealed class UseCaseValidator : AbstractValidator<UseCase>
-    {
-        /// <summary>Creates the validator.</summary>
-        public UseCaseValidator() => RuleFor(command => command.RawBody).NotEmpty();
-    }
-
-    #endregion
 
     #region Handler
 
@@ -58,6 +46,9 @@ public static class ProcessPaymentWebhook
         public async Task<Result<bool>> Handle(UseCase command, CancellationToken cancellationToken)
         {
             ArgumentNullException.ThrowIfNull(command);
+
+            if (string.IsNullOrWhiteSpace(command.RawBody))
+                return Result<bool>.Fail(PaymentsOutcome.Failure.WebhookPayloadInvalid());
 
             Result<IPaymentGateway> resolved = registry.Resolve(command.Provider);
 

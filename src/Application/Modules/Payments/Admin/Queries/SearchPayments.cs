@@ -5,8 +5,6 @@ using Application.Modules.Payments.Persistence;
 
 using Application.BuildingBlocks.UseCases.Mediation.Queries;
 
-using FluentValidation;
-
 namespace Application.Modules.Payments.Admin.Queries;
 
 /// <summary>Searches all payments for administrators.</summary>
@@ -22,16 +20,6 @@ public static class SearchPayments
 
     #endregion
 
-    #region Validator
-
-    /// <summary>Validates the query.</summary>
-    public sealed class UseCaseValidator : AbstractValidator<UseCase>
-    {
-        /// <summary>Creates the validator.</summary>
-        public UseCaseValidator() => RuleFor(query => query.Page).NotNull();
-    }
-
-    #endregion
 
     #region Handler
 

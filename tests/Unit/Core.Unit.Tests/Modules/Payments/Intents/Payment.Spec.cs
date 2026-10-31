@@ -141,7 +141,7 @@ public sealed class PaymentSpec
 
         payment.Status.Should().Be(PaymentStatus.Captured);
         payment.UncommittedEvents.OfType<PaymentCaptured>()
-            .Single().Reason.Should().Be(PaymentConstant.Defaults.SettledAfterFailure);
+            .Single().Reason.Should().Be(PaymentConstant.Reasons.SettledAfterFailure);
     }
 
     [Fact]
@@ -255,7 +255,7 @@ public sealed class PaymentSpec
 
         payment.Status.Should().Be(PaymentStatus.Captured);
         payment.UncommittedEvents.OfType<PaymentCaptured>()
-            .Single().Reason.Should().Be(PaymentConstant.Defaults.LateSettlement);
+            .Single().Reason.Should().Be(PaymentConstant.Reasons.LateSettlement);
     }
 
     [Fact]
