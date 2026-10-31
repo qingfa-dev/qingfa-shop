@@ -5,6 +5,7 @@ using Application.Modules.Payments.Admin.Queries;
 using Application.Modules.Payments.Intents.Commands;
 using Application.Modules.Payments.Intents.Models;
 using Application.Modules.Payments.Intents.Queries;
+using Application.Modules.Payments.Persistence;
 using Application.Modules.Payments.Permissions;
 using Application.Modules.Payments.Refunds.Commands;
 using Application.Modules.Payments.Refunds.Queries;
@@ -59,6 +60,11 @@ public sealed class PaymentAdminEndpoint : ICarterModule
             .WithName("RefundPayment")
             .WithSummary("Refund captured funds.")
             .HasPermission(PaymentPermissionCatalog.Payments.Refund);
+
+        group.MapGet("/{id:guid}/disputes", ListDisputesAsync)
+            .WithName("ListPaymentDisputes")
+            .WithSummary("List the disputes raised against a payment.")
+            .HasPermission(PaymentPermissionCatalog.Payments.Read);
 
         group.MapGet("/{id:guid}/refunds/{refundId:guid}", GetRefundAsync)
             .WithName("GetRefund")
@@ -143,6 +149,13 @@ public sealed class PaymentAdminEndpoint : ICarterModule
                 cancellationToken))
             .ToApiResult(refund => $"{BasePath}/{id}/refunds/{refund.Id}");
     }
+
+    /// <summary>Lists the disputes raised against a payment.</summary>
+    private static async Task<IResult> ListDisputesAsync(
+        Guid id,
+        IPaymentReadStore store,
+        CancellationToken cancellationToken)
+        => (await store.ListDisputesAsync(id, cancellationToken)).ToApiResult();
 
     /// <summary>Reads one refund.</summary>
     private static async Task<IResult> GetRefundAsync(

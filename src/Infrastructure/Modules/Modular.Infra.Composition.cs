@@ -10,6 +10,7 @@ using Infrastructure.Modules.Todos.Integrations.Messaging;
 using Infrastructure.Modules.Todos.Persistence.EventSourcing;
 using Infrastructure.Modules.Todos.Services;
 
+using Infrastructure.Modules.Payments.Reconciliation;
 using Infrastructure.Modules.Payments.Retention;
 using Infrastructure.Payments.Configuration;
 
@@ -67,6 +68,13 @@ public static class ModularInfraComposition
 
         builder.Services.AddSingleton<IValidateOptions<PaymentRetentionOptions>, PaymentRetentionOptionsValidator>();
         builder.Services.AddHostedService<PaymentWebhookRetentionWorker>();
+
+        builder.Services.AddOptions<PaymentReconciliationOptions>()
+            .BindConfiguration(PaymentReconciliationOptions.SectionName)
+            .ValidateOnStart();
+
+        builder.Services.AddSingleton<IValidateOptions<PaymentReconciliationOptions>, PaymentReconciliationOptionsValidator>();
+        builder.Services.AddHostedService<PaymentReconciliationWorker>();
 
         builder.Services.AddOptions<StripeOptions>().BindConfiguration(StripeOptions.SectionName);
         builder.Services.AddOptions<PayPalOptions>().BindConfiguration(PayPalOptions.SectionName);

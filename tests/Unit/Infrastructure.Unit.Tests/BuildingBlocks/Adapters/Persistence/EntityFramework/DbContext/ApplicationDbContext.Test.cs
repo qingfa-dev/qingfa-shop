@@ -114,7 +114,8 @@ public sealed class ApplicationDbContextTest : IAsyncLifetime
             "payment_refunds",
             "payment_webhook_events",
             "payment_idempotency_keys",
-            "payment_references");
+            "payment_references",
+            "payment_disputes");
     }
 
     [Fact(DisplayName = "ApplicationDbContext should place Todo, identity, messaging, and payment tables in their schemas")]
