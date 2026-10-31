@@ -63,8 +63,7 @@ public static class RefundPayment
             RuleFor(command => command.PaymentId).NotEmpty();
 
             RuleFor(command => command.IdempotencyKey)
-                .NotEmpty()
-                .WithErrorCode(PaymentsOutcome.Codes.IdempotencyKeyRequired);
+                .MaximumLength(PaymentConstant.Constraints.IdempotencyKeyMaxLength);
 
             RuleFor(command => command.Request.Amount.Amount)
                 .GreaterThan(0)

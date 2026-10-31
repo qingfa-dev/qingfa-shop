@@ -7,6 +7,7 @@ using Infrastructure.BuildingBlocks.Adapters.Serialization;
 using ServiceDefaults;
 
 using Web.Api.Endpoints.Identity;
+using Web.Api.Endpoints.Payments;
 using Web.Api.Endpoints.Todos;
 
 namespace Web.Api.Composition;
@@ -35,6 +36,8 @@ public static class ApiComposition
             configurator.WithModule<TodoListEndpoint>();
             configurator.WithModule<TodoCategoryEndpoint>();
             configurator.WithModule<TodoReminderEndpoint>();
+            configurator.WithModule<PaymentEndpoint>();
+            configurator.WithModule<PaymentAdminEndpoint>();
         });
 
         return builder;

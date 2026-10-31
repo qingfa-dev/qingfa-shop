@@ -1,3 +1,4 @@
+using Core.BuildingBlocks.Domain.EventSourcing;
 using Core.BuildingBlocks.Domain.ValueObjects.Money;
 
 namespace Core.Modules.Payments.Intents;
@@ -50,4 +51,11 @@ public static class PaymentFactory
                 payment.ExpiresAt,
                 payment.CreatedAt)));
     }
+}
+
+/// <summary>Creates an empty payment for rehydration.</summary>
+public sealed class PaymentAggregateFactory : IAggregateFactory<Payment>
+{
+    /// <inheritdoc />
+    public Payment Create() => new();
 }

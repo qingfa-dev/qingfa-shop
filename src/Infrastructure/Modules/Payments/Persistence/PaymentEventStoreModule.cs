@@ -1,6 +1,9 @@
 using Application.BuildingBlocks.EventSourcing;
 using Application.Modules.Payments.Persistence;
 
+using Core.BuildingBlocks.Domain.EventSourcing;
+using Core.Modules.Payments.Intents;
+
 using Infrastructure.BuildingBlocks.Adapters.Persistence.EntityFramework.EventSourcing;
 
 using Microsoft.Extensions.DependencyInjection;
@@ -16,6 +19,7 @@ public sealed class PaymentEventStoreModule : IEventStoreModule
     {
         ArgumentNullException.ThrowIfNull(services);
 
+        services.TryAddScoped<IAggregateFactory<Payment>, PaymentAggregateFactory>();
         services.TryAddEnumerable(ServiceDescriptor.Scoped<IProjection, PaymentProjection>());
         services.TryAddScoped<IPaymentIdempotencyStore, PaymentIdempotencyStore>();
         services.TryAddScoped<IPaymentReferenceStore, PaymentReferenceStore>();

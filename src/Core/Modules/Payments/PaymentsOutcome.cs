@@ -109,6 +109,16 @@ public static class PaymentsOutcome
             code: Codes.PartialRefundUnsupported,
             message: "This provider does not support partial refunds.");
 
+        /// <summary>The provider name is unknown.</summary>
+        public static Error ProviderUnknown(string provider) => Error.BadRequest(
+            code: Codes.ProviderUnknown,
+            message: $"The '{provider}' provider is unknown.");
+
+        /// <summary>The capture mode is unknown.</summary>
+        public static Error CaptureModeInvalid(string captureMode) => Error.BadRequest(
+            code: Codes.CaptureModeInvalid,
+            message: $"The '{captureMode}' capture mode is unknown.");
+
         /// <summary>The provider is not enabled or configured.</summary>
         public static Error ProviderDisabled(PaymentProvider provider) => Error.ServiceUnavailable(
             code: Codes.ProviderDisabled,
@@ -224,6 +234,12 @@ public static class PaymentsOutcome
 
         /// <summary>Partial refund not supported by the provider.</summary>
         public const string PartialRefundUnsupported = "Payments.Refund.PartialUnsupported";
+
+        /// <summary>Unknown provider name.</summary>
+        public const string ProviderUnknown = "Payments.Provider.Unknown";
+
+        /// <summary>Unknown capture mode.</summary>
+        public const string CaptureModeInvalid = "Payments.CaptureMode.Invalid";
 
         /// <summary>Provider not enabled.</summary>
         public const string ProviderDisabled = "Payments.Provider.Disabled";

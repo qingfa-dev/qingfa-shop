@@ -1,10 +1,16 @@
+using Application.Modules.Payments.Ports;
+
 using Infrastructure.BuildingBlocks;
+using Infrastructure.Modules.Payments;
+using Infrastructure.Modules.Payments.Adapters.Fake;
 using Infrastructure.Modules.Payments.Persistence;
 using Infrastructure.Modules.Todos.Integrations.Messaging;
 using Infrastructure.Modules.Todos.Persistence.EventSourcing;
 using Infrastructure.Modules.Todos.Services;
 
 using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Infrastructure.Modules;
 
@@ -24,6 +30,11 @@ public static class ModularInfraComposition
     public static WebApplicationBuilder AddModularInfrastructure(this WebApplicationBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
+
+        // Register: the fake provider is always available for local runs and tests.
+        builder.Services.AddSingleton<IPaymentGateway, FakePaymentGateway>();
+        builder.Services.TryAddSingleton<IPaymentGatewayRegistry, PaymentGatewayRegistry>();
+
         builder.AddTodoServices();
         return builder;
     }

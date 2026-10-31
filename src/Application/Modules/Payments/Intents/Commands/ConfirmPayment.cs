@@ -1,3 +1,5 @@
+using Application.BuildingBlocks.EventSourcing;
+using Application.Modules.Payments.Intents;
 using Application.Modules.Payments.Intents.Models;
 using Application.Modules.Payments.Persistence;
 using Application.Modules.Payments.Ports;
@@ -39,6 +41,7 @@ public static class ConfirmPayment
     /// <summary>Handles the command.</summary>
     public sealed class UseCaseHandler(
         IPaymentReadStore store,
+        IEventSourcedRepository<Payment, Guid> repository,
         IPaymentGatewayRegistry registry,
         IMediator mediator) : ICommandHandler<UseCase, PaymentResponseModel>
     {
@@ -49,20 +52,40 @@ public static class ConfirmPayment
 
             PaymentReadModel? row = await store.FindAsync(command.PaymentId, cancellationToken);
 
-            if (row is null)
-                return Result<PaymentResponseModel>.Fail(PaymentsOutcome.Failure.NotFound(command.PaymentId));
+            PaymentProvider provider;
+            string? providerReference;
+            PaymentStatus status;
 
-            if (row.ProviderReference is null)
-                return Result<PaymentResponseModel>.Fail(PaymentsOutcome.Failure.InvalidState(
-                    PaymentStatusExtension.FromWire(row.Status), "confirm"));
+            if (row is null)            {
+                // Fallback: read the event stream while the projection is still catching up.
+                Result<Payment> loaded = await repository.LoadAsync(command.PaymentId, cancellationToken);
 
-            Result<IPaymentGateway> resolved = registry.Resolve(PaymentProviderExtension.FromWire(row.Provider));
+                if (loaded.IsFailure)
+                    return Result<PaymentResponseModel>.Fail(
+                        PaymentsOutcome.Failure.NotFound(command.PaymentId));
+
+                provider = loaded.Value.Provider;
+                providerReference = loaded.Value.ProviderReference;
+                status = loaded.Value.Status;
+            }
+            else
+            {
+                provider = PaymentProviderExtension.FromWire(row.Provider);
+                providerReference = row.ProviderReference;
+                status = PaymentStatusExtension.FromWire(row.Status);
+            }
+
+            if (providerReference is null)
+                return Result<PaymentResponseModel>.Fail(
+                    PaymentsOutcome.Failure.InvalidState(status, "confirm"));
+
+            Result<IPaymentGateway> resolved = registry.Resolve(provider);
 
             if (resolved.IsFailure)
                 return Result<PaymentResponseModel>.Fail(resolved.Errors);
 
             Result<PaymentIntentResult> intent = await resolved.Value.RetrieveAsync(
-                row.ProviderReference, cancellationToken);
+                providerReference, cancellationToken);
 
             if (intent.IsFailure)
                 return Result<PaymentResponseModel>.Fail(intent.Errors);
@@ -77,12 +100,12 @@ public static class ConfirmPayment
 
             return await mediator.Send(
                 new SettlePayment.UseCase(
-                    PaymentProviderExtension.FromWire(row.Provider),
-                    row.ProviderReference,
+                    provider,
+                    providerReference,
                     observed,
                     null,
                     intent.Value.FailureCode,
-                    $"confirm:{row.Id:N}"),
+                    $"confirm:{command.PaymentId:N}"),
                 cancellationToken);
         }
     }

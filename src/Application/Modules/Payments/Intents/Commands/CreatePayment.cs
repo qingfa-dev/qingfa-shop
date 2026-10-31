@@ -55,8 +55,6 @@ public static class CreatePayment
         public UseCaseValidator()
         {
             RuleFor(command => command.IdempotencyKey)
-                .NotEmpty()
-                .WithErrorCode(PaymentsOutcome.Codes.IdempotencyKeyRequired)
                 .MaximumLength(PaymentConstant.Constraints.IdempotencyKeyMaxLength)
                 .WithErrorCode(PaymentsOutcome.Codes.IdempotencyKeyTooLong);
 
