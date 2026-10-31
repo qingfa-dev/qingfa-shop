@@ -1,8 +1,11 @@
 using Application.BuildingBlocks.Security.Authentication.Contexts;
+using Application.Modules.Payments;
 
 using Carter;
 
 using Infrastructure.BuildingBlocks.Adapters.Serialization;
+
+using OpenTelemetry.Metrics;
 
 using ServiceDefaults;
 
@@ -21,6 +24,11 @@ public static class ApiComposition
     public static WebApplicationBuilder AddApi(this WebApplicationBuilder builder)
     {
         ArgumentNullException.ThrowIfNull(builder);
+
+        // Initialize: the payments module owns its own meter, so it must be exported
+        // explicitly; `AddMeter` is the only place a custom meter joins the pipeline.
+        builder.Services.ConfigureOpenTelemetryMeterProvider(metrics =>
+            metrics.AddMeter(PaymentMetricConstant.MeterName));
 
         builder.AddApiJsonOptions();
         builder.Services.AddProblemDetails();

@@ -1,5 +1,7 @@
 using Aspire.Hosting.JavaScript;
 
+using Microsoft.Extensions.Configuration;
+
 IDistributedApplicationBuilder builder = DistributedApplication.CreateBuilder(args);
 
 // Initialize: AppHost owns the same backing services Compose runs, so F5 and the
@@ -16,6 +18,13 @@ var rabbitmq = builder
     .AddRabbitMQ("rabbitmq")
     .WithDataVolume("rabbitmq-data");
 
+// Initialize: forward the payments configuration so `dotnet run` and Compose agree.
+// Secrets are never written here; they arrive through the environment.
+string stripeEnabled = builder.Configuration["Payments:Providers:Stripe:Enabled"] ?? "false";
+string paypalEnabled = builder.Configuration["Payments:Providers:PayPal:Enabled"] ?? "false";
+string intentLifetime = builder.Configuration["Payments:Policy:HostedCheckoutIntentLifetime"] ?? "00:30:00";
+string expiryGrace = builder.Configuration["Payments:Policy:ProviderExpiryGracePeriod"] ?? "00:02:00";
+
 IResourceBuilder<ProjectResource> api = builder
     .AddProject<Projects.Web_Api>("api")
     .WithReference(db)
@@ -27,7 +36,21 @@ IResourceBuilder<ProjectResource> api = builder
     .WithEnvironment("EfCore__ConnectionStringName", "db")
     .WithEnvironment("Persistence__AutoMigrate", "true")
     .WithEnvironment("Messaging__Transport", "RabbitMq")
+    .WithEnvironment("Payments__Providers__Stripe__Enabled", stripeEnabled)
+    .WithEnvironment("Payments__Providers__PayPal__Enabled", paypalEnabled)
+    .WithEnvironment("Payments__Policy__HostedCheckoutIntentLifetime", intentLifetime)
+    .WithEnvironment("Payments__Policy__ProviderExpiryGracePeriod", expiryGrace)
     .WithHttpHealthCheck("/health");
+
+// Register: each configured currency ceiling becomes its own environment key.
+foreach (IConfigurationSection currency in builder.Configuration
+    .GetSection("Payments:Policy:MaximumAmountsByCurrency")
+    .GetChildren())
+{
+    api.WithEnvironment(
+        $"Payments__Policy__MaximumAmountsByCurrency__{currency.Key}",
+        currency.Value ?? "0");
+}
 
 // Enforce: the gateway fronts the Api, so every browser request enters here rather
 // than reaching the Api directly.

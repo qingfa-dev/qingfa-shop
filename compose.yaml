@@ -52,6 +52,11 @@ services:
       ConnectionStrings__redis: redis:6379
       ConnectionStrings__rabbitmq: amqp://${RABBITMQ_USER:-qingfa}:${RABBITMQ_PASS:-qingfa}@rabbitmq:5672
       Messaging__Transport: RabbitMq
+      Payments__Providers__Stripe__Enabled: ${PAYMENTS_STRIPE_ENABLED:-false}
+      Payments__Providers__PayPal__Enabled: ${PAYMENTS_PAYPAL_ENABLED:-false}
+      Payments__Policy__HostedCheckoutIntentLifetime: ${PAYMENTS_INTENT_LIFETIME:-00:30:00}
+      Payments__Policy__ProviderExpiryGracePeriod: ${PAYMENTS_EXPIRY_GRACE:-00:02:00}
+      Payments__Policy__MaximumAmountsByCurrency__USD: ${PAYMENTS_MAX_USD:-100000}
     ports:
       - "8080:8080"
     healthcheck:
