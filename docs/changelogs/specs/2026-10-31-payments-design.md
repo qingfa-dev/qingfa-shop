@@ -1,6 +1,6 @@
 # Payments Module — Design Specification
 
-- **Status:** Approved (design) — implementation pending
+- **Status:** Implemented
 - **Date:** 2026-10-31
 - **Module:** `Payments`
 - **Supersedes:** none

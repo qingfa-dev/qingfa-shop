@@ -90,8 +90,8 @@ public sealed class PaymentProjectionTest
             IdempotencyKey = "key-1",
             IdempotencyFingerprint = "fp-1",
             CustomerId = Guid.NewGuid(),
-            CreatedAt = DateTimeOffset.UtcNow,
-            UpdatedAt = DateTimeOffset.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
         });
 
         await context.SaveChangesAsync();
@@ -145,8 +145,8 @@ public sealed class PaymentProjectionTest
             IdempotencyKey = "key-1",
             IdempotencyFingerprint = "fp-1",
             CustomerId = Guid.NewGuid(),
-            CreatedAt = DateTimeOffset.UtcNow,
-            UpdatedAt = DateTimeOffset.UtcNow
+            CreatedAt = DateTime.UtcNow,
+            UpdatedAt = DateTime.UtcNow
         });
 
         context.Set<Application.Modules.Payments.Refunds.Models.RefundReadModel>().Add(
@@ -159,8 +159,8 @@ public sealed class PaymentProjectionTest
                 Currency = "USD",
                 Reason = "returned",
                 IdempotencyKey = "rk-1",
-                CreatedAt = DateTimeOffset.UtcNow,
-                UpdatedAt = DateTimeOffset.UtcNow
+                CreatedAt = DateTime.UtcNow,
+                UpdatedAt = DateTime.UtcNow
             });
 
         await context.SaveChangesAsync();

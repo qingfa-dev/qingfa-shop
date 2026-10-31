@@ -15,9 +15,30 @@ using Stripe;
 namespace Infrastructure.Modules.Payments.Adapters.Stripe;
 
 /// <summary>Stripe adapter built on Stripe.net.</summary>
-public sealed class StripePaymentGateway(StripeOptions options)
-    : IPaymentGateway, ISupportsPartialRefund, ISupportsManualCapture
+public sealed class StripePaymentGateway : IPaymentGateway, ISupportsPartialRefund, ISupportsManualCapture
 {
+    private readonly StripeOptions _options;
+    private readonly IStripeClient _client;
+
+    /// <summary>Creates the adapter from configuration.</summary>
+    /// <param name="options">The Stripe credentials.</param>
+    public StripePaymentGateway(StripeOptions options)
+        : this(options, new StripeClient(options.SecretKey))
+    {
+    }
+
+    /// <summary>Creates the adapter with an explicit client; used by tests.</summary>
+    /// <param name="options">The Stripe credentials.</param>
+    /// <param name="client">The Stripe client.</param>
+    public StripePaymentGateway(StripeOptions options, IStripeClient client)
+    {
+        ArgumentNullException.ThrowIfNull(options);
+        ArgumentNullException.ThrowIfNull(client);
+
+        _options = options;
+        _client = client;
+    }
+
     /// <inheritdoc />
     public PaymentProvider Provider => PaymentProvider.Stripe;
 
@@ -119,7 +140,7 @@ public sealed class StripePaymentGateway(StripeOptions options)
         if (minor.IsFailure)
             return Result<PaymentRefundResult>.Fail(minor.Errors);
 
-        var service = new RefundService(new StripeClient(options.SecretKey));
+        var service = new RefundService(_client);
 
         Refund refund = await service.CreateAsync(
             new RefundCreateOptions { PaymentIntent = request.ProviderReference, Amount = minor.Value },
@@ -148,8 +169,8 @@ public sealed class StripePaymentGateway(StripeOptions options)
             Event stripeEvent = EventUtility.ConstructEvent(
                 rawBody,
                 signature,
-                options.WebhookSecret,
-                options.WebhookToleranceSeconds,
+                _options.WebhookSecret,
+                _options.WebhookToleranceSeconds,
                 throwOnApiVersionMismatch: false);
 
             PaymentProviderEventType? type = stripeEvent.Type switch
@@ -188,7 +209,7 @@ public sealed class StripePaymentGateway(StripeOptions options)
     }
 
     /// <summary>Creates an intent service bound to the configured key.</summary>
-    private PaymentIntentService NewService() => new(new StripeClient(options.SecretKey));
+    private PaymentIntentService NewService() => new(_client);
 
     /// <summary>Maps a Stripe intent onto the canonical result.</summary>
     private static PaymentIntentResult Map(PaymentIntent intent)

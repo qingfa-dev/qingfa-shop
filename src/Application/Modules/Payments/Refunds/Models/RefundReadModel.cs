@@ -35,9 +35,9 @@ public sealed class RefundReadModel
     /// <summary>The idempotency key.</summary>
     public string IdempotencyKey { get; set; } = string.Empty;
 
-    /// <summary>When the refund was created.</summary>
-    public DateTimeOffset CreatedAt { get; set; }
+    /// <summary>When the refund was created, in UTC.</summary>
+    public DateTime CreatedAt { get; set; }
 
-    /// <summary>When the refund last changed.</summary>
-    public DateTimeOffset UpdatedAt { get; set; }
+    /// <summary>When the refund last changed, in UTC.</summary>
+    public DateTime UpdatedAt { get; set; }
 }

@@ -44,14 +44,14 @@ public sealed class PaymentReadModel
     /// <summary>The hosted-checkout URL.</summary>
     public string? ApprovalUrl { get; set; }
 
-    /// <summary>When the intent expires.</summary>
-    public DateTimeOffset? ExpiresAt { get; set; }
+    /// <summary>When the intent expires, in UTC.</summary>
+    public DateTime? ExpiresAt { get; set; }
 
-    /// <summary>When the payment was created.</summary>
-    public DateTimeOffset CreatedAt { get; set; }
+    /// <summary>When the payment was created, in UTC.</summary>
+    public DateTime CreatedAt { get; set; }
 
-    /// <summary>When the payment last changed.</summary>
-    public DateTimeOffset UpdatedAt { get; set; }
+    /// <summary>When the payment last changed, in UTC.</summary>
+    public DateTime UpdatedAt { get; set; }
 
     /// <summary>The provider failure code.</summary>
     public string? FailureCode { get; set; }

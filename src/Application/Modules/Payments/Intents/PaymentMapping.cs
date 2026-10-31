@@ -49,8 +49,8 @@ public static class PaymentMapping
             RefundedAmount = new PaymentAmountModel(model.RefundedAmount, model.Currency),
             ExternalReference = model.ExternalReference,
             ApprovalUrl = model.ApprovalUrl,
-            ExpiresAt = model.ExpiresAt,
-            CreatedAt = model.CreatedAt,
+            ExpiresAt = model.ExpiresAt is null ? null : new DateTimeOffset(model.ExpiresAt.Value, TimeSpan.Zero),
+            CreatedAt = new DateTimeOffset(model.CreatedAt, TimeSpan.Zero),
             FailureCode = model.FailureCode,
             FailureMessage = model.FailureMessage
         };

@@ -9,6 +9,8 @@
   - Application: `BuildingBlocks/{Caching,EventSourcing,Messaging,Persistence,Ports,Querying,Security,UseCases}`, `Modules/Todos`, and the `Modules/{PermissionCatalog,Persistence}` composition artifacts
   - Infrastructure: `BuildingBlocks/Adapters/{BackgroundJobs,Caching,Events,Http,Messaging,Notifications,Observability,OpenApi,Persistence,Security,Serialization,Storage}`, `Modules/Todos`, `Migrations`
 - BuildingBlocks must not reference Modules. Modules may reference BuildingBlocks, and cross-module communication goes through BuildingBlocks contracts or the composition root. `Modules/{PermissionCatalog,Persistence}` are composite-catalog composition artifacts, not business module folders. `Infrastructure/Migrations` is the exempt composition artifact.
+- Payments: `Core/Modules/Payments`, `Application/Modules/Payments`, `Infrastructure/Modules/Payments`
+  (event-sourced `Payment` + `Refund`, `IPaymentGateway` with Fake/Stripe/PayPal adapters, schema `payment`).
 - `app/Gateway` is the YARP edge in front of the Api. `app/AppHost` wires Postgres, Redis, RabbitMQ, Api, Gateway, and both Vite apps. The storefront is served at `/`, admin under `/admin`.
 - `app/Web.Storefront` and `app/Web.Admin` are one pnpm workspace rooted at `app/`, not the repo root.
 - `make` is the public command surface; `make help` is authoritative. `make/*.mk` declares targets, `scripts/**` implements them.
@@ -58,6 +60,8 @@
 - Comments use the labeled vocabulary (`Validate:`, `Initialize:`, `Enforce:`, `Handle:`, `Fallback:`, …), not freeform narration. See `guide/code-comment-style-guide.md`.
 - Layer boundaries are real project references in `.csproj`; `Architecture.Tests` enforces BuildingBlocks → Modules via reflection, while broader NetArchTest rules are still pending, so don't rely on it alone to catch violations.
 - Gateway route order is load-bearing: `/api/time` must precede `/api`, and the storefront catch-all must be last.
+  The payments routes also precede `/api`: `/api/payments/webhooks/{**remainder}` is anonymous and both it and
+  `/api/payments/{**remainder}` / `/api/admin/payments/{**remainder}` preserve the `/api` prefix (the catch-all strips it).
 - AppHost sets auto-migration. Add EF migrations with `dotnet ef migrations add <Name> -p src/Infrastructure -s app/Web.Api`; they live in `src/Infrastructure/Migrations`.
 
 ## Web conventions

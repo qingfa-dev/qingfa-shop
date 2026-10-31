@@ -109,10 +109,15 @@ public sealed class ApplicationDbContextTest : IAsyncLifetime
             "event_store_events",
             "event_store_snapshots",
             "projection_checkpoints",
-            "todo_reminders");
+            "todo_reminders",
+            "payments",
+            "payment_refunds",
+            "payment_webhook_events",
+            "payment_idempotency_keys",
+            "payment_references");
     }
 
-    [Fact(DisplayName = "ApplicationDbContext should place Todo, identity, and messaging tables in their schemas")]
+    [Fact(DisplayName = "ApplicationDbContext should place Todo, identity, messaging, and payment tables in their schemas")]
     public void Model_ShouldUseTheTodoSchema()
     {
         // Arrange
@@ -125,7 +130,7 @@ public sealed class ApplicationDbContextTest : IAsyncLifetime
             .ToList();
 
         // Assert
-        schemas.Should().BeEquivalentTo(["identity", "todo", "messaging"]);
+        schemas.Should().BeEquivalentTo(["identity", "todo", "messaging", "payment"]);
     }
 
     [Fact(DisplayName = "ApplicationDbContext should apply every entity configuration in the assembly")]
@@ -194,7 +199,7 @@ public sealed class ApplicationDbContextTest : IAsyncLifetime
         context.Database.HasPendingModelChanges().Should().BeFalse();
     }
 
-    [Fact(DisplayName = "ApplicationDbContext should discover the squashed InitialCreate migration")]
+    [Fact(DisplayName = "ApplicationDbContext should discover the InitialCreate and AddPayments migrations")]
     public void Database_ShouldDiscoverMigrations()
     {
         // Arrange
@@ -204,8 +209,9 @@ public sealed class ApplicationDbContextTest : IAsyncLifetime
         var migrations = context.Database.GetMigrations().ToList();
 
         // Assert
-        migrations.Should().ContainSingle();
+        migrations.Should().HaveCount(2);
         migrations[0].EndsWith("_InitialCreate", StringComparison.Ordinal).Should().BeTrue();
+        migrations[1].EndsWith("_AddPayments", StringComparison.Ordinal).Should().BeTrue();
     }
 
     [Fact(DisplayName = "The Persistence assembly should contain one DbContext and one design-time factory")]

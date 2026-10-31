@@ -75,11 +75,11 @@ public sealed class PaymentReadStore(DbContext context) : IPaymentReadStore
         if (!string.IsNullOrWhiteSpace(filter.Provider))
             query = query.Where(row => row.Provider == filter.Provider.ToLowerInvariant());
 
-        if (filter.CreatedFrom is not null)
-            query = query.Where(row => row.CreatedAt >= filter.CreatedFrom);
+        if (filter.CreatedFrom is { } from)
+            query = query.Where(row => row.CreatedAt >= from.UtcDateTime);
 
-        if (filter.CreatedTo is not null)
-            query = query.Where(row => row.CreatedAt <= filter.CreatedTo);
+        if (filter.CreatedTo is { } to)
+            query = query.Where(row => row.CreatedAt <= to.UtcDateTime);
 
         int total = await query.CountAsync(cancellationToken);
 

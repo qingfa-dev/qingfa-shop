@@ -63,8 +63,8 @@ namespace Infrastructure.Migrations
                     failure_code = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
                     failure_message = table.Column<string>(type: "character varying(512)", maxLength: 512, nullable: true),
                     idempotency_key = table.Column<string>(type: "character varying(128)", maxLength: 128, nullable: false),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false),
-                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false)
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false)
                 },
                 constraints: table =>
                 {
@@ -108,9 +108,9 @@ namespace Infrastructure.Migrations
                     idempotency_fingerprint = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: false),
                     customer_id = table.Column<Guid>(type: "uuid", nullable: false),
                     approval_url = table.Column<string>(type: "character varying(2048)", maxLength: 2048, nullable: true),
-                    expires_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: true),
-                    created_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false),
-                    updated_at = table.Column<DateTimeOffset>(type: "timestamptz", nullable: false),
+                    expires_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: true),
+                    created_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
+                    updated_at = table.Column<DateTime>(type: "timestamp with time zone", nullable: false),
                     failure_code = table.Column<string>(type: "character varying(64)", maxLength: 64, nullable: true),
                     failure_message = table.Column<string>(type: "character varying(512)", maxLength: 512, nullable: true),
                     version = table.Column<int>(type: "integer", nullable: false)

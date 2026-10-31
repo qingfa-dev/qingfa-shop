@@ -40,7 +40,7 @@ public sealed class PaymentProjection(DbContext context, IDomainEventSerializer 
                 {
                     row.ProviderReference ??= processing.ProviderReference;
                     row.Status = PaymentStatus.Processing.ToWire();
-                    row.UpdatedAt = processing.OccurredAtUtc;
+                    row.UpdatedAt = processing.OccurredAtUtc.UtcDateTime;
                 }, cancellationToken);
                 break;
 
@@ -49,7 +49,7 @@ public sealed class PaymentProjection(DbContext context, IDomainEventSerializer 
                 {
                     row.ProviderReference = authorized.ProviderReference;
                     row.Status = PaymentStatus.Authorized.ToWire();
-                    row.UpdatedAt = authorized.OccurredAtUtc;
+                    row.UpdatedAt = authorized.OccurredAtUtc.UtcDateTime;
                 }, cancellationToken);
                 break;
 
@@ -66,7 +66,7 @@ public sealed class PaymentProjection(DbContext context, IDomainEventSerializer 
                     row.ApprovalUrl = null;
                     row.FailureCode = null;
                     row.FailureMessage = null;
-                    row.UpdatedAt = captured.OccurredAtUtc;
+                    row.UpdatedAt = captured.OccurredAtUtc.UtcDateTime;
                 }, cancellationToken);
                 break;
 
@@ -75,7 +75,7 @@ public sealed class PaymentProjection(DbContext context, IDomainEventSerializer 
                 {
                     row.FailureCode = captureFailed.FailureCode;
                     row.FailureMessage = captureFailed.FailureMessage;
-                    row.UpdatedAt = captureFailed.OccurredAtUtc;
+                    row.UpdatedAt = captureFailed.OccurredAtUtc.UtcDateTime;
                 }, cancellationToken);
                 break;
 
@@ -86,7 +86,7 @@ public sealed class PaymentProjection(DbContext context, IDomainEventSerializer 
                     row.FailureCode = failed.FailureCode;
                     row.FailureMessage = failed.FailureMessage;
                     row.ApprovalUrl = null;
-                    row.UpdatedAt = failed.OccurredAtUtc;
+                    row.UpdatedAt = failed.OccurredAtUtc.UtcDateTime;
                 }, cancellationToken);
                 break;
 
@@ -95,7 +95,7 @@ public sealed class PaymentProjection(DbContext context, IDomainEventSerializer 
                 {
                     row.Status = PaymentStatus.Cancelled.ToWire();
                     row.ApprovalUrl = null;
-                    row.UpdatedAt = cancelled.OccurredAtUtc;
+                    row.UpdatedAt = cancelled.OccurredAtUtc.UtcDateTime;
                 }, cancellationToken);
                 break;
 
@@ -104,7 +104,7 @@ public sealed class PaymentProjection(DbContext context, IDomainEventSerializer 
                 {
                     row.Status = PaymentStatus.Expired.ToWire();
                     row.ApprovalUrl = null;
-                    row.UpdatedAt = expired.ExpiredAtUtc;
+                    row.UpdatedAt = expired.ExpiredAtUtc.UtcDateTime;
                 }, cancellationToken);
                 break;
 
@@ -118,8 +118,8 @@ public sealed class PaymentProjection(DbContext context, IDomainEventSerializer 
                     Currency = requested.Amount.Currency.Code ?? PaymentConstant.Defaults.Currency,
                     Reason = requested.Reason,
                     IdempotencyKey = requested.IdempotencyKey,
-                    CreatedAt = requested.OccurredAtUtc,
-                    UpdatedAt = requested.OccurredAtUtc
+                    CreatedAt = requested.OccurredAtUtc.UtcDateTime,
+                    UpdatedAt = requested.OccurredAtUtc.UtcDateTime
                 });
                 break;
 
@@ -128,7 +128,7 @@ public sealed class PaymentProjection(DbContext context, IDomainEventSerializer 
                 {
                     refund.Status = RefundStatus.Succeeded.ToWire();
                     refund.ProviderReference = succeeded.ProviderReference;
-                    refund.UpdatedAt = succeeded.OccurredAtUtc;
+                    refund.UpdatedAt = succeeded.OccurredAtUtc.UtcDateTime;
                 }, cancellationToken);
                 await UpdateAsync(succeeded.PaymentId, row =>
                 {
@@ -136,7 +136,7 @@ public sealed class PaymentProjection(DbContext context, IDomainEventSerializer 
                     row.Status = row.CapturedAmount > row.RefundedAmount
                         ? PaymentStatus.PartiallyRefunded.ToWire()
                         : PaymentStatus.Refunded.ToWire();
-                    row.UpdatedAt = succeeded.OccurredAtUtc;
+                    row.UpdatedAt = succeeded.OccurredAtUtc.UtcDateTime;
                 }, cancellationToken);
                 break;
 
@@ -146,7 +146,7 @@ public sealed class PaymentProjection(DbContext context, IDomainEventSerializer 
                     refund.Status = RefundStatus.Failed.ToWire();
                     refund.FailureCode = failed.FailureCode;
                     refund.FailureMessage = failed.FailureMessage;
-                    refund.UpdatedAt = failed.OccurredAtUtc;
+                    refund.UpdatedAt = failed.OccurredAtUtc.UtcDateTime;
                 }, cancellationToken);
                 break;
         }
@@ -170,9 +170,9 @@ public sealed class PaymentProjection(DbContext context, IDomainEventSerializer 
         IdempotencyFingerprint = initiated.IdempotencyFingerprint,
         CustomerId = initiated.CustomerId,
         ApprovalUrl = initiated.ApprovalUrl,
-        ExpiresAt = initiated.ExpiresAt,
-        CreatedAt = initiated.CreatedAtUtc,
-        UpdatedAt = initiated.CreatedAtUtc,
+        ExpiresAt = initiated.ExpiresAt?.UtcDateTime,
+        CreatedAt = initiated.CreatedAtUtc.UtcDateTime,
+        UpdatedAt = initiated.CreatedAtUtc.UtcDateTime,
         Version = (int)version
     };
 
