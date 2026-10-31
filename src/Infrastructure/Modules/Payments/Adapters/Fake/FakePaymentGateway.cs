@@ -15,19 +15,22 @@ namespace Infrastructure.Modules.Payments.Adapters.Fake;
 /// <summary>Deterministic in-memory gateway for development and tests.</summary>
 public sealed class FakePaymentGateway : IPaymentGateway, ISupportsPartialRefund, ISupportsManualCapture
 {
-    /// <summary>The shared secret used by the fake signature scheme.</summary>
+    /// <summary>The shared secret mixed into the fake signature digest.</summary>
     public const string WebhookSecret = "fake-webhook-secret";
 
     /// <summary>The failure code reported for scripted declines.</summary>
     public const string DeclinedCode = "fake_declined";
 
-    /// <summary>The prefix of the fake HMAC signature.</summary>
+    /// <summary>The prefix of the fake SHA-256 digest signature.</summary>
     public const string SignaturePrefix = "sha256=";
 
     /// <inheritdoc />
     public PaymentProvider Provider => PaymentProvider.Fake;
 
-    /// <summary>Computes the signature header value for a webhook body.</summary>
+    /// <summary>
+    /// Computes the fake signature header value: a SHA-256 digest over
+    /// <c>secret:body</c>, hex-encoded and prefixed with <c>sha256=</c>.
+    /// </summary>
     public static string Sign(string rawBody)
     {
         ArgumentNullException.ThrowIfNull(rawBody);
@@ -68,28 +71,44 @@ public sealed class FakePaymentGateway : IPaymentGateway, ISupportsPartialRefund
 
     /// <inheritdoc />
     public Task<Result<PaymentIntentResult>> RetrieveAsync(string providerReference, CancellationToken cancellationToken)
-        => Task.FromResult(Result<PaymentIntentResult>.Success(new PaymentIntentResult(
+    {
+        ArgumentNullException.ThrowIfNull(providerReference);
+
+        return Task.FromResult(Result<PaymentIntentResult>.Success(new PaymentIntentResult(
             providerReference, PaymentProviderIntentStatus.Captured, null, null, null, null)));
+    }
 
     /// <inheritdoc />
     public Task<Result<PaymentCaptureResult>> CaptureAsync(
         PaymentCaptureRequest request,
         CancellationToken cancellationToken)
-        => Task.FromResult(Result<PaymentCaptureResult>.Success(
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        return Task.FromResult(Result<PaymentCaptureResult>.Success(
             new PaymentCaptureResult($"cap_{request.IdempotencyKey}", request.Amount, true, null)));
+    }
 
     /// <inheritdoc />
     public Task<Result<PaymentCancelResult>> CancelAsync(
         PaymentCancelRequest request,
         CancellationToken cancellationToken)
-        => Task.FromResult(Result<PaymentCancelResult>.Success(new PaymentCancelResult(true, null)));
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        return Task.FromResult(Result<PaymentCancelResult>.Success(new PaymentCancelResult(true, null)));
+    }
 
     /// <inheritdoc />
     public Task<Result<PaymentRefundResult>> RefundAsync(
         PaymentRefundRequest request,
         CancellationToken cancellationToken)
-        => Task.FromResult(Result<PaymentRefundResult>.Success(
+    {
+        ArgumentNullException.ThrowIfNull(request);
+
+        return Task.FromResult(Result<PaymentRefundResult>.Success(
             new PaymentRefundResult($"re_{request.RefundId:N}", request.Amount, true, null)));
+    }
 
     /// <inheritdoc />
     public Task<Result<Maybe<PaymentProviderEvent>>> ParseWebhookAsync(
@@ -97,58 +116,132 @@ public sealed class FakePaymentGateway : IPaymentGateway, ISupportsPartialRefund
         IReadOnlyDictionary<string, string> headers,
         CancellationToken cancellationToken)
     {
+        ArgumentNullException.ThrowIfNull(rawBody);
+        ArgumentNullException.ThrowIfNull(headers);
+
         if (!headers.TryGetValue(PaymentConstant.Headers.FakeSignature, out string? provided)
             || !IsValid(rawBody, provided))
             return Task.FromResult(Result<Maybe<PaymentProviderEvent>>.Fail(
                 PaymentsOutcome.Failure.WebhookSignatureInvalid()));
 
-        try
-        {
-            return Task.FromResult(Parse(rawBody));
-        }
-        catch (JsonException)
-        {
-            return Task.FromResult(Result<Maybe<PaymentProviderEvent>>.Fail(
-                PaymentsOutcome.Failure.WebhookPayloadInvalid()));
-        }
+        return Task.FromResult(Parse(rawBody));
     }
 
     private static Result<Maybe<PaymentProviderEvent>> Parse(string rawBody)
     {
-        using JsonDocument document = JsonDocument.Parse(rawBody);
-        JsonElement root = document.RootElement;
-
-        string type = root.GetProperty("type").GetString() ?? string.Empty;
-        PaymentProviderEventType? eventType = type switch
+        JsonDocument document;
+        try
         {
-            "captured" => PaymentProviderEventType.Captured,
-            "authorized" => PaymentProviderEventType.Authorized,
-            "failed" => PaymentProviderEventType.Failed,
-            "cancelled" => PaymentProviderEventType.Cancelled,
-            "expired" => PaymentProviderEventType.Expired,
-            "refunded" => PaymentProviderEventType.Refunded,
-            "refund_failed" => PaymentProviderEventType.RefundFailed,
-            _ => null
-        };
+            document = JsonDocument.Parse(rawBody);
+        }
+        catch (JsonException)
+        {
+            return InvalidPayload();
+        }
 
-        if (eventType is null)
-            return Result<Maybe<PaymentProviderEvent>>.Success(Maybe<PaymentProviderEvent>.Empty());
+        using (document)
+        {
+            JsonElement root = document.RootElement;
+            if (root.ValueKind != JsonValueKind.Object)
+                return InvalidPayload();
 
-        Money? amount = root.TryGetProperty("amount", out JsonElement amountElement)
-            ? new Money(
-                amountElement.GetDecimal(),
-                new Currency(root.GetProperty("currency").GetString() ?? PaymentConstant.Defaults.Currency))
-            : null;
+            if (!TryGetRequiredString(root, "type", out string type)
+                || !TryGetRequiredString(root, "id", out string eventId)
+                || !TryGetRequiredString(root, "reference", out string providerReference))
+                return InvalidPayload();
 
-        return Result<Maybe<PaymentProviderEvent>>.Success(Maybe<PaymentProviderEvent>.From(
-            new PaymentProviderEvent(
-                root.GetProperty("id").GetString()!,
-                eventType.Value,
-                root.GetProperty("reference").GetString()!,
-                root.TryGetProperty("refund", out JsonElement refund) ? refund.GetString() : null,
-                amount,
-                DateTimeOffset.UtcNow)));
+            PaymentProviderEventType? eventType = type switch
+            {
+                "captured" => PaymentProviderEventType.Captured,
+                "authorized" => PaymentProviderEventType.Authorized,
+                "failed" => PaymentProviderEventType.Failed,
+                "cancelled" => PaymentProviderEventType.Cancelled,
+                "expired" => PaymentProviderEventType.Expired,
+                "refunded" => PaymentProviderEventType.Refunded,
+                "refund_failed" => PaymentProviderEventType.RefundFailed,
+                _ => null
+            };
+
+            if (eventType is null)
+                return Result<Maybe<PaymentProviderEvent>>.Success(Maybe<PaymentProviderEvent>.Empty());
+
+            if (!TryGetOptionalAmount(root, out Money? amount)
+                || !TryGetOptionalString(root, "refund", out string? refundReference))
+                return InvalidPayload();
+
+            return Result<Maybe<PaymentProviderEvent>>.Success(Maybe<PaymentProviderEvent>.From(
+                new PaymentProviderEvent(
+                    eventId,
+                    eventType.Value,
+                    providerReference,
+                    refundReference,
+                    amount,
+                    DateTimeOffset.UtcNow)));
+        }
     }
+
+    private static bool TryGetRequiredString(JsonElement root, string propertyName, out string value)
+    {
+        value = string.Empty;
+
+        if (!root.TryGetProperty(propertyName, out JsonElement element)
+            || element.ValueKind != JsonValueKind.String)
+            return false;
+
+        string? text = element.GetString();
+        if (string.IsNullOrWhiteSpace(text))
+            return false;
+
+        value = text;
+        return true;
+    }
+
+    private static bool TryGetOptionalString(JsonElement root, string propertyName, out string? value)
+    {
+        value = null;
+
+        if (!root.TryGetProperty(propertyName, out JsonElement element)
+            || element.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+            return true;
+
+        if (element.ValueKind != JsonValueKind.String)
+            return false;
+
+        value = element.GetString();
+        return true;
+    }
+
+    private static bool TryGetOptionalAmount(JsonElement root, out Money? amount)
+    {
+        amount = null;
+
+        if (!root.TryGetProperty("amount", out JsonElement amountElement))
+            return true;
+
+        if (amountElement.ValueKind != JsonValueKind.Number
+            || !amountElement.TryGetDecimal(out decimal value))
+            return false;
+
+        string currency = PaymentConstant.Defaults.Currency;
+        if (root.TryGetProperty("currency", out JsonElement currencyElement))
+        {
+            if (currencyElement.ValueKind != JsonValueKind.String)
+                return false;
+
+            string? currencyText = currencyElement.GetString();
+            if (string.IsNullOrWhiteSpace(currencyText))
+                return false;
+
+            currency = currencyText;
+        }
+
+        amount = new Money(value, new Currency(currency));
+        return true;
+    }
+
+    private static Result<Maybe<PaymentProviderEvent>> InvalidPayload()
+        => Result<Maybe<PaymentProviderEvent>>.Fail(
+            PaymentsOutcome.Failure.WebhookPayloadInvalid());
 
     private static bool IsValid(string rawBody, string? provided)
     {

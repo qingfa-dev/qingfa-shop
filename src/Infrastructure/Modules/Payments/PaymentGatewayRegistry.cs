@@ -2,7 +2,7 @@ using Application.Modules.Payments.Ports;
 
 using Core.Modules.Payments;
 
-namespace Infrastructure.Modules.Payments.Adapters.Fake;
+namespace Infrastructure.Modules.Payments;
 
 /// <summary>Resolves gateways from the registered adapters.</summary>
 public sealed class PaymentGatewayRegistry : IPaymentGatewayRegistry
