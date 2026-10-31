@@ -1,7 +1,7 @@
 namespace Application.BuildingBlocks.Ports.Storage.Models;
 
 /// <summary>Represents the outcome of a storage operation.</summary>
-public sealed record StorageOutcome
+public static class StorageOutcome
 {
     #region Failure
 

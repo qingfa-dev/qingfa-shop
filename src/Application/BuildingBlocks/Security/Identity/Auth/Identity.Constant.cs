@@ -121,6 +121,9 @@ public static class IdentityConstant
         /// <summary>Default identity API section name.</summary>
         public const string SectionName = "IdentityApi";
 
+        /// <summary>Issuer name used in authenticator URIs.</summary>
+        public const string Issuer = "QingFa.Shop";
+
         /// <summary>Default external authentication section name.</summary>
         public const string ExternalSectionName = "ExternalAuth";
 

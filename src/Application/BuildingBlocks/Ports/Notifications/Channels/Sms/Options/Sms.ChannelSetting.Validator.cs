@@ -22,7 +22,7 @@ public sealed class SmsChannelSettingValidator : AbstractValidator<SmsChannelSet
                 new Regex(
                     NotificationSettingConstant.Patterns.PhoneNumber,
                     RegexOptions.None,
-                    TimeSpan.FromMilliseconds(100)))
+                    TimeSpan.FromMilliseconds(NotificationSettingConstant.Constraints.RegexTimeoutMilliseconds)))
             .When(x => x.Enabled && !string.IsNullOrEmpty(x.DefaultSenderNumber))
             .WithErrorCode(SmsChannelSettingOutcome.Failure.DefaultSenderNumberInvalid.Code)
             .WithMessage(SmsChannelSettingOutcome.Failure.DefaultSenderNumberInvalid.Message);

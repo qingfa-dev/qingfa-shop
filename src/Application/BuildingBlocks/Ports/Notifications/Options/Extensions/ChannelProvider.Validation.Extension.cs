@@ -38,7 +38,7 @@ public static class ChannelProviderValidationExtensions
         // Validate: Phone must be non-empty and match the configured phone regex pattern
         return ruleBuilder
             .NotEmpty()
-            .Matches(new Regex(NotificationSettingConstant.Patterns.PhoneNumber, RegexOptions.None, TimeSpan.FromMilliseconds(100)));
+            .Matches(new Regex(NotificationSettingConstant.Patterns.PhoneNumber, RegexOptions.None, TimeSpan.FromMilliseconds(NotificationSettingConstant.Constraints.RegexTimeoutMilliseconds)));
     }
 
     /// <summary>Validates that at least one provider is enabled in the dictionary.</summary>

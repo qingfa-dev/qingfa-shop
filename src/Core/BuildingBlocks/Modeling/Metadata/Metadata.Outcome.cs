@@ -9,6 +9,16 @@ namespace Core.BuildingBlocks.Modeling.Metadata;
 /// </remarks>
 public static class MetadataOutcome
 {
+    /// <summary>Stable error codes used by the metadata factories.</summary>
+    public static class Codes
+    {
+        /// <summary>Metadata key not found.</summary>
+        public const string KeyMetadataNotFound = "key.metadata.not_found";
+
+        /// <summary>Metadata value has the wrong type.</summary>
+        public const string ValueInvalidType = "value.metadata.invalid_type";
+    }
+
     public static class Success
     {
         // TODO: expand this in the future
@@ -52,14 +62,14 @@ public static class MetadataOutcome
                 public static class NotFound
                 {
                     /// <summary>Error code: <c>key.metadata.not_found</c></summary>
-                    public const string Code = "key.metadata.not_found";
+                    public const string Code = Codes.KeyMetadataNotFound;
                     /// <summary>Error message.</summary>
                     public const string Message = "The specified metadata key was not found.";
                     /// <summary>Combined code:message representation.</summary>
                     public const string Representation = Code + ":" + Message;
 
                     /// <summary>Creates the not-found error for a missing key.</summary>
-                    public static Error ToError() => Error.NotFound(Code, Message);
+                    public static Error ToError() => Error.NotFound(Codes.KeyMetadataNotFound, Message);
                 }
             }
         }
@@ -71,14 +81,14 @@ public static class MetadataOutcome
                 public static class InvalidType
                 {
                     /// <summary>Error code: <c>value.metadata.invalid_type</c></summary>
-                    public const string Code = "value.metadata.invalid_type";
+                    public const string Code = Codes.ValueInvalidType;
                     /// <summary>Error message.</summary>
                     public const string Message = "The metadata value is not of the requested type.";
                     /// <summary>Combined code:message representation.</summary>
                     public const string Representation = Code + ":" + Message;
 
                     /// <summary>Creates the invalid-type error for a metadata value.</summary>
-                    public static Error ToError() => Error.Validation(Code, Message);
+                    public static Error ToError() => Error.Validation(Codes.ValueInvalidType, Message);
                 }
             }
         }

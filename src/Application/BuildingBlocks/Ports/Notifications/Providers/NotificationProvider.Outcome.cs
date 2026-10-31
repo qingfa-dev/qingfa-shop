@@ -3,25 +3,41 @@ namespace Application.BuildingBlocks.Ports.Notifications.Providers;
 /// <summary>Error definitions for notification provider operations.</summary>
 public static class NotificationProviderOutcome
 {
+    /// <summary>Builds the stable codes for provider failures.</summary>
+    public static class Codes
+    {
+        /// <summary>Code for a failed send.</summary>
+        public static string SendFailed(string providerName) =>
+            $"Provider.{providerName}.SendFailed";
+
+        /// <summary>Code for a missing configuration field.</summary>
+        public static string ConfigurationRequired(string providerName, string field) =>
+            $"Provider.{providerName}.Configuration.{field}.Required";
+
+        /// <summary>Code for a missing recipient.</summary>
+        public static string RecipientRequired(string providerName) =>
+            $"Provider.{providerName}.Recipient.Required";
+    }
+
     /// <summary>Provider-level error factories for send failures and configuration issues.</summary>
     public static class Failure
     {
         /// <summary>A provider failed to send a notification due to an unexpected error.</summary>
         public static Error SendFailed(string providerName, string error)
             => Error.Unexpected(
-                code: $"Provider.{providerName}.SendFailed",
+                code: Codes.SendFailed(providerName),
                 message: $"Provider {providerName} failed to send message: {error}");
 
         /// <summary>A required configuration value is missing for the provider.</summary>
         public static Error ConfigurationMissing(string providerName, string field)
             => Error.Unexpected(
-                code: $"Provider.{providerName}.Configuration.{field}.Required",
+                code: Codes.ConfigurationRequired(providerName, field),
                 message: $"Provider {providerName} requires configuration field '{field}'.");
 
         /// <summary>The recipient identifier is missing or empty.</summary>
         public static Error RecipientMissing(string providerName)
             => Error.Validation(
-                code: $"Provider.{providerName}.Recipient.Required",
+                code: Codes.RecipientRequired(providerName),
                 message: $"Provider {providerName} requires a recipient identifier.");
     }
 }

@@ -33,7 +33,7 @@ public sealed class AzureStorageProviderSettingValidator : AbstractValidator<Azu
         if (string.IsNullOrEmpty(name))
             return true;
 
-        if (name.Length < 3 || name.Length > 63)
+        if (name.Length < 3 || name.Length > AzureStorageProviderConstant.Constraints.ContainerNameMaxLength)
             return false;
 
         return System.Text.RegularExpressions.Regex.IsMatch(name, @"^[a-z0-9]([a-z0-9]|-(?!-))*[a-z0-9]$");

@@ -32,6 +32,6 @@ public static class PermissionCatalogOutcome
     {
         public const string NotFound = "PermissionCatalog.NotFound";
         public const string PermissionsRequired = "PermissionCatalog.Permissions.Required";
-        public const string UnsupportedSearch = QueryErrorCodes.Unsupported;
+        public const string UnsupportedSearch = QueryOutcome.Codes.Unsupported;
     }
 }

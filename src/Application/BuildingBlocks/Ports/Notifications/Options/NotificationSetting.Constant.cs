@@ -20,6 +20,9 @@ public static class NotificationSettingConstant
     {
         public const int MinApplicationNameLength = 1;
         public const int MaxApplicationNameLength = 100;
+
+        /// <summary>Timeout applied to regular-expression validation.</summary>
+        public const int RegexTimeoutMilliseconds = 100;
     }
 
     /// <summary>Regex patterns for notification configuration validation.</summary>

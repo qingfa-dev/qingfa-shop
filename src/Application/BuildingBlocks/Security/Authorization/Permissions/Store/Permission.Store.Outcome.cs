@@ -93,14 +93,14 @@ public static class PermissionStoreOutcome
             string operation,
             string subject,
             Exception? exception) => Error.ServiceUnavailable(
-            code: $"PermissionStore.{operation}.ReadFailed",
+            code: Codes.ReadFailed(operation),
             message: $"Failed to read permissions for {subject}.{Describe(exception)}");
 
         private static Error WriteFailed(
             string operation,
             string subject,
             Exception? exception) => Error.ServiceUnavailable(
-            code: $"PermissionStore.{operation}.Failed",
+            code: Codes.WriteFailed(operation),
             message: $"Failed to persist permissions for {subject}.{Describe(exception)}");
 
         private static string Describe(Exception? exception) =>
@@ -112,5 +112,17 @@ public static class PermissionStoreOutcome
     {
         public const string InvalidIdentifier = "PermissionStore.Identifier.Invalid";
         public const string BatchTooLarge = "PermissionStore.Batch.TooLarge";
+
+        /// <summary>Builds the code for a failed permission read.</summary>
+        /// <param name="operation">The read operation.</param>
+        /// <returns>The dotted error code.</returns>
+        public static string ReadFailed(string operation) =>
+            $"PermissionStore.{operation}.ReadFailed";
+
+        /// <summary>Builds the code for a failed permission write.</summary>
+        /// <param name="operation">The write operation.</param>
+        /// <returns>The dotted error code.</returns>
+        public static string WriteFailed(string operation) =>
+            $"PermissionStore.{operation}.Failed";
     }
 }

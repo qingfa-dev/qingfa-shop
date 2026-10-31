@@ -92,6 +92,6 @@ public static class RoleOutcome
         public const string AssignDenied = "Role.Permissions.AssignDenied";
         public const string RevokeDenied = "Role.Permissions.RevokeDenied";
         public const string OperationFailed = "Role.Operation.Failed";
-        public const string UnsupportedSearch = QueryErrorCodes.Unsupported;
+        public const string UnsupportedSearch = QueryOutcome.Codes.Unsupported;
     }
 }

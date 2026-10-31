@@ -11,5 +11,8 @@ public static class ExternalAuthConstant
 
         /// <summary>Upper bound for a one-time sign-in code, in seconds.</summary>
         public const int CodeLifetimeSecondsMax = 3600;
+
+        /// <summary>Number of random bytes in a one-time sign-in code.</summary>
+        public const int CodeByteLength = 32;
     }
 }

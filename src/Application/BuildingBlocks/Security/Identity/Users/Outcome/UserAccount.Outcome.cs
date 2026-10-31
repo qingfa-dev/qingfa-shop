@@ -52,6 +52,6 @@ public static class UserAccountOutcome
         public const string RoleInvalid = "Identity.Role.Invalid";
         public const string FirstNameTooLong = "Identity.User.FirstName.TooLong";
         public const string LastNameTooLong = "Identity.User.LastName.TooLong";
-        public const string UnsupportedSearch = QueryErrorCodes.Unsupported;
+        public const string UnsupportedSearch = QueryOutcome.Codes.Unsupported;
     }
 }

@@ -9,15 +9,29 @@ namespace Application.BuildingBlocks.Caching;
 /// </remarks>
 public static class CachingOutcome
 {
+    /// <summary>Stable code components for cache failures.</summary>
+    public static class Codes
+    {
+        /// <summary>The common prefix for every cache error code.</summary>
+        public const string Prefix = "Caching";
+
+        /// <summary>Builds a stable cache error code from an operation and a reason.</summary>
+        /// <param name="operation">The operation or cache scope, for example <c>Read</c>.</param>
+        /// <param name="reason">The failure reason, for example <c>ProviderUnavailable</c>.</param>
+        /// <returns>The dotted error code.</returns>
+        public static string Code(string operation, string reason) =>
+            $"{Prefix}.{operation}.{reason}";
+    }
+
     /// <summary>The common prefix for every cache error code.</summary>
-    public const string Prefix = "Caching";
+    public const string Prefix = Codes.Prefix;
 
     /// <summary>Builds a stable cache error code from an operation and a reason.</summary>
     /// <param name="operation">The operation or cache scope, for example <c>Read</c>.</param>
     /// <param name="reason">The failure reason, for example <c>ProviderUnavailable</c>.</param>
     /// <returns>The dotted error code.</returns>
     public static string Code(string operation, string reason) =>
-        $"{Prefix}.{operation}.{reason}";
+        Codes.Code(operation, reason);
 
     /// <summary>Creates a caller-contract failure (400).</summary>
     /// <param name="operation">The operation or cache scope.</param>

@@ -2,6 +2,13 @@ namespace Application.BuildingBlocks.Ports.Storage.Security.Options;
 
 public static class StorageSecuritySettingConstant
 {
+    /// <summary>Cache key components for storage security counters.</summary>
+    public static class Keys
+    {
+        /// <summary>Prefix for anti-forgery failure counters.</summary>
+        public const string FailureCounter = "antiforgery:failures:";
+    }
+
     public static class Defaults
     {
         public const long MaxFileSizeBytes = 10L * 1024L * 1024L;

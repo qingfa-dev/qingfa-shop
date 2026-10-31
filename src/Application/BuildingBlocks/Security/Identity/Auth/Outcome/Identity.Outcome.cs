@@ -143,22 +143,7 @@ public static class IdentityOutcome
             if (code == "DuplicateEmail")
                 return EmailTaken;
 
-            string stableCode = code switch
-            {
-                "InvalidUserName" => "Identity.UserName.Invalid",
-                "InvalidEmail" => "Identity.Email.Invalid",
-                "PasswordTooShort" => "Identity.Password.TooShort",
-                "PasswordTooLong" => "Identity.Password.TooLong",
-                "PasswordRequiresDigit" => "Identity.Password.Digit",
-                "PasswordRequiresLower" => "Identity.Password.Lowercase",
-                "PasswordRequiresUpper" => "Identity.Password.Uppercase",
-                "PasswordRequiresNonAlphanumeric" => "Identity.Password.NonAlphanumeric",
-                "PasswordMismatch" => "Identity.Password.Mismatch",
-                "LoginAlreadyAssociated" => "Identity.External.AlreadyLinked",
-                _ => "Identity.Operation.Failed"
-            };
-
-            return Error.BadRequest(stableCode, description);
+            return Error.BadRequest(Codes.FromIdentityError(code), description);
         }
 
         /// <summary>The external sign-in could not be completed.</summary>
@@ -195,6 +180,24 @@ public static class IdentityOutcome
     /// <summary>Stable error codes for logging, contracts, and tests.</summary>
     public static class Codes
     {
+        /// <summary>Maps an ASP.NET Identity error code to a stable application code.</summary>
+        /// <param name="identityCode">The code reported by Identity.</param>
+        /// <returns>The stable application code.</returns>
+        public static string FromIdentityError(string identityCode) => identityCode switch
+        {
+            "InvalidUserName" => "Identity.UserName.Invalid",
+            "InvalidEmail" => "Identity.Email.Invalid",
+            "PasswordTooShort" => "Identity.Password.TooShort",
+            "PasswordTooLong" => "Identity.Password.TooLong",
+            "PasswordRequiresDigit" => "Identity.Password.Digit",
+            "PasswordRequiresLower" => "Identity.Password.Lowercase",
+            "PasswordRequiresUpper" => "Identity.Password.Uppercase",
+            "PasswordRequiresNonAlphanumeric" => "Identity.Password.NonAlphanumeric",
+            "PasswordMismatch" => "Identity.Password.Mismatch",
+            "LoginAlreadyAssociated" => "Identity.External.AlreadyLinked",
+            _ => "Identity.Operation.Failed"
+        };
+
         public const string UserNotFound = "Identity.User.NotFound";
         public const string UserRequired = "Identity.User.Required";
         public const string UserNameTaken = "Identity.UserName.Taken";

@@ -26,8 +26,8 @@ public sealed class RoleEntityConfiguration : IEntityTypeConfiguration<Role>
         builder.Property(role => role.Description)
             .HasMaxLength(RoleConstant.Constraints.Description.MaxLength);
 
-        builder.Property(role => role.CreatedBy).HasMaxLength(MaxActorLength);
-        builder.Property(role => role.ModifiedBy).HasMaxLength(MaxActorLength);
+        builder.Property(role => role.CreatedBy).HasMaxLength(IdentitySchemaConstant.Columns.Actor.MaxLength);
+        builder.Property(role => role.ModifiedBy).HasMaxLength(IdentitySchemaConstant.Columns.Actor.MaxLength);
 
         builder.HasIndex(role => role.NormalizedName).IsUnique();
 
@@ -41,6 +41,4 @@ public sealed class RoleEntityConfiguration : IEntityTypeConfiguration<Role>
             .HasForeignKey(roleClaim => roleClaim.RoleId)
             .OnDelete(DeleteBehavior.Cascade);
     }
-
-    private const int MaxActorLength = 450;
 }

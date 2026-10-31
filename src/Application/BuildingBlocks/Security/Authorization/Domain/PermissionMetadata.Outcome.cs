@@ -5,12 +5,23 @@ namespace Application.BuildingBlocks.Security.Authorization.Domain;
 /// </summary>
 public static class PermissionMetadataOutcome
 {
+    /// <summary>Builds stable codes for permission metadata failures.</summary>
+    public static class Codes
+    {
+        /// <summary>Builds a stable error code for one metadata field.</summary>
+        /// <param name="partName">The field name, for example <c>Domain</c>.</param>
+        /// <param name="suffix">The failure suffix, for example <c>Required</c>.</param>
+        /// <returns>The dotted error code.</returns>
+        public static string Code(string partName, string suffix) =>
+            $"Permission.{partName}.{suffix}";
+    }
+
     /// <summary>Builds a stable error code for one metadata field.</summary>
     /// <param name="partName">The field name, for example <c>Domain</c>.</param>
     /// <param name="suffix">The failure suffix, for example <c>Required</c>.</param>
     /// <returns>The dotted error code.</returns>
     public static string Code(string partName, string suffix) =>
-        $"Permission.{partName}.{suffix}";
+        Codes.Code(partName, suffix);
 
     /// <summary>Failures returned by permission metadata validation.</summary>
     public static class Failure
