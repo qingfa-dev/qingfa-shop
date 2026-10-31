@@ -10,6 +10,8 @@ using Infrastructure.Modules.Todos.Integrations.Messaging;
 using Infrastructure.Modules.Todos.Persistence.EventSourcing;
 using Infrastructure.Modules.Todos.Services;
 
+using Infrastructure.Payments.Configuration;
+
 using Microsoft.AspNetCore.Builder;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
@@ -51,6 +53,12 @@ public static class ModularInfraComposition
 
         builder.Services.AddSingleton<IValidateOptions<PaymentsOptions>>(
             new PaymentsOptionsValidator(builder.Environment.EnvironmentName));
+
+        builder.Services.AddOptions<PaymentPolicyOptions>()
+            .BindConfiguration(PaymentPolicyOptions.SectionName)
+            .ValidateOnStart();
+
+        builder.Services.AddSingleton<IValidateOptions<PaymentPolicyOptions>, PaymentPolicyOptionsValidator>();
 
         builder.Services.AddOptions<StripeOptions>().BindConfiguration(StripeOptions.SectionName);
         builder.Services.AddOptions<PayPalOptions>().BindConfiguration(PayPalOptions.SectionName);

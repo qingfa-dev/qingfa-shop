@@ -11,12 +11,6 @@ public sealed class PaymentsOptions
     /// <summary>The provider used when a caller omits one.</summary>
     public string DefaultProvider { get; init; } = nameof(Core.Modules.Payments.PaymentProvider.Fake);
 
-    /// <summary>Intent lifetime in seconds.</summary>
-    public int IntentLifetimeSeconds { get; init; } = 1800;
-
-    /// <summary>Grace period before expiry is enforced.</summary>
-    public int ExpiryGraceSeconds { get; init; } = 300;
-
     /// <summary>Amount and body limits.</summary>
     public PaymentLimitsOptions Limits { get; init; } = new();
 
@@ -24,12 +18,9 @@ public sealed class PaymentsOptions
     public PaymentProvidersOptions Providers { get; init; } = new();
 }
 
-/// <summary>Amount and body limits.</summary>
+/// <summary>Transport limits that are not part of the payment policy.</summary>
 public sealed class PaymentLimitsOptions
 {
-    /// <summary>The largest accepted amount.</summary>
-    public decimal MaxAmount { get; init; } = Core.Modules.Payments.Intents.PaymentConstant.Defaults.MaxAmount;
-
     /// <summary>The largest accepted webhook body.</summary>
     public int WebhookMaxBytes { get; init; } = 65536;
 }

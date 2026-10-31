@@ -57,16 +57,6 @@ public sealed class PaymentsOptionsValidatorTest
         result.Failed.Should().BeTrue();
     }
 
-    [Theory]
-    [InlineData(0)]
-    [InlineData(90000)]
-    public void Validate_IntentLifetimeOutOfRange_ShouldFail(int lifetime)
-    {
-        PaymentsOptions options = Valid(lifetime: lifetime);
-
-        new PaymentsOptionsValidator("Development").Validate(null, options).Failed.Should().BeTrue();
-    }
-
     [Fact]
     public void Validate_WebhookLimitOutOfRange_ShouldFail()
     {
@@ -102,10 +92,9 @@ public sealed class PaymentsOptionsValidatorTest
     }
 
     /// <summary>Builds a valid configuration.</summary>
-    private static PaymentsOptions Valid(int lifetime = 1800) => new()
+    private static PaymentsOptions Valid() => new()
     {
         DefaultProvider = "Fake",
-        IntentLifetimeSeconds = lifetime,
         Providers = new PaymentProvidersOptions { Fake = new FakeProviderOptions { Enabled = true } }
     };
 

@@ -65,7 +65,7 @@ public static class GetPayment
 
             // Enforce: an unpaid intent past expiry reads as expired without a write.
             return Result<PaymentResponseModel>.Success(
-                payment.IsExpired(clock.GetUtcNow(), policy.ExpiryGrace)
+                payment.IsExpired(clock.GetUtcNow(), policy.ProviderExpiryGracePeriod)
                     ? response with { Status = PaymentStatus.Expired.ToWire(), ApprovalUrl = null }
                     : response);
         }
@@ -75,7 +75,7 @@ public static class GetPayment
         {
             bool expired = response.Status == PaymentStatus.Pending.ToWire()
                 && expiresAt is { } due
-                && clock.GetUtcNow() >= new DateTimeOffset(due, TimeSpan.Zero) + policy.ExpiryGrace;
+                && clock.GetUtcNow() >= new DateTimeOffset(due, TimeSpan.Zero) + policy.ProviderExpiryGracePeriod;
 
             return expired
                 ? response with { Status = PaymentStatus.Expired.ToWire(), ApprovalUrl = null }

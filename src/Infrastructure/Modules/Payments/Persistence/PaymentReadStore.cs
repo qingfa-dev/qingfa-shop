@@ -75,6 +75,9 @@ public sealed class PaymentReadStore(DbContext context) : IPaymentReadStore
         if (!string.IsNullOrWhiteSpace(filter.Provider))
             query = query.Where(row => row.Provider == filter.Provider.ToLowerInvariant());
 
+        if (!string.IsNullOrWhiteSpace(filter.Currency))
+            query = query.Where(row => row.Currency == filter.Currency.ToUpperInvariant());
+
         if (filter.CreatedFrom is { } from)
             query = query.Where(row => row.CreatedAt >= from.UtcDateTime);
 

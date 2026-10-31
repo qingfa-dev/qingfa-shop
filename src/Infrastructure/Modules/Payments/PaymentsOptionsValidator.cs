@@ -10,12 +10,6 @@ public sealed class PaymentsOptionsValidator(string environment) : IValidateOpti
     /// <summary>The environment name that forbids the fake provider.</summary>
     private const string Production = "Production";
 
-    /// <summary>The largest accepted intent lifetime.</summary>
-    private const int MaxLifetimeSeconds = 86400;
-
-    /// <summary>The largest accepted expiry grace.</summary>
-    private const int MaxGraceSeconds = 3600;
-
     /// <summary>The smallest accepted webhook body limit.</summary>
     private const int MinWebhookBytes = 1024;
 
@@ -28,15 +22,6 @@ public sealed class PaymentsOptionsValidator(string environment) : IValidateOpti
         ArgumentNullException.ThrowIfNull(options);
 
         List<string> failures = [];
-
-        if (options.Limits.MaxAmount <= 0)
-            failures.Add("Payments:Limits:MaxAmount must be greater than zero.");
-
-        if (options.IntentLifetimeSeconds is < 1 or > MaxLifetimeSeconds)
-            failures.Add("Payments:IntentLifetimeSeconds must be between 1 and 86400.");
-
-        if (options.ExpiryGraceSeconds is < 0 or > MaxGraceSeconds)
-            failures.Add("Payments:ExpiryGraceSeconds must be between 0 and 3600.");
 
         if (options.Limits.WebhookMaxBytes is < MinWebhookBytes or > MaxWebhookBytes)
             failures.Add("Payments:Limits:WebhookMaxBytes must be between 1024 and 1048576.");

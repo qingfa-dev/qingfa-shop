@@ -1,18 +1,17 @@
 using Application.Modules.Payments.Ports;
 
-using Core.Modules.Payments.Intents;
-
 namespace Application.Unit.Tests.Modules.Payments.Fixtures;
 
 /// <summary>A policy with fixed, predictable limits for the unit tests.</summary>
 public sealed class StubPaymentPolicy : IPaymentPolicy
 {
     /// <inheritdoc />
-    public decimal MaxAmount { get; init; } = PaymentConstant.Defaults.MaxAmount;
+    public IReadOnlyDictionary<string, decimal> MaximumAmountsByCurrency { get; init; } =
+        new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase) { ["USD"] = 100000m };
 
     /// <inheritdoc />
-    public TimeSpan IntentLifetime { get; init; } = TimeSpan.FromMinutes(30);
+    public TimeSpan HostedCheckoutIntentLifetime { get; init; } = TimeSpan.FromMinutes(30);
 
     /// <inheritdoc />
-    public TimeSpan ExpiryGrace { get; init; } = TimeSpan.FromMinutes(5);
+    public TimeSpan ProviderExpiryGracePeriod { get; init; } = TimeSpan.FromMinutes(2);
 }

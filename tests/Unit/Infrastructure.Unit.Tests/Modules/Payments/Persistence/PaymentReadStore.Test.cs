@@ -83,6 +83,7 @@ public sealed class PaymentReadStoreTest
             new PaymentSearchFilter(
                 "captured",
                 "fake",
+                "USD",
                 DateTimeOffset.UtcNow.AddDays(-1),
                 DateTimeOffset.UtcNow.AddDays(1)),
             new PageRequest(1, 10),
@@ -101,7 +102,7 @@ public sealed class PaymentReadStoreTest
         var store = new PaymentReadStore(context);
 
         QueryPage<PaymentReadModel> page = await store.SearchAsync(
-            new PaymentSearchFilter("failed", "stripe", null, null),
+            new PaymentSearchFilter("failed", "stripe", null, null, null),
             new PageRequest(1, 10),
             CancellationToken.None);
 
@@ -189,5 +190,26 @@ public sealed class PaymentReadStoreTest
         await context.Database.EnsureCreatedAsync();
 
         return context;
+    }
+
+    [Fact]
+    public async Task SearchAsync_ShouldFilterByCurrency()
+    {
+        await using ApplicationDbContext context = await NewContextAsync();
+        PaymentReadModel usd = await SeedAsync(context, "cart-usd", 15m, "captured");
+
+        PaymentReadModel eur = await SeedAsync(context, "cart-eur", 15m, "captured");
+        eur.Currency = "EUR";
+        await context.SaveChangesAsync();
+
+        var store = new PaymentReadStore(context);
+
+        QueryPage<PaymentReadModel> usdPage = await store.SearchAsync(
+            new PaymentSearchFilter(null, null, "usd", null, null),
+            new PageRequest(1, 10),
+            CancellationToken.None);
+
+        usdPage.Items.Should().ContainSingle();
+        usdPage.Items[0].Id.Should().Be(usd.Id);
     }
 }

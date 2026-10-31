@@ -37,7 +37,13 @@ public sealed class PaymentPolicyEnforcementTest
             idempotency.Object,
             references.Object,
             registry.Object,
-            new StubPaymentPolicy { MaxAmount = 50m },
+            new StubPaymentPolicy
+            {
+                MaximumAmountsByCurrency = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase)
+                {
+                    ["USD"] = 50m
+                }
+            },
             user.Object,
             TimeProvider.System);
 
@@ -90,7 +96,7 @@ public sealed class PaymentPolicyEnforcementTest
             idempotency.Object,
             references.Object,
             registry.Object,
-            new StubPaymentPolicy { IntentLifetime = TimeSpan.FromMinutes(15) },
+            new StubPaymentPolicy { HostedCheckoutIntentLifetime = TimeSpan.FromMinutes(15) },
             user.Object,
             TimeProvider.System);
 
@@ -142,5 +148,90 @@ public sealed class PaymentPolicyEnforcementTest
         result.IsSuccess.Should().BeTrue();
         result.Value.Status.Should().Be(PaymentStatus.Expired.ToWire());
         result.Value.ApprovalUrl.Should().BeNull();
+    }
+
+    [Fact]
+    public async Task Create_WithAnUnconfiguredCurrency_ShouldFail()
+    {
+        var repository = new Mock<IEventSourcedRepository<Payment, Guid>>();
+        var idempotency = new Mock<IPaymentIdempotencyStore>();
+        var references = new Mock<IPaymentReferenceStore>();
+        var registry = new Mock<IPaymentGatewayRegistry>();
+        var user = new Mock<Application.BuildingBlocks.Security.Authentication.Contexts.IUserContext>();
+        user.SetupGet(x => x.UserId).Returns(CustomerId.ToString());
+
+        var handler = new CreatePayment.UseCaseHandler(
+            repository.Object,
+            idempotency.Object,
+            references.Object,
+            registry.Object,
+            new StubPaymentPolicy(),
+            user.Object,
+            TimeProvider.System);
+
+        var request = new CreatePayment.Request(
+            new Money(10m, new Currency("JPY")),
+            PaymentProvider.Fake,
+            "cart-jpy",
+            PaymentCaptureMode.Automatic,
+            null,
+            null);
+
+        var result = await handler.Handle(
+            new CreatePayment.UseCase(request, "key-jpy"), CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.CurrencyUnsupported);
+        registry.Verify(x => x.Resolve(It.IsAny<PaymentProvider>()), Times.Never);
+    }
+
+    [Fact]
+    public async Task Create_BelowTheCurrencyCeiling_ShouldSucceed()
+    {
+        Guid paymentId = Guid.NewGuid();
+
+        var idempotency = new Mock<IPaymentIdempotencyStore>();
+        idempotency.Setup(x => x.ReserveAsync(CustomerId, It.IsAny<string>(), It.IsAny<string>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<IdempotencyReservation>.Success(
+                new IdempotencyReservation(paymentId, IsNew: true, FingerprintMatches: true)));
+
+        var gateway = new Mock<IPaymentGateway>();
+        gateway.SetupGet(x => x.Provider).Returns(PaymentProvider.Fake);
+        gateway.Setup(x => x.CreateIntentAsync(It.IsAny<PaymentIntentRequest>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result<PaymentIntentResult>.Success(new PaymentIntentResult(
+                "fake_1", PaymentProviderIntentStatus.RequiresAction, null, null, null, null)));
+
+        var registry = new Mock<IPaymentGatewayRegistry>();
+        registry.Setup(x => x.Resolve(PaymentProvider.Fake))
+            .Returns(Result<IPaymentGateway>.Success(gateway.Object));
+
+        var repository = new Mock<IEventSourcedRepository<Payment, Guid>>();
+        repository.Setup(x => x.SaveAsync(It.IsAny<Payment>(), It.IsAny<CancellationToken>()))
+            .ReturnsAsync(Result.Ok());
+
+        var references = new Mock<IPaymentReferenceStore>();
+        var user = new Mock<Application.BuildingBlocks.Security.Authentication.Contexts.IUserContext>();
+        user.SetupGet(x => x.UserId).Returns(CustomerId.ToString());
+
+        var policy = new StubPaymentPolicy
+        {
+            MaximumAmountsByCurrency = new Dictionary<string, decimal>(StringComparer.OrdinalIgnoreCase)
+            {
+                ["USD"] = 50m,
+                ["EUR"] = 40m
+            }
+        };
+
+        var handler = new CreatePayment.UseCaseHandler(
+            repository.Object, idempotency.Object, references.Object, registry.Object, policy, user.Object, TimeProvider.System);
+
+        var request = new CreatePayment.Request(
+            new Money(40m, new Currency("EUR")), PaymentProvider.Fake, "cart-eur", PaymentCaptureMode.Automatic, null, null);
+
+        var result = await handler.Handle(
+            new CreatePayment.UseCase(request, "key-eur"), CancellationToken.None);
+
+        result.IsSuccess.Should().BeTrue();
+        result.Value.Amount.Currency.Should().Be("EUR");
     }
 }

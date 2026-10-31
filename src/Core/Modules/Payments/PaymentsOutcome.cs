@@ -33,6 +33,11 @@ public static class PaymentsOutcome
             code: Codes.AmountInvalid,
             message: $"Payment amount is invalid: {reason}.");
 
+        /// <summary>The currency has no configured policy.</summary>
+        public static Error CurrencyUnsupported(string currency) => Error.BadRequest(
+            code: Codes.CurrencyUnsupported,
+            message: $"The currency '{currency}' is not supported.");
+
         /// <summary>The amount exceeds the configured ceiling.</summary>
         public static Error AmountExceedsLimit(decimal requested, decimal maxAmount) => Error.BadRequest(
             code: Codes.AmountExceedsLimit,
@@ -190,6 +195,9 @@ public static class PaymentsOutcome
 
         /// <summary>Invalid amount.</summary>
         public const string AmountInvalid = "Payments.Payment.AmountInvalid";
+
+        /// <summary>Currency without a configured policy.</summary>
+        public const string CurrencyUnsupported = "Payments.Payment.CurrencyUnsupported";
 
         /// <summary>Amount above the configured ceiling.</summary>
         public const string AmountExceedsLimit = "Payments.Payment.AmountExceedsLimit";

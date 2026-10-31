@@ -304,4 +304,17 @@ public sealed class PaymentApiTest(ResultContractStackFixture fixture)
 
         response.StatusCode.Should().Be(HttpStatusCode.OK);
     }
+
+    [Fact]
+    public async Task AdminSearch_WithCurrencyFilter_ShouldReturn200()
+    {
+        if (fixture.SkipReason is not null)
+            Assert.Skip(fixture.SkipReason);
+
+        using HttpClient admin = fixture.CreateClient("Admin");
+
+        using HttpResponseMessage response = await admin.GetAsync("/api/admin/payments?currency=USD&page=1&pageSize=5");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
 }

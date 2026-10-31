@@ -1,18 +1,33 @@
 namespace Application.Modules.Payments.Ports;
 
-/// <summary>The configured payment policy the slices enforce.</summary>
+/// <summary>
+/// Exposes the configured payment policies enforced by Application.
+/// </summary>
 /// <remarks>
-/// Limits live in configuration, but the slices must not depend on an Infrastructure options type.
-/// This port carries only the values the application needs.
+/// This contract contains application-facing policy values only.
+/// Infrastructure is responsible for binding, validating, and providing
+/// the configuration values.
+///
+/// Amount limits are expressed in the minor-unit-aware decimal format
+/// used by the application's payment amount model, in the specified currency.
+/// Currency codes use ISO 4217.
 /// </remarks>
 public interface IPaymentPolicy
 {
-    /// <summary>The largest amount a single payment may request.</summary>
-    decimal MaxAmount { get; }
+    /// <summary>
+    /// Gets the maximum permitted payment amount for each supported currency.
+    /// Keys are normalized ISO 4217 currency codes.
+    /// </summary>
+    IReadOnlyDictionary<string, decimal> MaximumAmountsByCurrency { get; }
 
-    /// <summary>How long a hosted-checkout intent stays payable.</summary>
-    TimeSpan IntentLifetime { get; }
+    /// <summary>
+    /// Gets the lifetime of a newly created hosted-checkout intent.
+    /// </summary>
+    TimeSpan HostedCheckoutIntentLifetime { get; }
 
-    /// <summary>Extra time allowed before expiry is enforced, absorbing provider clock skew.</summary>
-    TimeSpan ExpiryGrace { get; }
+    /// <summary>
+    /// Gets the additional tolerance applied when evaluating provider-side
+    /// expiration and delayed payment events.
+    /// </summary>
+    TimeSpan ProviderExpiryGracePeriod { get; }
 }

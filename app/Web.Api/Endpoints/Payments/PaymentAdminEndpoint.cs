@@ -71,13 +71,14 @@ public sealed class PaymentAdminEndpoint : ICarterModule
         [AsParameters] QueryParameters parameters,
         string? status,
         string? provider,
+        string? currency,
         DateTimeOffset? createdFrom,
         DateTimeOffset? createdTo,
         IMediator mediator,
         CancellationToken cancellationToken)
         => (await mediator.Send(
                 new SearchPayments.UseCase(
-                    new PaymentSearchFilter(status, provider, createdFrom, createdTo),
+                    new PaymentSearchFilter(status, provider, currency, createdFrom, createdTo),
                     new PageRequest(
                         parameters.Page ?? 1,
                         PaymentConstant.Paging.ClampSize(parameters.PageSize))),

@@ -523,7 +523,9 @@ Codes are grouped by category: `Payments.Payment.*` (validation/state/idempotenc
 |---|---|---|
 | `Payments.Payment.NotFound` | 404 | unknown id, or not owned by caller |
 | `Payments.Payment.InvalidState` | 409 | illegal transition |
-| `Payments.Payment.AmountInvalid` | 400 | zero/negative/too many decimals/over max |
+| `Payments.Payment.AmountInvalid` | 400 | zero/negative/too many decimals |
+| `Payments.Payment.AmountExceedsLimit` | 400 | amount above the currency's configured ceiling |
+| `Payments.Payment.CurrencyUnsupported` | 400 | currency has no configured policy |
 | `Payments.Payment.ReferenceTooLong` | 400 | external reference exceeds 128 chars |
 | `Payments.Payment.IdempotencyKeyTooLong` | 400 | key exceeds 128 chars |
 | `Payments.Payment.CurrencyMismatch` | 400 | amount currency differs from the payment currency |
@@ -687,9 +689,12 @@ new RouteConfig
 ```json
 "Payments": {
   "DefaultProvider": "Fake",
-  "IntentLifetimeSeconds": 1800,
-  "ExpiryGraceSeconds": 300,
-  "Limits": { "MaxAmount": 100000, "WebhookMaxBytes": 65536 },
+  "Limits": { "WebhookMaxBytes": 65536 },
+  "Policy": {
+    "MaximumAmountsByCurrency": { "USD": 100000 },
+    "HostedCheckoutIntentLifetime": "00:30:00",
+    "ProviderExpiryGracePeriod": "00:02:00"
+  },
   "Providers": {
     "Fake":   { "Enabled": true },
     "Stripe": { "Enabled": false, "SecretKey": "", "PublishableKey": "", "WebhookSecret": "" },
@@ -700,9 +705,10 @@ new RouteConfig
 
 Validation conditions (fail fast at startup):
 
-- **C-1** `MaxAmount > 0`.
-- **C-2** `1 ≤ IntentLifetimeSeconds ≤ 86400`.
-- **C-3** `0 ≤ ExpiryGraceSeconds ≤ 3600`.
+- **C-1** `Payments:Policy:MaximumAmountsByCurrency` declares at least one ISO 4217 code, each with a
+  limit greater than zero; keys are validated as three uppercase letters.
+- **C-2** `HostedCheckoutIntentLifetime ∈ [00:01:00, 1.00:00:00]`.
+- **C-3** `ProviderExpiryGracePeriod ∈ [00:00:00, 01:00:00]`.
 - **C-4** `WebhookMaxBytes ∈ [1024, 1048576]`.
 - **C-5** Any `Enabled` real provider must have all non-empty secrets.
 - **C-6** `Fake.Enabled` must be `false` when `ASPNETCORE_ENVIRONMENT=Production`.
@@ -850,6 +856,9 @@ Each row is a required automated test. "Where" names the owning suite.
 | E-46 | Unknown capture mode | `400 Payments.CaptureMode.Invalid` | API integration |
 | E-47 | Zero or negative amount through the API | `400 Payments.Payment.AmountInvalid` (never 422) | API integration |
 | E-48 | Unauthenticated create | `401 Payments.Customer.Required` | API integration |
+| E-49 | Currency absent from `MaximumAmountsByCurrency` | `400 Payments.Payment.CurrencyUnsupported` | Application unit |
+| E-50 | Amount above the ceiling for that currency | `400 Payments.Payment.AmountExceedsLimit` | Application unit |
+| E-51 | Admin search filtered by currency | `200`, only matching rows | Infrastructure unit + API |
 
 ## 15. Delivery sequence
 

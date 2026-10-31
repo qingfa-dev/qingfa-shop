@@ -42,7 +42,7 @@ public static class CancelPayment
             Payment payment = loaded.Value;
 
             // Handle: an overdue intent is expired rather than cancelled.
-            if (payment.IsExpired(clock.GetUtcNow(), policy.ExpiryGrace))
+            if (payment.IsExpired(clock.GetUtcNow(), policy.ProviderExpiryGracePeriod))
             {
                 Result<Payment> expiring = payment.Expire(clock.GetUtcNow());
 

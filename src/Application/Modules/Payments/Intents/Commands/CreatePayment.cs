@@ -65,10 +65,16 @@ public static class CreatePayment
             if (!Guid.TryParse(userContext.UserId, out Guid customerId))
                 return Result<PaymentResponseModel>.Fail(PaymentsOutcome.Failure.CustomerRequired());
 
-            // Validate: the configured ceiling applies before any provider call.
-            if (command.Request.Amount.Amount > policy.MaxAmount)
+            // Validate: the configured per-currency ceiling applies before any provider call.
+            string currencyCode = command.Request.Amount.Currency.Code ?? string.Empty;
+
+            if (!policy.MaximumAmountsByCurrency.TryGetValue(currencyCode, out decimal maximum))
                 return Result<PaymentResponseModel>.Fail(
-                    PaymentsOutcome.Failure.AmountExceedsLimit(command.Request.Amount.Amount, policy.MaxAmount));
+                    PaymentsOutcome.Failure.CurrencyUnsupported(currencyCode));
+
+            if (command.Request.Amount.Amount > maximum)
+                return Result<PaymentResponseModel>.Fail(
+                    PaymentsOutcome.Failure.AmountExceedsLimit(command.Request.Amount.Amount, maximum));
 
             string fingerprint = Fingerprint(command.Request);
 
@@ -102,6 +108,7 @@ public static class CreatePayment
                         command.IdempotencyKey,
                         fingerprint,
                         reservation.Value.PaymentId,
+                        maximum,
                         ct),
                     cancellationToken);
 
@@ -150,6 +157,7 @@ public static class CreatePayment
             string idempotencyKey,
             string fingerprint,
             Guid id,
+            decimal maximumAmount,
             CancellationToken cancellationToken)
         {
             Result<PaymentIntentResult> intent = await PaymentMetrics.TrackAsync(
@@ -186,9 +194,9 @@ public static class CreatePayment
                     customerId: customerId,
                     approvalUrl: value.ApprovalUrl,
                     // Fallback: providers that do not state an expiry use the configured lifetime.
-                    expiresAt: value.ExpiresAt ?? clock.GetUtcNow().Add(policy.IntentLifetime),
+                    expiresAt: value.ExpiresAt ?? clock.GetUtcNow().Add(policy.HostedCheckoutIntentLifetime),
                     nowUtc: clock.GetUtcNow(),
-                    maxAmount: policy.MaxAmount)
+                    maxAmount: maximumAmount)
                 .Bind(payment => value.Status is PaymentProviderIntentStatus.Failed
                     ? payment.Fail(value.FailureCode ?? PaymentConstant.Reasons.ProviderFailed, null, clock.GetUtcNow())
                     : Result<Payment>.Success(payment));
