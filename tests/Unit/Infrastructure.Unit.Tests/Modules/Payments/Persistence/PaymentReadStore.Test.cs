@@ -146,6 +146,28 @@ public sealed class PaymentReadStoreTest
         found.Value.Id.Should().Be(expected);
     }
 
+    [Fact]
+    public async Task ListForReconciliationAsync_ShouldReturnOnlyStaleUnsettledRows()
+    {
+        await using ApplicationDbContext context = await NewContextAsync();
+
+        PaymentReadModel stale = await SeedAsync(context, "cart-stale", 10m, "pending");
+        stale.CreatedAt = DateTime.UtcNow.AddHours(-1);
+        await SeedAsync(context, "cart-settled", 10m, "captured");
+
+        PaymentReadModel recent = await SeedAsync(context, "cart-recent", 10m, "processing");
+        recent.CreatedAt = DateTime.UtcNow;
+        await context.SaveChangesAsync();
+
+        var store = new PaymentReadStore(context);
+
+        IReadOnlyList<PaymentReadModel> rows = (await store.ListForReconciliationAsync(
+            DateTimeOffset.UtcNow.AddMinutes(-10), 50, CancellationToken.None)).Value;
+
+        rows.Should().ContainSingle();
+        rows[0].Id.Should().Be(stale.Id);
+    }
+
     /// <summary>Seeds one projected payment.</summary>
     private static async Task<PaymentReadModel> SeedAsync(
         ApplicationDbContext context,

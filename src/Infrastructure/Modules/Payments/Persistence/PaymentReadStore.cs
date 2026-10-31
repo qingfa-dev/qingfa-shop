@@ -4,6 +4,7 @@ using Application.Modules.Payments.Persistence;
 using Application.Modules.Payments.Refunds.Models;
 
 using Core.Modules.Payments;
+using Core.Modules.Payments.Intents;
 
 using Microsoft.EntityFrameworkCore;
 
@@ -118,6 +119,30 @@ public sealed class PaymentReadStore(DbContext context) : IPaymentReadStore
 
         return Result<QueryPage<PaymentReadModel>>.Success(
             new QueryPage<PaymentReadModel>(rows, page.Page, page.PageSize, total));
+    }
+
+    /// <inheritdoc />
+    public async Task<Result<IReadOnlyList<PaymentReadModel>>> ListForReconciliationAsync(
+        DateTimeOffset receivedBefore,
+        int take,
+        CancellationToken cancellationToken)
+    {
+        string[] unsettled =
+        [
+            PaymentStatus.Pending.ToWire(),
+            PaymentStatus.Processing.ToWire(),
+            PaymentStatus.Authorized.ToWire()
+        ];
+
+        DateTime cutoff = receivedBefore.UtcDateTime;
+
+        List<PaymentReadModel> rows = await context.Set<PaymentReadModel>().AsNoTracking()
+            .Where(model => unsettled.Contains(model.Status) && model.CreatedAt < cutoff)
+            .OrderBy(model => model.CreatedAt)
+            .Take(take)
+            .ToListAsync(cancellationToken);
+
+        return Result<IReadOnlyList<PaymentReadModel>>.Success(rows);
     }
 
     /// <inheritdoc />

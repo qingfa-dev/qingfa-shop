@@ -42,6 +42,9 @@ public static class PaymentMetricConstant
         /// <summary>Webhook deliveries pruned.</summary>
         public const string WebhooksPruned = "webhooks.pruned";
 
+        /// <summary>Payments settled by the reconciliation sweep.</summary>
+        public const string Reconciled = "payments.reconciled";
+
         /// <summary>Provider call latency.</summary>
         public const string ProviderDuration = "payments.provider.duration";
     }

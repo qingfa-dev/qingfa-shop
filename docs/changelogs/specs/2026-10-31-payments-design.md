@@ -879,7 +879,9 @@ Each step is independently committable and green.
 
 ## 16. Deferred
 
-- Background reconciliation against provider state.
+- (Implemented) Provider reconciliation: a sweep re-reads stale `pending`/`processing`/`authorized`
+  payments and settles through the same `SettlePayment` command, so a lost webhook cannot leave a
+  payment stuck.
 - Dispute/chargeback transitions.
 - (Implemented) PayPal refunds against the provider capture id; partial refunds remain unsupported.
 - (Implemented) Webhook retention: processed deliveries older than `Payments:Retention:WebhookEventRetentionDays`

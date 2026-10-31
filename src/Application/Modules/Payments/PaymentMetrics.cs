@@ -47,6 +47,9 @@ public static class PaymentMetrics
     public static readonly Counter<long> WebhooksMismatch =
         Meter.CreateCounter<long>(PaymentMetricConstant.Instrument.WebhooksMismatch);
 
+    /// <summary>Payments settled by the reconciliation sweep.</summary>
+    public static readonly Counter<long> Reconciled = Meter.CreateCounter<long>(PaymentMetricConstant.Instrument.Reconciled);
+
     /// <summary>Webhook deliveries pruned by the retention sweep.</summary>
     public static readonly Counter<long> WebhooksPruned =
         Meter.CreateCounter<long>(PaymentMetricConstant.Instrument.WebhooksPruned);

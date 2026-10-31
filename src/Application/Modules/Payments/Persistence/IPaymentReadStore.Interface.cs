@@ -73,6 +73,16 @@ public interface IPaymentReadStore
         PageRequest page,
         CancellationToken cancellationToken);
 
+    /// <summary>Lists payments still awaiting a provider outcome.</summary>
+    /// <param name="receivedBefore">Only rows created before this instant are returned.</param>
+    /// <param name="take">The maximum number of rows.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The candidates, or a stable failure.</returns>
+    Task<Result<IReadOnlyList<PaymentReadModel>>> ListForReconciliationAsync(
+        DateTimeOffset receivedBefore,
+        int take,
+        CancellationToken cancellationToken);
+
     /// <summary>Finds one refund belonging to a payment.</summary>
     /// <param name="paymentId">The payment id.</param>
     /// <param name="refundId">The refund id.</param>

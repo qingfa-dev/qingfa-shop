@@ -124,6 +124,9 @@ public static class PaymentConstant
 
         /// <summary>Refund prefix.</summary>
         public const string Refund = "refund:";
+
+        /// <summary>Reconciliation prefix.</summary>
+        public const string Reconcile = "reconcile:";
     }
 
     /// <summary>HTTP header names used by the module.</summary>
