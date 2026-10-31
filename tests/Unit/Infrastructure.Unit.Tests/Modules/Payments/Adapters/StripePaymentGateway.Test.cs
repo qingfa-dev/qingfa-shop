@@ -1,3 +1,5 @@
+using System.Text;
+
 using AwesomeAssertions;
 
 using Core.Modules.Payments;
@@ -23,7 +25,7 @@ public sealed class StripePaymentGatewayTest
         var gateway = new StripePaymentGateway(Options);
 
         var result = await gateway.ParseWebhookAsync(
-            """{"id":"evt_1","type":"payment_intent.succeeded"}""",
+            Bytes("""{"id":"evt_1","type":"payment_intent.succeeded"}"""),
             new Dictionary<string, string>(),
             CancellationToken.None);
 
@@ -40,7 +42,7 @@ public sealed class StripePaymentGatewayTest
         string header = BuildSignature(original, Options.WebhookSecret);
 
         var result = await gateway.ParseWebhookAsync(
-            """{"id":"evt_1","type":"payment_intent.succeeded","amount":1}""",
+            Bytes("""{"id":"evt_1","type":"payment_intent.succeeded","amount":1}"""),
             new Dictionary<string, string> { [PaymentConstant.Headers.StripeSignature] = header },
             CancellationToken.None);
 
@@ -49,11 +51,12 @@ public sealed class StripePaymentGatewayTest
     }
 
     [Fact]
-    public async Task ParseWebhook_NullArguments_ShouldThrow()
+    public async Task ParseWebhook_NullHeaders_ShouldThrow()
     {
         var gateway = new StripePaymentGateway(Options);
 
-        Func<Task> act = () => gateway.ParseWebhookAsync(null!, new Dictionary<string, string>(), CancellationToken.None);
+        Func<Task> act = () =>
+            gateway.ParseWebhookAsync(Bytes("{}"), null!, CancellationToken.None);
 
         await act.Should().ThrowAsync<ArgumentNullException>();
     }
@@ -65,7 +68,7 @@ public sealed class StripePaymentGatewayTest
         const string body = """{"id":"evt_1","type":"customer.created"}""";
 
         var result = await gateway.ParseWebhookAsync(
-            body,
+            Bytes(body),
             new Dictionary<string, string> { [PaymentConstant.Headers.StripeSignature] = BuildSignature(body, Options.WebhookSecret) },
             CancellationToken.None);
 
@@ -91,4 +94,7 @@ public sealed class StripePaymentGatewayTest
 
         return $"t={timestamp},v1={digest}";
     }
+
+    /// <summary>Encodes a JSON body the way the endpoint delivers it.</summary>
+    private static ReadOnlyMemory<byte> Bytes(string body) => Encoding.UTF8.GetBytes(body);
 }

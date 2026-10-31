@@ -1,5 +1,3 @@
-using System.Text;
-
 using Application.Modules.Payments.Webhooks.Commands;
 
 using Carter;
@@ -59,11 +57,13 @@ public sealed class PaymentWebhookEndpoint : ICarterModule
             return Result.Fail(PaymentsOutcome.Failure.WebhookPayloadTooLarge()).ToApiResult();
 
         // Handle: read the raw body; signature verification needs the exact bytes.
-        using var reader = new StreamReader(request.Body, Encoding.UTF8);
-        string rawBody = await reader.ReadToEndAsync(cancellationToken);
+        using var buffer = new MemoryStream();
+        await request.Body.CopyToAsync(buffer, cancellationToken);
 
-        if (rawBody.Length > maxBytes)
+        if (buffer.Length > maxBytes)
             return Result.Fail(PaymentsOutcome.Failure.WebhookPayloadTooLarge()).ToApiResult();
+
+        byte[] rawBody = buffer.ToArray();
 
         IReadOnlyDictionary<string, string> headers = request.Headers
             .ToDictionary(header => header.Key, header => header.Value.ToString());

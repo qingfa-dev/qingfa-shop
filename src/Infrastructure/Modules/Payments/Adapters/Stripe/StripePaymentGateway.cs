@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Text;
 
 using Application.Modules.Payments.Ports;
 using Application.Modules.Payments.Ports.Models;
@@ -15,7 +16,7 @@ using Stripe;
 namespace Infrastructure.Modules.Payments.Adapters.Stripe;
 
 /// <summary>Stripe adapter built on Stripe.net.</summary>
-public sealed class StripePaymentGateway : IPaymentGateway, ISupportsPartialRefund, ISupportsManualCapture
+public sealed class StripePaymentGateway : IPaymentGateway
 {
     private readonly StripeOptions _options;
     private readonly IStripeClient _client;
@@ -43,6 +44,9 @@ public sealed class StripePaymentGateway : IPaymentGateway, ISupportsPartialRefu
     public PaymentProvider Provider => PaymentProvider.Stripe;
 
     /// <inheritdoc />
+    public PaymentGatewayCapabilities Capabilities { get; } = PaymentGatewayCapabilities.Full;
+
+    /// <inheritdoc />
     public async Task<Result<PaymentIntentResult>> CreateIntentAsync(
         PaymentIntentRequest request,
         CancellationToken cancellationToken)
@@ -61,12 +65,14 @@ public sealed class StripePaymentGateway : IPaymentGateway, ISupportsPartialRefu
             {
                 Amount = minor.Value,
                 Currency = request.Amount.Currency.Code!.ToLowerInvariant(),
-                CaptureMethod = request.CaptureMode is PaymentCaptureMode.Manual ? "manual" : "automatic",
+                CaptureMethod = request.CaptureMode is PaymentCaptureMode.Manual
+                    ? StripeConstant.CaptureMethod.Manual
+                    : StripeConstant.CaptureMethod.Automatic,
                 AutomaticPaymentMethods = new PaymentIntentAutomaticPaymentMethodsOptions { Enabled = true },
                 Metadata = new Dictionary<string, string>(request.Metadata)
                 {
-                    ["payment_id"] = request.PaymentId.ToString("N"),
-                    ["external_reference"] = request.ExternalReference
+                    [StripeConstant.Metadata.PaymentId] = request.PaymentId.ToString("N"),
+                    [StripeConstant.Metadata.ExternalReference] = request.ExternalReference
                 }
             },
             new RequestOptions { IdempotencyKey = request.IdempotencyKey },
@@ -153,12 +159,14 @@ public sealed class StripePaymentGateway : IPaymentGateway, ISupportsPartialRefu
 
     /// <inheritdoc />
     public Task<Result<Maybe<PaymentProviderEvent>>> ParseWebhookAsync(
-        string rawBody,
+        ReadOnlyMemory<byte> rawBody,
         IReadOnlyDictionary<string, string> headers,
         CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(rawBody);
         ArgumentNullException.ThrowIfNull(headers);
+
+        // Handle: Stripe signs the exact payload; the library verifies the decoded JSON text.
+        string payload = Encoding.UTF8.GetString(rawBody.Span);
 
         if (!headers.TryGetValue(PaymentConstant.Headers.StripeSignature, out string? signature))
             return Task.FromResult(Result<Maybe<PaymentProviderEvent>>.Fail(
@@ -167,7 +175,7 @@ public sealed class StripePaymentGateway : IPaymentGateway, ISupportsPartialRefu
         try
         {
             Event stripeEvent = EventUtility.ConstructEvent(
-                rawBody,
+                payload,
                 signature,
                 _options.WebhookSecret,
                 _options.WebhookToleranceSeconds,
@@ -216,12 +224,14 @@ public sealed class StripePaymentGateway : IPaymentGateway, ISupportsPartialRefu
     {
         PaymentProviderIntentStatus status = intent.Status switch
         {
-            "requires_action" or "requires_confirmation" or "requires_payment_method" =>
+            StripeConstant.IntentStatus.RequiresAction
+                or StripeConstant.IntentStatus.RequiresConfirmation
+                or StripeConstant.IntentStatus.RequiresPaymentMethod =>
                 PaymentProviderIntentStatus.RequiresAction,
-            "processing" => PaymentProviderIntentStatus.Processing,
-            "requires_capture" => PaymentProviderIntentStatus.Authorized,
-            "succeeded" => PaymentProviderIntentStatus.Captured,
-            "canceled" => PaymentProviderIntentStatus.Cancelled,
+            StripeConstant.IntentStatus.Processing => PaymentProviderIntentStatus.Processing,
+            StripeConstant.IntentStatus.RequiresCapture => PaymentProviderIntentStatus.Authorized,
+            StripeConstant.IntentStatus.Succeeded => PaymentProviderIntentStatus.Captured,
+            StripeConstant.IntentStatus.Canceled => PaymentProviderIntentStatus.Cancelled,
             _ => PaymentProviderIntentStatus.Failed
         };
 

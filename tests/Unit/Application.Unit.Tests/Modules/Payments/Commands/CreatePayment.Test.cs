@@ -5,6 +5,8 @@ using Application.Modules.Payments.Persistence;
 using Application.Modules.Payments.Ports;
 using Application.Modules.Payments.Ports.Models;
 
+using Application.Unit.Tests.Modules.Payments.Fixtures;
+
 using AwesomeAssertions;
 
 using Core.BuildingBlocks.Domain.ValueObjects.Money;
@@ -43,7 +45,13 @@ public sealed class CreatePaymentTest
         user.SetupGet(x => x.UserId).Returns(customerId.ToString());
 
         var handler = new CreatePayment.UseCaseHandler(
-            repository.Object, idempotency.Object, references.Object, registry.Object, user.Object, TimeProvider.System);
+            repository.Object,
+            idempotency.Object,
+            references.Object,
+            registry.Object,
+            new StubPaymentPolicy(),
+            user.Object,
+            TimeProvider.System);
 
         var request = new CreatePayment.Request(
             new Money(10m, new Currency("USD")), PaymentProvider.Fake, "cart-1",
@@ -90,7 +98,13 @@ public sealed class CreatePaymentTest
         user.SetupGet(x => x.UserId).Returns(customerId.ToString());
 
         var handler = new CreatePayment.UseCaseHandler(
-            repository.Object, idempotency.Object, references.Object, registry.Object, user.Object, TimeProvider.System);
+            repository.Object,
+            idempotency.Object,
+            references.Object,
+            registry.Object,
+            new StubPaymentPolicy(),
+            user.Object,
+            TimeProvider.System);
 
         var request = new CreatePayment.Request(
             new Money(10m, new Currency("USD")), PaymentProvider.Fake, "cart-2",
@@ -124,7 +138,13 @@ public sealed class CreatePaymentTest
         user.SetupGet(x => x.UserId).Returns(customerId.ToString());
 
         var handler = new CreatePayment.UseCaseHandler(
-            repository.Object, idempotency.Object, references.Object, registry.Object, user.Object, TimeProvider.System);
+            repository.Object,
+            idempotency.Object,
+            references.Object,
+            registry.Object,
+            new StubPaymentPolicy(),
+            user.Object,
+            TimeProvider.System);
 
         var request = new CreatePayment.Request(
             new Money(10m, new Currency("USD")), PaymentProvider.Stripe, "cart-3",

@@ -26,7 +26,7 @@ public sealed class PayPalPaymentGatewayTest
         PayPalPaymentGateway gateway = Build(Stub(HttpStatusCode.OK, """{"verification_status":"FAILURE"}"""));
 
         var result = await gateway.ParseWebhookAsync(
-            """{"id":"evt_1","event_type":"PAYMENT.CAPTURE.COMPLETED","resource":{}}""",
+            Bytes("""{"id":"evt_1","event_type":"PAYMENT.CAPTURE.COMPLETED","resource":{}}"""),
             new Dictionary<string, string>(),
             CancellationToken.None);
 
@@ -40,7 +40,7 @@ public sealed class PayPalPaymentGatewayTest
         PayPalPaymentGateway gateway = Build(Stub(HttpStatusCode.OK, """{"verification_status":"SUCCESS"}"""));
 
         var result = await gateway.ParseWebhookAsync(
-            """{"id":"evt_1","event_type":"SOMETHING.ELSE","resource":{"id":"x"}}""",
+            Bytes("""{"id":"evt_1","event_type":"SOMETHING.ELSE","resource":{"id":"x"}}"""),
             new Dictionary<string, string>(),
             CancellationToken.None);
 
@@ -58,7 +58,7 @@ public sealed class PayPalPaymentGatewayTest
              "resource":{"supplementary_data":{"related_ids":{"order_id":"ORDER-1"}}}}
             """;
 
-        var result = await gateway.ParseWebhookAsync(body, new Dictionary<string, string>(), CancellationToken.None);
+        var result = await gateway.ParseWebhookAsync(Bytes(body), new Dictionary<string, string>(), CancellationToken.None);
 
         result.IsSuccess.Should().BeTrue();
         result.Value.HasValue.Should().BeTrue();
@@ -127,4 +127,7 @@ public sealed class PayPalPaymentGatewayTest
             });
         }
     }
+
+    /// <summary>Encodes a JSON body the way the endpoint delivers it.</summary>
+    private static ReadOnlyMemory<byte> Bytes(string body) => Encoding.UTF8.GetBytes(body);
 }

@@ -266,4 +266,42 @@ public sealed class PaymentApiTest(ResultContractStackFixture fixture)
 
         AssertFailureCode(response, PaymentsOutcome.Codes.RefundReasonRequired, HttpStatusCode.BadRequest);
     }
+
+    [Fact]
+    public async Task Create_AboveTheCeiling_ShouldReturn400()
+    {
+        if (fixture.SkipReason is not null)
+            Assert.Skip(fixture.SkipReason);
+
+        using HttpClient client = fixture.CreateClient();
+        using var request = new HttpRequestMessage(HttpMethod.Post, "/api/payments")
+        {
+            Content = JsonContent.Create(new
+            {
+                amount = new { amount = PaymentConstant.Defaults.MaxAmount + 1m, currency = "USD" },
+                provider = "fake",
+                externalReference = "cart-ceiling",
+                captureMode = "automatic"
+            })
+        };
+        request.Headers.Add(PaymentConstant.Headers.IdempotencyKey, NewKey());
+
+        using HttpResponseMessage response = await client.SendAsync(request);
+
+        AssertFailureCode(response, PaymentsOutcome.Codes.AmountExceedsLimit, HttpStatusCode.BadRequest);
+    }
+
+    [Fact]
+    public async Task List_WithAnOversizedPage_ShouldStillReturn200()
+    {
+        if (fixture.SkipReason is not null)
+            Assert.Skip(fixture.SkipReason);
+
+        using HttpClient client = fixture.CreateClient();
+
+        using HttpResponseMessage response = await client.GetAsync(
+            $"/api/payments?page=1&pageSize={PaymentConstant.Constraints.MaxPageSize + 500}");
+
+        response.StatusCode.Should().Be(HttpStatusCode.OK);
+    }
 }

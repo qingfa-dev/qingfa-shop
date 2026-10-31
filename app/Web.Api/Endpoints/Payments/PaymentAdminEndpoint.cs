@@ -80,7 +80,7 @@ public sealed class PaymentAdminEndpoint : ICarterModule
                     new PaymentSearchFilter(status, provider, createdFrom, createdTo),
                     new PageRequest(
                         parameters.Page ?? 1,
-                        parameters.PageSize ?? PaymentConstant.Defaults.DefaultPageSize)),
+                        PaymentConstant.Paging.ClampSize(parameters.PageSize))),
                 cancellationToken))
             .ToApiResult();
 

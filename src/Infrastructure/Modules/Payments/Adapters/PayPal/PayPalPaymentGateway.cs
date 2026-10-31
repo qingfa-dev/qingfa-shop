@@ -18,10 +18,17 @@ namespace Infrastructure.Modules.Payments.Adapters.PayPal;
 public sealed class PayPalPaymentGateway(
     HttpClient client,
     PayPalTokenProvider tokens,
-    PayPalOptions options) : IPaymentGateway, ISupportsManualCapture
+    PayPalOptions options) : IPaymentGateway
 {
     /// <inheritdoc />
     public PaymentProvider Provider => PaymentProvider.PayPal;
+
+    /// <inheritdoc />
+    public PaymentGatewayCapabilities Capabilities { get; } = new()
+    {
+        SupportsManualCapture = true,
+        SupportsWebhooks = true
+    };
 
     /// <inheritdoc />
     public async Task<Result<PaymentIntentResult>> CreateIntentAsync(
@@ -34,7 +41,9 @@ public sealed class PayPalPaymentGateway(
         {
             Content = JsonContent.Create(new
             {
-                intent = request.CaptureMode is PaymentCaptureMode.Manual ? "AUTHORIZE" : "CAPTURE",
+                intent = request.CaptureMode is PaymentCaptureMode.Manual
+                    ? PayPalConstant.OrderIntent.Authorize
+                    : PayPalConstant.OrderIntent.Capture,
                 purchase_units = new[]
                 {
                     new
@@ -50,8 +59,8 @@ public sealed class PayPalPaymentGateway(
             })
         };
 
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await tokens.GetAsync(cancellationToken));
-        message.Headers.Add("PayPal-Request-Id", request.IdempotencyKey);
+        message.Headers.Authorization = new AuthenticationHeaderValue(PayPalConstant.Headers.AuthorizationScheme, await tokens.GetAsync(cancellationToken));
+        message.Headers.Add(PayPalConstant.Headers.RequestId, request.IdempotencyKey);
 
         using HttpResponseMessage response = await client.SendAsync(message, cancellationToken);
 
@@ -75,7 +84,7 @@ public sealed class PayPalPaymentGateway(
         CancellationToken cancellationToken)
     {
         using var message = new HttpRequestMessage(HttpMethod.Get, $"v2/checkout/orders/{providerReference}");
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await tokens.GetAsync(cancellationToken));
+        message.Headers.Authorization = new AuthenticationHeaderValue(PayPalConstant.Headers.AuthorizationScheme, await tokens.GetAsync(cancellationToken));
 
         using HttpResponseMessage response = await client.SendAsync(message, cancellationToken);
 
@@ -90,9 +99,9 @@ public sealed class PayPalPaymentGateway(
 
         PaymentProviderIntentStatus mapped = status switch
         {
-            "COMPLETED" => PaymentProviderIntentStatus.Captured,
-            "APPROVED" => PaymentProviderIntentStatus.Authorized,
-            "CREATED" => PaymentProviderIntentStatus.RequiresAction,
+            PayPalConstant.OrderStatus.Completed => PaymentProviderIntentStatus.Captured,
+            PayPalConstant.OrderStatus.Approved => PaymentProviderIntentStatus.Authorized,
+            PayPalConstant.OrderStatus.Created => PaymentProviderIntentStatus.RequiresAction,
             _ => PaymentProviderIntentStatus.Failed
         };
 
@@ -111,8 +120,8 @@ public sealed class PayPalPaymentGateway(
             HttpMethod.Post,
             $"v2/checkout/orders/{request.ProviderReference}/capture");
 
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await tokens.GetAsync(cancellationToken));
-        message.Headers.Add("PayPal-Request-Id", request.IdempotencyKey);
+        message.Headers.Authorization = new AuthenticationHeaderValue(PayPalConstant.Headers.AuthorizationScheme, await tokens.GetAsync(cancellationToken));
+        message.Headers.Add(PayPalConstant.Headers.RequestId, request.IdempotencyKey);
 
         using HttpResponseMessage response = await client.SendAsync(message, cancellationToken);
 
@@ -138,7 +147,7 @@ public sealed class PayPalPaymentGateway(
             HttpMethod.Post,
             $"v2/checkout/orders/{request.ProviderReference}/cancel");
 
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await tokens.GetAsync(cancellationToken));
+        message.Headers.Authorization = new AuthenticationHeaderValue(PayPalConstant.Headers.AuthorizationScheme, await tokens.GetAsync(cancellationToken));
 
         using HttpResponseMessage response = await client.SendAsync(message, cancellationToken);
 
@@ -155,11 +164,10 @@ public sealed class PayPalPaymentGateway(
 
     /// <inheritdoc />
     public async Task<Result<Maybe<PaymentProviderEvent>>> ParseWebhookAsync(
-        string rawBody,
+        ReadOnlyMemory<byte> rawBody,
         IReadOnlyDictionary<string, string> headers,
         CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(rawBody);
         ArgumentNullException.ThrowIfNull(headers);
 
         using JsonDocument document = JsonDocument.Parse(rawBody);
@@ -179,7 +187,7 @@ public sealed class PayPalPaymentGateway(
             })
         };
 
-        message.Headers.Authorization = new AuthenticationHeaderValue("Bearer", await tokens.GetAsync(cancellationToken));
+        message.Headers.Authorization = new AuthenticationHeaderValue(PayPalConstant.Headers.AuthorizationScheme, await tokens.GetAsync(cancellationToken));
 
         using HttpResponseMessage response = await client.SendAsync(message, cancellationToken);
 
@@ -190,8 +198,9 @@ public sealed class PayPalPaymentGateway(
         using JsonDocument verification = JsonDocument.Parse(
             await response.Content.ReadAsStringAsync(cancellationToken));
 
-        if (!verification.RootElement.TryGetProperty("verification_status", out JsonElement status)
-            || status.GetString() != "SUCCESS")
+        if (!verification.RootElement.TryGetProperty(
+                PayPalConstant.Verification.StatusProperty, out JsonElement status)
+            || status.GetString() != PayPalConstant.Verification.Success)
             return Result<Maybe<PaymentProviderEvent>>.Fail(
                 PaymentsOutcome.Failure.WebhookSignatureInvalid());
 
@@ -209,10 +218,14 @@ public sealed class PayPalPaymentGateway(
 
         (PaymentProviderEventType Type, string Reference)? mapped = eventType switch
         {
-            "CHECKOUT.ORDER.APPROVED" => (PaymentProviderEventType.Authorized, ReadString(resource, "id")),
-            "PAYMENT.CAPTURE.COMPLETED" => (PaymentProviderEventType.Captured, ReadOrderId(resource)),
-            "PAYMENT.CAPTURE.DENIED" => (PaymentProviderEventType.Failed, ReadOrderId(resource)),
-            "PAYMENT.CAPTURE.REFUNDED" => (PaymentProviderEventType.Refunded, ReadOrderId(resource)),
+            PayPalConstant.EventType.OrderApproved =>
+                (PaymentProviderEventType.Authorized, ReadString(resource, "id")),
+            PayPalConstant.EventType.CaptureCompleted =>
+                (PaymentProviderEventType.Captured, ReadOrderId(resource)),
+            PayPalConstant.EventType.CaptureDenied =>
+                (PaymentProviderEventType.Failed, ReadOrderId(resource)),
+            PayPalConstant.EventType.CaptureRefunded =>
+                (PaymentProviderEventType.Refunded, ReadOrderId(resource)),
             _ => null
         };
 

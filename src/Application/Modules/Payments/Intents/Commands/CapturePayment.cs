@@ -65,7 +65,7 @@ public static class CapturePayment
                 new PaymentCaptureRequest(
                     payment.ProviderReference,
                     amount,
-                    $"capture:{payment.Id:N}:{payment.CapturedAmount.Amount:0.####}"),
+                    $"{PaymentConstant.IdempotencyPrefixes.Capture}{payment.Id:N}:{payment.CapturedAmount.Amount:0.####}"),
                 cancellationToken);
 
             if (captured.IsFailure)

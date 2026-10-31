@@ -19,7 +19,8 @@ public static class PaymentFactory
         Guid customerId,
         string? approvalUrl,
         DateTimeOffset? expiresAt,
-        DateTimeOffset nowUtc)
+        DateTimeOffset nowUtc,
+        decimal maxAmount = PaymentConstant.Defaults.MaxAmount)
     {
         var candidate = Payment.Draft(
             id,
@@ -36,7 +37,7 @@ public static class PaymentFactory
             nowUtc);
 
         return Result<Payment>.Success(candidate)
-            .Ensure(payment => PaymentValidator.ValidateInitiation(payment))
+            .Ensure(payment => PaymentValidator.ValidateInitiation(payment, maxAmount))
             .Bind(payment => payment.RaiseEvent(new PaymentInitiated(
                 payment.Id,
                 payment.Provider,

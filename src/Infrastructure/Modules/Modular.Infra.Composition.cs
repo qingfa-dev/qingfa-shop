@@ -95,6 +95,9 @@ public static class ModularInfraComposition
 
         builder.Services.TryAddSingleton<IPaymentGatewayRegistry, PaymentGatewayRegistry>();
 
+        // Register: the slices enforce the configured ceilings through this port.
+        builder.Services.TryAddSingleton<IPaymentPolicy, PaymentPolicy>();
+
         return builder;
     }
 

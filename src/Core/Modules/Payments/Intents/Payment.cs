@@ -119,6 +119,15 @@ public sealed class Payment : EventSourcedAggregate<Guid>
         or PaymentStatus.Expired
         or PaymentStatus.Failed;
 
+    /// <summary>Reports whether an unpaid intent is past its expiry, including the grace period.</summary>
+    /// <param name="nowUtc">The current instant.</param>
+    /// <param name="grace">Extra time allowed before expiry is enforced.</param>
+    /// <returns>True when the intent can no longer be paid.</returns>
+    public bool IsExpired(DateTimeOffset nowUtc, TimeSpan grace)
+        => ExpiresAt is { } expiresAt
+            && Status is PaymentStatus.Pending
+            && nowUtc >= expiresAt + grace;
+
     /// <summary>Whether the payment can accept a refund right now.</summary>
     public bool CanRefund => (Status is PaymentStatus.Captured or PaymentStatus.PartiallyRefunded)
         && CreditAllowed > 0;
@@ -174,25 +183,17 @@ public sealed class Payment : EventSourcedAggregate<Guid>
         if (!CanCapture)
             return Result<Payment>.Fail(PaymentsOutcome.Failure.InvalidState(Status, "captured"));
 
-        if (string.IsNullOrWhiteSpace(providerReference))
-            return Result<Payment>.Fail(PaymentsOutcome.Failure.ProviderReferenceMissing());
-
         bool lateSettlement = Status is PaymentStatus.Expired or PaymentStatus.Failed;
 
         // Enforce: Manual capture needs a prior authorization except for late settlement.
         if (CaptureMode is PaymentCaptureMode.Manual && Status is not PaymentStatus.Authorized && !lateSettlement)
             return Result<Payment>.Fail(PaymentsOutcome.Failure.InvalidState(Status, "captured before authorization"));
 
-        if (captured.Amount <= 0)
-            return Result<Payment>.Fail(PaymentsOutcome.Failure.AmountInvalid("captured amount must be positive"));
+        // Validate: reference, amount, currency and remaining balance in one place.
+        Result validation = PaymentValidator.ValidateCapture(this, captured, providerReference);
 
-        if (captured.Currency != Amount.Currency)
-            return Result<Payment>.Fail(PaymentsOutcome.Failure.CurrencyMismatch(
-                Amount.Currency.Code ?? string.Empty, captured.Currency.Code ?? string.Empty));
-
-        if (captured.Amount > RemainingCapturable)
-            return Result<Payment>.Fail(PaymentsOutcome.Failure.AmountInvalid(
-                "captured amount exceeds the remaining amount"));
+        if (validation.IsFailure)
+            return Result<Payment>.Fail(validation.Errors);
 
         // Enforce: Automatic capture and late settlement must take the full remainder.
         if (captured.Amount < RemainingCapturable && Status is not PaymentStatus.Authorized)
@@ -221,7 +222,12 @@ public sealed class Payment : EventSourcedAggregate<Guid>
         if (Status is not PaymentStatus.Authorized)
             return Result<Payment>.Fail(PaymentsOutcome.Failure.InvalidState(Status, "marked as a failed capture"));
 
-        return RaiseEvent(new PaymentCaptureFailed(Id, attempted, code, message, nowUtc));
+        return RaiseEvent(new PaymentCaptureFailed(
+            Id,
+            attempted,
+            PaymentValidator.NormalizeFailureCode(code) ?? PaymentConstant.Reasons.CaptureFailed,
+            message,
+            nowUtc));
     }
 
     /// <summary>Marks the payment failed.</summary>
@@ -230,7 +236,11 @@ public sealed class Payment : EventSourcedAggregate<Guid>
         if (Status is not (PaymentStatus.Pending or PaymentStatus.Processing))
             return Result<Payment>.Fail(PaymentsOutcome.Failure.InvalidState(Status, "failed"));
 
-        return RaiseEvent(new PaymentFailed(Id, code, message, nowUtc));
+        return RaiseEvent(new PaymentFailed(
+            Id,
+            PaymentValidator.NormalizeFailureCode(code) ?? PaymentConstant.Reasons.ProviderFailed,
+            message,
+            nowUtc));
     }
 
     /// <summary>Voids the payment before any capture.</summary>

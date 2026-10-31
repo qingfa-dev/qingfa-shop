@@ -155,4 +155,7 @@ public sealed class PayPalGatewayOperationTest
                 });
         }
     }
+
+    /// <summary>Encodes a JSON body the way the endpoint delivers it.</summary>
+    private static ReadOnlyMemory<byte> Bytes(string body) => Encoding.UTF8.GetBytes(body);
 }

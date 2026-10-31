@@ -84,7 +84,7 @@ public sealed class PaymentEndpoint : ICarterModule
             cancellationToken);
 
         // Handle: replay responses carry the stored resource and announce themselves.
-        if (result.IsSuccess && result.Metadata.ContainsKey("IdempotentReplay"))
+        if (result.IsSuccess && result.Metadata.ContainsKey(PaymentConstant.Metadata.IdempotencyReplay))
             httpContext.Response.Headers[PaymentConstant.Headers.IdempotentReplay] =
                 PaymentConstant.Headers.ReplayTrue;
 
@@ -113,7 +113,7 @@ public sealed class PaymentEndpoint : ICarterModule
                     externalReference,
                     new PageRequest(
                         parameters.Page ?? 1,
-                        parameters.PageSize ?? PaymentConstant.Defaults.DefaultPageSize)),
+                        PaymentConstant.Paging.ClampSize(parameters.PageSize))),
                 cancellationToken))
             .ToApiResult();
 

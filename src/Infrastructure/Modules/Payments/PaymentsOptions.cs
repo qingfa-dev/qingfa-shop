@@ -28,7 +28,7 @@ public sealed class PaymentsOptions
 public sealed class PaymentLimitsOptions
 {
     /// <summary>The largest accepted amount.</summary>
-    public decimal MaxAmount { get; init; } = 100000;
+    public decimal MaxAmount { get; init; } = Core.Modules.Payments.Intents.PaymentConstant.Defaults.MaxAmount;
 
     /// <summary>The largest accepted webhook body.</summary>
     public int WebhookMaxBytes { get; init; } = 65536;

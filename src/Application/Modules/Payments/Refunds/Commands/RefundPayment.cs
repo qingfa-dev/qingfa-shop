@@ -80,7 +80,7 @@ public static class RefundPayment
 
             // Validate: a provider without the capability may only refund the full remainder.
             if (command.Request.Amount.Amount < payment.CreditAllowed
-                && gateway is not ISupportsPartialRefund)
+                && !gateway.Capabilities.SupportsPartialRefund)
                 return Result<Response>.Fail(PaymentsOutcome.Failure.PartialRefundUnsupported());
 
             if (payment.ProviderReference is null)
@@ -103,7 +103,7 @@ public static class RefundPayment
                     payment.ProviderReference,
                     refundId,
                     command.Request.Amount,
-                    $"refund:{refundId:N}",
+                    $"{PaymentConstant.IdempotencyPrefixes.Refund}{refundId:N}",
                     command.Request.Reason),
                 cancellationToken);
 

@@ -93,7 +93,7 @@ public static class ConfirmPayment
                     observed,
                     null,
                     intent.Value.FailureCode,
-                    $"confirm:{command.PaymentId:N}"),
+                    $"{PaymentConstant.IdempotencyPrefixes.Confirm}{command.PaymentId:N}"),
                 cancellationToken);
         }
     }

@@ -22,24 +22,20 @@ public static class PaymentRefundExtension
         if (existing is not null)
             return Result<Payment>.Success(payment);
 
-        // Validate: the reason is required and bounded before anything else is recorded.
-        if (string.IsNullOrWhiteSpace(reason)
-            || reason.Length > PaymentConstant.Constraints.ReasonMaxLength)
-            return Result<Payment>.Fail(PaymentsOutcome.Failure.RefundReasonRequired());
+        // Validate: a malformed request is rejected before the state is considered.
+        Result reasonCheck = PaymentValidator.ValidateRefundReason(reason);
+
+        if (reasonCheck.IsFailure)
+            return Result<Payment>.Fail(reasonCheck.Errors);
 
         if (payment.Status is not (PaymentStatus.Captured or PaymentStatus.PartiallyRefunded))
             return Result<Payment>.Fail(PaymentsOutcome.Failure.RefundNotCaptured(payment.Status));
 
-        if (amount.Amount <= 0)
-            return Result<Payment>.Fail(PaymentsOutcome.Failure.AmountInvalid("the refund amount must be positive"));
+        // Validate: amount, currency and remaining credit.
+        Result validation = PaymentValidator.ValidateRefund(payment, amount, reason);
 
-        if (amount.Currency != payment.Amount.Currency)
-            return Result<Payment>.Fail(PaymentsOutcome.Failure.CurrencyMismatch(
-                payment.Amount.Currency.Code ?? string.Empty, amount.Currency.Code ?? string.Empty));
-
-        if (amount.Amount > payment.CreditAllowed)
-            return Result<Payment>.Fail(
-                PaymentsOutcome.Failure.RefundExceedsCredit(amount.Amount, payment.CreditAllowed));
+        if (validation.IsFailure)
+            return Result<Payment>.Fail(validation.Errors);
 
         return payment.RaiseEvent(new RefundRequested(
             refundId, payment.Id, amount, reason, idempotencyKey, nowUtc));
@@ -85,6 +81,10 @@ public static class PaymentRefundExtension
             return Result<Payment>.Fail(PaymentsOutcome.Failure.RefundAlreadySettled(refundId, refund.Status.ToWire()));
 
         return payment.RaiseEvent(new RefundFailed(
-            refundId, payment.Id, failureCode, failureMessage, nowUtc));
+            refundId,
+            payment.Id,
+            PaymentValidator.NormalizeFailureCode(failureCode) ?? PaymentConstant.Reasons.RefundFailed,
+            failureMessage,
+            nowUtc));
     }
 }

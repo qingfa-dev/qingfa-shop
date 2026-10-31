@@ -320,12 +320,14 @@ using Core.BuildingBlocks.Functional.Maybes;
 public interface IPaymentGateway
 {
     PaymentProvider Provider { get; }
+
+    PaymentGatewayCapabilities Capabilities { get; }
     Task<Result<PaymentIntentResult>> CreateIntentAsync(PaymentIntentRequest request, CancellationToken ct);
     Task<Result<PaymentCaptureResult>> CaptureAsync(PaymentCaptureRequest request, CancellationToken ct);
     Task<Result<PaymentCancelResult>> CancelAsync(PaymentCancelRequest request, CancellationToken ct);
     Task<Result<PaymentRefundResult>> RefundAsync(PaymentRefundRequest request, CancellationToken ct);
     Task<Result<Maybe<PaymentProviderEvent>>> ParseWebhookAsync(
-        string rawBody,
+        ReadOnlyMemory<byte> rawBody,
         IReadOnlyDictionary<string, string> headers,
         CancellationToken ct);
 }
@@ -353,13 +355,19 @@ public interface IPaymentGateway
 
 ### 8.3 Capabilities
 
+Capabilities are a property of the gateway, described by one record:
+
 ```csharp
-public interface ISupportsPartialRefund { bool CanPartiallyRefund(); }
-public interface ISupportsManualCapture { bool CanCaptureManually(); }
+public sealed record PaymentGatewayCapabilities
+{
+    public bool SupportsPartialRefund { get; init; }
+    public bool SupportsManualCapture { get; init; }
+    public bool SupportsWebhooks { get; init; }
+}
 ```
 
-Capability checks are the only place provider differences are consulted. No `switch (provider)` exists
-outside `IPaymentGatewayRegistry`.
+They describe provider/account configuration, not payment eligibility. Capability checks are the only
+place provider differences are consulted; no `switch (provider)` exists outside `IPaymentGatewayRegistry`.
 
 ### 8.4 Providers
 

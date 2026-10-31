@@ -151,7 +151,7 @@ public sealed class FakePaymentGatewaySpec
     {
         var gateway = new FakePaymentGateway();
 
-        var result = await gateway.ParseWebhookAsync(body, Signed(body), CancellationToken.None);
+        var result = await gateway.ParseWebhookAsync(Bytes(body), Signed(body), CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
         result.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.WebhookPayloadInvalid);
@@ -166,7 +166,7 @@ public sealed class FakePaymentGatewaySpec
     {
         var gateway = new FakePaymentGateway();
 
-        var result = await gateway.ParseWebhookAsync(body, Signed(body), CancellationToken.None);
+        var result = await gateway.ParseWebhookAsync(Bytes(body), Signed(body), CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
         result.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.WebhookPayloadInvalid);
@@ -182,7 +182,7 @@ public sealed class FakePaymentGatewaySpec
     {
         var gateway = new FakePaymentGateway();
 
-        var result = await gateway.ParseWebhookAsync(body, Signed(body), CancellationToken.None);
+        var result = await gateway.ParseWebhookAsync(Bytes(body), Signed(body), CancellationToken.None);
 
         result.IsFailure.Should().BeTrue();
         result.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.WebhookPayloadInvalid);
@@ -195,7 +195,7 @@ public sealed class FakePaymentGatewaySpec
         const string body = """{"id":"evt_1","type":"captured","reference":"fake_1"}""";
 
         var result = await gateway.ParseWebhookAsync(
-            body,
+            Bytes(body),
             new Dictionary<string, string>
             {
                 [PaymentConstant.Headers.FakeSignature] = $"{FakePaymentGateway.SignaturePrefix}bad"
@@ -215,7 +215,7 @@ public sealed class FakePaymentGatewaySpec
             SHA256.HashData(Encoding.UTF8.GetBytes($"{FakePaymentGateway.WebhookSecret}:{body}")));
 
         var result = await gateway.ParseWebhookAsync(
-            body,
+            Bytes(body),
             new Dictionary<string, string>
             {
                 [PaymentConstant.Headers.FakeSignature] = $"{FakePaymentGateway.SignaturePrefix}{signature}"
@@ -235,7 +235,7 @@ public sealed class FakePaymentGatewaySpec
         const string body = """{"id":"evt_9","type":"dispute_opened","reference":"fake_1"}""";
 
         var result = await gateway.ParseWebhookAsync(
-            body,
+            Bytes(body),
             new Dictionary<string, string>
             {
                 [PaymentConstant.Headers.FakeSignature] = FakePaymentGateway.Sign(body)
@@ -247,12 +247,17 @@ public sealed class FakePaymentGatewaySpec
     }
 
     [Fact]
-    public async Task ParseWebhook_NullBody_ShouldThrow()
+    public async Task ParseWebhook_EmptyBody_ShouldReportAnInvalidPayload()
     {
         var gateway = new FakePaymentGateway();
 
-        await Assert.ThrowsAsync<ArgumentNullException>(
-            () => gateway.ParseWebhookAsync(null!, Signed("{}"), CancellationToken.None));
+        var result = await gateway.ParseWebhookAsync(
+            ReadOnlyMemory<byte>.Empty,
+            Signed(string.Empty),
+            CancellationToken.None);
+
+        result.IsFailure.Should().BeTrue();
+        result.Errors[0].Code.Should().Be(PaymentsOutcome.Codes.WebhookPayloadInvalid);
     }
 
     [Fact]
@@ -261,7 +266,7 @@ public sealed class FakePaymentGatewaySpec
         var gateway = new FakePaymentGateway();
 
         await Assert.ThrowsAsync<ArgumentNullException>(
-            () => gateway.ParseWebhookAsync("{}", null!, CancellationToken.None));
+            () => gateway.ParseWebhookAsync(Bytes("{}"), null!, CancellationToken.None));
     }
 
     [Fact]
@@ -272,4 +277,7 @@ public sealed class FakePaymentGatewaySpec
         await Assert.ThrowsAsync<ArgumentNullException>(
             () => gateway.RetrieveAsync(null!, CancellationToken.None));
     }
+
+    /// <summary>Encodes a JSON body the way the endpoint delivers it.</summary>
+    private static ReadOnlyMemory<byte> Bytes(string body) => Encoding.UTF8.GetBytes(body);
 }

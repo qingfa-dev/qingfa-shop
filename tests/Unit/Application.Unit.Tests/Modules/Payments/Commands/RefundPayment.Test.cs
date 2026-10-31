@@ -34,11 +34,15 @@ public sealed class RefundPaymentTest
 
     private static Mock<IPaymentGateway> Gateway(bool supportsPartialRefund)
     {
-        Mock<IPaymentGateway> gateway = supportsPartialRefund
-            ? new Mock<IPaymentGateway>(MockBehavior.Loose)
-            : new Mock<IPaymentGateway>();
+        var gateway = new Mock<IPaymentGateway>();
 
         gateway.SetupGet(x => x.Provider).Returns(PaymentProvider.PayPal);
+        gateway.SetupGet(x => x.Capabilities).Returns(new PaymentGatewayCapabilities
+        {
+            SupportsPartialRefund = supportsPartialRefund,
+            SupportsManualCapture = true,
+            SupportsWebhooks = true
+        });
         gateway.Setup(x => x.RefundAsync(It.IsAny<PaymentRefundRequest>(), It.IsAny<CancellationToken>()))
             .ReturnsAsync((PaymentRefundRequest request, CancellationToken _) =>
                 Result<PaymentRefundResult>.Success(
@@ -59,7 +63,7 @@ public sealed class RefundPaymentTest
     public async Task Handle_PartialRefundWithoutCapability_ShouldReturnPartialUnsupported()
     {
         Payment payment = Captured();
-        var gateway = new Mock<IPaymentGateway>();
+        Mock<IPaymentGateway> gateway = Gateway(supportsPartialRefund: false);
 
         var repository = new Mock<IEventSourcedRepository<Payment, Guid>>();
         repository.Setup(x => x.LoadAsync(payment.Id, It.IsAny<CancellationToken>()))

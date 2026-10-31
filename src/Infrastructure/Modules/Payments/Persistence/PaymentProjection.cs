@@ -18,8 +18,11 @@ namespace Infrastructure.Modules.Payments.Persistence;
 [ExcludeFromCodeCoverage]
 public sealed class PaymentProjection(DbContext context, IDomainEventSerializer serializer) : IProjection
 {
+    /// <summary>The projection checkpoint name.</summary>
+    public const string PaymentProjectionName = "payments";
+
     /// <inheritdoc />
-    public string Name => "payments";
+    public string Name => PaymentProjectionName;
 
     /// <inheritdoc />
     public async Task<Result> ApplyAsync(StoredEvent storedEvent, CancellationToken cancellationToken = default)

@@ -38,6 +38,80 @@ public static class PaymentConstant
 
         /// <summary>Refund reason length.</summary>
         public const int ReasonMaxLength = 256;
+
+        /// <summary>Largest page size a query may request.</summary>
+        public const int MaxPageSize = 100;
+    }
+
+    /// <summary>Paging helpers so every payment query bounds the page size.</summary>
+    public static class Paging
+    {
+        /// <summary>Clamps a requested page size into the allowed range.</summary>
+        /// <param name="pageSize">The requested size, if any.</param>
+        /// <returns>A size between 1 and <see cref="Constraints.MaxPageSize"/>.</returns>
+        public static int ClampSize(int? pageSize) => pageSize switch
+        {
+            null or < 1 => Defaults.DefaultPageSize,
+            > Constraints.MaxPageSize => Constraints.MaxPageSize,
+            _ => pageSize.Value
+        };
+    }
+
+    /// <summary>HTTP status codes used by the outcome catalogue.</summary>
+    public static class HttpStatus
+    {
+        /// <summary>400 Bad Request.</summary>
+        public const int BadRequest = 400;
+
+        /// <summary>401 Unauthorized.</summary>
+        public const int Unauthorized = 401;
+
+        /// <summary>404 Not Found.</summary>
+        public const int NotFound = 404;
+
+        /// <summary>409 Conflict.</summary>
+        public const int Conflict = 409;
+
+        /// <summary>413 Content Too Large.</summary>
+        public const int ContentTooLarge = 413;
+
+        /// <summary>415 Unsupported Media Type.</summary>
+        public const int UnsupportedMediaType = 415;
+
+        /// <summary>500 Internal Server Error.</summary>
+        public const int InternalServerError = 500;
+
+        /// <summary>502 Bad Gateway.</summary>
+        public const int BadGateway = 502;
+
+        /// <summary>503 Service Unavailable.</summary>
+        public const int ServiceUnavailable = 503;
+    }
+
+    /// <summary>Response metadata keys.</summary>
+    public static class Metadata
+    {
+        /// <summary>Marks a replayed idempotent request.</summary>
+        public const string IdempotencyReplay = "IdempotentReplay";
+    }
+
+    /// <summary>Deterministic idempotency key prefixes used towards providers.</summary>
+    public static class IdempotencyPrefixes
+    {
+        /// <summary>Create prefix; the caller's key follows it.</summary>
+        public const string Create = "create:";
+
+        /// <summary>Confirm prefix.</summary>
+        public const string Confirm = "confirm:";
+
+        /// <summary>Capture prefix.</summary>
+        public const string Capture = "capture:";
+
+        /// <summary>Cancel prefix.</summary>
+        public const string Cancel = "cancel:";
+
+        /// <summary>Refund prefix.</summary>
+        public const string Refund = "refund:";
     }
 
     /// <summary>HTTP header names used by the module.</summary>
@@ -133,5 +207,8 @@ public static class PaymentConstant
 
         /// <summary>Default currency code.</summary>
         public const string Currency = "USD";
+
+        /// <summary>Default ceiling for a single payment.</summary>
+        public const decimal MaxAmount = 100000m;
     }
 }

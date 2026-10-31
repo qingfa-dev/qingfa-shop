@@ -3,6 +3,8 @@ using Application.Modules.Payments.Intents.Models;
 using Application.Modules.Payments.Intents.Queries;
 using Application.Modules.Payments.Persistence;
 
+using Application.Unit.Tests.Modules.Payments.Fixtures;
+
 using AwesomeAssertions;
 
 using Core.BuildingBlocks.Domain.ValueObjects.Money;
@@ -30,7 +32,7 @@ public sealed class GetPaymentTest
         store.Setup(x => x.FindAsync(row.Id, It.IsAny<CancellationToken>())).ReturnsAsync(row);
 
         var repository = new Mock<IEventSourcedRepository<Payment, Guid>>();
-        var handler = new GetPayment.UseCaseHandler(store.Object, repository.Object);
+        var handler = new GetPayment.UseCaseHandler(store.Object, repository.Object, new StubPaymentPolicy(), TimeProvider.System);
         var query = new GetPayment.UseCase(row.Id, Guid.NewGuid());
 
         var result = await handler.Handle(query, CancellationToken.None);
@@ -54,7 +56,7 @@ public sealed class GetPaymentTest
         store.Setup(x => x.FindAsync(row.Id, It.IsAny<CancellationToken>())).ReturnsAsync(row);
 
         var repository = new Mock<IEventSourcedRepository<Payment, Guid>>();
-        var handler = new GetPayment.UseCaseHandler(store.Object, repository.Object);
+        var handler = new GetPayment.UseCaseHandler(store.Object, repository.Object, new StubPaymentPolicy(), TimeProvider.System);
         var query = new GetPayment.UseCase(row.Id, null);
 
         var result = await handler.Handle(query, CancellationToken.None);
@@ -88,7 +90,7 @@ public sealed class GetPaymentTest
         repository.Setup(x => x.LoadAsync(payment.Id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result<Payment>.Success(payment));
 
-        var handler = new GetPayment.UseCaseHandler(store.Object, repository.Object);
+        var handler = new GetPayment.UseCaseHandler(store.Object, repository.Object, new StubPaymentPolicy(), TimeProvider.System);
 
         var result = await handler.Handle(
             new GetPayment.UseCase(payment.Id, payment.CustomerId),
@@ -111,7 +113,7 @@ public sealed class GetPaymentTest
         repository.Setup(x => x.LoadAsync(id, It.IsAny<CancellationToken>()))
             .ReturnsAsync(Result<Payment>.Fail(PaymentsOutcome.Failure.NotFound(id)));
 
-        var handler = new GetPayment.UseCaseHandler(store.Object, repository.Object);
+        var handler = new GetPayment.UseCaseHandler(store.Object, repository.Object, new StubPaymentPolicy(), TimeProvider.System);
 
         var result = await handler.Handle(new GetPayment.UseCase(id, null), CancellationToken.None);
 

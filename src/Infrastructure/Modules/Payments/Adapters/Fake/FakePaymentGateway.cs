@@ -13,7 +13,7 @@ using Core.Modules.Payments.Intents;
 namespace Infrastructure.Modules.Payments.Adapters.Fake;
 
 /// <summary>Deterministic in-memory gateway for development and tests.</summary>
-public sealed class FakePaymentGateway : IPaymentGateway, ISupportsPartialRefund, ISupportsManualCapture
+public sealed class FakePaymentGateway : IPaymentGateway
 {
     /// <summary>The shared secret mixed into the fake signature digest.</summary>
     public const string WebhookSecret = "fake-webhook-secret";
@@ -24,8 +24,20 @@ public sealed class FakePaymentGateway : IPaymentGateway, ISupportsPartialRefund
     /// <summary>The prefix of the fake SHA-256 digest signature.</summary>
     public const string SignaturePrefix = "sha256=";
 
+    /// <summary>Scripts the fake provider to decline.</summary>
+    public const string DeclinePrefix = "decline:";
+
+    /// <summary>Scripts the fake provider to time out.</summary>
+    public const string TimeoutPrefix = "timeout:";
+
+    /// <summary>Scripts the fake provider to report processing before a later decline.</summary>
+    public const string DeclinedAsyncPrefix = "declined-async:";
+
     /// <inheritdoc />
     public PaymentProvider Provider => PaymentProvider.Fake;
+
+    /// <inheritdoc />
+    public PaymentGatewayCapabilities Capabilities { get; } = PaymentGatewayCapabilities.Full;
 
     /// <summary>
     /// Computes the fake signature header value: a SHA-256 digest over
@@ -35,8 +47,21 @@ public sealed class FakePaymentGateway : IPaymentGateway, ISupportsPartialRefund
     {
         ArgumentNullException.ThrowIfNull(rawBody);
 
-        return SignaturePrefix + Convert.ToHexStringLower(
-            SHA256.HashData(Encoding.UTF8.GetBytes($"{WebhookSecret}:{rawBody}")));
+        return Sign(Encoding.UTF8.GetBytes(rawBody));
+    }
+
+    /// <summary>Computes the fake signature for the exact delivered bytes.</summary>
+    /// <param name="rawBody">The request bytes.</param>
+    /// <returns>The signature header value.</returns>
+    public static string Sign(ReadOnlySpan<byte> rawBody)
+    {
+        byte[] prefix = Encoding.UTF8.GetBytes($"{WebhookSecret}:");
+
+        byte[] buffer = new byte[prefix.Length + rawBody.Length];
+        prefix.CopyTo(buffer, 0);
+        rawBody.CopyTo(buffer.AsSpan(prefix.Length));
+
+        return SignaturePrefix + Convert.ToHexStringLower(SHA256.HashData(buffer));
     }
 
     /// <inheritdoc />
@@ -48,15 +73,15 @@ public sealed class FakePaymentGateway : IPaymentGateway, ISupportsPartialRefund
 
         string reference = $"fake_{request.PaymentId:N}";
 
-        if (request.ExternalReference.StartsWith("decline:", StringComparison.Ordinal))
+        if (request.ExternalReference.StartsWith(DeclinePrefix, StringComparison.Ordinal))
             return Task.FromResult(Result<PaymentIntentResult>.Success(new PaymentIntentResult(
                 reference, PaymentProviderIntentStatus.Failed, null, null, null, FakePaymentGateway.DeclinedCode)));
 
-        if (request.ExternalReference.StartsWith("timeout:", StringComparison.Ordinal))
+        if (request.ExternalReference.StartsWith(TimeoutPrefix, StringComparison.Ordinal))
             return Task.FromResult(Result<PaymentIntentResult>.Fail(
                 PaymentsOutcome.Failure.ProviderUnavailable(PaymentProvider.Fake)));
 
-        PaymentProviderIntentStatus status = request.ExternalReference.StartsWith("declined-async:", StringComparison.Ordinal)
+        PaymentProviderIntentStatus status = request.ExternalReference.StartsWith(DeclinedAsyncPrefix, StringComparison.Ordinal)
             ? PaymentProviderIntentStatus.Processing
             : PaymentProviderIntentStatus.RequiresAction;
 
@@ -112,27 +137,27 @@ public sealed class FakePaymentGateway : IPaymentGateway, ISupportsPartialRefund
 
     /// <inheritdoc />
     public Task<Result<Maybe<PaymentProviderEvent>>> ParseWebhookAsync(
-        string rawBody,
+        ReadOnlyMemory<byte> rawBody,
         IReadOnlyDictionary<string, string> headers,
         CancellationToken cancellationToken)
     {
-        ArgumentNullException.ThrowIfNull(rawBody);
         ArgumentNullException.ThrowIfNull(headers);
 
         if (!headers.TryGetValue(PaymentConstant.Headers.FakeSignature, out string? provided)
-            || !IsValid(rawBody, provided))
+            || !IsValid(rawBody.Span, provided))
             return Task.FromResult(Result<Maybe<PaymentProviderEvent>>.Fail(
                 PaymentsOutcome.Failure.WebhookSignatureInvalid()));
 
-        return Task.FromResult(Parse(rawBody));
+        return Task.FromResult(Parse(rawBody.Span));
     }
 
-    private static Result<Maybe<PaymentProviderEvent>> Parse(string rawBody)
+    private static Result<Maybe<PaymentProviderEvent>> Parse(ReadOnlySpan<byte> rawBody)
     {
         JsonDocument document;
+
         try
         {
-            document = JsonDocument.Parse(rawBody);
+            document = JsonDocument.Parse(rawBody.ToArray());
         }
         catch (JsonException)
         {
@@ -243,7 +268,7 @@ public sealed class FakePaymentGateway : IPaymentGateway, ISupportsPartialRefund
         => Result<Maybe<PaymentProviderEvent>>.Fail(
             PaymentsOutcome.Failure.WebhookPayloadInvalid());
 
-    private static bool IsValid(string rawBody, string? provided)
+    private static bool IsValid(ReadOnlySpan<byte> rawBody, string? provided)
     {
         if (string.IsNullOrEmpty(provided) || !provided.StartsWith(SignaturePrefix, StringComparison.Ordinal))
             return false;

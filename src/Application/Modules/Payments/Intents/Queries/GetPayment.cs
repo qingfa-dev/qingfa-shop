@@ -1,4 +1,5 @@
 using Application.BuildingBlocks.EventSourcing;
+using Application.Modules.Payments.Ports;
 using Application.Modules.Payments.Intents.Models;
 using Application.Modules.Payments.Persistence;
 
@@ -27,7 +28,9 @@ public static class GetPayment
     /// <summary>Handles the query.</summary>
     public sealed class UseCaseHandler(
         IPaymentReadStore store,
-        IEventSourcedRepository<Payment, Guid> repository) : IQueryHandler<UseCase, PaymentResponseModel>
+        IEventSourcedRepository<Payment, Guid> repository,
+        IPaymentPolicy policy,
+        TimeProvider clock) : IQueryHandler<UseCase, PaymentResponseModel>
     {
         /// <inheritdoc />
         public async Task<Result<PaymentResponseModel>> Handle(UseCase query, CancellationToken cancellationToken)
@@ -42,7 +45,7 @@ public static class GetPayment
                 bool visible = query.CustomerId is null || row.CustomerId == query.CustomerId;
 
                 return visible
-                    ? Result<PaymentResponseModel>.Success(row.ToResponse())
+                    ? Result<PaymentResponseModel>.Success(ApplyExpiry(row.ToResponse(), row.ExpiresAt))
                     : Result<PaymentResponseModel>.Fail(PaymentsOutcome.Failure.NotFound(query.PaymentId));
             }
 
@@ -55,9 +58,28 @@ public static class GetPayment
             Payment payment = loaded.Value;
             bool owned = query.CustomerId is null || payment.CustomerId == query.CustomerId;
 
-            return owned
-                ? Result<PaymentResponseModel>.Success(payment.ToResponse())
-                : Result<PaymentResponseModel>.Fail(PaymentsOutcome.Failure.NotFound(query.PaymentId));
+            if (!owned)
+                return Result<PaymentResponseModel>.Fail(PaymentsOutcome.Failure.NotFound(query.PaymentId));
+
+            PaymentResponseModel response = payment.ToResponse();
+
+            // Enforce: an unpaid intent past expiry reads as expired without a write.
+            return Result<PaymentResponseModel>.Success(
+                payment.IsExpired(clock.GetUtcNow(), policy.ExpiryGrace)
+                    ? response with { Status = PaymentStatus.Expired.ToWire(), ApprovalUrl = null }
+                    : response);
+        }
+
+        /// <summary>Reports an overdue pending row as expired.</summary>
+        private PaymentResponseModel ApplyExpiry(PaymentResponseModel response, DateTime? expiresAt)
+        {
+            bool expired = response.Status == PaymentStatus.Pending.ToWire()
+                && expiresAt is { } due
+                && clock.GetUtcNow() >= new DateTimeOffset(due, TimeSpan.Zero) + policy.ExpiryGrace;
+
+            return expired
+                ? response with { Status = PaymentStatus.Expired.ToWire(), ApprovalUrl = null }
+                : response;
         }
     }
 

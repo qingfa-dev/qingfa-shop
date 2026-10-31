@@ -1,3 +1,5 @@
+using System.Text;
+
 using Application.BuildingBlocks.EventSourcing;
 using Application.Modules.Payments.Intents;
 using Application.Modules.Payments.Intents.Commands;
@@ -22,11 +24,11 @@ public static class ProcessPaymentWebhook
 
     /// <summary>The command carrying the raw delivery.</summary>
     /// <param name="Provider">The provider the delivery came from.</param>
-    /// <param name="RawBody">The raw request body.</param>
+    /// <param name="RawBody">The exact request bytes; signatures are verified over them.</param>
     /// <param name="Headers">The request headers, needed for signature verification.</param>
     public sealed record UseCase(
         PaymentProvider Provider,
-        string RawBody,
+        ReadOnlyMemory<byte> RawBody,
         IReadOnlyDictionary<string, string> Headers) : ICommand<bool>, INonTransactionalCommand;
 
     #endregion
@@ -47,7 +49,7 @@ public static class ProcessPaymentWebhook
         {
             ArgumentNullException.ThrowIfNull(command);
 
-            if (string.IsNullOrWhiteSpace(command.RawBody))
+            if (command.RawBody.IsEmpty)
                 return Result<bool>.Fail(PaymentsOutcome.Failure.WebhookPayloadInvalid());
 
             Result<IPaymentGateway> resolved = registry.Resolve(command.Provider);
@@ -74,7 +76,7 @@ public static class ProcessPaymentWebhook
                 providerName,
                 providerEvent.EventId,
                 providerEvent.Type.ToString(),
-                command.RawBody,
+                Encoding.UTF8.GetString(command.RawBody.Span),
                 cancellationToken);
 
             if (recorded.IsFailure)

@@ -26,6 +26,7 @@ public static class CancelPayment
     public sealed class UseCaseHandler(
         IEventSourcedRepository<Payment, Guid> repository,
         IPaymentGatewayRegistry registry,
+        IPaymentPolicy policy,
         TimeProvider clock) : ICommandHandler<UseCase, PaymentResponseModel>
     {
         /// <inheritdoc />
@@ -40,6 +41,21 @@ public static class CancelPayment
 
             Payment payment = loaded.Value;
 
+            // Handle: an overdue intent is expired rather than cancelled.
+            if (payment.IsExpired(clock.GetUtcNow(), policy.ExpiryGrace))
+            {
+                Result<Payment> expiring = payment.Expire(clock.GetUtcNow());
+
+                if (expiring.IsFailure)
+                    return Result<PaymentResponseModel>.Fail(expiring.Errors);
+
+                Result expired = await repository.SaveAsync(expiring.Value, cancellationToken);
+
+                return expired.IsFailure
+                    ? Result<PaymentResponseModel>.Fail(expired.Errors)
+                    : Result<PaymentResponseModel>.Success(expiring.Value.ToResponse());
+            }
+
             Result<IPaymentGateway> resolved = registry.Resolve(payment.Provider);
 
             if (resolved.IsFailure)
@@ -48,7 +64,9 @@ public static class CancelPayment
             if (payment.ProviderReference is not null)
             {
                 Result<PaymentCancelResult> cancelled = await resolved.Value.CancelAsync(
-                    new PaymentCancelRequest(payment.ProviderReference, $"cancel:{payment.Id:N}"),
+                    new PaymentCancelRequest(
+                        payment.ProviderReference,
+                        $"{PaymentConstant.IdempotencyPrefixes.Cancel}{payment.Id:N}"),
                     cancellationToken);
 
                 if (cancelled.IsFailure)

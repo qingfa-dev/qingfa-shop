@@ -53,6 +53,7 @@ public static class CreatePayment
         IPaymentIdempotencyStore idempotency,
         IPaymentReferenceStore references,
         IPaymentGatewayRegistry registry,
+        IPaymentPolicy policy,
         IUserContext userContext,
         TimeProvider clock) : ICommandHandler<UseCase, PaymentResponseModel>
     {
@@ -63,6 +64,11 @@ public static class CreatePayment
 
             if (!Guid.TryParse(userContext.UserId, out Guid customerId))
                 return Result<PaymentResponseModel>.Fail(PaymentsOutcome.Failure.CustomerRequired());
+
+            // Validate: the configured ceiling applies before any provider call.
+            if (command.Request.Amount.Amount > policy.MaxAmount)
+                return Result<PaymentResponseModel>.Fail(
+                    PaymentsOutcome.Failure.AmountExceedsLimit(command.Request.Amount.Amount, policy.MaxAmount));
 
             string fingerprint = Fingerprint(command.Request);
 
@@ -84,7 +90,7 @@ public static class CreatePayment
                 return replay.IsFailure
                     ? Result<PaymentResponseModel>.Fail(replay.Errors)
                     : Result<PaymentResponseModel>.Success(replay.Value.ToResponse())
-                        .WithMetadata("IdempotentReplay", true);
+                        .WithMetadata(PaymentConstant.Metadata.IdempotencyReplay, true);
             }
 
             Result<Payment> created = await registry.Resolve(command.Request.Provider)
@@ -156,7 +162,7 @@ public static class CreatePayment
                     request.ReturnUrl,
                     request.CancelUrl,
                     request.CaptureMode,
-                    idempotencyKey,
+                    $"{PaymentConstant.IdempotencyPrefixes.Create}{idempotencyKey}",
                     new Dictionary<string, string>()),
                 cancellationToken);
 
@@ -176,8 +182,10 @@ public static class CreatePayment
                     idempotencyFingerprint: fingerprint,
                     customerId: customerId,
                     approvalUrl: value.ApprovalUrl,
-                    expiresAt: value.ExpiresAt,
-                    nowUtc: clock.GetUtcNow())
+                    // Fallback: providers that do not state an expiry use the configured lifetime.
+                    expiresAt: value.ExpiresAt ?? clock.GetUtcNow().Add(policy.IntentLifetime),
+                    nowUtc: clock.GetUtcNow(),
+                    maxAmount: policy.MaxAmount)
                 .Bind(payment => value.Status is PaymentProviderIntentStatus.Failed
                     ? payment.Fail(value.FailureCode ?? PaymentConstant.Reasons.ProviderFailed, null, clock.GetUtcNow())
                     : Result<Payment>.Success(payment));

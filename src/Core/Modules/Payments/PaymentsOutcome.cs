@@ -33,6 +33,11 @@ public static class PaymentsOutcome
             code: Codes.AmountInvalid,
             message: $"Payment amount is invalid: {reason}.");
 
+        /// <summary>The amount exceeds the configured ceiling.</summary>
+        public static Error AmountExceedsLimit(decimal requested, decimal maxAmount) => Error.BadRequest(
+            code: Codes.AmountExceedsLimit,
+            message: $"The amount {requested} exceeds the allowed maximum of {maxAmount}.");
+
         /// <summary>The amount currency differs from the payment currency.</summary>
         public static Error CurrencyMismatch(string expected, string actual) => Error.BadRequest(
             code: Codes.CurrencyMismatch,
@@ -122,19 +127,19 @@ public static class PaymentsOutcome
         public static Error ProviderRequestRejected(PaymentProvider provider) => Error.Custom(
             code: Codes.ProviderRequestRejected,
             message: $"The '{provider.ToWire()}' provider rejected the request.",
-            status: 502);
+            status: PaymentConstant.HttpStatus.BadGateway);
 
         /// <summary>The provider is unreachable or timed out.</summary>
         public static Error ProviderUnavailable(PaymentProvider provider) => Error.Custom(
             code: Codes.ProviderUnavailable,
             message: $"The '{provider.ToWire()}' provider is unavailable.",
-            status: 502);
+            status: PaymentConstant.HttpStatus.BadGateway);
 
         /// <summary>The provider declined a capture or refund.</summary>
         public static Error ProviderDeclined(string? providerCode) => Error.Custom(
             code: Codes.ProviderDeclined,
             message: $"The provider declined the operation ({providerCode ?? "unknown"}).",
-            status: 502);
+            status: PaymentConstant.HttpStatus.BadGateway);
 
         /// <summary>The provider rejected the credentials.</summary>
         public static Error ProviderConfigurationInvalid(PaymentProvider provider) => Error.InternalServerError(
@@ -150,7 +155,7 @@ public static class PaymentsOutcome
         public static Error WebhookContentTypeUnsupported() => Error.Custom(
             code: Codes.WebhookContentTypeUnsupported,
             message: "The webhook body must be application/json.",
-            status: 415);
+            status: PaymentConstant.HttpStatus.UnsupportedMediaType);
 
         /// <summary>The webhook body cannot be parsed.</summary>
         public static Error WebhookPayloadInvalid() => Error.BadRequest(
@@ -161,7 +166,7 @@ public static class PaymentsOutcome
         public static Error WebhookPayloadTooLarge() => Error.Custom(
             code: Codes.WebhookPayloadTooLarge,
             message: "The webhook body is too large.",
-            status: 413);
+            status: PaymentConstant.HttpStatus.ContentTooLarge);
 
         /// <summary>The provider segment is unknown.</summary>
         public static Error WebhookProviderUnsupported(string provider) => Error.NotFound(
@@ -185,6 +190,9 @@ public static class PaymentsOutcome
 
         /// <summary>Invalid amount.</summary>
         public const string AmountInvalid = "Payments.Payment.AmountInvalid";
+
+        /// <summary>Amount above the configured ceiling.</summary>
+        public const string AmountExceedsLimit = "Payments.Payment.AmountExceedsLimit";
 
         /// <summary>Amount currency differs from the payment currency.</summary>
         public const string CurrencyMismatch = "Payments.Payment.CurrencyMismatch";
